@@ -97,7 +97,7 @@ async function google(force) {
 app.get('/api/data', async (req, res) => {
   try {
     const [g, purchases, expenses, loads] = await Promise.all([
-      google(req.query.fresh === '1'), kget(KEYS.purchases, []), kget(KEYS.expenses, []), kget(KEYS.loads, []),
+      google(req.query.fresh === '1'), kget(KEYS.purchases, []), kget(KEYS.expenses, []), getLoads(),
     ]);
     res.json({ ...g, purchases, expenses, loads, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -140,6 +140,15 @@ app.post('/api/delete', async (req, res) => {
 });
 
 // ---------- B-Stock loads ----------
+// First run: loads-seed.json (Aug-Oct loads from the Bstock sheet) becomes the starting list.
+async function getLoads() {
+  let loads = await kget(KEYS.loads, null);
+  if (loads === null) {
+    try { loads = require('./loads-seed.json'); } catch { loads = []; }
+    await kset(KEYS.loads, loads);
+  }
+  return loads;
+}
 // Landed cost is split only across sectionals, sofas, sleepers and loveseats.
 // Chairs, recliners, ottomans, consoles, mattresses get $0.
 const PAID = /sectional|sofa|sleeper|loveseat|love seat|couch|sect\b|\bmod\b|modular/i;
@@ -159,7 +168,7 @@ app.post('/api/loads', async (req, res) => {
       status: 'in', soldPrice: 0, soldDate: '',
     })).filter(u => u.name);
     if (!units.length) return res.status(400).json({ error: 'Add at least one unit' });
-    const loads = await kget(KEYS.loads, []);
+    const loads = await getLoads();
     const load = allocate({ id: Date.now().toString(36) + crypto.randomBytes(3).toString('hex'), loadId: clean(d.loadId, 40),
       origin: clean(d.origin, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : new Date().toISOString().slice(0, 10),
       landed: Math.round(landed * 100) / 100, notes: clean(d.notes), units });
@@ -171,7 +180,7 @@ app.post('/api/loads', async (req, res) => {
 app.post('/api/loads/unit', async (req, res) => {
   try {
     const { id, uid, status, soldPrice, soldDate } = req.body || {};
-    const loads = await kget(KEYS.loads, []);
+    const loads = await getLoads();
     const u = (loads.find(l => l.id === id) || { units: [] }).units.find(x => x.uid === uid);
     if (!u) return res.status(404).json({ error: 'Unit not found' });
     if (!['in', 'sold', 'dud'].includes(status)) return res.status(400).json({ error: 'bad status' });
