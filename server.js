@@ -43,6 +43,10 @@ app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json(
 
 // ---------- data ----------
 let cache = { at: 0, data: null };
+// Past months imported from Ivy Flip (Jan-Sep 2026). Those months use this file
+// for sales, cost of goods and expenses; later months use the live sheet.
+let HISTORY = { sales: [], expenses: [] };
+try { HISTORY = require('./history.json'); } catch (e) { console.log('No history.json'); }
 
 async function sheetData(force) {
   if (!CFG.API) return demoData();
@@ -55,7 +59,7 @@ async function sheetData(force) {
 }
 
 app.get('/api/data', async (req, res) => {
-  try { res.json(await sheetData(req.query.fresh === '1')); }
+  try { res.json({ ...(await sheetData(req.query.fresh === '1')), history: HISTORY }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
