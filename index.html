@@ -587,14 +587,15 @@ async function load(fresh){
     const d = await r.json(); if (d.error) throw new Error(d.error);
     DATA = d; $('demo').hidden = !d.demo; $('fileWarn').hidden = d.storage !== 'file' || d.demo;
     RAW = parse(d);
-    $('synced').textContent = 'Synced ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    $('synced').textContent = 'Synced ' + new Date(d.cachedAt || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
     render();
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
 $('prev').onclick = () => { const b = back(cur.y, cur.m, 1); cur = b; render(); };
 $('next').onclick = () => { const b = back(cur.y, cur.m, -1); cur = b; render(); };
-$('refresh').onclick = () => { if (tab === 'couches') loadInventory(true); else load(true); };
+$('refresh').onclick = () => { if (tab === 'couches') loadInventory(true); else { toast('Pulling the latest from Google...'); load(true); } };
 document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
