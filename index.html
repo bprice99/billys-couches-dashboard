@@ -214,21 +214,36 @@ function parse(d){
   const E = { date: col(eh,['date']), cat: col(eh,['category']), amt: col(eh,['amount','cost']) };
   const expenses = d.expenses.rows.map(r => ({ date: toDate(r[E.date]), cat: String(r[E.cat]||'Other'), amt: num(r[E.amt]) }))
     .filter(x => x.date && x.amt);
-  return { sales, purchases, expenses };
+  // HISTORY (Ivy Flip import). Any month found here uses history only.
+  const H = d.history || { sales: [], expenses: [] };
+  const hSales = H.sales.map(([dt, title, cost, sold]) => ({ date: toDate(dt), source: 'Ivy Flip import', name: title, pay: '',
+    type: 'Not tracked', price: sold, disc: 0, del: 0, rev: sold, total: sold, cost })).filter(x => x.date);
+  const hExp = H.expenses.map(([dt, cat, vendor, amt]) => ({ date: toDate(dt), cat, vendor, amt })).filter(x => x.date && x.amt);
+  const hMonths = new Set(hSales.map(x => x.date.getFullYear() + '-' + x.date.getMonth()));
+  return { sales, purchases, expenses, hSales, hExp, hMonths };
 }
 
 const inMonth = (dt, y, m) => dt.getFullYear() === y && dt.getMonth() === m;
 function month(y, m){
-  const s = RAW.sales.filter(x => inMonth(x.date, y, m));
-  const p = RAW.purchases.filter(x => inMonth(x.date, y, m));
-  const e = RAW.expenses.filter(x => inMonth(x.date, y, m));
+  const hist = RAW.hMonths.has(y + '-' + m);
+  let s, p, e;
+  if (hist) {
+    const hs = RAW.hSales.filter(x => inMonth(x.date, y, m));
+    s = hs.filter(x => x.rev > 0);
+    p = hs.filter(x => x.cost > 0).map(x => ({ date: x.date, source: 'Cost of couches sold', item: x.name, units: 1, cost: x.cost }));
+    e = RAW.hExp.filter(x => inMonth(x.date, y, m));
+  } else {
+    s = RAW.sales.filter(x => inMonth(x.date, y, m));
+    p = RAW.purchases.filter(x => inMonth(x.date, y, m));
+    e = RAW.expenses.filter(x => inMonth(x.date, y, m));
+  }
   const gross = s.reduce((a,x)=>a+x.rev,0), cogs = p.reduce((a,x)=>a+x.cost,0), exp = e.reduce((a,x)=>a+x.amt,0);
   const units = p.reduce((a,x)=>a+x.units,0);
   const gp = gross - cogs, net = gp - exp;
   return { s, p, e, gross, cogs, exp, gp, net, margin: gross ? net/gross : 0, count: s.length, units,
     avgSale: s.length ? gross/s.length : 0, avgBuy: units ? cogs/units : 0,
     gpFlip: s.length ? gp/s.length : 0, netFlip: s.length ? net/s.length : 0,
-    delivery: s.filter(x=>x.type==='Delivery').length };
+    delivery: s.filter(x=>x.type==='Delivery').length, hist };
 }
 function chg(a, b, invert){
   if (!b) return '<div class="c flat">&ndash;</div>';
@@ -275,12 +290,13 @@ function render(){
   bars($('sources'), groupSum(A.s, 'source', 'rev'), money);
   bars($('psources'), groupSum(A.p, 'source', 'cost'), money);
   const pk = A.count - A.delivery;
-  $('fulfill').innerHTML = `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${A.count?Math.round(A.delivery/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?A.delivery/A.count*100:0}%"></i></div></div>
+  if (A.hist) $('fulfill').innerHTML = '<p style="color:var(--muted);font-size:14px;margin:0">Not tracked in Ivy Flip for this month.</p>';
+  else $('fulfill').innerHTML = `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${A.count?Math.round(A.delivery/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?A.delivery/A.count*100:0}%"></i></div></div>
     <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${A.count?Math.round(pk/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?pk/A.count*100:0}%;background:var(--dark)"></i></div></div>`;
 
   const rows = A.s.slice().sort((a,b)=>b.date-a.date);
   $('salesTbl').innerHTML = `<tr><th>Date</th><th>Customer</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
-    (rows.length ? rows.map(x => `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
+    (rows.length ? rows.map(x => `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type==='Not tracked'?'&ndash;':x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
       : `<tr><td colspan="6" style="color:var(--muted)">No sales logged this month yet.</td></tr>`);
 
   drawChart(A, y, m);
