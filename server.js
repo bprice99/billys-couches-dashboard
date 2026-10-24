@@ -80,19 +80,34 @@ let HISTORY = { sales: [], expenses: [] };
 try { HISTORY = require('./history.json'); } catch { console.log('No history.json'); }
 
 // ---------- Google (sales, showings, bstock) ----------
-let cache = { at: 0, data: null };
-async function google(force) {
-  if (!CFG.API) return demoData();
-  if (!force && cache.data && Date.now() - cache.at < 60 * 1000) return cache.data;
-  const url = `${CFG.API}?key=${encodeURIComponent(CFG.KEY)}`;
-  const r = await fetch(url);
+// Google is slow (5-30s). Serve the last copy instantly and refresh it in the
+// background. The last copy is also saved to Redis so a redeploy starts warm.
+let cache = { at: 0, data: null }, inflight = null;
+async function fetchGoogle() {
+  const r = await fetch(`${CFG.API}?key=${encodeURIComponent(CFG.KEY)}`);
   const text = await r.text();
   let j;
   try { j = JSON.parse(text); } catch { throw new Error('Apps Script did not return data. Check the deployment.'); }
   if (j.error) throw new Error('Sheet: ' + j.error);
   cache = { at: Date.now(), data: j };
+  kset('bcd:googleCache', cache).catch(() => {});
   return j;
 }
+function refreshGoogle() {
+  if (!inflight) inflight = fetchGoogle().finally(() => { inflight = null; });
+  return inflight;
+}
+async function google(force) {
+  if (!CFG.API) return demoData();
+  if (!cache.data) { try { const c = await kget('bcd:googleCache', null); if (c && c.data) cache = c; } catch {} }
+  if (cache.data) {
+    if (force || Date.now() - cache.at > 60 * 1000) refreshGoogle().catch(e => console.log('Google refresh failed:', e.message));
+    return { ...cache.data, cachedAt: cache.at };
+  }
+  return refreshGoogle();
+}
+// Keep it warm: refresh every 5 minutes even when nobody is looking.
+if (CFG.API) setInterval(() => refreshGoogle().catch(() => {}), 5 * 60 * 1000);
 
 // imports.json: one-time records (e.g. Ivy Flip months after the history cutoff).
 // Each record has a fixed id, so it is added once and never duplicated.
