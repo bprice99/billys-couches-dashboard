@@ -1,0 +1,1012 @@
+[
+ {
+  "id": "seedmor6938231",
+  "loadId": "MOR-6938231",
+  "origin": "Morris IL",
+  "date": "2026-08-17",
+  "landed": 1192.34,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u08231",
+    "name": "Tisdale 6PC Fab Sect Gray",
+    "cost": 596.17,
+    "retail": 1399.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1174,
+    "soldDate": "2026-09-01"
+   },
+   {
+    "uid": "u18231",
+    "name": "Walsen 3PC Sectional",
+    "cost": 596.17,
+    "retail": 1299.99,
+    "comp": 1225,
+    "status": "sold",
+    "soldPrice": 1300,
+    "soldDate": "2026-08-22"
+   }
+  ]
+ },
+ {
+  "id": "seedoca6958014",
+  "loadId": "OCA-6958014",
+  "origin": "Ocala FL",
+  "date": "2026-08-21",
+  "landed": 5037.0,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u08014",
+    "name": "Dayna 4PC Modular Sec",
+    "cost": 419.75,
+    "retail": 999.99,
+    "comp": 1008,
+    "status": "sold",
+    "soldPrice": 975,
+    "soldDate": "2026-09-25"
+   },
+   {
+    "uid": "u18014",
+    "name": "Dayna 4PC Modular Sec",
+    "cost": 419.75,
+    "retail": 999.99,
+    "comp": 1008,
+    "status": "sold",
+    "soldPrice": 1024,
+    "soldDate": "2026-09-05"
+   },
+   {
+    "uid": "u28014",
+    "name": "Dayna 4PC Modular Sec",
+    "cost": 419.75,
+    "retail": 999.99,
+    "comp": 1008,
+    "status": "sold",
+    "soldPrice": 1024,
+    "soldDate": "2026-09-05"
+   },
+   {
+    "uid": "u38014",
+    "name": "Henredon 6P Fab Sec Cream",
+    "cost": 419.75,
+    "retail": 1699.99,
+    "comp": 1350,
+    "status": "sold",
+    "soldPrice": 899,
+    "soldDate": "2026-08-27"
+   },
+   {
+    "uid": "u48014",
+    "name": "Henredon 6P Fab Sec Cream",
+    "cost": 419.75,
+    "retail": 1699.99,
+    "comp": 1350,
+    "status": "sold",
+    "soldPrice": 1325,
+    "soldDate": "2026-08-26"
+   },
+   {
+    "uid": "u58014",
+    "name": "Carmelo Fab PWR Sectional",
+    "cost": 419.75,
+    "retail": 2299.99,
+    "comp": 1425,
+    "status": "sold",
+    "soldPrice": 1600,
+    "soldDate": "2026-08-27"
+   },
+   {
+    "uid": "u68014",
+    "name": "Carmelo Fab PWR Sectional",
+    "cost": 419.75,
+    "retail": 2299.99,
+    "comp": 1425,
+    "status": "sold",
+    "soldPrice": 1500,
+    "soldDate": "2026-08-30"
+   },
+   {
+    "uid": "u78014",
+    "name": "Wylder Lthr PWR Sectional",
+    "cost": 419.75,
+    "retail": 2399.99,
+    "comp": 1612,
+    "status": "sold",
+    "soldPrice": 1650,
+    "soldDate": "2026-08-25"
+   },
+   {
+    "uid": "u88014",
+    "name": "Zakary Fab PWR Sectional",
+    "cost": 419.75,
+    "retail": 1949.99,
+    "comp": 1383,
+    "status": "sold",
+    "soldPrice": 1300,
+    "soldDate": "2026-08-23"
+   },
+   {
+    "uid": "u98014",
+    "name": "Lowell 6PC Mod Sect",
+    "cost": 419.75,
+    "retail": 1699.99,
+    "comp": 1254,
+    "status": "sold",
+    "soldPrice": 1150,
+    "soldDate": "2026-09-22"
+   },
+   {
+    "uid": "u108014",
+    "name": "Sereen Modular Taupe",
+    "cost": 419.75,
+    "retail": 2099.99,
+    "comp": 1624,
+    "status": "sold",
+    "soldPrice": 2124,
+    "soldDate": "2026-08-22"
+   },
+   {
+    "uid": "u118014",
+    "name": "Tisdale 6PC Fab Sect Beige",
+    "cost": 419.75,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1188,
+    "soldDate": "2026-08-23"
+   }
+  ]
+ },
+ {
+  "id": "seedrom6940591",
+  "loadId": "ROM-6940591",
+  "origin": "Romeoville IL",
+  "date": "2026-09-01",
+  "landed": 1829.66,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u00591",
+    "name": "Miles Fab PWR Sectional",
+    "cost": 457.42,
+    "retail": 1699.99,
+    "comp": 1222,
+    "status": "sold",
+    "soldPrice": 1350,
+    "soldDate": "2026-09-06"
+   },
+   {
+    "uid": "u10591",
+    "name": "Miles Fab PWR Sectional",
+    "cost": 457.42,
+    "retail": 1699.99,
+    "comp": 1222,
+    "status": "sold",
+    "soldPrice": 1095,
+    "soldDate": "2026-09-12"
+   },
+   {
+    "uid": "u20591",
+    "name": "Tisdale 6PC Sect Beige",
+    "cost": 457.41,
+    "retail": 1799.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1225,
+    "soldDate": "2026-09-03"
+   },
+   {
+    "uid": "u30591",
+    "name": "Tisdale 6PC Fab Sect Gray",
+    "cost": 457.41,
+    "retail": 1399.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1125,
+    "soldDate": "2026-09-03"
+   }
+  ]
+ },
+ {
+  "id": "seedcbs6993744",
+  "loadId": "CBS-6993744",
+  "origin": "Columbus OH",
+  "date": "2026-09-09",
+  "landed": 7028.41,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u03744",
+    "name": "Tisdale 6PC Fab Sect Gray",
+    "cost": 540.65,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 899,
+    "soldDate": "2026-09-19"
+   },
+   {
+    "uid": "u13744",
+    "name": "Tisdale 6PC Fab Sect Gray (combined, ripped piece removed)",
+    "cost": 540.65,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 899,
+    "soldDate": "2026-09-19"
+   },
+   {
+    "uid": "u23744",
+    "name": "Aubrey Lthr PWR Rec Sect",
+    "cost": 540.65,
+    "retail": 3499.99,
+    "comp": 0,
+    "status": "dud",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u33744",
+    "name": "Ryerson Lthr Sectional",
+    "cost": 540.65,
+    "retail": 2499.99,
+    "comp": 1774,
+    "status": "sold",
+    "soldPrice": 1699,
+    "soldDate": "2026-09-20"
+   },
+   {
+    "uid": "u43744",
+    "name": "Sereen Modular Taupe",
+    "cost": 540.65,
+    "retail": 2399.99,
+    "comp": 1624,
+    "status": "sold",
+    "soldPrice": 1900,
+    "soldDate": "2026-09-26"
+   },
+   {
+    "uid": "u53744",
+    "name": "Rockford Fab PWR Sectional",
+    "cost": 540.65,
+    "retail": 1999.99,
+    "comp": 1270,
+    "status": "sold",
+    "soldPrice": 1139,
+    "soldDate": "2026-09-21"
+   },
+   {
+    "uid": "u63744",
+    "name": "Zakary Fab PWR Sectional",
+    "cost": 540.65,
+    "retail": 1949.99,
+    "comp": 1383,
+    "status": "sold",
+    "soldPrice": 1400,
+    "soldDate": "2026-10-04"
+   },
+   {
+    "uid": "u73744",
+    "name": "Tisdale 6PC Sect Beige",
+    "cost": 540.65,
+    "retail": 1799.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1100,
+    "soldDate": "2026-09-12"
+   },
+   {
+    "uid": "u83744",
+    "name": "Tisdale 6PC Fab Sec Taupe",
+    "cost": 540.65,
+    "retail": 1799.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1139,
+    "soldDate": "2026-09-12"
+   },
+   {
+    "uid": "u93744",
+    "name": "Aria Sleeper Sectional",
+    "cost": 540.65,
+    "retail": 1699.99,
+    "comp": 1200,
+    "status": "sold",
+    "soldPrice": 1200,
+    "soldDate": "2026-09-12"
+   },
+   {
+    "uid": "u103744",
+    "name": "Lowell 6PC Mod Sect LTG",
+    "cost": 540.65,
+    "retail": 1699.99,
+    "comp": 1254,
+    "status": "sold",
+    "soldPrice": 1250,
+    "soldDate": "2026-09-21"
+   },
+   {
+    "uid": "u113744",
+    "name": "Langdon L-Shape Sectional",
+    "cost": 540.65,
+    "retail": 1499.99,
+    "comp": 1225,
+    "status": "sold",
+    "soldPrice": 1225,
+    "soldDate": "2026-09-11"
+   },
+   {
+    "uid": "u123744",
+    "name": "Mason Leather Power Sofa",
+    "cost": 540.61,
+    "retail": 1599.99,
+    "comp": 899,
+    "status": "sold",
+    "soldPrice": 899,
+    "soldDate": "2026-09-11"
+   },
+   {
+    "uid": "u133744",
+    "name": "Bryson Leather Recliner",
+    "cost": 0,
+    "retail": 749.99,
+    "comp": 0,
+    "status": "sold",
+    "soldPrice": 350,
+    "soldDate": "2026-10-17"
+   },
+   {
+    "uid": "u143744",
+    "name": "Hollis Power Recliner",
+    "cost": 0,
+    "retail": 699.99,
+    "comp": 0,
+    "status": "sold",
+    "soldPrice": 399,
+    "soldDate": "2026-09-12"
+   }
+  ]
+ },
+ {
+  "id": "seedmor6994432",
+  "loadId": "MOR-6994432",
+  "origin": "Morris IL",
+  "date": "2026-09-17",
+  "landed": 1497.66,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u04432",
+    "name": "Carmelo Fab PWR Sectional",
+    "cost": 499.22,
+    "retail": 1999.99,
+    "comp": 1425,
+    "status": "sold",
+    "soldPrice": 1150,
+    "soldDate": "2026-09-28"
+   },
+   {
+    "uid": "u14432",
+    "name": "Tisdale 6PC Fab Sect Gray (combined into 8pc)",
+    "cost": 499.22,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1800,
+    "soldDate": "2026-10-10"
+   },
+   {
+    "uid": "u24432",
+    "name": "Henredon Caley Sectional",
+    "cost": 499.22,
+    "retail": 1399.99,
+    "comp": 1350,
+    "status": "sold",
+    "soldPrice": 1625,
+    "soldDate": "2026-09-23"
+   }
+  ]
+ },
+ {
+  "id": "seedmor6992433",
+  "loadId": "MOR-6992433",
+  "origin": "Morris IL",
+  "date": "2026-09-17",
+  "landed": 1262.74,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u02433",
+    "name": "Zakary Fab PWR Sectional",
+    "cost": 420.91,
+    "retail": 1949.99,
+    "comp": 1383,
+    "status": "sold",
+    "soldPrice": 1450,
+    "soldDate": "2026-10-04"
+   },
+   {
+    "uid": "u12433",
+    "name": "Luke Sleeper Sectional",
+    "cost": 420.91,
+    "retail": 1599.99,
+    "comp": 999,
+    "status": "sold",
+    "soldPrice": 1147,
+    "soldDate": "2026-09-19"
+   },
+   {
+    "uid": "u22433",
+    "name": "Luke Sofa Chaise Gray",
+    "cost": 420.92,
+    "retail": 999.99,
+    "comp": 999,
+    "status": "sold",
+    "soldPrice": 849,
+    "soldDate": "2026-09-17"
+   }
+  ]
+ },
+ {
+  "id": "seedgld7016518",
+  "loadId": "GLD-7016518",
+  "origin": "Gouldsboro PA",
+  "date": "2026-09-23",
+  "landed": 8832.32,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u06518",
+    "name": "Lowell 6PC Mod Sect LTG",
+    "cost": 630.88,
+    "retail": 1999.99,
+    "comp": 1254,
+    "status": "sold",
+    "soldPrice": 1265,
+    "soldDate": "2026-10-16"
+   },
+   {
+    "uid": "u16518",
+    "name": "Lowell 6PC Mod Sect LTG",
+    "cost": 630.88,
+    "retail": 1999.99,
+    "comp": 1254,
+    "status": "sold",
+    "soldPrice": 1350,
+    "soldDate": "2026-09-26"
+   },
+   {
+    "uid": "u26518",
+    "name": "TMV Fallon 6PC Mod Sect",
+    "cost": 630.88,
+    "retail": 1699.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u36518",
+    "name": "TMV Fallon 6PC Mod Sect",
+    "cost": 630.88,
+    "retail": 1699.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u46518",
+    "name": "Turner Lthr Pwr Recl Sect",
+    "cost": 630.88,
+    "retail": 3699.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u56518",
+    "name": "Monica Lthr Pwr Sectional",
+    "cost": 630.88,
+    "retail": 2999.99,
+    "comp": 1200,
+    "status": "sold",
+    "soldPrice": 1200,
+    "soldDate": "2026-09-26"
+   },
+   {
+    "uid": "u66518",
+    "name": "Sereen Modular Taupe",
+    "cost": 630.88,
+    "retail": 2399.99,
+    "comp": 1624,
+    "status": "sold",
+    "soldPrice": 849,
+    "soldDate": "2026-10-01"
+   },
+   {
+    "uid": "u76518",
+    "name": "Carmelo Fab Pwr Sectional",
+    "cost": 630.88,
+    "retail": 2299.99,
+    "comp": 1425,
+    "status": "sold",
+    "soldPrice": 1450,
+    "soldDate": "2026-09-26"
+   },
+   {
+    "uid": "u86518",
+    "name": "Henredon 6P Fab Sec Cream",
+    "cost": 630.88,
+    "retail": 2099.99,
+    "comp": 1350,
+    "status": "sold",
+    "soldPrice": 1400,
+    "soldDate": "2026-10-01"
+   },
+   {
+    "uid": "u96518",
+    "name": "Tisdale 6PC Fab Sec Taupe",
+    "cost": 630.88,
+    "retail": 1799.99,
+    "comp": 1204,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u106518",
+    "name": "Miles Fab Pwr Sectional",
+    "cost": 630.88,
+    "retail": 1699.99,
+    "comp": 1222,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u116518",
+    "name": "Tisdale 6PC Fab Sect Gray",
+    "cost": 630.88,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1245,
+    "soldDate": "2026-10-03"
+   },
+   {
+    "uid": "u126518",
+    "name": "Walsen 3PC Sectional",
+    "cost": 630.88,
+    "retail": 1499.99,
+    "comp": 1225,
+    "status": "sold",
+    "soldPrice": 1150,
+    "soldDate": "2026-10-11"
+   },
+   {
+    "uid": "u136518",
+    "name": "Ellsford L-Shaped Beige",
+    "cost": 630.88,
+    "retail": 999.99,
+    "comp": 1000,
+    "status": "sold",
+    "soldPrice": 1000,
+    "soldDate": "2026-10-05"
+   },
+   {
+    "uid": "u146518",
+    "name": "Rockford Swivel Chair",
+    "cost": 0,
+    "retail": 349.99,
+    "comp": 0,
+    "status": "sold",
+    "soldPrice": 150,
+    "soldDate": "2026-10-03"
+   },
+   {
+    "uid": "u156518",
+    "name": "Rockford Swivel Chair",
+    "cost": 0,
+    "retail": 349.99,
+    "comp": 0,
+    "status": "sold",
+    "soldPrice": 150,
+    "soldDate": "2026-10-03"
+   }
+  ]
+ },
+ {
+  "id": "seeddal7047878",
+  "loadId": "DAL-7047878",
+  "origin": "Dallas TX",
+  "date": "2026-10-07",
+  "landed": 3444.73,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u07878",
+    "name": "Wylder Lthr Pwr Sectional",
+    "cost": 688.95,
+    "retail": 2399.99,
+    "comp": 1612,
+    "status": "sold",
+    "soldPrice": 1575,
+    "soldDate": "2026-10-13"
+   },
+   {
+    "uid": "u17878",
+    "name": "Sereen Modular L Brown",
+    "cost": 688.95,
+    "retail": 2099.99,
+    "comp": 1624,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u27878",
+    "name": "Rockford Fab Pwr Sectional",
+    "cost": 688.95,
+    "retail": 1599.99,
+    "comp": 1270,
+    "status": "sold",
+    "soldPrice": 1400,
+    "soldDate": "2026-10-21"
+   },
+   {
+    "uid": "u37878",
+    "name": "Tisdale 6PC Fab Sect Gray",
+    "cost": 688.95,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1294,
+    "soldDate": "2026-10-08"
+   },
+   {
+    "uid": "u47878",
+    "name": "Ellendale Fabric Sectional",
+    "cost": 688.93,
+    "retail": 749.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   }
+  ]
+ },
+ {
+  "id": "seedgld7057399",
+  "loadId": "GLD-7057399",
+  "origin": "Gouldsboro PA",
+  "date": "2026-10-07",
+  "landed": 6800.34,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u07399",
+    "name": "Larsen 2PC Lthr Set",
+    "cost": 523.1,
+    "retail": 3599.99,
+    "comp": 2070,
+    "status": "sold",
+    "soldPrice": 2070,
+    "soldDate": "2026-10-11"
+   },
+   {
+    "uid": "u17399",
+    "name": "Ryerson Lthr Sectional",
+    "cost": 523.1,
+    "retail": 2499.99,
+    "comp": 1774,
+    "status": "sold",
+    "soldPrice": 1849,
+    "soldDate": "2026-10-22"
+   },
+   {
+    "uid": "u27399",
+    "name": "Henredon 6P Fab Sec Cream",
+    "cost": 523.1,
+    "retail": 2099.99,
+    "comp": 1350,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u37399",
+    "name": "Adelaide Fbr Pwr Sect",
+    "cost": 523.1,
+    "retail": 1999.99,
+    "comp": 1349,
+    "status": "sold",
+    "soldPrice": 1349,
+    "soldDate": ""
+   },
+   {
+    "uid": "u47399",
+    "name": "Marven 6PC Modular",
+    "cost": 523.1,
+    "retail": 1899.99,
+    "comp": 1000,
+    "status": "sold",
+    "soldPrice": 1000,
+    "soldDate": "2026-10-11"
+   },
+   {
+    "uid": "u57399",
+    "name": "Tisdale 6PC Boucle Sect",
+    "cost": 523.1,
+    "retail": 1699.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1250,
+    "soldDate": "2026-10-15"
+   },
+   {
+    "uid": "u67399",
+    "name": "TMV Fallon 6PC Mod Sect",
+    "cost": 523.1,
+    "retail": 1699.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u77399",
+    "name": "Henredon Caley Sectional",
+    "cost": 523.1,
+    "retail": 1699.99,
+    "comp": 1350,
+    "status": "sold",
+    "soldPrice": 1500,
+    "soldDate": "2026-10-09"
+   },
+   {
+    "uid": "u87399",
+    "name": "Raylin Fabric Sectional",
+    "cost": 523.1,
+    "retail": 1599.99,
+    "comp": 1000,
+    "status": "sold",
+    "soldPrice": 1000,
+    "soldDate": "2026-10-21"
+   },
+   {
+    "uid": "u97399",
+    "name": "Tisdale 6PC Fab Sect Gray",
+    "cost": 523.1,
+    "retail": 1499.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1223,
+    "soldDate": "2026-10-18"
+   },
+   {
+    "uid": "u107399",
+    "name": "Glenn Fabric Sectional",
+    "cost": 523.1,
+    "retail": 1299.99,
+    "comp": 1350,
+    "status": "sold",
+    "soldPrice": 1350,
+    "soldDate": "2026-10-08"
+   },
+   {
+    "uid": "u117399",
+    "name": "Atmore Leather Sofa",
+    "cost": 523.1,
+    "retail": 1099.99,
+    "comp": 674,
+    "status": "sold",
+    "soldPrice": 674,
+    "soldDate": "2026-10-16"
+   },
+   {
+    "uid": "u127399",
+    "name": "Henredon Murphy Sofa",
+    "cost": 523.14,
+    "retail": 949.99,
+    "comp": 1350,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u137399",
+    "name": "Dillard Fab Accent Chair",
+    "cost": 0,
+    "retail": 599.99,
+    "comp": 0,
+    "status": "sold",
+    "soldPrice": 250,
+    "soldDate": "2026-10-08"
+   },
+   {
+    "uid": "u147399",
+    "name": "Henredon Murphy Accent Chair Crm",
+    "cost": 0,
+    "retail": 399.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u157399",
+    "name": "Tisdale Corner Chair Gray",
+    "cost": 0,
+    "retail": 399.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   }
+  ]
+ },
+ {
+  "id": "seedgld7073270",
+  "loadId": "GLD-7073270",
+  "origin": "Gouldsboro PA",
+  "date": "2026-10-12",
+  "landed": 7109.34,
+  "notes": "Imported from Bstock sheet",
+  "units": [
+   {
+    "uid": "u03270",
+    "name": "Grove Lthr Pwr Sectional",
+    "cost": 473.96,
+    "retail": 3499.99,
+    "comp": 2175,
+    "status": "sold",
+    "soldPrice": 2175,
+    "soldDate": "2026-10-15"
+   },
+   {
+    "uid": "u13270",
+    "name": "Simms Fab Pwr Sectional",
+    "cost": 473.96,
+    "retail": 2699.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u23270",
+    "name": "Wylder Lthr Pwr Sectional",
+    "cost": 473.96,
+    "retail": 2399.99,
+    "comp": 1612,
+    "status": "dud",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u33270",
+    "name": "Sereen Modular Taupe",
+    "cost": 473.96,
+    "retail": 2399.99,
+    "comp": 1624,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u43270",
+    "name": "Atmore 2PC Lthr Set",
+    "cost": 473.96,
+    "retail": 2299.99,
+    "comp": 674,
+    "status": "sold",
+    "soldPrice": 674,
+    "soldDate": "2026-10-16"
+   },
+   {
+    "uid": "u53270",
+    "name": "Henredon Murphy Sectional",
+    "cost": 473.96,
+    "retail": 2199.99,
+    "comp": 1350,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u63270",
+    "name": "Henredon 6P Fab Sec Cream",
+    "cost": 473.96,
+    "retail": 2099.99,
+    "comp": 1350,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u73270",
+    "name": "Carlin Fab Pwr Sectional",
+    "cost": 473.96,
+    "retail": 1999.99,
+    "comp": 1849,
+    "status": "sold",
+    "soldPrice": 1849,
+    "soldDate": "2026-10-17"
+   },
+   {
+    "uid": "u83270",
+    "name": "Luke Sleeper Sectional",
+    "cost": 473.96,
+    "retail": 1899.99,
+    "comp": 999,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u93270",
+    "name": "Tisdale 6PC Fab Sec Taupe",
+    "cost": 473.96,
+    "retail": 1799.99,
+    "comp": 1204,
+    "status": "sold",
+    "soldPrice": 1300,
+    "soldDate": "2026-10-18"
+   },
+   {
+    "uid": "u103270",
+    "name": "Corrales Lthr Pwr Loveseat",
+    "cost": 473.96,
+    "retail": 1499.99,
+    "comp": 449,
+    "status": "sold",
+    "soldPrice": 449,
+    "soldDate": "2026-10-16"
+   },
+   {
+    "uid": "u113270",
+    "name": "Luke Sofa Chaise Gray",
+    "cost": 473.96,
+    "retail": 1299.99,
+    "comp": 999,
+    "status": "sold",
+    "soldPrice": 1000,
+    "soldDate": "2026-10-19"
+   },
+   {
+    "uid": "u123270",
+    "name": "Aria Sofa Chaise Gray",
+    "cost": 473.96,
+    "retail": 1249.99,
+    "comp": 1200,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   },
+   {
+    "uid": "u133270",
+    "name": "Cameron Sofa Chaise Taupe",
+    "cost": 473.96,
+    "retail": 1249.99,
+    "comp": 1049,
+    "status": "sold",
+    "soldPrice": 1049,
+    "soldDate": "2026-10-20"
+   },
+   {
+    "uid": "u143270",
+    "name": "Carey Lthr Pwr Recl Loveseat",
+    "cost": 473.9,
+    "retail": 999.99,
+    "comp": 0,
+    "status": "in",
+    "soldPrice": 0,
+    "soldDate": ""
+   }
+  ]
+ }
+]
