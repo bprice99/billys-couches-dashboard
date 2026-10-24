@@ -4,22 +4,20 @@
 <title>Billy's Couches Dashboard</title>
 <script src="/chart.js"></script>
 <style>
-:root{--red:#b0524c;--red2:#963f3a;--dark:#2b1d16;--cream:#efe9e2;--bg:#f7f3ee;--line:#e8e0d6;--muted:#7a6f66;--text:#222;--green:#2e7d4f;--bad:#c0392b}
+:root{--red:#b0524c;--red2:#963f3a;--dark:#2b1d16;--cream:#efe9e2;--bg:#f7f3ee;--line:#e8e0d6;--muted:#7a6f66;--text:#222;--green:#2e7d4f;--bad:#c0392b;--sage:#8fb59a;--gray:#c9bfb5}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 a{color:inherit}
 .app{display:flex;min-height:100vh}
-/* sidebar */
 .side{width:220px;flex:none;background:var(--dark);color:#efe9e2;padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
 .brand{font-weight:800;font-size:17px;padding:0 10px 18px;letter-spacing:.01em}
 .brand small{display:block;font-weight:500;font-size:12px;color:#bfae9f;margin-top:2px}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:10px;font-size:14px;color:#d8cabd;text-decoration:none;cursor:pointer}
 .nav:hover{background:rgba(255,255,255,.06)}
 .nav.on{background:var(--red);color:#fff;font-weight:700}
-.nav .soon{font-size:10px;letter-spacing:.06em;background:rgba(255,255,255,.1);border-radius:999px;padding:2px 7px;color:#bfae9f}
 .side .foot{margin-top:auto;padding:10px 12px;font-size:12px;color:#a8998d}
 .side .foot a{color:#d8cabd}
-/* main */
 .main{flex:1;min-width:0;padding:26px 30px 60px}
 .top{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px}
 .top h1{font-size:26px;margin:0 auto 0 0}
@@ -28,10 +26,12 @@ a{color:inherit}
 .mon span{min-width:130px;text-align:center;font-weight:700}
 .btn.p{background:var(--red);border-color:var(--red);color:#fff}
 .btn.p:hover{background:var(--red2)}
-.demo{background:#fff4d6;border:1px solid #f0d58a;color:#6b5312;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:8px}
+.note{background:#fff4d6;border:1px solid #f0d58a;color:#6b5312;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px}
 .err{background:#fde8e6;border:1px solid #f3b3ab;color:#8a2c22;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
-/* cards */
 .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+.kpis.k7{grid-template-columns:repeat(7,1fr)}
+.kpis.k4{grid-template-columns:repeat(4,1fr)}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
 .kpi .l{font-size:13px;color:var(--muted);margin-bottom:6px}
 .kpi .v{font-size:26px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
@@ -39,6 +39,7 @@ a{color:inherit}
 .up{color:var(--green)}.dn{color:var(--bad)}.flat{color:var(--muted)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
 .card h2{font-size:16px;margin:0 0 14px}
+.card h2 small{font-weight:500;color:var(--muted);font-size:12.5px;margin-left:6px}
 .chartwrap{height:300px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
 .row:first-of-type{border-top:0}
@@ -49,15 +50,18 @@ a{color:inherit}
 .brow{padding:8px 0;border-top:1px solid var(--line)}
 .brow:first-of-type{border-top:0}
 .brow .t{display:flex;justify-content:space-between;font-size:14px}
+.empty{color:var(--muted);font-size:14px;margin:0}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line)}
-td{padding:9px 6px;border-bottom:1px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
 td.n,th.n{text-align:right}
-.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--cream)}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--cream);white-space:nowrap}
 .pill.d{background:#fbe4e0;color:var(--red2)}
-.soonbox{background:#fff;border:1px dashed #d9d0c5;border-radius:16px;padding:60px 20px;text-align:center;color:var(--muted)}
-.soonbox h2{color:var(--text);margin:0 0 8px}
-/* modal */
+.pill.g{background:#dff0e4;color:#1f6b3d}
+.pill.x{background:#f1ece6;color:#8a7d72;text-decoration:line-through}
+.pill.ns{background:#2b1d16;color:#fff}
+.pill.u{background:#e6eef8;color:#2a5a8a}
+.thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
 .mask.on{display:flex}
 .modal{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:420px}
@@ -68,51 +72,52 @@ td.n,th.n{text-align:right}
 .modal .acts{display:flex;gap:10px;margin-top:6px}
 .modal .acts .btn{flex:1}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;border-radius:12px;padding:12px 18px;font-size:14px;display:none;z-index:60}
-/* phones */
-@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:1100px){.kpis,.kpis.k7{grid-template-columns:repeat(3,1fr)}.kpis.k4{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:800px){
   .app{display:block}
   .side{position:static;width:auto;height:auto;flex-direction:row;overflow-x:auto;padding:12px;gap:6px}
-  .brand{display:none}.side .foot{display:none}
+  .brand,.side .foot{display:none}
   .nav{white-space:nowrap;padding:9px 12px}
   .main{padding:18px 14px 50px}
-  .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpis,.kpis.k7,.kpis.k4{grid-template-columns:repeat(2,1fr)}
   .kpi .v{font-size:21px}
   .grid2{grid-template-columns:1fr}
   .top h1{width:100%}
   .hide-m{display:none}
 }
+@media print{.side,.top .btn,.mon,.noprint{display:none!important}.main{padding:0}.card{border:0}}
 </style></head>
 <body>
 <div class="app">
   <nav class="side">
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
-    <a class="nav" data-tab="bstock">B-Stock Loads <span class="soon">NEXT</span></a>
-    <a class="nav" data-tab="showings">Showings <span class="soon">NEXT</span></a>
-    <a class="nav" data-tab="meta">Meta Ads <span class="soon">NEXT</span></a>
-    <a class="nav" data-tab="couches">Couch List <span class="soon">NEXT</span></a>
+    <a class="nav" data-tab="showings">Showings</a>
+    <a class="nav" data-tab="meta">Meta Ads</a>
+    <a class="nav" data-tab="bstock">B-Stock Loads</a>
+    <a class="nav" data-tab="couches">Couch List</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
 
   <main class="main">
-    <div class="demo" id="demo">Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
+    <div class="top">
+      <h1 id="title">Sales Tracker</h1>
+      <div class="mon" id="monNav"><button id="prev" aria-label="Previous month">&larr;</button><span id="monLabel"></span><button id="next" aria-label="Next month">&rarr;</button></div>
+      <button class="btn" id="refresh">Refresh</button>
+      <button class="btn" id="print" hidden onclick="window.print()">Print</button>
+      <button class="btn p" data-open="purchase" data-only="sales">+ Purchase</button>
+      <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
+      <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
+    </div>
+    <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
+    <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
     <div class="err" id="err"></div>
 
-    <!-- SALES TRACKER -->
+    <!-- SALES -->
     <section id="tab-sales">
-      <div class="top">
-        <h1>Sales Tracker</h1>
-        <div class="mon"><button id="prev" aria-label="Previous month">&larr;</button><span id="monLabel"></span><button id="next" aria-label="Next month">&rarr;</button></div>
-        <button class="btn" id="refresh">Refresh</button>
-        <button class="btn p" data-open="purchase">+ Purchase</button>
-        <button class="btn p" data-open="expense">+ Expense</button>
-      </div>
-
+      <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div class="kpis" id="kpis"></div>
-
       <div class="card"><h2>Running totals this month</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
-
       <div class="grid2">
         <div class="card"><h2>Sales insights</h2><div id="insights"></div></div>
         <div class="card"><h2>Expenses by category</h2><div id="expcats"></div></div>
@@ -121,21 +126,46 @@ td.n,th.n{text-align:right}
         <div class="card"><h2>Revenue by source</h2><div id="sources"></div></div>
         <div class="card"><h2>Pickup vs. delivery</h2><div id="fulfill"></div><h2 style="margin-top:22px">Purchases by source</h2><div id="psources"></div></div>
       </div>
+      <div class="card" style="margin-top:16px" id="logCard"><h2>Purchases &amp; expenses logged this month</h2><div style="overflow-x:auto"><table id="logTbl"></table></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales this month</h2><div style="overflow-x:auto"><table id="salesTbl"></table></div></div>
     </section>
 
-    <section id="tab-soon" hidden>
-      <div class="soonbox"><h2 id="soonTitle"></h2><p>This tab is next on the build list. Your data is already in the Google Sheet, so it'll plug right in.</p></div>
+    <!-- SHOWINGS -->
+    <section id="tab-showings" hidden>
+      <div class="kpis k7" id="shKpis"></div>
+      <div class="card"><h2>Showings by day <small>from the Billy's Couches calendar</small></h2><div class="chartwrap"><canvas id="shChart"></canvas></div></div>
+      <div class="grid2">
+        <div class="card"><h2>By day of week</h2><div id="shDow"></div></div>
+        <div class="card"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="shTrend"></table></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2>Every showing this month</h2><div style="overflow-x:auto"><table id="shTbl"></table></div>
+        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled. Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
+    </section>
+
+    <!-- META ADS -->
+    <section id="tab-meta" hidden>
+      <div class="kpis" id="mKpis"></div>
+      <div class="card"><h2>Ad spend vs. Meta revenue <small>last 6 months</small></h2><div class="chartwrap"><canvas id="mChart"></canvas></div></div>
+      <div class="card" style="margin-top:16px"><h2>Month by month</h2><div style="overflow-x:auto"><table id="mTbl"></table></div>
+        <p class="empty" style="margin-top:12px;font-size:12.5px">Spend = Advertising expenses for Meta/Facebook/Instagram (not Google or yard signs). Meta sales = Sales Log rows whose source is a Meta, Facebook or Instagram ad. Lead source tracking starts June 2026.</p></div>
+    </section>
+
+    <!-- B-STOCK -->
+    <section id="tab-bstock" hidden><div id="bsBody"></div></section>
+
+    <!-- COUCH LIST -->
+    <section id="tab-couches" hidden>
+      <div class="kpis k4" id="cKpis"></div>
+      <div class="card"><h2>On the floor now <small id="cNote"></small></h2><div style="overflow-x:auto"><table id="cTbl"></table></div></div>
     </section>
   </main>
 </div>
 
-<!-- PURCHASE MODAL -->
 <div class="mask" id="m-purchase"><form class="modal" data-action="addPurchase">
   <h3>Log a purchase</h3>
   <div class="two">
     <label>Date<input type="date" name="date" required></label>
-    <label>Source<select name="source"><option>Bstock</option><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Truck</option><option>Other</option></select></label>
+    <label>Source<select name="source"><option>Bstock</option><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Google</option><option>Other</option></select></label>
   </div>
   <label>What was it?<input name="item" placeholder="e.g. GLD-7073270 load, or Gray sectional"></label>
   <div class="two">
@@ -146,18 +176,42 @@ td.n,th.n{text-align:right}
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 
-<!-- EXPENSE MODAL -->
 <div class="mask" id="m-expense"><form class="modal" data-action="addExpense">
   <h3>Log an expense</h3>
   <div class="two">
     <label>Date<input type="date" name="date" required></label>
-    <label>Category<select name="category"><option>Advertising</option><option>Rent</option><option>Payroll</option><option>Supplies</option><option>Fuel</option><option>Software</option><option>Truck</option><option>Freight</option><option>Utilities</option><option>Other</option></select></label>
+    <label>Category<select name="category"><option>Advertising</option><option>Payroll</option><option>Rent</option><option>Fuel</option><option>Supplies</option><option>Software</option><option>Truck</option><option>Insurance</option><option>Utilities</option><option>Freight</option><option>Other</option></select></label>
   </div>
   <div class="two">
     <label>Amount ($)<input type="number" step="0.01" name="amount" required></label>
-    <label>Vendor<input name="vendor" placeholder="optional"></label>
+    <label>Vendor / who<input name="vendor" placeholder="e.g. Meta, Finley"></label>
   </div>
   <label>Notes<input name="notes" placeholder="optional"></label>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
+</form></div>
+<div class="mask" id="m-load"><form class="modal" data-kind="load" style="max-width:560px">
+  <h3>Add a B-Stock load</h3>
+  <div class="two">
+    <label>Load ID<input name="loadId" placeholder="e.g. GLD-7120676" required></label>
+    <label>Origin / lane<input name="origin" placeholder="e.g. Columbus OH"></label>
+  </div>
+  <div class="two">
+    <label>Arrived<input type="date" name="date" required></label>
+    <label>Total landed cost ($)<input type="number" step="0.01" name="landed" required placeholder="hammer + freight + fees"></label>
+  </div>
+  <label>Units, one per line: <span style="font-weight:500;color:var(--muted)">Name, comp price</span>
+    <textarea name="units" rows="9" required placeholder="Tisdale 6PC Fab Sect Gray, 1100&#10;Carmelo Fab PWR Sectional, 1350&#10;Mason Leather Recliner, 0" style="display:block;width:100%;margin-top:5px;padding:11px 12px;border:1px solid #d9d0c5;border-radius:10px;font-size:14px;font-family:inherit"></textarea></label>
+  <p class="empty" style="font-size:12.5px;margin:-4px 0 12px">Landed cost is split across sectionals, sofas, sleepers and loveseats only. Chairs, recliners, ottomans and mattresses get $0.</p>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save load</button></div>
+</form></div>
+
+<div class="mask" id="m-sold"><form class="modal" data-kind="sold">
+  <h3 id="soldTitle">Mark sold</h3>
+  <input type="hidden" name="id"><input type="hidden" name="uid">
+  <div class="two">
+    <label>Sold for ($)<input type="number" step="0.01" name="soldPrice" required></label>
+    <label>Date sold<input type="date" name="date" required></label>
+  </div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="toast" id="toast"></div>
@@ -165,67 +219,116 @@ td.n,th.n{text-align:right}
 <script>
 const $ = id => document.getElementById(id);
 const money = n => (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US');
+const pct = n => isFinite(n) ? Math.round(n * 100) + '%' : '–';
 const num = v => { if (typeof v === 'number') return v; const s = String(v || '').replace(/[$,\s]/g, ''); const neg = /^\(.*\)$/.test(s); const n = parseFloat(s.replace(/[()]/g, '')); return isNaN(n) ? 0 : (neg ? -n : n); };
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function toDate(v){
   if (!v) return null;
   const s = String(v).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/) || (s.length > 10 && /T00:00:00(\.000)?Z$/.test(s) ? s.match(/^(\d{4})-(\d{2})-(\d{2})/) : null);
   if (m) return new Date(+m[1], +m[2]-1, +m[3]);
   const d = new Date(s); return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
-// Find a column by header keywords so renamed/reordered columns keep working.
 function col(headers, keys, not){
   const h = headers.map(x => String(x).toLowerCase().trim());
   for (const k of keys){ const i = h.findIndex(x => x === k); if (i > -1) return i; }
   for (const k of keys){ const i = h.findIndex(x => x.includes(k) && !(not||[]).some(n => x.includes(n))); if (i > -1) return i; }
   return -1;
 }
+const inMonth = (dt, y, m) => dt && dt.getFullYear() === y && dt.getMonth() === m;
+const mkey = (y, m) => y + '-' + m;
+function back(y, m, k){ const d = new Date(y, m - k, 1); return { y: d.getFullYear(), m: d.getMonth() }; }
+function chg(a, b, invert){
+  if (!b) return '<div class="c flat">&ndash;</div>';
+  const p = (a - b) / Math.abs(b) * 100, good = invert ? p <= 0 : p >= 0;
+  return `<div class="c ${Math.abs(p)<0.5?'flat':good?'up':'dn'}">${p>=0?'&uarr;':'&darr;'} ${Math.abs(p).toFixed(0)}% vs last month</div>`;
+}
+function chgSmall(a, b, invert){
+  if (!b) return '<span class="c flat">&ndash;</span>';
+  const p = (a - b) / Math.abs(b) * 100, good = invert ? p <= 0 : p >= 0;
+  return `<span class="c ${Math.abs(p)<0.5?'flat':good?'up':'dn'}">${p>=0?'&uarr;':'&darr;'}${Math.abs(p).toFixed(0)}%</span>`;
+}
+const kpiHtml = list => list.map(([l,v,c]) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div>${c||''}</div>`).join('');
+function bars(el, pairs, fmt){
+  const max = Math.max(1, ...pairs.map(p=>p[1]));
+  el.innerHTML = pairs.length ? pairs.map(([k,v,extra]) => `<div class="brow"><div class="t"><span>${esc(k)}</span><b>${fmt(v)}${extra||''}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div>`).join('')
+    : '<p class="empty">Nothing logged yet this month.</p>';
+}
+function groupSum(list, key, val){ const m = {}; list.forEach(x => m[x[key]] = (m[x[key]]||0) + x[val]); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
+const charts = {};
+function chartIn(id, cfg){ if (charts[id]) charts[id].destroy(); if (window.Chart) charts[id] = new Chart($(id), cfg); }
+const baseOpts = (money_) => ({ responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } } },
+  scales: { y: { ticks: money_ ? { callback: v => '$' + (v >= 1000 ? (v/1000) + 'k' : v) } : { precision: 0 }, grid: { color: '#f0ebe4' } }, x: { grid: { display: false } } } });
 
-let RAW = null, chart = null;
+let RAW = null, DATA = null, INV = null, tab = 'sales';
 const now = new Date();
 let cur = { y: now.getFullYear(), m: now.getMonth() };
 
+// ---------- normalize ----------
+function normSource(s){
+  const t = String(s || '').toLowerCase();
+  if (!t.trim()) return 'Other';
+  if (/meta|fb ad|facebook ad|instagram ad|(facebook|instagram) or (facebook|instagram) ad|\bad\b.*(facebook|instagram)/.test(t) || /^(facebook|instagram).*\bad\b/.test(t)) return 'Meta Ads';
+  if (/marketplace/.test(t)) return 'Marketplace';
+  if (/refer|friend|family|word of mouth/.test(t)) return 'Referrals';
+  if (/previous|past customer|repeat/.test(t)) return 'Previous Customer';
+  if (/google/.test(t)) return 'Google';
+  if (/tiktok/.test(t)) return 'TikTok';
+  if (/yard|sign/.test(t)) return 'Yard Signs';
+  if (/craigslist/.test(t)) return 'Craigslist';
+  if (/drive|walk/.test(t)) return 'Drive-by';
+  return String(s).trim();
+}
+const isMetaSpend = e => {
+  const t = (e.cat + ' ' + (e.vendor||'') + ' ' + (e.notes||'')).toLowerCase();
+  if (/google|yard|sign|seo|vistaprint/.test(t)) return false;
+  return /meta|facebook|fb|insta|boost/.test(t) || (/advertising/.test(e.cat.toLowerCase()) && !(e.vendor||e.notes));
+};
+
 function parse(d){
-  // SALES
-  const sh = d.sales.headers;
+  const sh = (d.sales && d.sales.headers) || [], srows = (d.sales && d.sales.rows) || [];
   const S = {
-    date: col(sh, ['date']), source: col(sh, ['source','how did you find']), name: col(sh, ['name','customer'], ['first']),
-    pay: col(sh, ['payment']), type: col(sh, ['order type','type','pickup or delivery','fulfillment']),
+    date: col(sh, ['date']), source: col(sh, ['source','how did you find']), name: col(sh, ['customer','name'], ['first']),
+    pay: col(sh, ['payment']), type: col(sh, ['order type','pickup or delivery','fulfillment','type'], ['tax']),
     price: col(sh, ['couch price','price'], ['total','sale']), disc: col(sh, ['discount']), del: col(sh, ['delivery'], ['type']),
     sub: col(sh, ['subtotal','sub total']), total: col(sh, ['total'], ['sub']),
   };
-  const sales = d.sales.rows.map(r => {
+  const sales = srows.map(r => {
     const price = num(r[S.price]), disc = Math.abs(num(r[S.disc])), del = num(r[S.del]);
     const rev = S.sub > -1 && num(r[S.sub]) ? num(r[S.sub]) : price - disc + del;
     let type = S.type > -1 ? String(r[S.type]) : (del > 0 ? 'Delivery' : 'Pickup');
     type = /deliver/i.test(type) ? 'Delivery' : 'Pickup';
-    return { date: toDate(r[S.date]), source: String(r[S.source] || 'Other').trim() || 'Other', name: r[S.name] || '',
-      pay: r[S.pay] || '', type, price, disc, del, rev, total: num(r[S.total]) };
+    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev };
   }).filter(x => x.date && x.rev > 0);
 
-  // PURCHASES
-  const ph = d.purchases.headers;
-  const P = { date: col(ph,['date']), source: col(ph,['source']), item: col(ph,['item']), units: col(ph,['units','qty']), cost: col(ph,['cost']) };
-  const purchases = d.purchases.rows.map(r => ({ date: toDate(r[P.date]), source: String(r[P.source]||'Other'), item: r[P.item]||'',
-    units: Math.max(1, num(r[P.units]) || 1), cost: num(r[P.cost]) })).filter(x => x.date);
+  const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
+  const expenses = (d.expenses || []).map(x => ({ id: x.id, date: toDate(x.date), cat: x.category || 'Other', vendor: x.vendor || '', notes: x.notes || '', amt: num(x.amount), live: true })).filter(x => x.date && x.amt);
 
-  // EXPENSES
-  const eh = d.expenses.headers;
-  const E = { date: col(eh,['date']), cat: col(eh,['category']), amt: col(eh,['amount','cost']) };
-  const expenses = d.expenses.rows.map(r => ({ date: toDate(r[E.date]), cat: String(r[E.cat]||'Other'), amt: num(r[E.amt]) }))
-    .filter(x => x.date && x.amt);
-  // HISTORY (Ivy Flip import). Any month found here uses history only.
   const H = d.history || { sales: [], expenses: [] };
-  const hSales = H.sales.map(([dt, title, cost, sold]) => ({ date: toDate(dt), source: 'Ivy Flip import', name: title, pay: '',
-    type: 'Not tracked', price: sold, disc: 0, del: 0, rev: sold, total: sold, cost })).filter(x => x.date);
-  const hExp = H.expenses.map(([dt, cat, vendor, amt]) => ({ date: toDate(dt), cat, vendor, amt })).filter(x => x.date && x.amt);
-  const hMonths = new Set(hSales.map(x => x.date.getFullYear() + '-' + x.date.getMonth()));
-  return { sales, purchases, expenses, hSales, hExp, hMonths };
+  const hSales = H.sales.map(([dt, title, cost, sold]) => ({ date: toDate(dt), source: 'Ivy Flip import', name: title, pay: '', type: 'Not tracked', rev: sold, cost })).filter(x => x.date);
+  const hExp = H.expenses.map(([dt, cat, vendor, amt, notes]) => ({ date: toDate(dt), cat, vendor, notes: notes || '', amt })).filter(x => x.date && x.amt);
+  const hMonths = new Set(hSales.map(x => mkey(x.date.getFullYear(), x.date.getMonth())));
+
+  const showings = (d.showings || []).map(([iso, title, color]) => {
+    const at = new Date(iso), t = String(title || '');
+    let status = 'Showed';
+    if (/cancel/i.test(t)) status = 'Canceled';
+    else if (/no.?show/i.test(t) || color === '8') status = 'No-show';
+    else if (color === '2' || color === '10') status = 'Bought';
+    else if (at > new Date()) status = 'Upcoming';
+    const name = t.replace(/\(.*?\)/g, '').replace(/^\s*showing\s*(for)?\s*/i, '').trim() || '—';
+    return { at, date: new Date(at.getFullYear(), at.getMonth(), at.getDate()), name, status };
+  }).filter(x => !isNaN(x.at));
+
+  const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
+  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, showingsError: d.showingsError };
 }
 
-const inMonth = (dt, y, m) => dt.getFullYear() === y && dt.getMonth() === m;
+// ---------- sales tracker ----------
 function month(y, m){
-  const hist = RAW.hMonths.has(y + '-' + m);
+  const hist = RAW.hMonths.has(mkey(y, m));
   let s, p, e;
   if (hist) {
     const hs = RAW.hSales.filter(x => inMonth(x.date, y, m));
@@ -234,153 +337,296 @@ function month(y, m){
     e = RAW.hExp.filter(x => inMonth(x.date, y, m));
   } else {
     s = RAW.sales.filter(x => inMonth(x.date, y, m));
-    p = RAW.purchases.filter(x => inMonth(x.date, y, m));
+    p = RAW.purchases.filter(x => inMonth(x.date, y, m)).concat(RAW.loads.filter(l => inMonth(l.arrived, y, m)).map(l => ({
+      date: l.arrived, source: 'Bstock', item: l.loadId + ' load', loadId: l.loadId, units: l.units.filter(u => u.cost > 0).length || 1, cost: l.landed, fromLoad: true })));
     e = RAW.expenses.filter(x => inMonth(x.date, y, m));
   }
   const gross = s.reduce((a,x)=>a+x.rev,0), cogs = p.reduce((a,x)=>a+x.cost,0), exp = e.reduce((a,x)=>a+x.amt,0);
-  const units = p.reduce((a,x)=>a+x.units,0);
-  const gp = gross - cogs, net = gp - exp;
+  const units = p.reduce((a,x)=>a+x.units,0), gp = gross - cogs, net = gp - exp;
   return { s, p, e, gross, cogs, exp, gp, net, margin: gross ? net/gross : 0, count: s.length, units,
     avgSale: s.length ? gross/s.length : 0, avgBuy: units ? cogs/units : 0,
     gpFlip: s.length ? gp/s.length : 0, netFlip: s.length ? net/s.length : 0,
     delivery: s.filter(x=>x.type==='Delivery').length, hist };
 }
-function chg(a, b, invert){
-  if (!b) return '<div class="c flat">&ndash;</div>';
-  const pct = (a - b) / Math.abs(b) * 100, good = invert ? pct <= 0 : pct >= 0;
-  return `<div class="c ${Math.abs(pct)<0.5?'flat':good?'up':'dn'}">${pct>=0?'&uarr;':'&darr;'} ${Math.abs(pct).toFixed(0)}% vs last month</div>`;
-}
-function chgSmall(a, b, invert){
-  if (!b) return '<span class="c flat">&ndash;</span>';
-  const pct = (a - b) / Math.abs(b) * 100, good = invert ? pct <= 0 : pct >= 0;
-  return `<span class="c ${Math.abs(pct)<0.5?'flat':good?'up':'dn'}">${pct>=0?'&uarr;':'&darr;'}${Math.abs(pct).toFixed(0)}%</span>`;
-}
-function bars(el, pairs, fmt){
-  const max = Math.max(1, ...pairs.map(p=>p[1]));
-  el.innerHTML = pairs.length ? pairs.map(([k,v]) => `<div class="brow"><div class="t"><span>${esc(k)}</span><b>${fmt(v)}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div>`).join('')
-    : '<p style="color:var(--muted);font-size:14px;margin:0">Nothing logged yet this month.</p>';
-}
-const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-function groupSum(list, key, val){ const m = {}; list.forEach(x => m[x[key]] = (m[x[key]]||0) + x[val]); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
 
-function render(){
-  const { y, m } = cur;
-  $('monLabel').textContent = new Date(y, m, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  const A = month(y, m), py = m ? y : y - 1, pm = m ? m - 1 : 11, B = month(py, pm);
-
-  $('kpis').innerHTML = [
+function renderSales(){
+  const { y, m } = cur, A = month(y, m), b = back(y, m, 1), B = month(b.y, b.m);
+  $('histNote').hidden = !A.hist;
+  $('kpis').innerHTML = kpiHtml([
     ['Gross Sales', money(A.gross), chg(A.gross, B.gross)],
     ['Cost of Goods', money(A.cogs), chg(A.cogs, B.cogs, true)],
     ['Expenses', money(A.exp), chg(A.exp, B.exp, true)],
     ['Gross Profit', money(A.gp), chg(A.gp, B.gp)],
     ['Net Profit', money(A.net), chg(A.net, B.net)],
-    ['Net Margin', (A.margin*100).toFixed(0) + '%', chg(A.margin, B.margin)],
-  ].map(([l,v,c]) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div>${c}</div>`).join('');
-
+    ['Net Margin', pct(A.margin), chg(A.margin, B.margin)],
+  ]);
   $('insights').innerHTML = [
     ['Sales', A.count, B.count, String(A.count)],
-    ['Couches purchased', A.units, B.units, String(A.units)],
+    [A.hist ? 'Couches with a cost' : 'Couches purchased', A.units, B.units, String(A.units)],
     ['Average sale price', A.avgSale, B.avgSale, money(A.avgSale)],
     ['Average purchase price', A.avgBuy, B.avgBuy, money(A.avgBuy), true],
     ['Average gross profit per flip', A.gpFlip, B.gpFlip, money(A.gpFlip)],
     ['Average net profit per flip', A.netFlip, B.netFlip, money(A.netFlip)],
-  ].map(([l,a,b,v,inv]) => `<div class="row"><span>${l}</span><span><b>${v}</b> ${chgSmall(a,b,inv)}</span></div>`).join('');
-
+  ].map(([l,a,b2,v,inv]) => `<div class="row"><span>${l}</span><span><b>${v}</b> ${chgSmall(a,b2,inv)}</span></div>`).join('');
   bars($('expcats'), groupSum(A.e, 'cat', 'amt'), money);
   bars($('sources'), groupSum(A.s, 'source', 'rev'), money);
   bars($('psources'), groupSum(A.p, 'source', 'cost'), money);
   const pk = A.count - A.delivery;
-  if (A.hist) $('fulfill').innerHTML = '<p style="color:var(--muted);font-size:14px;margin:0">Not tracked in Ivy Flip for this month.</p>';
-  else $('fulfill').innerHTML = `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${A.count?Math.round(A.delivery/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?A.delivery/A.count*100:0}%"></i></div></div>
-    <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${A.count?Math.round(pk/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?pk/A.count*100:0}%;background:var(--dark)"></i></div></div>`;
+  $('fulfill').innerHTML = A.hist ? '<p class="empty">Not tracked in Ivy Flip for this month.</p>' :
+    `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${A.count?Math.round(A.delivery/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?A.delivery/A.count*100:0}%"></i></div></div>
+     <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${A.count?Math.round(pk/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?pk/A.count*100:0}%;background:var(--dark)"></i></div></div>`;
 
-  const rows = A.s.slice().sort((a,b)=>b.date-a.date);
-  $('salesTbl').innerHTML = `<tr><th>Date</th><th>Customer</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
+  // logged purchases + expenses (live months only)
+  $('logCard').hidden = A.hist;
+  if (!A.hist) {
+    const L = [...A.p.filter(x => !x.fromLoad).map(x => ({ kind: 'purchases', id: x.id, date: x.date, what: 'Purchase', desc: [x.item, x.units > 1 ? x.units + ' units' : '', x.loadId].filter(Boolean).join(' · '), cat: x.source, amt: x.cost })),
+               ...A.e.map(x => ({ kind: 'expenses', id: x.id, date: x.date, what: 'Expense', desc: [x.vendor, x.notes].filter(Boolean).join(' · '), cat: x.cat, amt: x.amt }))]
+      .sort((a, b2) => b2.date - a.date);
+    $('logTbl').innerHTML = `<tr><th>Date</th><th>Type</th><th>Category</th><th class="hide-m">Details</th><th class="n">Amount</th><th></th></tr>` +
+      (L.length ? L.map(x => `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n"><button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
+        : `<tr><td colspan="6" class="empty">Nothing logged yet. Use + Purchase and + Expense.</td></tr>`);
+  }
+
+  const rows = A.s.slice().sort((a,b2)=>b2.date-a.date);
+  $('salesTbl').innerHTML = `<tr><th>Date</th><th>${A.hist?'Couch':'Customer'}</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
     (rows.length ? rows.map(x => `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type==='Not tracked'?'&ndash;':x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
-      : `<tr><td colspan="6" style="color:var(--muted)">No sales logged this month yet.</td></tr>`);
+      : `<tr><td colspan="6" class="empty">No sales logged this month yet.</td></tr>`);
 
-  drawChart(A, y, m);
-}
-
-function drawChart(A, y, m){
-  const days = new Date(y, m + 1, 0).getDate();
-  const today = (y === now.getFullYear() && m === now.getMonth()) ? now.getDate() : days;
-  const labels = [], sales = [], cogs = [], exp = [], net = [];
-  let s = 0, c = 0, e = 0;
+  const days = new Date(y, m + 1, 0).getDate(), td = (y === now.getFullYear() && m === now.getMonth()) ? now.getDate() : days;
+  const labels = [], sa = [], co = [], ex = [], ne = []; let s = 0, c = 0, e = 0;
   for (let d = 1; d <= days; d++){
     labels.push(d);
     A.s.filter(x=>x.date.getDate()===d).forEach(x=>s+=x.rev);
     A.p.filter(x=>x.date.getDate()===d).forEach(x=>c+=x.cost);
     A.e.filter(x=>x.date.getDate()===d).forEach(x=>e+=x.amt);
-    const keep = d <= today;
-    sales.push(keep ? s : null); cogs.push(keep ? c : null); exp.push(keep ? e : null); net.push(keep ? s - c - e : null);
+    const k = d <= td; sa.push(k?s:null); co.push(k?c:null); ex.push(k?e:null); ne.push(k?s-c-e:null);
   }
-  const ds = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w||2, tension: .3, pointRadius: 0, spanGaps: false });
-  const cfg = { type: 'line', data: { labels, datasets: [ ds('Sales', sales, '#b0524c', 3), ds('Net profit', net, '#2e7d4f', 3), ds('Cost of goods', cogs, '#c9a89a'), ds('Expenses', exp, '#2b1d16') ] },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } }, tooltip: { callbacks: { title: i => 'Day ' + i[0].label, label: i => i.dataset.label + ': ' + money(i.raw) } } },
-      scales: { y: { ticks: { callback: v => '$' + (v/1000) + 'k' }, grid: { color: '#f0ebe4' } }, x: { grid: { display: false } } } } };
-  if (chart) chart.destroy();
-  if (window.Chart) chart = new Chart($('chart'), cfg);
+  const ds = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w||2, tension: .3, pointRadius: 0 });
+  const o = baseOpts(true); o.plugins.tooltip = { callbacks: { title: i => 'Day ' + i[0].label, label: i => i.dataset.label + ': ' + money(i.raw) } };
+  chartIn('chart', { type: 'line', data: { labels, datasets: [ ds('Sales', sa, '#b0524c', 3), ds('Net profit', ne, '#2e7d4f', 3), ds('Cost of goods', co, '#c9a89a'), ds('Expenses', ex, '#2b1d16') ] }, options: o });
 }
 
+// ---------- showings ----------
+function shStats(list){
+  const c = st => list.filter(x => x.status === st).length;
+  const booked = list.length, canceled = c('Canceled'), noshow = c('No-show'), bought = c('Bought'), upcoming = c('Upcoming');
+  const showed = c('Showed') + bought, past = booked - upcoming;
+  return { booked, canceled, noshow, bought, upcoming, showed, showRate: past ? showed / past : NaN, conv: showed ? bought / showed : NaN };
+}
+function renderShowings(){
+  const { y, m } = cur, list = RAW.showings.filter(x => inMonth(x.date, y, m)), b = back(y, m, 1);
+  const A = shStats(list), B = shStats(RAW.showings.filter(x => inMonth(x.date, b.y, b.m)));
+  const salesCount = month(y, m).count;
+  $('shKpis').innerHTML = kpiHtml([
+    ['Total booked', A.booked, chg(A.booked, B.booked)],
+    ['Canceled', A.canceled, chg(A.canceled, B.canceled, true)],
+    ['No-shows', A.noshow, chg(A.noshow, B.noshow, true)],
+    ['Showed up', A.showed, chg(A.showed, B.showed)],
+    ['Purchased', A.bought, chg(A.bought, B.bought)],
+    ['Show rate', pct(A.showRate), chg(A.showRate || 0, B.showRate || 0)],
+    ['Conversion', pct(A.conv), chg(A.conv || 0, B.conv || 0)],
+  ]);
+  const days = new Date(y, m + 1, 0).getDate(), labels = [], sets = { Bought: [], Showed: [], 'No-show': [], Canceled: [], Upcoming: [] };
+  for (let d = 1; d <= days; d++){ labels.push(d); const dl = list.filter(x => x.date.getDate() === d); Object.keys(sets).forEach(k => sets[k].push(dl.filter(x => x.status === k).length)); }
+  const colors = { Bought: '#2e7d4f', Showed: '#b0524c', 'No-show': '#2b1d16', Canceled: '#d9cfc4', Upcoming: '#8fb0d6' };
+  const o = baseOpts(false); o.scales.x.stacked = true; o.scales.y.stacked = true;
+  chartIn('shChart', { type: 'bar', data: { labels, datasets: Object.keys(sets).map(k => ({ label: k === 'Showed' ? 'Showed, no buy' : k, data: sets[k], backgroundColor: colors[k], borderRadius: 3 })) }, options: o });
+
+  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dow = DOW.map((n, i) => { const st = shStats(list.filter(x => x.at.getDay() === i)); return [n, st.booked, ` &middot; ${st.showed} showed &middot; ${st.bought} bought`]; }).filter(x => x[1]);
+  bars($('shDow'), dow, v => v + ' booked');
+
+  $('shTrend').innerHTML = `<tr><th>Month</th><th class="n">Booked</th><th class="n">Canceled</th><th class="n">Show rate</th><th class="n">Bought</th><th class="n">Conversion</th></tr>` +
+    [5,4,3,2,1,0].map(k => { const t = back(y, m, k), st = shStats(RAW.showings.filter(x => inMonth(x.date, t.y, t.m)));
+      return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${st.booked}</td><td class="n">${st.canceled}</td><td class="n">${pct(st.showRate)}</td><td class="n">${st.bought}</td><td class="n"><b>${pct(st.conv)}</b></td></tr>`; }).join('');
+
+  const pc = { Bought: 'g', Canceled: 'x', 'No-show': 'ns', Upcoming: 'u', Showed: '' };
+  const rows = list.slice().sort((a, b2) => b2.at - a.at);
+  $('shTbl').innerHTML = `<tr><th>Date</th><th>Time</th><th>Customer</th><th>Result</th></tr>` +
+    (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span></td></tr>`).join('')
+      : `<tr><td colspan="4" class="empty">${RAW.showingsError ? 'Could not read the calendar: ' + esc(RAW.showingsError) : 'No showings on the calendar this month.'}</td></tr>`);
+  void salesCount;
+}
+
+// ---------- meta ads ----------
+function metaMonth(y, m){
+  const exp = RAW.hMonths.has(mkey(y, m)) ? RAW.hExp.filter(x => inMonth(x.date, y, m)) : RAW.expenses.filter(x => inMonth(x.date, y, m));
+  const spend = exp.filter(isMetaSpend).reduce((a, x) => a + x.amt, 0);
+  const all = RAW.sales.filter(x => inMonth(x.date, y, m));
+  const ms = all.filter(x => x.source === 'Meta Ads');
+  const rev = ms.reduce((a, x) => a + x.rev, 0);
+  return { spend, sales: ms.length, rev, tracked: all.length > 0, share: all.length ? ms.length / all.length : NaN,
+    cps: ms.length ? spend / ms.length : NaN, roas: spend ? rev / spend : NaN };
+}
+function renderMeta(){
+  const { y, m } = cur, A = metaMonth(y, m), b = back(y, m, 1), B = metaMonth(b.y, b.m);
+  const t = v => A.tracked ? v : '–';
+  $('mKpis').innerHTML = kpiHtml([
+    ['Ad spend', money(A.spend), chg(A.spend, B.spend, true)],
+    ['Sales from Meta', t(A.sales), A.tracked ? chg(A.sales, B.sales) : ''],
+    ['Meta revenue', t(money(A.rev)), A.tracked ? chg(A.rev, B.rev) : ''],
+    ['Cost per sale', t(isFinite(A.cps) ? money(A.cps) : '–'), A.tracked ? chg(A.cps || 0, B.cps || 0, true) : ''],
+    ['Return on ad spend', t(isFinite(A.roas) ? A.roas.toFixed(1) + 'x' : '–'), A.tracked ? chg(A.roas || 0, B.roas || 0) : ''],
+    ['Share of sales', t(pct(A.share)), A.tracked ? chg(A.share || 0, B.share || 0) : ''],
+  ]);
+  const ks = [5,4,3,2,1,0].map(k => back(y, m, k)), rows = ks.map(k => ({ ...k, ...metaMonth(k.y, k.m) }));
+  const o = baseOpts(true);
+  chartIn('mChart', { type: 'bar', data: { labels: rows.map(r => MON[r.m]), datasets: [
+    { label: 'Ad spend', data: rows.map(r => r.spend), backgroundColor: '#2b1d16', borderRadius: 4 },
+    { label: 'Meta revenue', data: rows.map(r => r.tracked ? r.rev : null), backgroundColor: '#b0524c', borderRadius: 4 } ] }, options: o });
+  $('mTbl').innerHTML = `<tr><th>Month</th><th class="n">Spend</th><th class="n">Meta sales</th><th class="n">Revenue</th><th class="n">Cost / sale</th><th class="n">ROAS</th></tr>` +
+    rows.slice().reverse().map(r => `<tr><td>${MON[r.m]} ${r.y}</td><td class="n">${money(r.spend)}</td><td class="n">${r.tracked ? r.sales : '–'}</td><td class="n">${r.tracked ? money(r.rev) : '–'}</td><td class="n">${r.tracked && isFinite(r.cps) ? money(r.cps) : '–'}</td><td class="n"><b>${r.tracked && isFinite(r.roas) ? r.roas.toFixed(1) + 'x' : '–'}</b></td></tr>`).join('');
+}
+
+// ---------- b-stock ----------
+const dayDiff = (a, b) => Math.max(0, Math.round((b - a) / 864e5));
+function loadStats(l){
+  const sold = l.units.filter(u => u.status === 'sold'), dud = l.units.filter(u => u.status === 'dud');
+  const rev = sold.reduce((a, u) => a + u.soldPrice, 0), soldCost = sold.reduce((a, u) => a + u.cost, 0);
+  const dts = sold.filter(u => u.sold).map(u => dayDiff(l.arrived, u.sold));
+  const left = l.units.filter(u => u.status === 'in'), leftComp = left.reduce((a, u) => a + (u.comp || 0), 0);
+  return { n: l.units.length, sold: sold.length, dud: dud.length, left: left.length, rev, gp: rev - soldCost,
+    profitVsLoad: rev - l.landed, mult: l.landed ? rev / l.landed : 0, days: dts.length ? dts.reduce((a, b) => a + b, 0) / dts.length : NaN,
+    paid: l.units.filter(u => u.cost > 0).length, each: (l.units.find(u => u.cost > 0) || {}).cost || 0, leftComp };
+}
+function renderBstock(){
+  const el = $('bsBody'), loads = RAW.loads.slice().sort((a, b) => b.arrived - a.arrived);
+  if (!loads.length) { el.innerHTML = `<div class="card"><h2>No loads yet</h2><p class="empty">Click <b>+ Load</b> and paste the units, or send Claude the manifest and the landed cost and it'll give you the lines to paste.</p></div>`; return; }
+  const all = loads.map(loadStats), T = k => all.reduce((a, x) => a + x[k], 0);
+  const landed = loads.reduce((a, l) => a + l.landed, 0), soldCost = loads.reduce((a, l) => a + l.units.filter(u => u.status === 'sold').reduce((b, u) => b + u.cost, 0), 0);
+  const dts = loads.flatMap(l => l.units.filter(u => u.status === 'sold' && u.sold).map(u => dayDiff(l.arrived, u.sold)));
+  $('bsBody').innerHTML = `<div class="kpis">${kpiHtml([
+    ['Loads', loads.length], ['Couches bought', T('paid')], ['Sold', T('sold') + ' / ' + T('n')],
+    ['Revenue', money(T('rev'))], ['Gross profit on sold', money(T('rev') - soldCost)],
+    ['Avg. days to sell', dts.length ? (dts.reduce((a, b) => a + b, 0) / dts.length).toFixed(1) : '–'],
+  ])}</div>` + loads.map((l, i) => { const st = all[i];
+    return `<div class="card" style="margin-bottom:16px">
+      <h2>${esc(l.loadId)} <small>${esc(l.origin)} &middot; arrived ${l.arrived.toLocaleDateString('en-US',{month:'short',day:'numeric'})} &middot; ${money(l.landed)} landed &middot; ${money(st.each)} per couch</small></h2>
+      <div class="kpis" style="margin-bottom:12px">${kpiHtml([
+        ['Sold', st.sold + ' / ' + st.n], ['Revenue', money(st.rev)], ['Gross profit', money(st.gp)],
+        ['Paid back', pct(st.mult)], ['Avg. days to sell', isFinite(st.days) ? st.days.toFixed(1) : '–'], ['Still in stock (comps)', money(st.leftComp)],
+      ])}</div>
+      <div style="overflow-x:auto"><table><tr><th>Unit</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th>Status</th><th class="n">Sold for</th><th class="n hide-m">Days</th><th></th></tr>${
+      l.units.map(u => `<tr><td>${esc(u.name)}</td><td class="n">${money(u.cost)}</td><td class="n hide-m">${u.comp ? money(u.comp) : '–'}</td>
+        <td><span class="pill ${u.status==='sold'?'g':u.status==='dud'?'x':''}">${u.status==='sold'?'Sold':u.status==='dud'?'Dud':'In stock'}</span></td>
+        <td class="n">${u.status==='sold' ? '<b>' + money(u.soldPrice) + '</b>' : '–'}</td>
+        <td class="n hide-m">${u.status==='sold' && u.sold ? dayDiff(l.arrived, u.sold) : u.status==='in' ? '<span style="color:var(--muted)">' + dayDiff(l.arrived, new Date()) + '</span>' : '–'}</td>
+        <td class="n" style="white-space:nowrap">${u.status==='in'
+          ? `<button class="btn sm" data-sold="${l.id}:${u.uid}" data-name="${esc(u.name)}" data-comp="${u.comp||''}">Sold</button> <button class="btn sm" data-unit="${l.id}:${u.uid}:dud">Dud</button>`
+          : `<button class="btn sm" data-unit="${l.id}:${u.uid}:in">Undo</button>`}</td></tr>`).join('')}</table></div>
+      <div style="margin-top:10px;text-align:right"><button class="btn sm" data-del="loads:${l.id}">Delete load</button></div>
+    </div>`; }).join('');
+}
+
+// ---------- couch list ----------
+async function loadInventory(fresh){
+  $('cTbl').innerHTML = '<tr><td class="empty">Loading the Current Inventory page...</td></tr>';
+  try {
+    const r = await fetch('/api/inventory' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
+    const d = await r.json(); if (d.error) throw new Error(d.error);
+    INV = d; renderCouches();
+  } catch (e) { $('cTbl').innerHTML = `<tr><td class="empty">Couldn't read the inventory page: ${esc(e.message)}</td></tr>`; }
+}
+function renderCouches(){
+  if (!INV) return loadInventory();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = INV.items.map(x => ({ ...x, days: Math.max(0, Math.round((today - toDate(x.firstSeen)) / 864e5)) })).sort((a, b) => b.days - a.days || b.price - a.price);
+  const value = items.reduce((a, x) => a + x.price, 0), retail = items.filter(x => x.retail);
+  const oldest = items.length ? Math.min(...items.map(x => toDate(x.firstSeen))) : today;
+  $('cKpis').innerHTML = kpiHtml([
+    ['Couches on the floor', items.length],
+    ['Floor value', money(value)],
+    ['Average price', money(items.length ? value / items.length : 0)],
+    ['Avg. off retail', retail.length ? pct(retail.reduce((a, x) => a + (1 - x.price / x.retail), 0) / retail.length) : '–'],
+  ]);
+  $('cNote').textContent = 'Days on floor counted since ' + new Date(oldest).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', when the dashboard started tracking';
+  $('cTbl').innerHTML = `<tr><th class="hide-m"></th><th>Couch</th><th>Grade</th><th class="n">Price</th><th class="n hide-m">Retail</th><th class="n">Days on floor</th></tr>` +
+    (items.length ? items.map(x => `<tr><td class="hide-m">${x.img ? `<img class="thumb" src="${esc(x.img)}" alt="" loading="lazy">` : ''}</td><td>${esc(x.title)}</td><td>${x.grade ? `<span class="pill">${esc(x.grade)}</span>` : '–'}</td><td class="n"><b>${money(x.price)}</b></td><td class="n hide-m">${x.retail ? money(x.retail) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td></tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No couches found on the Current Inventory page.</td></tr>');
+}
+
+// ---------- shell ----------
+const TITLES = { sales: 'Sales Tracker', showings: 'Showings', meta: 'Meta Ads', bstock: 'B-Stock Loads', couches: 'Couch List' };
+function render(){
+  if (!RAW) return;
+  $('monLabel').textContent = new Date(cur.y, cur.m, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  ({ sales: renderSales, showings: renderShowings, meta: renderMeta, bstock: renderBstock, couches: renderCouches })[tab]();
+}
+function setTab(t){
+  tab = t;
+  document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
+  Object.keys(TITLES).forEach(k => $('tab-' + k).hidden = k !== t);
+  $('title').textContent = TITLES[t];
+  $('monNav').hidden = t === 'couches' || t === 'bstock';
+  $('print').hidden = t !== 'couches';
+  document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
+  try { localStorage.setItem('bcdTab', t); } catch {}
+  render();
+}
 async function load(fresh){
   $('err').style.display = 'none';
   try {
     const r = await fetch('/api/data' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
     if (r.status === 401) return location.reload();
-    const d = await r.json();
-    if (d.error) throw new Error(d.error);
-    $('demo').style.display = d.demo ? 'block' : 'none';
+    const d = await r.json(); if (d.error) throw new Error(d.error);
+    DATA = d; $('demo').hidden = !d.demo; $('fileWarn').hidden = d.storage !== 'file' || d.demo;
     RAW = parse(d);
-    $('synced').textContent = 'Synced ' + new Date(d.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    $('synced').textContent = 'Synced ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     render();
-  } catch (e) {
-    $('err').textContent = "Couldn't load the sheet: " + e.message;
-    $('err').style.display = 'block';
-  }
+  } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
-// month nav
-$('prev').onclick = () => { cur.m--; if (cur.m < 0) { cur.m = 11; cur.y--; } render(); };
-$('next').onclick = () => { cur.m++; if (cur.m > 11) { cur.m = 0; cur.y++; } render(); };
-$('refresh').onclick = () => load(true);
+$('prev').onclick = () => { const b = back(cur.y, cur.m, 1); cur = b; render(); };
+$('next').onclick = () => { const b = back(cur.y, cur.m, -1); cur = b; render(); };
+$('refresh').onclick = () => { if (tab === 'couches') loadInventory(true); else load(true); };
+document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 
-// tabs
-document.querySelectorAll('.nav').forEach(n => n.onclick = () => {
-  document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x === n));
-  const t = n.dataset.tab;
-  $('tab-sales').hidden = t !== 'sales';
-  $('tab-soon').hidden = t === 'sales';
-  $('soonTitle').textContent = n.firstChild.textContent.trim();
-});
-
-// modals
-const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
-document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => {
-  const m = $('m-' + b.dataset.open); m.classList.add('on');
-  m.querySelector('input[name=date]').value = today();
-});
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open); m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
 document.querySelectorAll('.mask').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('on'); });
   m.querySelector('form').addEventListener('submit', async e => {
     e.preventDefault();
-    const f = e.target, btn = f.querySelector('.btn.p');
-    btn.disabled = true; btn.textContent = 'Saving...';
+    const f = e.target, btn = f.querySelector('.btn.p'), label = btn.textContent; btn.disabled = true; btn.textContent = 'Saving...';
     const data = Object.fromEntries(new FormData(f).entries());
+    let url = '/api/add', body = { action: f.dataset.action, data };
+    if (f.dataset.kind === 'load') {
+      url = '/api/loads';
+      body = { ...data, units: data.units.split(/\n/).map(line => {
+        const t = line.trim(); if (!t) return null;
+        const mm = t.match(/^(.*?)[,\t|]\s*\$?([\d,]+(?:\.\d+)?)\s*$/);
+        return mm ? { name: mm[1].trim(), comp: parseFloat(mm[2].replace(/,/g, '')) } : { name: t, comp: 0 };
+      }).filter(Boolean) };
+    } else if (f.dataset.kind === 'sold') {
+      url = '/api/loads/unit'; body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date };
+    }
     try {
-      const r = await fetch('/api/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: f.dataset.action, data }) });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Save failed');
-      m.classList.remove('on'); f.reset();
-      toast(j.demo ? 'Saved (demo mode, not written to the sheet)' : 'Saved to the sheet');
-      load(true);
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Save failed');
+      m.classList.remove('on'); f.reset(); toast('Saved'); load(true);
     } catch (err) { toast(err.message); }
-    btn.disabled = false; btn.textContent = 'Save';
+    btn.disabled = false; btn.textContent = label;
   });
+});
+document.addEventListener('click', async e => {
+  const sb = e.target.closest('[data-sold]');
+  if (sb) { const [id, uid] = sb.dataset.sold.split(':'), m = $('m-sold'), f = m.querySelector('form');
+    const el = f.elements; el.id.value = id; el.uid.value = uid; el.soldPrice.value = sb.dataset.comp || ''; el.date.value = todayStr();
+    $('soldTitle').textContent = 'Sold: ' + sb.dataset.name; m.classList.add('on'); return; }
+  const ub = e.target.closest('[data-unit]');
+  if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
+    const r = await fetch('/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
+    const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Delete'; }, 3000); return; }
+  const [kind, id] = b.dataset.del.split(':');
+  const r = await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, id }) });
+  const j = await r.json(); toast(j.ok ? 'Deleted' : (j.error || 'Delete failed')); load(true);
 });
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
+let saved = 'sales'; try { saved = localStorage.getItem('bcdTab') || 'sales'; } catch {}
+setTab(TITLES[saved] ? saved : 'sales');
 load();
 setInterval(() => load(), 5 * 60 * 1000);
 </script>
