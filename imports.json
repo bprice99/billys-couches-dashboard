@@ -1,0 +1,620 @@
+{
+ "expenses": [
+  {
+   "id": "ivy-2026-10-000",
+   "date": "2026-10-22",
+   "category": "Advertising",
+   "amount": 160.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-001",
+   "date": "2026-10-21",
+   "category": "Other",
+   "amount": 1219.0,
+   "vendor": "Other",
+   "notes": "Forklift Rental for a week"
+  },
+  {
+   "id": "ivy-2026-10-002",
+   "date": "2026-10-21",
+   "category": "Advertising",
+   "amount": 165.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-003",
+   "date": "2026-10-20",
+   "category": "Payroll",
+   "amount": 292.0,
+   "vendor": "Gunarr",
+   "notes": "Helper"
+  },
+  {
+   "id": "ivy-2026-10-004",
+   "date": "2026-10-20",
+   "category": "Fuel",
+   "amount": 126.0,
+   "vendor": "Gas & Tolls",
+   "notes": ""
+  },
+  {
+   "id": "ivy-2026-10-005",
+   "date": "2026-10-20",
+   "category": "Payroll",
+   "amount": 62.0,
+   "vendor": "Collin",
+   "notes": "Cleaner And Helper"
+  },
+  {
+   "id": "ivy-2026-10-006",
+   "date": "2026-10-20",
+   "category": "Payroll",
+   "amount": 398.0,
+   "vendor": "Zach Pierce",
+   "notes": "Driver"
+  },
+  {
+   "id": "ivy-2026-10-007",
+   "date": "2026-10-20",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-008",
+   "date": "2026-10-20",
+   "category": "Payroll",
+   "amount": 137.0,
+   "vendor": "Joey",
+   "notes": "Helper"
+  },
+  {
+   "id": "ivy-2026-10-009",
+   "date": "2026-10-20",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-010",
+   "date": "2026-10-20",
+   "category": "Payroll",
+   "amount": 50.0,
+   "vendor": "Luke",
+   "notes": "Helper"
+  },
+  {
+   "id": "ivy-2026-10-011",
+   "date": "2026-10-19",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-012",
+   "date": "2026-10-19",
+   "category": "Payroll",
+   "amount": 25.0,
+   "vendor": "Zach Pierce",
+   "notes": "Tip"
+  },
+  {
+   "id": "ivy-2026-10-013",
+   "date": "2026-10-18",
+   "category": "Advertising",
+   "amount": 307.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-014",
+   "date": "2026-10-17",
+   "category": "Advertising",
+   "amount": 165.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-015",
+   "date": "2026-10-17",
+   "category": "Fuel",
+   "amount": 82.0,
+   "vendor": "Gas & Tolls",
+   "notes": ""
+  },
+  {
+   "id": "ivy-2026-10-016",
+   "date": "2026-10-17",
+   "category": "Software",
+   "amount": 100.0,
+   "vendor": "Website / Online",
+   "notes": "Textmagic"
+  },
+  {
+   "id": "ivy-2026-10-017",
+   "date": "2026-10-16",
+   "category": "Supplies",
+   "amount": 625.0,
+   "vendor": "Supplies",
+   "notes": "Thank you cards and business cards supplies"
+  },
+  {
+   "id": "ivy-2026-10-018",
+   "date": "2026-10-16",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-019",
+   "date": "2026-10-15",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-020",
+   "date": "2026-10-15",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-021",
+   "date": "2026-10-15",
+   "category": "Fuel",
+   "amount": 130.0,
+   "vendor": "Gas & Tolls",
+   "notes": ""
+  },
+  {
+   "id": "ivy-2026-10-022",
+   "date": "2026-10-14",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-023",
+   "date": "2026-10-14",
+   "category": "Supplies",
+   "amount": 130.0,
+   "vendor": "Supplies",
+   "notes": "Recliner Motor Parts (2)"
+  },
+  {
+   "id": "ivy-2026-10-024",
+   "date": "2026-10-13",
+   "category": "Supplies",
+   "amount": 12.0,
+   "vendor": "Supplies",
+   "notes": "Measure tape"
+  },
+  {
+   "id": "ivy-2026-10-025",
+   "date": "2026-10-13",
+   "category": "Payroll",
+   "amount": 196.0,
+   "vendor": "Finley",
+   "notes": "Finley L - Cleaner and Helper"
+  },
+  {
+   "id": "ivy-2026-10-026",
+   "date": "2026-10-13",
+   "category": "Payroll",
+   "amount": 120.0,
+   "vendor": "Luke",
+   "notes": "Luke Peters Help"
+  },
+  {
+   "id": "ivy-2026-10-027",
+   "date": "2026-10-13",
+   "category": "Advertising",
+   "amount": 156.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-028",
+   "date": "2026-10-13",
+   "category": "Payroll",
+   "amount": 200.0,
+   "vendor": "Joey",
+   "notes": "Joey M Help"
+  },
+  {
+   "id": "ivy-2026-10-029",
+   "date": "2026-10-13",
+   "category": "Software",
+   "amount": 20.0,
+   "vendor": "Website / Online",
+   "notes": "Textmagic"
+  },
+  {
+   "id": "ivy-2026-10-030",
+   "date": "2026-10-13",
+   "category": "Supplies",
+   "amount": 86.0,
+   "vendor": "Supplies",
+   "notes": "Billy Bucks - Vistaprint"
+  },
+  {
+   "id": "ivy-2026-10-031",
+   "date": "2026-10-13",
+   "category": "Utilities",
+   "amount": 56.0,
+   "vendor": "Wifi",
+   "notes": "Wifi for store"
+  },
+  {
+   "id": "ivy-2026-10-032",
+   "date": "2026-10-13",
+   "category": "Payroll",
+   "amount": 247.0,
+   "vendor": "Zach Pierce",
+   "notes": "Driver"
+  },
+  {
+   "id": "ivy-2026-10-033",
+   "date": "2026-10-12",
+   "category": "Advertising",
+   "amount": 157.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-034",
+   "date": "2026-10-11",
+   "category": "Advertising",
+   "amount": 310.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-035",
+   "date": "2026-10-11",
+   "category": "Supplies",
+   "amount": 34.0,
+   "vendor": "Supplies",
+   "notes": "Drinks for fridge at store"
+  },
+  {
+   "id": "ivy-2026-10-036",
+   "date": "2026-10-10",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-037",
+   "date": "2026-10-10",
+   "category": "Fuel",
+   "amount": 109.0,
+   "vendor": "Gas & Tolls",
+   "notes": ""
+  },
+  {
+   "id": "ivy-2026-10-038",
+   "date": "2026-10-09",
+   "category": "Supplies",
+   "amount": 17.0,
+   "vendor": "Supplies",
+   "notes": "Hooks and stickers"
+  },
+  {
+   "id": "ivy-2026-10-039",
+   "date": "2026-10-09",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-040",
+   "date": "2026-10-09",
+   "category": "Supplies",
+   "amount": 456.0,
+   "vendor": "Supplies",
+   "notes": "Sign for store + hooks"
+  },
+  {
+   "id": "ivy-2026-10-041",
+   "date": "2026-10-08",
+   "category": "Supplies",
+   "amount": 74.0,
+   "vendor": "Supplies",
+   "notes": "Whiteboard for Office"
+  },
+  {
+   "id": "ivy-2026-10-042",
+   "date": "2026-10-08",
+   "category": "Supplies",
+   "amount": 99.0,
+   "vendor": "Supplies",
+   "notes": "Speakers for store"
+  },
+  {
+   "id": "ivy-2026-10-043",
+   "date": "2026-10-08",
+   "category": "Supplies",
+   "amount": 24.0,
+   "vendor": "Supplies",
+   "notes": "Key Duplication"
+  },
+  {
+   "id": "ivy-2026-10-044",
+   "date": "2026-10-08",
+   "category": "Advertising",
+   "amount": 158.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-045",
+   "date": "2026-10-08",
+   "category": "Supplies",
+   "amount": 19.0,
+   "vendor": "Supplies",
+   "notes": "Drinks for fridge at store"
+  },
+  {
+   "id": "ivy-2026-10-046",
+   "date": "2026-10-07",
+   "category": "Other",
+   "amount": 27.0,
+   "vendor": "Customer",
+   "notes": "Customer Power Cable for Couch"
+  },
+  {
+   "id": "ivy-2026-10-047",
+   "date": "2026-10-07",
+   "category": "Advertising",
+   "amount": 159.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-048",
+   "date": "2026-10-07",
+   "category": "Supplies",
+   "amount": 41.0,
+   "vendor": "Supplies",
+   "notes": "Trash Bags"
+  },
+  {
+   "id": "ivy-2026-10-049",
+   "date": "2026-10-06",
+   "category": "Payroll",
+   "amount": 218.0,
+   "vendor": "Finley",
+   "notes": "Couch Cleaner + Helper"
+  },
+  {
+   "id": "ivy-2026-10-050",
+   "date": "2026-10-06",
+   "category": "Payroll",
+   "amount": 185.0,
+   "vendor": "Luke",
+   "notes": "Helper"
+  },
+  {
+   "id": "ivy-2026-10-051",
+   "date": "2026-10-06",
+   "category": "Supplies",
+   "amount": 155.0,
+   "vendor": "Supplies",
+   "notes": "Speaker for warehouse"
+  },
+  {
+   "id": "ivy-2026-10-052",
+   "date": "2026-10-06",
+   "category": "Supplies",
+   "amount": 46.0,
+   "vendor": "Supplies",
+   "notes": "Drinks for fridge"
+  },
+  {
+   "id": "ivy-2026-10-053",
+   "date": "2026-10-06",
+   "category": "Payroll",
+   "amount": 274.0,
+   "vendor": "Zach Pierce",
+   "notes": "Driver"
+  },
+  {
+   "id": "ivy-2026-10-054",
+   "date": "2026-10-06",
+   "category": "Payroll",
+   "amount": 131.0,
+   "vendor": "Gunarr",
+   "notes": "Helper"
+  },
+  {
+   "id": "ivy-2026-10-055",
+   "date": "2026-10-06",
+   "category": "Payroll",
+   "amount": 86.0,
+   "vendor": "Joey",
+   "notes": "Helper"
+  },
+  {
+   "id": "ivy-2026-10-056",
+   "date": "2026-10-06",
+   "category": "Advertising",
+   "amount": 158.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-057",
+   "date": "2026-10-05",
+   "category": "Insurance",
+   "amount": 233.0,
+   "vendor": "Taxes, Insurance, & Fees",
+   "notes": "Box Truck Insurance"
+  },
+  {
+   "id": "ivy-2026-10-058",
+   "date": "2026-10-05",
+   "category": "Supplies",
+   "amount": 100.0,
+   "vendor": "Supplies",
+   "notes": "Halloween Decor for store"
+  },
+  {
+   "id": "ivy-2026-10-059",
+   "date": "2026-10-05",
+   "category": "Supplies",
+   "amount": 114.0,
+   "vendor": "Supplies",
+   "notes": "Window Decal for Store"
+  },
+  {
+   "id": "ivy-2026-10-060",
+   "date": "2026-10-05",
+   "category": "Advertising",
+   "amount": 157.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-061",
+   "date": "2026-10-05",
+   "category": "Fuel",
+   "amount": 107.0,
+   "vendor": "Gas & Tolls",
+   "notes": ""
+  },
+  {
+   "id": "ivy-2026-10-062",
+   "date": "2026-10-04",
+   "category": "Other",
+   "amount": 11.0,
+   "vendor": "Customer",
+   "notes": "Hooks for customer"
+  },
+  {
+   "id": "ivy-2026-10-063",
+   "date": "2026-10-04",
+   "category": "Supplies",
+   "amount": 10.0,
+   "vendor": "Supplies",
+   "notes": "Gas Station Drinks"
+  },
+  {
+   "id": "ivy-2026-10-064",
+   "date": "2026-10-04",
+   "category": "Supplies",
+   "amount": 57.0,
+   "vendor": "Supplies",
+   "notes": "Drinks for fridge in store"
+  },
+  {
+   "id": "ivy-2026-10-065",
+   "date": "2026-10-04",
+   "category": "Other",
+   "amount": 25.0,
+   "vendor": "Food",
+   "notes": "Food for employees"
+  },
+  {
+   "id": "ivy-2026-10-066",
+   "date": "2026-10-04",
+   "category": "Supplies",
+   "amount": 41.0,
+   "vendor": "Supplies",
+   "notes": "Drinks for fridge in store"
+  },
+  {
+   "id": "ivy-2026-10-067",
+   "date": "2026-10-03",
+   "category": "Advertising",
+   "amount": 166.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-068",
+   "date": "2026-10-02",
+   "category": "Supplies",
+   "amount": 60.0,
+   "vendor": "Supplies",
+   "notes": "Window Decal For Store"
+  },
+  {
+   "id": "ivy-2026-10-069",
+   "date": "2026-10-02",
+   "category": "Advertising",
+   "amount": 327.0,
+   "vendor": "Advertising",
+   "notes": "Google Ads"
+  },
+  {
+   "id": "ivy-2026-10-070",
+   "date": "2026-10-02",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-071",
+   "date": "2026-10-02",
+   "category": "Other",
+   "amount": 25.0,
+   "vendor": "Other",
+   "notes": "Notary Fee"
+  },
+  {
+   "id": "ivy-2026-10-072",
+   "date": "2026-10-02",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-073",
+   "date": "2026-10-01",
+   "category": "Software",
+   "amount": 35.0,
+   "vendor": "Website / Online",
+   "notes": "Railway + Zapier"
+  },
+  {
+   "id": "ivy-2026-10-074",
+   "date": "2026-10-01",
+   "category": "Fuel",
+   "amount": 108.0,
+   "vendor": "Gas & Tolls",
+   "notes": ""
+  },
+  {
+   "id": "ivy-2026-10-075",
+   "date": "2026-10-01",
+   "category": "Advertising",
+   "amount": 150.0,
+   "vendor": "Advertising",
+   "notes": "Meta Ads"
+  },
+  {
+   "id": "ivy-2026-10-076",
+   "date": "2026-10-01",
+   "category": "Rent",
+   "amount": 2700.0,
+   "vendor": "Storage",
+   "notes": ""
+  }
+ ]
+}
