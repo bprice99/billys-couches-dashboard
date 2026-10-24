@@ -115,7 +115,7 @@ app.post('/api/add', async (req, res) => {
       if (!(cost >= 0)) return res.status(400).json({ error: 'Cost is required' });
       const list = await kget(KEYS.purchases, []);
       list.push({ id, date, source: clean(data.source, 40) || 'Other', item: clean(data.item), units: Math.max(1, parseInt(data.units) || 1),
-        cost: Math.round(cost * 100) / 100, loadId: clean(data.loadId, 40), notes: clean(data.notes) });
+        cost: Math.round(cost * 100) / 100, loadId: clean(data.loadId, 40), notes: clean(data.notes), status: 'in', soldPrice: 0, soldDate: '' });
       await kset(KEYS.purchases, list);
     } else if (action === 'addExpense') {
       const amount = Number(data.amount);
@@ -188,6 +188,21 @@ app.post('/api/loads/unit', async (req, res) => {
     u.soldPrice = status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
     u.soldDate = status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
     await kset(KEYS.loads, loads);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Log (or undo) the sale of a used pickup
+app.post('/api/purchases/sale', async (req, res) => {
+  try {
+    const { id, status, soldPrice, soldDate } = req.body || {};
+    const list = await kget(KEYS.purchases, []);
+    const p = list.find(x => x.id === id);
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    p.status = status === 'sold' ? 'sold' : 'in';
+    p.soldPrice = p.status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
+    p.soldDate = p.status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
+    await kset(KEYS.purchases, list);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
