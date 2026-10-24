@@ -94,10 +94,26 @@ async function google(force) {
   return j;
 }
 
+// imports.json: one-time records (e.g. Ivy Flip months after the history cutoff).
+// Each record has a fixed id, so it is added once and never duplicated.
+// Deleted imports are remembered so they don't come back.
+async function getExpenses() {
+  let list = await kget(KEYS.expenses, []);
+  let imp = [];
+  try { imp = JSON.parse(fs.readFileSync(path.join(__dirname, 'imports.json'), 'utf8')).expenses || []; } catch {}
+  if (imp.length) {
+    const gone = new Set(await kget('bcd:deletedImports', []));
+    const have = new Set(list.map(x => x.id));
+    const add = imp.filter(x => !have.has(x.id) && !gone.has(x.id));
+    if (add.length) { list = list.concat(add); await kset(KEYS.expenses, list); }
+  }
+  return list;
+}
+
 app.get('/api/data', async (req, res) => {
   try {
     const [g, purchases, expenses, loads] = await Promise.all([
-      google(req.query.fresh === '1'), kget(KEYS.purchases, []), kget(KEYS.expenses, []), getLoads(),
+      google(req.query.fresh === '1'), kget(KEYS.purchases, []), getExpenses(), getLoads(),
     ]);
     res.json({ ...g, purchases, expenses, loads, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -135,6 +151,7 @@ app.post('/api/delete', async (req, res) => {
     if (!['purchases', 'expenses', 'loads'].includes(kind)) return res.status(400).json({ error: 'bad kind' });
     const list = await kget(KEYS[kind], []);
     await kset(KEYS[kind], list.filter(x => x.id !== id));
+    if (String(id).startsWith('ivy-')) { const g = await kget('bcd:deletedImports', []); g.push(id); await kset('bcd:deletedImports', g); }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
