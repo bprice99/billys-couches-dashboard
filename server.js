@@ -143,9 +143,11 @@ app.post('/api/delete', async (req, res) => {
 // First run: loads-seed.json (Aug-Oct loads from the Bstock sheet) becomes the starting list.
 async function getLoads() {
   let loads = await kget(KEYS.loads, null);
-  if (loads === null) {
-    try { loads = require('./loads-seed.json'); } catch { loads = []; }
-    await kset(KEYS.loads, loads);
+  if (!loads || !loads.length) {
+    let seed = null;
+    try { seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'loads-seed.json'), 'utf8')); } catch (e) { console.log('loads-seed.json not readable:', e.message); }
+    if (Array.isArray(seed) && seed.length) { loads = seed; await kset(KEYS.loads, loads); }
+    else loads = loads || [];
   }
   return loads;
 }
