@@ -105,7 +105,7 @@ td.n,th.n{text-align:right}
       <div class="mon" id="monNav"><button id="prev" aria-label="Previous month">&larr;</button><span id="monLabel"></span><button id="next" aria-label="Next month">&rarr;</button></div>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn" id="print" hidden onclick="window.print()">Print</button>
-      <button class="btn p" data-open="purchase" data-only="sales">+ Purchase</button>
+      <button class="btn p" data-open="purchase" data-only="sales">+ Used pickup</button>
       <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
     </div>
@@ -126,6 +126,7 @@ td.n,th.n{text-align:right}
         <div class="card"><h2>Revenue by source</h2><div id="sources"></div></div>
         <div class="card"><h2>Pickup vs. delivery</h2><div id="fulfill"></div><h2 style="margin-top:22px">Purchases by source</h2><div id="psources"></div></div>
       </div>
+      <div class="card" style="margin-top:16px"><h2>Used couches <small id="usedNote"></small></h2><div style="overflow-x:auto"><table id="usedTbl"></table></div></div>
       <div class="card" style="margin-top:16px" id="logCard"><h2>Purchases &amp; expenses logged this month</h2><div style="overflow-x:auto"><table id="logTbl"></table></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales this month</h2><div style="overflow-x:auto"><table id="salesTbl"></table></div></div>
     </section>
@@ -162,17 +163,17 @@ td.n,th.n{text-align:right}
 </div>
 
 <div class="mask" id="m-purchase"><form class="modal" data-action="addPurchase">
-  <h3>Log a purchase</h3>
+  <h3>Log a used pickup</h3>
   <div class="two">
-    <label>Date<input type="date" name="date" required></label>
-    <label>Source<select name="source"><option>Bstock</option><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Google</option><option>Other</option></select></label>
+    <label>Pickup date<input type="date" name="date" required></label>
+    <label>Where from<select name="source"><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Google</option><option>Other</option></select></label>
   </div>
-  <label>What was it?<input name="item" placeholder="e.g. GLD-7073270 load, or Gray sectional"></label>
+  <label>Couch<input name="item" required placeholder="e.g. Ashley gray 3pc sectional"></label>
   <div class="two">
-    <label>Total cost ($)<input type="number" step="0.01" name="cost" required></label>
-    <label>Units<input type="number" name="units" value="1" min="1"></label>
+    <label>Paid ($)<input type="number" step="0.01" name="cost" required placeholder="0 if free"></label>
+    <label>Notes<input name="notes" placeholder="optional"></label>
   </div>
-  <label>Load ID (B-Stock only)<input name="loadId" placeholder="optional"></label>
+  <p class="empty" style="font-size:12.5px;margin:-4px 0 12px">B-Stock loads go on the B-Stock tab with + Load.</p>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 
@@ -207,7 +208,7 @@ td.n,th.n{text-align:right}
 
 <div class="mask" id="m-sold"><form class="modal" data-kind="sold">
   <h3 id="soldTitle">Mark sold</h3>
-  <input type="hidden" name="id"><input type="hidden" name="uid">
+  <input type="hidden" name="id"><input type="hidden" name="uid"><input type="hidden" name="target">
   <div class="two">
     <label>Sold for ($)<input type="number" step="0.01" name="soldPrice" required></label>
     <label>Date sold<input type="date" name="date" required></label>
@@ -303,7 +304,7 @@ function parse(d){
     return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev };
   }).filter(x => x.date && x.rev > 0);
 
-  const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
+  const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
   const expenses = (d.expenses || []).map(x => ({ id: x.id, date: toDate(x.date), cat: x.category || 'Other', vendor: x.vendor || '', notes: x.notes || '', amt: num(x.amount), live: true })).filter(x => x.date && x.amt);
 
   const H = d.history || { sales: [], expenses: [] };
@@ -375,6 +376,21 @@ function renderSales(){
   $('fulfill').innerHTML = A.hist ? '<p class="empty">Not tracked in Ivy Flip for this month.</p>' :
     `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${A.count?Math.round(A.delivery/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?A.delivery/A.count*100:0}%"></i></div></div>
      <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${A.count?Math.round(pk/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?pk/A.count*100:0}%;background:var(--dark)"></i></div></div>`;
+
+  // used pickups: every one still in stock, plus any sold this month
+  const used = RAW.purchases.filter(x => x.status !== 'sold' || inMonth(x.sold, y, m) || inMonth(x.date, y, m))
+    .sort((a, b2) => (a.status === 'sold') - (b2.status === 'sold') || a.date - b2.date);
+  const inStock = RAW.purchases.filter(x => x.status !== 'sold');
+  $('usedNote').textContent = inStock.length + ' in stock · ' + money(inStock.reduce((a, x) => a + x.cost, 0)) + ' paid';
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  $('usedTbl').innerHTML = `<tr><th>Picked up</th><th>Couch</th><th class="hide-m">From</th><th class="n">Paid</th><th>Status</th><th class="n">Sold for</th><th class="n hide-m">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
+    (used.length ? used.map(x => { const sold = x.status === 'sold';
+      return `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td>${esc(x.item)}</td><td class="hide-m">${esc(x.source)}</td><td class="n">${money(x.cost)}</td>
+        <td><span class="pill ${sold?'g':''}">${sold?'Sold':'In stock'}</span></td><td class="n">${sold ? '<b>' + money(x.soldPrice) + '</b>' : '–'}</td>
+        <td class="n hide-m">${sold ? money(x.soldPrice - x.cost) : '–'}</td><td class="n hide-m">${Math.max(0, Math.round(((sold && x.sold ? x.sold : today0) - x.date) / 864e5))}</td>
+        <td class="n" style="white-space:nowrap">${sold ? `<button class="btn sm" data-unit="${esc(x.id)}:p:in">Undo</button>`
+          : `<button class="btn sm" data-sold="${esc(x.id)}:" data-target="purchase" data-name="${esc(x.item)}">Log sale</button>`}</td></tr>`; }).join('')
+      : `<tr><td colspan="9" class="empty">No used pickups logged yet. Use + Used pickup.</td></tr>`);
 
   // logged purchases + expenses (live months only)
   $('logCard').hidden = A.hist;
@@ -598,7 +614,8 @@ document.querySelectorAll('.mask').forEach(m => {
         return mm ? { name: mm[1].trim(), comp: parseFloat(mm[2].replace(/,/g, '')) } : { name: t, comp: 0 };
       }).filter(Boolean) };
     } else if (f.dataset.kind === 'sold') {
-      url = '/api/loads/unit'; body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date };
+      url = data.target === 'purchase' ? '/api/purchases/sale' : '/api/loads/unit';
+      body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date };
     }
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -611,11 +628,11 @@ document.querySelectorAll('.mask').forEach(m => {
 document.addEventListener('click', async e => {
   const sb = e.target.closest('[data-sold]');
   if (sb) { const [id, uid] = sb.dataset.sold.split(':'), m = $('m-sold'), f = m.querySelector('form');
-    const el = f.elements; el.id.value = id; el.uid.value = uid; el.soldPrice.value = sb.dataset.comp || ''; el.date.value = todayStr();
+    const el = f.elements; el.id.value = id; el.uid.value = uid; el.target.value = sb.dataset.target || 'unit'; el.soldPrice.value = sb.dataset.comp || ''; el.date.value = todayStr();
     $('soldTitle').textContent = 'Sold: ' + sb.dataset.name; m.classList.add('on'); return; }
   const ub = e.target.closest('[data-unit]');
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
-    const r = await fetch('/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
+    const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
     const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
   const b = e.target.closest('[data-del]'); if (!b) return;
   if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Delete'; }, 3000); return; }
