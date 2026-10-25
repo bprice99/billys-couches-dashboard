@@ -181,7 +181,8 @@ app.get('/api/data', async (req, res) => {
       google(req.query.fresh === '1'), kget(KEYS.purchases, []), getExpenses(), getLoads(), getOpenHouses(),
     ]);
     const photos = await kget('bcd:photos', {}).catch(() => ({}));
-    res.json({ ...g, purchases, expenses, loads, openhouses, photos, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
+    const goals = await getGoals().catch(() => ({}));
+    res.json({ ...g, purchases, expenses, loads, openhouses, photos, goals, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -272,10 +273,19 @@ app.post('/api/loads/unit', async (req, res) => {
     u.status = status;
     u.soldPrice = status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
     u.soldDate = status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
+    saleDetails(u, req.body || {}, status);
     await kset(KEYS.loads, loads);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// Couch price, delivery fee and upsells recorded when a couch is marked sold.
+function saleDetails(target, body, status) {
+  const sold = status === 'sold';
+  target.soldDelivery = sold ? Math.max(0, Number(body.delivery) || 0) : 0;
+  target.soldUpsells = sold && Array.isArray(body.upsells) ? body.upsells.map(u => ({ label: clean(u.label, 40), price: Math.max(0, Number(u.price) || 0) })).filter(u => u.label && u.price) : [];
+  target.soldUpsellTotal = target.soldUpsells.reduce((a, u) => a + u.price, 0);
+}
 
 // Log (or undo) the sale of a used pickup
 app.post('/api/purchases/sale', async (req, res) => {
@@ -287,6 +297,7 @@ app.post('/api/purchases/sale', async (req, res) => {
     p.status = status === 'sold' ? 'sold' : 'in';
     p.soldPrice = p.status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
     p.soldDate = p.status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
+    saleDetails(p, req.body || {}, p.status);
     await kset(KEYS.purchases, list);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -599,6 +610,20 @@ app.post('/api/ads/refresh', (req, res) => {
   res.json({ ok: true, started: true });
 });
 
+// ---------- goals ----------
+const GOAL_SEED = { '2026-10': { sales: 50 }, '2026-11': { sales: 55, revenue: 70000, net: 20000, avg: 1275 } };
+async function getGoals() { let g = await kget('bcd:goals', null); if (g === null) { g = GOAL_SEED; await kset('bcd:goals', g); } return g; }
+app.post('/api/goals', async (req, res) => {
+  try {
+    const { month, goals } = req.body || {};
+    if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'bad month' });
+    const g = await getGoals(), o = {};
+    ['sales', 'revenue', 'net', 'avg', 'labor'].forEach(k => { const v = Number(goals && goals[k]); if (v > 0) o[k] = v; });
+    g[month] = o; await kset('bcd:goals', g);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ---------- couch photos ----------
 // Each photo is shrunk in the browser (about 100-300 KB) and saved in Upstash under its own key.
 const photoKey = k => 'bcd:photo:' + String(k).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 120);
@@ -632,7 +657,7 @@ app.get('/api/photo/:key', async (req, res) => {
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
 function demoData() {
   const H = ['Date', 'Source', 'Customer', 'Phone', 'Payment', 'Order Type', 'ZIP', 'Tax Rate', 'Couch Price',
-    'Discount', 'Delivery', 'Subtotal', 'Tax', 'Fee', 'Total', 'Receipt'];
+    'Discount', 'Delivery', 'Subtotal', 'Tax', 'Fee', 'Total', 'Receipt', 'Add-Ons', 'Add-Ons $'];
   const src = ['Meta Ads', 'Marketplace', 'Facebook or Instagram Ad', 'TikTok', 'Referral', 'Google', 'Meta Ads', 'Craigslist'];
   const now = new Date();
   const rows = [], showings = [];
@@ -642,7 +667,8 @@ function demoData() {
       const price = [899, 1050, 1250, 1299, 1499, 1650, 1950, 699][i % 8];
       const del = i % 3 === 0 ? 0 : 150;
       rows.push([d.toISOString().slice(0, 10), src[i % 8], 'Customer ' + i, '', i % 4 ? 'Card' : 'Venmo',
-        del ? 'Delivery' : 'Pickup', '63069', '9.68%', price, 0, del, price + del, 0, 0, 0, '']);
+        del ? 'Delivery' : 'Pickup', '63069', '9.68%', price, 0, del, price + del, 0, 0, 0, '',
+        ['', 'Scotchgard', '', 'Plastic Wrap, Scotchgard', '', 'Couch Removal', '', ''][i % 8], [0, 49, 0, 148, 0, 125, 0, 0][i % 8]]);
     }
     for (let i = 0; i < 90; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - m, 1 + i % 28, 10 + i % 8, (i % 3) * 20);
