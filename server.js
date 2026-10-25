@@ -10,6 +10,7 @@
 //   JOTFORM_API_BASE            optional: defaults to https://api.jotform.com
 //   APIFY_TOKEN                 Competitor Ads tab (same token the old Ad Tracker used)
 //   ADS_REDIS_URL / ADS_REDIS_TOKEN  optional: the old Ad Tracker's Upstash, to keep its ad history
+//   PLAID_CLIENT_ID / PLAID_SECRET / PLAID_ENV   Daily Cash bank balances (PLAID_ENV = production or sandbox)
 //   STRIPE_SECRET_KEY           restricted key with Balance: Read (Cash tab pulls the Stripe balance)
 // Without SHEETS_API_URL it runs on demo data.
 
@@ -178,7 +179,7 @@ app.post('/api/openhouse/check', async (req, res) => {
 app.get('/api/data', async (req, res) => {
   try {
     const [g, purchases, expenses, loads, openhouses] = await Promise.all([
-      google(req.query.fresh === '1'), kget(KEYS.purchases, []), getExpenses(), getLoads(), getOpenHouses(),
+      google(req.query.fresh === '1'), getPurchases(), getExpenses(), getLoads(), getOpenHouses(),
     ]);
     const photos = await kget('bcd:photos', {}).catch(() => ({}));
     const goals = await getGoals().catch(() => ({}));
@@ -218,13 +219,24 @@ app.post('/api/delete', async (req, res) => {
     if (!['purchases', 'expenses', 'loads', 'openhouses'].includes(kind)) return res.status(400).json({ error: 'bad kind' });
     const list = await kget(KEYS[kind], []);
     await kset(KEYS[kind], list.filter(x => x.id !== id));
-    if (String(id).startsWith('ivy-')) { const g = await kget('bcd:deletedImports', []); g.push(id); await kset('bcd:deletedImports', g); }
+    if (/^(ivy-|imp-)/.test(String(id))) { const g = await kget('bcd:deletedImports', []); g.push(id); await kset('bcd:deletedImports', g); }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ---------- B-Stock loads ----------
 // First run: loads-seed.json (Aug-Oct loads from the Bstock sheet) becomes the starting list.
+// Adds records from imports.json (by id) once; ids you delete are remembered and never re-added.
+async function mergeImports(key, list, field) {
+  let imp = [];
+  try { imp = JSON.parse(fs.readFileSync(path.join(__dirname, 'imports.json'), 'utf8'))[field] || []; } catch {}
+  if (!imp.length) return list;
+  const gone = new Set(await kget('bcd:deletedImports', [])), have = new Set(list.map(x => x.id));
+  const add = imp.filter(x => !have.has(x.id) && !gone.has(x.id));
+  if (add.length) { list = list.concat(add); await kset(key, list); }
+  return list;
+}
+async function getPurchases() { return mergeImports(KEYS.purchases, await kget(KEYS.purchases, []), 'purchases'); }
 async function getLoads() {
   let loads = await kget(KEYS.loads, null);
   if (!loads || !loads.length) {
@@ -233,7 +245,7 @@ async function getLoads() {
     if (Array.isArray(seed) && seed.length) { loads = seed; await kset(KEYS.loads, loads); }
     else loads = loads || [];
   }
-  return loads;
+  return mergeImports(KEYS.loads, loads, 'loads');
 }
 // Landed cost is split only across sectionals, sofas, sleepers and loveseats.
 // Chairs, recliners, ottomans, consoles, mattresses get $0.
@@ -653,6 +665,101 @@ app.get('/api/photo/:key', async (req, res) => {
     res.send(Buffer.from(m[2], 'base64'));
   } catch (e) { res.status(500).send(e.message); }
 });
+
+// ---------- bank balances (Plaid) ----------
+// Railway variables: PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV (sandbox | production).
+// Each bank login is one "Item". Access tokens are kept in Upstash, never sent to the browser.
+const PLAID = {
+  ID: (process.env.PLAID_CLIENT_ID || '').trim(),
+  SECRET: (process.env.PLAID_SECRET || '').trim(),
+  ENV: (process.env.PLAID_ENV || 'production').trim(),
+};
+// Last 4 of each account -> the Daily Cash field it fills.
+const MASK_FIELD = { '9926': 'checking9926', '7229': 'taxReserve7229', '5908': 'personal5908', '6620': 'marcus6620', '6569': 'marcus6569',
+  '2078': 'ink2078', '1602': 'ink1602', '1000': 'amex91000', '91000': 'amex91000', '8760': 'capone8760', '6166': 'discover6166' };
+async function plaid(pathname, body) {
+  if (!PLAID.ID || !PLAID.SECRET) throw new Error('Add PLAID_CLIENT_ID and PLAID_SECRET in Railway first.');
+  const r = await fetch(`https://${PLAID.ENV}.plaid.com${pathname}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: PLAID.ID, secret: PLAID.SECRET, ...body }),
+  });
+  const j = await r.json();
+  if (j.error_code) throw new Error(`Plaid: ${j.display_message || j.error_message} (${j.error_code})`);
+  return j;
+}
+app.post('/api/plaid/link-token', async (req, res) => {
+  try {
+    const body = { user: { client_user_id: 'billys-couches-owner' }, client_name: "Billy's HQ", country_codes: ['US'], language: 'en' };
+    if (req.body && req.body.itemId) {   // re-connect a bank that needs a fresh login
+      const items = await kget('bcd:plaidItems', []), it = items.find(x => x.item_id === req.body.itemId);
+      if (!it) return res.status(404).json({ error: 'Bank not found' });
+      body.access_token = it.access_token;
+    } else body.products = ['transactions'];
+    const j = await plaid('/link/token/create', body);
+    res.json({ ok: true, link_token: j.link_token });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/plaid/exchange', async (req, res) => {
+  try {
+    const { public_token, institution } = req.body || {};
+    const j = await plaid('/item/public_token/exchange', { public_token });
+    const items = (await kget('bcd:plaidItems', [])).filter(x => x.item_id !== j.item_id);
+    items.push({ item_id: j.item_id, access_token: j.access_token, institution: clean(institution, 60) || 'Bank', added: new Date().toISOString() });
+    await kset('bcd:plaidItems', items);
+    plaidCache = { at: 0, data: null };
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/plaid/remove', async (req, res) => {
+  try {
+    const items = await kget('bcd:plaidItems', []), it = items.find(x => x.item_id === req.body.itemId);
+    if (it) { try { await plaid('/item/remove', { access_token: it.access_token }); } catch {} }
+    await kset('bcd:plaidItems', items.filter(x => x.item_id !== req.body.itemId));
+    plaidCache = { at: 0, data: null };
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+let plaidCache = { at: 0, data: null };
+async function plaidBalances(force) {
+  if (!force && plaidCache.data && Date.now() - plaidCache.at < 10 * 60 * 1000) return plaidCache.data;
+  const items = await kget('bcd:plaidItems', []), banks = [], fields = {};
+  for (const it of items) {
+    try {
+      const j = await plaid('/accounts/get', { access_token: it.access_token });
+      const accounts = j.accounts.map(a => {
+        const field = MASK_FIELD[a.mask] || MASK_FIELD[String(a.mask || '').slice(-4)] || '';
+        const bal = a.balances.current != null ? a.balances.current : a.balances.available;
+        const val = Math.round(Math.abs(Number(bal) || 0) * 100) / 100;   // cards: amount owed
+        if (field) fields[field] = (fields[field] || 0) + val;
+        return { name: a.official_name || a.name, mask: a.mask, type: a.type, subtype: a.subtype, current: a.balances.current, available: a.balances.available, field };
+      });
+      banks.push({ item_id: it.item_id, institution: it.institution, accounts });
+    } catch (e) { banks.push({ item_id: it.item_id, institution: it.institution, error: e.message, relink: /ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message) }); }
+  }
+  plaidCache = { at: Date.now(), data: { banks, fields, at: new Date().toISOString(), configured: !!(PLAID.ID && PLAID.SECRET), env: PLAID.ENV } };
+  return plaidCache.data;
+}
+app.get('/api/plaid/balances', async (req, res) => {
+  try { res.json({ ok: true, ...(await plaidBalances(req.query.fresh === '1')) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Every morning at 7am Central: if no entry exists for today, save one from the banks
+// (safe, Venmo, stocks and rent carry over from your last entry; Stripe is pulled live).
+async function autoCashSnapshot() {
+  const items = await kget('bcd:plaidItems', []);
+  if (!items.length) return;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const snaps = await getCash();
+  if (snaps.some(s => s.date === today)) return;
+  const pb = await plaidBalances(true), last = snaps[snaps.length - 1] || {};
+  if (!Object.keys(pb.fields).length) return;
+  const snap = { ...last, date: today, savedAt: new Date().toISOString(), note: 'Auto from banks', auto: true, score: undefined, imported: undefined };
+  Object.assign(snap, pb.fields);
+  const sb = await stripeBalance(true).catch(() => ({}));
+  if (!sb.error) { snap.stripe = sb.total || 0; snap.stripeAuto = true; }
+  await kset(KEYS.cash, snaps.concat(snap).sort((a, b) => a.date.localeCompare(b.date)));
+}
+setInterval(() => { if (ctHour() === 7) autoCashSnapshot().catch(e => console.error('Auto cash failed:', e.message)); }, 15 * 60 * 1000);
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
 function demoData() {
