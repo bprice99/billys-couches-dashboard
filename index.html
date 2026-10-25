@@ -61,6 +61,7 @@ td.n,th.n{text-align:right}
 .pill.x{background:#f1ece6;color:#8a7d72;text-decoration:line-through}
 .pill.ns{background:#2b1d16;color:#fff}
 .pill.u{background:#e6eef8;color:#2a5a8a}
+input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
 .mask.on{display:flex}
@@ -95,7 +96,8 @@ td.n,th.n{text-align:right}
     <a class="nav" data-tab="showings">Showings</a>
     <a class="nav" data-tab="meta">Meta Ads</a>
     <a class="nav" data-tab="bstock">B-Stock Loads</a>
-    <a class="nav" data-tab="couches">Couch List</a>
+    <a class="nav" data-tab="payroll">Payroll</a>
+    <a class="nav" data-tab="cash">Cash Position</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
 
@@ -104,10 +106,10 @@ td.n,th.n{text-align:right}
       <h1 id="title">Sales Tracker</h1>
       <div class="mon" id="monNav"><button id="prev" aria-label="Previous month">&larr;</button><span id="monLabel"></span><button id="next" aria-label="Next month">&rarr;</button></div>
       <button class="btn" id="refresh">Refresh</button>
-      <button class="btn" id="print" hidden onclick="window.print()">Print</button>
       <button class="btn p" data-open="purchase" data-only="sales">+ Used pickup</button>
       <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
+      <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
     </div>
     <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
     <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
@@ -154,11 +156,23 @@ td.n,th.n{text-align:right}
     <!-- B-STOCK -->
     <section id="tab-bstock" hidden><div id="bsBody"></div></section>
 
-    <!-- COUCH LIST -->
-    <section id="tab-couches" hidden>
-      <div class="kpis k4" id="cKpis"></div>
-      <div class="card"><h2>On the floor now <small id="cNote"></small></h2><div style="overflow-x:auto"><table id="cTbl"></table></div></div>
+    <!-- PAYROLL -->
+    <section id="tab-payroll" hidden>
+      <div class="top" style="margin-top:-6px"><div class="mon"><button id="wkPrev" aria-label="Previous week">&larr;</button><span id="wkLabel" style="min-width:150px"></span><button id="wkNext" aria-label="Next week">&rarr;</button></div>
+        <button class="btn p" id="payBtn" style="margin-left:auto">Mark week paid</button></div>
+      <div class="err" id="payWarn" hidden></div>
+      <div class="kpis" id="payKpis"></div>
+      <div class="card"><h2>This week's pay <small>Mon–Sun, paid Sunday &middot; $20 per showing sold &middot; $20 at 4+ deep cleans</small></h2><div style="overflow-x:auto"><table id="payTbl"></table></div>
+        <p class="empty" style="margin-top:12px;font-size:12.5px">Edit a rate or type an adjustment (tips, corrections) and it saves on its own. "Mark week paid" adds each person's total to Expenses as Payroll.</p>
+        <p class="empty" style="margin-top:6px;font-size:12px" id="payFields"></p></div>
+      <div class="grid2">
+        <div class="card"><h2>Work Log entries this week</h2><div style="overflow-x:auto"><table id="payLog"></table></div></div>
+        <div class="card"><h2>Last 8 weeks</h2><div style="overflow-x:auto"><table id="payTrend"></table></div></div>
+      </div>
     </section>
+
+    <!-- CASH POSITION -->
+    <section id="tab-cash" hidden><div id="cashBody"></div></section>
   </main>
 </div>
 
@@ -215,6 +229,21 @@ td.n,th.n{text-align:right}
   </div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
+<div class="mask" id="m-cash"><form class="modal" data-kind="cash" style="max-width:560px;max-height:92vh;overflow:auto">
+  <h3>Today's balances</h3>
+  <div class="two"><label>Date<input type="date" name="date" required></label><label>Note<input name="note" placeholder="optional"></label></div>
+  <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Business</p>
+  <div class="two"><label>Checking ··9926<input type="number" step="0.01" name="checking9926" required></label><label>Tax Reserve ··7229<input type="number" step="0.01" name="taxReserve7229"></label></div>
+  <div class="two"><label>Cash in safe<input type="number" step="0.01" name="safe"></label><label>Venmo in transit<input type="number" step="0.01" name="venmo" placeholder="not yet in 9926"></label></div>
+  <label>Stripe<input type="number" step="0.01" name="stripe"><span id="stripeNow" style="font-weight:500;color:var(--muted);font-size:12px"></span></label>
+  <div class="two"><label>Ink ··2078 owed<input type="number" step="0.01" name="ink2078"></label><label>Ink ··1602 owed<input type="number" step="0.01" name="ink1602"></label></div>
+  <div class="two"><label>Amex ··91000 owed<input type="number" step="0.01" name="amex91000"></label><label>Rent + utilities<input type="number" step="0.01" name="bills"></label></div>
+  <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Personal</p>
+  <div class="two"><label>Free Checking ··5908<input type="number" step="0.01" name="personal5908"></label><label>Stocks<input type="number" step="0.01" name="stocks"></label></div>
+  <div class="two"><label>Marcus ··6620 Travel<input type="number" step="0.01" name="marcus6620"></label><label>Marcus ··6569 Online<input type="number" step="0.01" name="marcus6569"></label></div>
+  <div class="two"><label>Capital One ··8760 owed<input type="number" step="0.01" name="capone8760"></label><label>Discover ··6166 owed<input type="number" step="0.01" name="discover6166"></label></div>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
+</form></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -240,10 +269,10 @@ function col(headers, keys, not){
 const inMonth = (dt, y, m) => dt && dt.getFullYear() === y && dt.getMonth() === m;
 const mkey = (y, m) => y + '-' + m;
 function back(y, m, k){ const d = new Date(y, m - k, 1); return { y: d.getFullYear(), m: d.getMonth() }; }
-function chg(a, b, invert){
+function chg(a, b, invert, vs){
   if (!b) return '<div class="c flat">&ndash;</div>';
   const p = (a - b) / Math.abs(b) * 100, good = invert ? p <= 0 : p >= 0;
-  return `<div class="c ${Math.abs(p)<0.5?'flat':good?'up':'dn'}">${p>=0?'&uarr;':'&darr;'} ${Math.abs(p).toFixed(0)}% vs last month</div>`;
+  return `<div class="c ${Math.abs(p)<0.5?'flat':good?'up':'dn'}">${p>=0?'&uarr;':'&darr;'} ${Math.abs(p).toFixed(0)}% vs ${vs || 'last month'}</div>`;
 }
 function chgSmall(a, b, invert){
   if (!b) return '<span class="c flat">&ndash;</span>';
@@ -263,7 +292,7 @@ const baseOpts = (money_) => ({ responsive: true, maintainAspectRatio: false, in
   plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } } },
   scales: { y: { ticks: money_ ? { callback: v => '$' + (v >= 1000 ? (v/1000) + 'k' : v) } : { precision: 0 }, grid: { color: '#f0ebe4' } }, x: { grid: { display: false } } } });
 
-let RAW = null, DATA = null, INV = null, tab = 'sales';
+let RAW = null, DATA = null, tab = 'sales';
 const now = new Date();
 let cur = { y: now.getFullYear(), m: now.getMonth() };
 
@@ -294,14 +323,14 @@ function parse(d){
     date: col(sh, ['date']), source: col(sh, ['source','how did you find']), name: col(sh, ['customer','name'], ['first']),
     pay: col(sh, ['payment']), type: col(sh, ['order type','pickup or delivery','fulfillment','type'], ['tax']),
     price: col(sh, ['couch price','price'], ['total','sale']), disc: col(sh, ['discount']), del: col(sh, ['delivery'], ['type']),
-    sub: col(sh, ['subtotal','sub total']), total: col(sh, ['total'], ['sub']),
+    sub: col(sh, ['subtotal','sub total']), total: col(sh, ['total'], ['sub']), tax: col(sh, ['sales tax','tax'], ['rate']),
   };
   const sales = srows.map(r => {
     const price = num(r[S.price]), disc = Math.abs(num(r[S.disc])), del = num(r[S.del]);
     const rev = S.sub > -1 && num(r[S.sub]) ? num(r[S.sub]) : price - disc + del;
     let type = S.type > -1 ? String(r[S.type]) : (del > 0 ? 'Delivery' : 'Pickup');
     type = /deliver/i.test(type) ? 'Delivery' : 'Pickup';
-    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev };
+    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
   }).filter(x => x.date && x.rev > 0);
 
   const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
@@ -534,47 +563,193 @@ function renderBstock(){
     </div>`; }).join('');
 }
 
-// ---------- couch list ----------
-async function loadInventory(fresh){
-  $('cTbl').innerHTML = '<tr><td class="empty">Loading the Current Inventory page...</td></tr>';
+// ---------- payroll ----------
+let PAY = null;
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+function mondayOf(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+let wk = mondayOf(new Date());
+const fname = s => String(s || '').trim().split(/\s+/)[0] || 'Unknown';
+const pkey = s => fname(s).toLowerCase().replace(/^gunarr$/, 'gunnarr');
+async function loadPayroll(fresh){
+  $('payTbl').innerHTML = '<tr><td class="empty">Loading the Work Log...</td></tr>';
   try {
-    const r = await fetch('/api/inventory' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
-    const d = await r.json(); if (d.error) throw new Error(d.error);
-    INV = d; renderCouches();
-  } catch (e) { $('cTbl').innerHTML = `<tr><td class="empty">Couldn't read the inventory page: ${esc(e.message)}</td></tr>`; }
+    const r = await fetch('/api/payroll' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
+    const d = await r.json(); if (d.error && !d.entries) throw new Error(d.error);
+    PAY = d; renderPayroll();
+  } catch (e) { $('payTbl').innerHTML = `<tr><td class="empty">Couldn't load payroll: ${esc(e.message)}</td></tr>`; }
 }
-function renderCouches(){
-  if (!INV) return loadInventory();
-  const today = new Date(); today.setHours(0,0,0,0);
-  const items = INV.items.map(x => ({ ...x, days: Math.max(0, Math.round((today - toDate(x.firstSeen)) / 864e5)) })).sort((a, b) => b.days - a.days || b.price - a.price);
-  const value = items.reduce((a, x) => a + x.price, 0), retail = items.filter(x => x.retail);
-  const oldest = items.length ? Math.min(...items.map(x => toDate(x.firstSeen))) : today;
-  $('cKpis').innerHTML = kpiHtml([
-    ['Couches on the floor', items.length],
-    ['Floor value', money(value)],
-    ['Average price', money(items.length ? value / items.length : 0)],
-    ['Avg. off retail', retail.length ? pct(retail.reduce((a, x) => a + (1 - x.price / x.retail), 0) / retail.length) : '–'],
+function payWeek(mon){
+  const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+  const a = ymd(mon), b = ymd(sun), wkey = a;
+  const ents = PAY.entries.filter(e => e.date >= a && e.date <= b);
+  const people = {};
+  ents.forEach(e => { const k = pkey(e.name); const p = people[k] = people[k] || { key: k, name: fname(e.name), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, days: 0 };
+    p.hours += e.hours; p.deep += e.deep; p.spot += e.spot; p.sold += e.sold; p.shows += e.shows; p.days++; });
+  const adj = (PAY.adj || {})[wkey] || {};
+  Object.keys(adj).forEach(k => { if (!people[k] && adj[k].amount) people[k] = { key: k, name: k[0].toUpperCase() + k.slice(1), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, days: 0 }; });
+  const lines = Object.values(people).map(p => {
+    const rate = PAY.rates[p.key] ?? 0, hourly = p.hours * rate, showBonus = p.sold * 20, cleanBonus = p.deep >= 4 ? 20 : 0;
+    const a2 = adj[p.key] || { amount: 0, note: '' };
+    return { ...p, rate, hourly, showBonus, cleanBonus, adj: a2.amount || 0, adjNote: a2.note || '', total: hourly + showBonus + cleanBonus + (a2.amount || 0) };
+  }).sort((x, y) => y.total - x.total);
+  const sales = RAW ? RAW.sales.filter(s => ymd(s.date) >= a && ymd(s.date) <= b).reduce((t, s) => t + s.rev, 0) : 0;
+  const tot = k => lines.reduce((t, l) => t + l[k], 0);
+  return { a, b, mon, sun, ents, lines, total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('adj'), sales, paid: (PAY.paid || {})[wkey] };
+}
+function renderPayroll(){
+  if (!PAY) return loadPayroll();
+  const W = payWeek(wk), prev = new Date(wk); prev.setDate(prev.getDate() - 7); const P = payWeek(prev);
+  const f = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  $('wkLabel').textContent = f(W.mon) + ' – ' + f(W.sun);
+  $('payWarn').hidden = !PAY.error; $('payWarn').textContent = PAY.error || '';
+  const fs = PAY.fieldsSeen || {}, miss = ['name', 'hours', 'deep cleans', 'showings sold'].filter(k => !fs[k] && !(k === 'hours' && fs.start && fs.end));
+  $('payFields').innerHTML = PAY.entries.length ? 'Reading the Work Log: ' + Object.entries(fs).map(([k, v]) => `<b>${esc(k)}</b> = "${esc(v)}"`).join(' · ') +
+    (miss.length ? `<br><span style="color:var(--bad)">Couldn't find: ${miss.join(', ')}. Use the Adjust column for those.</span>` : '') : '';
+  $('payKpis').innerHTML = kpiHtml([
+    ['Payroll this week', money(W.total), chg(W.total, P.total, true, 'last week')],
+    ['Hours', W.hours.toFixed(1), chg(W.hours, P.hours, false, 'last week')],
+    ['Bonuses + adjustments', money(W.bonus), chg(W.bonus, P.bonus, false, 'last week')],
+    ['Sales this week', money(W.sales), chg(W.sales, P.sales, false, 'last week')],
+    ['Labor % of sales', W.sales ? pct(W.total / W.sales) : '–', W.sales && P.sales ? chg(W.total / W.sales, P.total / P.sales, true, 'last week') : ''],
+    ['Status', W.paid ? '<span class="pill g">Paid</span>' : '<span class="pill">Not paid</span>', W.paid ? `<div class="c flat">Marked ${esc(W.paid)}</div>` : `<div class="c flat">Payday ${f(W.sun)}</div>`],
   ]);
-  $('cNote').textContent = 'Days on floor counted since ' + new Date(oldest).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', when the dashboard started tracking';
-  $('cTbl').innerHTML = `<tr><th class="hide-m"></th><th>Couch</th><th>Grade</th><th class="n">Price</th><th class="n hide-m">Retail</th><th class="n">Days on floor</th></tr>` +
-    (items.length ? items.map(x => `<tr><td class="hide-m">${x.img ? `<img class="thumb" src="${esc(x.img)}" alt="" loading="lazy">` : ''}</td><td>${esc(x.title)}</td><td>${x.grade ? `<span class="pill">${esc(x.grade)}</span>` : '–'}</td><td class="n"><b>${money(x.price)}</b></td><td class="n hide-m">${x.retail ? money(x.retail) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td></tr>`).join('')
-      : '<tr><td colspan="6" class="empty">No couches found on the Current Inventory page.</td></tr>');
+  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Adjust</th><th class="n">Total</th></tr>` +
+    (W.lines.length ? W.lines.map(l => `<tr><td><b>${esc(l.name)}</b><div style="font-size:12px;color:var(--muted)">${l.days} day${l.days===1?'':'s'} logged</div></td>
+      <td class="n">${l.hours.toFixed(2)}</td>
+      <td class="n"><input class="cell" type="number" step="0.5" value="${l.rate}" data-rate="${esc(l.key)}" aria-label="Rate for ${esc(l.name)}"></td>
+      <td class="n hide-m">${money(l.hourly)}</td>
+      <td class="n hide-m">${l.sold}${l.sold ? ` <span style="color:var(--muted)">(${money(l.showBonus)})</span>` : ''}</td>
+      <td class="n hide-m">${l.deep} / ${l.spot}${l.cleanBonus ? ' <span class="pill g">+$20</span>' : ''}</td>
+      <td class="n">${money(l.showBonus + l.cleanBonus)}</td>
+      <td class="n"><input class="cell" type="number" step="1" value="${l.adj || ''}" placeholder="0" data-adj="${esc(l.key)}" title="${esc(l.adjNote)}" aria-label="Adjustment for ${esc(l.name)}"></td>
+      <td class="n"><b>${money(l.total)}</b></td></tr>`).join('') +
+      `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td></tr>`
+      : `<tr><td colspan="9" class="empty">${PAY.error ? esc(PAY.error) : 'No Work Log entries this week.'}</td></tr>`);
+  $('payBtn').textContent = W.paid ? 'Undo paid' : 'Mark week paid';
+  $('payBtn').disabled = !W.lines.length && !W.paid;
+  $('payLog').innerHTML = `<tr><th>Date</th><th>Who</th><th class="n">Hours</th><th class="n">Deep</th><th class="n">Spot</th><th class="n hide-m">Showings</th><th class="n">Sold</th></tr>` +
+    (W.ents.length ? W.ents.slice().sort((x, y) => x.date.localeCompare(y.date)).map(e => `<tr><td>${toDate(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${esc(e.name)}</td><td class="n">${e.hours}</td><td class="n">${e.deep}</td><td class="n">${e.spot}</td><td class="n hide-m">${e.shows}</td><td class="n">${e.sold}</td></tr>`).join('')
+      : '<tr><td colspan="7" class="empty">Nothing logged.</td></tr>');
+  $('payTrend').innerHTML = `<tr><th>Week</th><th class="n">Hours</th><th class="n">Payroll</th><th class="n">Sales</th><th class="n">Labor %</th><th>Status</th></tr>` +
+    [0,1,2,3,4,5,6,7].map(k => { const m = new Date(wk); m.setDate(m.getDate() - 7 * k); const X = payWeek(m);
+      return `<tr><td>${f(X.mon)} – ${f(X.sun)}</td><td class="n">${X.hours.toFixed(1)}</td><td class="n"><b>${money(X.total)}</b></td><td class="n">${money(X.sales)}</td><td class="n">${X.sales ? pct(X.total / X.sales) : '–'}</td><td>${X.paid ? '<span class="pill g">Paid</span>' : X.lines.length ? '<span class="pill">Not paid</span>' : '–'}</td></tr>`; }).join('');
+}
+async function post(url, body){ const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Failed'); return j; }
+document.addEventListener('change', async e => {
+  const t = e.target;
+  try {
+    if (t.dataset.rate) { await post('/api/payroll/rate', { name: t.dataset.rate, rate: t.value }); PAY.rates[t.dataset.rate] = Number(t.value); toast('Rate saved'); renderPayroll(); }
+    else if (t.dataset.adj !== undefined) {
+      const week = ymd(wk), note = t.title || '';
+      await post('/api/payroll/adjust', { week, name: t.dataset.adj, amount: t.value, note });
+      PAY.adj[week] = PAY.adj[week] || {}; PAY.adj[week][t.dataset.adj] = { amount: Number(t.value) || 0, note }; toast('Adjustment saved'); renderPayroll();
+    }
+  } catch (err) { toast(err.message); }
+});
+
+// ---------- cash position ----------
+let CASH = null;
+const HEALTH = [[15000, 'Strong', 'g', 'Over a month of expenses on hand after bills'], [7500, 'Healthy', 'u', 'Half a month to a month of expenses after bills'],
+  [0, 'Tight', '', 'Positive, but under half a month of expenses after bills'], [-Infinity, 'Danger', 'd', 'Cards and bills are more than the cash on hand']];
+function cashCalc(s){
+  const v = k => Number(s[k]) || 0;
+  const bizCards = v('ink2078') + v('ink1602') + v('amex91000'), persCards = v('capone8760') + v('discover6166');
+  const netBiz = v('checking9926') + v('safe') + v('stripe') + v('venmo') - bizCards;
+  const afterBills = netBiz - (s.bills == null || s.bills === '' ? 3000 : v('bills'));
+  const netPers = v('personal5908') + v('marcus6620') + v('marcus6569') - persCards;
+  const combined = netBiz + netPers;
+  const h = HEALTH.find(x => afterBills >= x[0]);
+  return { bizCards, persCards, netBiz, afterBills, netPers, combined, withStocks: combined + v('stocks'), health: h };
+}
+const delta = (a, b) => b == null ? '<div class="c flat">First entry</div>' : Math.abs(a - b) < 0.5 ? '<div class="c flat">No change vs last entry</div>' : `<div class="c ${a > b ? 'up' : 'dn'}">${a > b ? '&uarr; +' : '&darr; '}${money(a - b)} vs last entry</div>`;
+async function loadCash(fresh){
+  try {
+    const r = await fetch('/api/cash' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
+    const d = await r.json(); if (d.error) throw new Error(d.error);
+    CASH = d; renderCash();
+  } catch (e) { $('cashBody').innerHTML = `<div class="err" style="display:block">Couldn't load cash: ${esc(e.message)}</div>`; }
+}
+function renderCash(){
+  if (!CASH) return loadCash();
+  const snaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)), last = snaps[snaps.length - 1], prev = snaps[snaps.length - 2];
+  const sb = CASH.stripe || {};
+  if (!last) { $('cashBody').innerHTML = `<div class="card"><h2>No balances yet</h2><p class="empty">Click <b>+ Today's balances</b> and type in your accounts. Takes about a minute; tomorrow it pre-fills with today's numbers so you only change what moved.</p></div>`; return; }
+  const C = cashCalc(last), Pv = prev ? cashCalc(prev) : null;
+  const now0 = new Date(); const mTax = RAW ? RAW.sales.filter(s => inMonth(s.date, now0.getFullYear(), now0.getMonth())).reduce((t, s) => t + (s.tax || 0), 0) : 0;
+  const row = (l, v, neg, note) => `<div class="row"><span>${l}${note ? `<div style="font-size:12px;color:var(--muted)">${note}</div>` : ''}</span><b style="${neg ? 'color:var(--bad)' : ''}">${neg ? '−' : ''}${money(v)}</b></div>`;
+  const stripeNote = last.stripeAuto ? 'pulled from Stripe when saved' : 'typed in';
+  $('cashBody').innerHTML = `
+    <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span class="pill ${C.health[2]}" style="font-size:15px;padding:6px 14px">${C.health[1]}</span>
+      <span style="font-size:14px;color:var(--muted)">${C.health[3]} &middot; as of ${toDate(last.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}${last.note ? ' &middot; ' + esc(last.note) : ''}</span>
+    </div>
+    <div class="kpis">${kpiHtml([
+      ['Net business', money(C.netBiz), delta(C.netBiz, Pv && Pv.netBiz)],
+      ['Business after bills', money(C.afterBills), delta(C.afterBills, Pv && Pv.afterBills)],
+      ['Net personal', money(C.netPers), delta(C.netPers, Pv && Pv.netPers)],
+      ['Combined', money(C.combined), delta(C.combined, Pv && Pv.combined)],
+      ['Combined + stocks', money(C.withStocks), delta(C.withStocks, Pv && Pv.withStocks)],
+      ['Tax reserve (not spendable)', money(last.taxReserve7229 || 0), `<div class="c flat">${money(mTax)} sales tax collected this month</div>`],
+    ])}</div>
+    <div class="grid2" style="margin-top:0">
+      <div class="card"><h2>Business</h2>
+        ${row('Commerce Business Checking ··9926', last.checking9926)}
+        ${row('Cash in safe', last.safe)}
+        ${row('Stripe not yet paid out', last.stripe, false, stripeNote)}
+        ${row('Venmo in transit', last.venmo, false, 'Not yet posted to 9926')}
+        ${row('Chase Ink ··2078', last.ink2078, true)}
+        ${row('Chase Ink ··1602', last.ink1602, true)}
+        ${row('Amex Blue Business ··91000', last.amex91000, true)}
+        <div class="row"><span><b>Net business</b></span><b>${money(C.netBiz)}</b></div>
+        ${row('Rent + utilities', last.bills == null ? 3000 : last.bills, true)}
+        <div class="row"><span><b>After bills</b></span><b>${money(C.afterBills)}</b></div>
+        <div class="row" style="opacity:.6"><span>Commerce Tax Reserve ··7229<div style="font-size:12px">Shown, never counted as spendable</div></span><b>${money(last.taxReserve7229 || 0)}</b></div>
+      </div>
+      <div class="card"><h2>Personal</h2>
+        ${row('Commerce Free Checking ··5908', last.personal5908)}
+        ${row('Marcus Savings ··6620 (Travel)', last.marcus6620)}
+        ${row('Marcus Savings ··6569 (Online)', last.marcus6569)}
+        ${row('Capital One ··8760', last.capone8760, true)}
+        ${row('Discover ··6166', last.discover6166, true)}
+        <div class="row"><span><b>Net personal</b></span><b>${money(C.netPers)}</b></div>
+        <div class="row"><span>Stocks</span><b>${money(last.stocks || 0)}</b></div>
+        <div class="row"><span><b>Combined + stocks</b></span><b>${money(C.withStocks)}</b></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px"><h2>Trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
+    <div class="card" style="margin-top:16px"><h2>Every entry</h2><div style="overflow-x:auto"><table>
+      <tr><th>Date</th><th class="n">Net business</th><th class="n hide-m">After bills</th><th class="n">Personal</th><th class="n">Combined</th><th>Health</th><th></th></tr>
+      ${snaps.slice().reverse().map(s => { const X = cashCalc(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n"><b>${money(X.netBiz)}</b></td><td class="n hide-m">${money(X.afterBills)}</td><td class="n">${money(X.netPers)}</td><td class="n">${money(X.combined)}</td><td><span class="pill ${X.health[2]}">${X.health[1]}</span></td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
+    </table></div>
+    <p class="empty" style="margin-top:12px;font-size:12.5px">Health uses business after bills: Strong $15K+, Healthy $7.5K+, Tight $0+, Danger below $0. Stripe now: ${sb.error ? esc(sb.error) : money(sb.total || 0) + ' (' + money(sb.pending || 0) + ' pending, ' + money(sb.available || 0) + ' available).'}</p></div>`;
+  const recent = snaps.slice(-60), o = baseOpts(true);
+  const line = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w || 2, tension: .3, pointRadius: recent.length < 15 ? 3 : 0 });
+  chartIn('cashChart', { type: 'line', data: { labels: recent.map(s => toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})),
+    datasets: [line('Net business', recent.map(s => cashCalc(s).netBiz), '#b0524c', 3), line('Net personal', recent.map(s => cashCalc(s).netPers), '#2e7d4f'), line('Combined', recent.map(s => cashCalc(s).combined), '#2b1d16')] }, options: o });
+}
+function openCash(){
+  const m = $('m-cash'), f = m.querySelector('form').elements, last = CASH && CASH.snaps.length ? CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)).pop() : {};
+  ['checking9926','taxReserve7229','safe','venmo','ink2078','ink1602','amex91000','personal5908','marcus6620','marcus6569','capone8760','discover6166'].forEach(k => f[k].value = last[k] != null ? last[k] : '');
+  f.stocks.value = last.stocks != null ? last.stocks : 40000; f.bills.value = last.bills != null ? last.bills : 3000;
+  f.date.value = todayStr(); f.stripe.value = ''; f.note.value = '';
+  const sb = (CASH && CASH.stripe) || {};
+  $('stripeNow').textContent = sb.error ? 'Not connected. Type the Stripe balance in.' : 'Leave blank to pull automatically (now ' + money(sb.total || 0) + ').';
+  m.classList.add('on');
 }
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', showings: 'Showings', meta: 'Meta Ads', bstock: 'B-Stock Loads', couches: 'Couch List' };
+const TITLES = { sales: 'Sales Tracker', showings: 'Showings', meta: 'Meta Ads', bstock: 'B-Stock Loads', payroll: 'Payroll', cash: 'Cash Position' };
 function render(){
   if (!RAW) return;
   $('monLabel').textContent = new Date(cur.y, cur.m, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  ({ sales: renderSales, showings: renderShowings, meta: renderMeta, bstock: renderBstock, couches: renderCouches })[tab]();
+  ({ sales: renderSales, showings: renderShowings, meta: renderMeta, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
 }
 function setTab(t){
   tab = t;
   document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
   Object.keys(TITLES).forEach(k => $('tab-' + k).hidden = k !== t);
   $('title').textContent = TITLES[t];
-  $('monNav').hidden = t === 'couches' || t === 'bstock';
-  $('print').hidden = t !== 'couches';
+  $('monNav').hidden = ['bstock', 'payroll', 'cash'].includes(t);
   document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
   try { localStorage.setItem('bcdTab', t); } catch {}
   render();
@@ -595,7 +770,15 @@ async function load(fresh){
 
 $('prev').onclick = () => { const b = back(cur.y, cur.m, 1); cur = b; render(); };
 $('next').onclick = () => { const b = back(cur.y, cur.m, -1); cur = b; render(); };
-$('refresh').onclick = () => { if (tab === 'couches') loadInventory(true); else { toast('Pulling the latest from Google...'); load(true); } };
+$('refresh').onclick = () => { if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
+$('wkPrev').onclick = () => { wk.setDate(wk.getDate() - 7); wk = new Date(wk); renderPayroll(); };
+$('wkNext').onclick = () => { wk.setDate(wk.getDate() + 7); wk = new Date(wk); renderPayroll(); };
+$('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
+$('payBtn').onclick = async () => {
+  const W = payWeek(wk);
+  try { await post('/api/payroll/paid', { week: ymd(wk), undo: !!W.paid, lines: W.lines.map(l => ({ name: l.name, total: l.total })) });
+    toast(W.paid ? 'Marked unpaid' : 'Marked paid and added to Expenses'); await loadPayroll(true); load(true); } catch (e) { toast(e.message); }
+};
 document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
@@ -614,6 +797,8 @@ document.querySelectorAll('.mask').forEach(m => {
         const mm = t.match(/^(.*?)[,\t|]\s*\$?([\d,]+(?:\.\d+)?)\s*$/);
         return mm ? { name: mm[1].trim(), comp: parseFloat(mm[2].replace(/,/g, '')) } : { name: t, comp: 0 };
       }).filter(Boolean) };
+    } else if (f.dataset.kind === 'cash') {
+      url = '/api/cash'; body = data;
     } else if (f.dataset.kind === 'sold') {
       url = data.target === 'purchase' ? '/api/purchases/sale' : '/api/loads/unit';
       body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date };
@@ -621,7 +806,8 @@ document.querySelectorAll('.mask').forEach(m => {
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Save failed');
-      m.classList.remove('on'); f.reset(); toast('Saved'); load(true);
+      m.classList.remove('on'); f.reset(); toast('Saved');
+      if (f.dataset.kind === 'cash') loadCash(); else load(true);
     } catch (err) { toast(err.message); }
     btn.disabled = false; btn.textContent = label;
   });
@@ -635,6 +821,9 @@ document.addEventListener('click', async e => {
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
     const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
+  const cd = e.target.closest('[data-cashdel]');
+  if (cd) { if (cd.dataset.armed !== '1') { cd.dataset.armed = '1'; cd.textContent = 'Tap again'; setTimeout(() => { cd.dataset.armed = ''; cd.textContent = 'Delete'; }, 3000); return; }
+    try { await post('/api/cash/delete', { date: cd.dataset.cashdel }); toast('Deleted'); loadCash(); } catch (err) { toast(err.message); } return; }
   const b = e.target.closest('[data-del]'); if (!b) return;
   if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Delete'; }, 3000); return; }
   const [kind, id] = b.dataset.del.split(':');
