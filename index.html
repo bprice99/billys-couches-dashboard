@@ -1,1458 +1,693 @@
-<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Billy's HQ"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#2b1d16"><link rel="apple-touch-icon" href="/icon-180.png"><link rel="manifest" href="/manifest.json">
-<title>Billy's HQ</title>
-<script src="/chart.js"></script>
-<style>
-:root{--red:#b0524c;--red2:#963f3a;--dark:#2b1d16;--cream:#efe9e2;--bg:#f7f3ee;--line:#e8e0d6;--muted:#7a6f66;--text:#222;--green:#2e7d4f;--bad:#c0392b;--sage:#8fb59a;--gray:#c9bfb5}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-html,body{max-width:100%;overflow-x:hidden}
-button,a,select,input,label,.nav,.adchip{touch-action:manipulation}
-.btn:active,.nav:active,.adchip:active{transform:scale(.97)}
-canvas{max-width:100%}
-[hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-a{color:inherit}
-.app{display:flex;min-height:100vh}
-.side{width:220px;flex:none;background:var(--dark);color:#efe9e2;padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
-.brand{font-weight:800;font-size:17px;padding:0 10px 18px;letter-spacing:.01em}
-.brand small{display:block;font-weight:500;font-size:12px;color:#bfae9f;margin-top:2px}
-.nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:10px;font-size:14px;color:#d8cabd;text-decoration:none;cursor:pointer}
-.nav:hover{background:rgba(255,255,255,.06)}
-.nav.on{background:var(--red);color:#fff;font-weight:700}
-.side .foot{margin-top:auto;padding:10px 12px;font-size:12px;color:#a8998d}
-.side .foot a{color:#d8cabd}
-.main{flex:1;min-width:0;padding:26px 30px 60px}
-.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px}
-.top h1{font-size:26px;margin:0 auto 0 0}
-.mon{display:flex;align-items:center;gap:6px}
-.mon button,.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text)}
-.mon span{min-width:130px;text-align:center;font-weight:700}
-.btn.p{background:var(--red);border-color:var(--red);color:#fff}
-.btn.p:hover{background:var(--red2)}
-.btn.sm{padding:4px 9px;font-size:12px;border-radius:8px}
-.note{background:#fff4d6;border:1px solid #f0d58a;color:#6b5312;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px}
-.err{background:#fde8e6;border:1px solid #f3b3ab;color:#8a2c22;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
-.kpis.k7{grid-template-columns:repeat(7,1fr)}
-.kpis.k4{grid-template-columns:repeat(4,1fr)}
-.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
-.kpi .l{font-size:13px;color:var(--muted);margin-bottom:6px}
-.kpi .v{font-size:26px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
-.kpi .c{font-size:12.5px;font-weight:700;margin-top:6px}
-.up{color:var(--green)}.dn{color:var(--bad)}.flat{color:var(--muted)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-.card h2{font-size:16px;margin:0 0 14px}
-.card h2 small{font-weight:500;color:var(--muted);font-size:12.5px;margin-left:6px}
-.chartwrap{height:300px}
-.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
-.row:first-of-type{border-top:0}
-.row b{font-size:15px}
-.row .c{font-size:12px;font-weight:700;width:58px;text-align:right}
-.bar{height:6px;border-radius:99px;background:var(--cream);margin:4px 0 2px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--red);border-radius:99px}
-.brow{padding:8px 0;border-top:1px solid var(--line)}
-.brow:first-of-type{border-top:0}
-.brow .t{display:flex;justify-content:space-between;font-size:14px}
-.empty{color:var(--muted);font-size:14px;margin:0}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line)}
-td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
-td.n,th.n{text-align:right}
-.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--cream);white-space:nowrap}
-.pill.d{background:#fbe4e0;color:var(--red2)}
-.pill.g{background:#dff0e4;color:#1f6b3d}
-.pill.x{background:#f1ece6;color:#8a7d72;text-decoration:line-through}
-.pill.ns{background:#2b1d16;color:#fff}
-.pill.u{background:#e6eef8;color:#2a5a8a}
-select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:600;font-family:inherit;color:var(--text)}
-.chk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
-.chk input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--red);flex:none}
-.pies{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.piewrap{height:240px}
-@media (max-width:1100px){.pies{grid-template-columns:1fr}}
-.adchip{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer;user-select:none;margin:0 6px 8px 0}
-.adchip.on{background:var(--dark);color:#fff;border-color:var(--dark)}
-.adstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:8px 0 18px}
-.adstat{cursor:pointer;padding:14px 16px}.adstat b{display:block;font-size:15px}.adstat span{font-size:13px;color:var(--muted)}
-.adgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
-.adc{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-.adm{position:relative;background:#111;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center}
-.adm img,.adm video{width:100%;height:100%;object-fit:cover;display:block}
-.adnone{color:#aaa;font-size:13px;padding:20px;text-align:center}
-.addays{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.95);border-radius:999px;padding:5px 10px;font-weight:800;font-size:14px}
-.addays.proven{background:var(--green);color:#fff}.addays.strong{background:#b7791f;color:#fff}
-.adtag{position:absolute;top:10px;right:10px;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;background:#fff}
-.adtag.new{background:var(--red);color:#fff}.adtag.ended{background:#555;color:#fff}
-.adb{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
-.adr{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
-.adbrand{font-weight:700;color:var(--text);font-size:14px}.adtitle{font-weight:700;font-size:14px}
-.adcopy{font-size:13px;line-height:1.45;white-space:pre-wrap;max-height:5.8em;overflow:hidden}.adcopy.open{max-height:none}
-.admore{font-size:12px;color:var(--red);cursor:pointer;font-weight:600;background:none;border:0;padding:0;text-align:left}
-.adlinks{display:flex;gap:10px;margin-top:auto;padding-top:8px;font-size:12px}
-.adempty{grid-column:1/-1;text-align:center;color:var(--muted);padding:50px 20px}
-.pbtn{width:56px;height:42px;border:1px dashed #cbbfb2;border-radius:8px;background:#fbf8f4;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;line-height:1.1}
-img.thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;cursor:zoom-in;background:var(--cream)}
-.lb img{max-width:100%;max-height:70vh;border-radius:12px;display:block;margin:0 auto 14px}
-.adyours{background:var(--red)!important;color:#fff!important}
-.adcmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.adcmp h3{font-size:15px;margin:0 0 10px}
-@media (max-width:800px){.adcmp{grid-template-columns:1fr}}
-input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
-.thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
-.mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
-.mask.on{display:flex}
-.modal{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:420px}
-.modal h3{margin:0 0 16px;font-size:19px}
-.modal label{display:block;font-size:13px;font-weight:600;margin-bottom:12px}
-.modal input,.modal select{display:block;width:100%;margin-top:5px;padding:11px 12px;border:1px solid #d9d0c5;border-radius:10px;font-size:15px;font-family:inherit}
-.modal .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.modal .acts{display:flex;gap:10px;margin-top:6px}
-.modal .acts .btn{flex:1}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;border-radius:12px;padding:12px 18px;font-size:14px;display:none;z-index:60}
-@media (max-width:1100px){.kpis,.kpis.k7{grid-template-columns:repeat(3,1fr)}.kpis.k4{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:800px){
-  .app{display:block;width:100%}
-  .side{position:sticky;top:0;z-index:40;width:100%;height:auto;flex-direction:row;overflow-x:auto;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));gap:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  .side::-webkit-scrollbar{display:none}
-  input,select,textarea,.modal input,.modal select,select.rk,input.rd,input.cell{font-size:16px}
-  .main{width:100%;overflow-x:hidden}
-  .card{padding:14px}
-  .modal{max-height:88vh;overflow:auto}
-  .mon{width:100%;flex-wrap:nowrap!important;gap:6px}
-  .mon button{padding:9px 11px;flex:none}
-  #monLabel{min-width:0!important;flex:1;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #rKind{flex:none;max-width:42%}
-  #rCustom{display:flex;gap:6px;width:100%}#rCustom[hidden]{display:none}
-  .mon:has(#rCustom:not([hidden])){flex-wrap:wrap!important}
-  .top{gap:8px}.top h1{font-size:23px}
-  .brand,.side .foot{display:none}
-  .nav{white-space:nowrap;padding:9px 12px}
-  .main{padding:18px 14px 50px}
-  .kpis,.kpis.k7,.kpis.k4{grid-template-columns:repeat(2,1fr)}
-  .kpi .v{font-size:21px}
-  .grid2{grid-template-columns:1fr}
-  .top h1{width:100%}
-  .hide-m{display:none}
-}
-@media print{.side,.top .btn,.mon,.noprint{display:none!important}.main{padding:0}.card{border:0}}
-</style></head>
-<body>
-<div class="app">
-  <nav class="side">
-    <div class="brand">Billy's Couches<small>Dashboard</small></div>
-    <a class="nav on" data-tab="sales">Sales Tracker</a>
-    <a class="nav" data-tab="goals">Goals</a>
-    <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
-    <a class="nav" data-tab="upsells">Upsells</a>
-    <a class="nav" data-tab="showings">Showing Tracker</a>
-    <a class="nav" data-tab="openhouse">Open Houses</a>
-    <a class="nav" data-tab="meta">Ad Performance</a>
-    <a class="nav" data-tab="ads">Ad Library</a>
-    <a class="nav" data-tab="bstock">B-Stock</a>
-    <a class="nav" data-tab="payroll">Payroll</a>
-    <a class="nav" data-tab="cash">Daily Cash</a>
-    <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
-  </nav>
+// Billy's Couches Dashboard
+// Railway variables:
+//   APP_PASSWORD                password to get in
+//   SHEETS_API_URL              the Apps Script Web app URL
+//   SHEETS_KEY                  the SECRET phrase in the Apps Script
+//   UPSTASH_REDIS_REST_URL      \ where purchases + expenses are saved
+//   UPSTASH_REDIS_REST_TOKEN    / (same Upstash database as the order app is fine)
+//   JOTFORM_API_KEY             Jotform API key (Payroll tab reads the Work Log form)
+//   WORKLOG_FORM_ID             optional: defaults to 260845178882066
+//   JOTFORM_API_BASE            optional: defaults to https://api.jotform.com
+//   APIFY_TOKEN                 Competitor Ads tab (same token the old Ad Tracker used)
+//   ADS_REDIS_URL / ADS_REDIS_TOKEN  optional: the old Ad Tracker's Upstash, to keep its ad history
+//   STRIPE_SECRET_KEY           restricted key with Balance: Read (Cash tab pulls the Stripe balance)
+// Without SHEETS_API_URL it runs on demo data.
 
-  <main class="main">
-    <div class="top">
-      <h1 id="title">Sales Tracker</h1>
-      <div class="mon" id="monNav" style="flex-wrap:wrap"><button id="prev" aria-label="Previous period">&larr;</button><span id="monLabel" style="min-width:150px"></span><button id="next" aria-label="Next period">&rarr;</button>
-        <select class="rk" id="rKind" aria-label="Date range"><option value="month">Month</option><option value="week">Week</option><option value="d30">Last 30 days</option><option value="d90">Last 90 days</option><option value="ytd">Year to date</option><option value="all">All time</option><option value="custom">Custom</option></select>
-        <span id="rCustom" hidden><input class="rd" type="date" id="rFrom" aria-label="From"> – <input class="rd" type="date" id="rTo" aria-label="To"></span></div>
-      <button class="btn" id="refresh">Refresh</button>
-      <button class="btn p" data-open="purchase" data-only="sales">+ Used pickup</button>
-      <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
-      <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
-      <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
-      <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
-      <button class="btn p" id="goalEdit" data-only="goals">Set goals</button>
-    </div>
-    <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
-    <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
-    <div class="err" id="err"></div>
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
-    <!-- SALES -->
-    <section id="tab-sales">
-      <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
-      <div class="kpis" id="kpis"></div>
-      <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
-      <div class="card" style="margin-top:16px"><h2 style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">Couches in stock <small id="stockNote"></small>
-        <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
-        <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">Click <b>Sold</b> when a couch sells. B-Stock couches show up here once their load is added on the B-Stock tab; used couches with + Used pickup.</p></div>
-      <div class="card" style="margin-top:16px"><h2>Couches sold in this range <small id="soldNote"></small></h2><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
-      <div class="card" style="margin-top:16px"><h2>Expenses</h2>
-        <div class="kpis" id="expKpis" style="margin-bottom:14px"></div>
-        <div class="grid2" style="margin-top:0;grid-template-columns:1fr 1.6fr">
-          <div><div class="piewrap"><canvas id="expPie"></canvas></div></div>
-          <div><div class="chartwrap" style="height:240px"><canvas id="expBar"></canvas></div></div>
-        </div>
-        <div class="grid2">
-          <div><h2 style="font-size:14px">By category</h2><div style="overflow-x:auto"><table id="expTbl"></table></div></div>
-          <div><h2 style="font-size:14px">Biggest expenses</h2><div id="expBig"></div></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
-      <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses you entered</h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
-      <div class="card" style="margin-top:16px"><h2>Order-app sales</h2><div style="overflow:auto;max-height:440px"><table id="salesTbl"></table></div></div>
-    </section>
+const compression = require('compression');
+const app = express();
+app.use(compression());
+app.use('/api/photo', express.json({ limit: '4mb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-    <!-- SHOWINGS -->
-    <section id="tab-showings" hidden>
-      <div class="kpis k7" id="shKpis"></div>
-      <div class="card"><h2>Showings by day <small>from the Billy's Couches calendar</small></h2><div class="chartwrap"><canvas id="shChart"></canvas></div></div>
-      <div class="grid2">
-        <div class="card"><h2>By day of week</h2><div id="shDow"></div></div>
-        <div class="card"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="shTrend"></table></div></div>
-      </div>
-      <div class="card" style="margin-top:16px"><h2>Every showing this month</h2><div style="overflow-x:auto"><table id="shTbl"></table></div>
-        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled. Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
-    </section>
-
-    <!-- META ADS -->
-    <section id="tab-meta" hidden>
-      <div class="kpis" id="mKpis"></div>
-      <div class="card"><h2>Ad spend vs. Meta revenue <small>last 6 months</small></h2><div class="chartwrap"><canvas id="mChart"></canvas></div></div>
-      <div class="card" style="margin-top:16px"><h2>Month by month</h2><div style="overflow-x:auto"><table id="mTbl"></table></div>
-        <p class="empty" style="margin-top:12px;font-size:12.5px">Spend = Advertising expenses for Meta/Facebook/Instagram (not Google or yard signs). Meta sales = Sales Log rows whose source is a Meta, Facebook or Instagram ad. Lead source tracking starts June 2026.</p></div>
-    </section>
-
-    <!-- B-STOCK -->
-    <section id="tab-bstock" hidden><div id="bsBody"></div></section>
-
-    <!-- PAYROLL -->
-    <section id="tab-payroll" hidden>
-      <div class="top" style="margin-top:-6px;justify-content:flex-end"><button class="btn p" id="payBtn">Mark week paid</button></div>
-      <div class="err" id="payWarn" hidden></div>
-      <div class="kpis" id="payKpis"></div>
-      <div class="card"><h2 id="payTitle">This week's pay</h2><div style="overflow-x:auto"><table id="payTbl"></table></div>
-        <p class="empty" style="margin-top:12px;font-size:12.5px">Edit a rate or type an adjustment (tips, corrections) and it saves on its own. "Mark week paid" adds each person's total to Expenses as Payroll.</p>
-        <p class="empty" style="margin-top:6px;font-size:12px" id="payFields"></p></div>
-      <div class="grid2">
-        <div class="card"><h2>Work Log entries this week</h2><div style="overflow-x:auto"><table id="payLog"></table></div></div>
-        <div class="card"><h2 id="payTrendTitle">Last 8 weeks</h2><div style="overflow-x:auto"><table id="payTrend"></table></div></div>
-      </div>
-    </section>
-
-    <!-- SALES & SOURCING -->
-    <section id="tab-sources" hidden>
-      <div class="note" id="srcNote" hidden>Ivy Flip months have no lead source or pickup/delivery, so only order-app sales (June 2026 on) are counted here.</div>
-      <div class="pies">
-        <div class="card"><h2>Pickup vs. delivery</h2><div class="piewrap"><canvas id="pieFul"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblFul"></table></div><div id="feeBox" style="margin-top:12px"></div></div>
-        <div class="card"><h2>Inventory source <small>where sold couches were bought</small></h2><div class="piewrap"><canvas id="pieInv"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblInv"></table></div><p class="empty" style="font-size:12px;margin-top:10px" id="invNote"></p></div>
-        <div class="card"><h2>Sales source <small>how buyers found you</small></h2><div class="piewrap"><canvas id="pieSrc"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblSrc"></table></div></div>
-      </div>
-      <div class="card" style="margin-top:16px"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="srcTrend"></table></div></div>
-    </section>
-
-    <!-- GOALS -->
-    <section id="tab-goals" hidden>
-      <p class="empty" id="goalNote" style="margin:-6px 0 12px;font-size:13px"></p>
-      <div class="kpis k4" id="goalCards"></div>
-      <div class="card"><h2>Road to $100K a month</h2><div class="chartwrap"><canvas id="goalChart"></canvas></div><p style="font-size:14px;margin:12px 0 0" id="roadNote"></p></div>
-      <div class="card" style="margin-top:16px"><h2>Team</h2><p style="font-size:14px;margin:0 0 10px" id="teamNote"></p><div style="overflow-x:auto"><table id="teamTbl"></table></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">From the Work Log: showings each person hosted and how many bought.</p></div>
-    </section>
-
-    <!-- UPSELLS -->
-    <section id="tab-upsells" hidden>
-      <div class="kpis" id="upKpis"></div>
-      <div class="grid2" style="margin-top:0;grid-template-columns:1.6fr 1fr">
-        <div class="card"><h2>Upsell revenue and attach rate</h2><div class="chartwrap"><canvas id="upChart"></canvas></div></div>
-        <div class="card"><h2>By upsell</h2><div class="piewrap"><canvas id="upPie"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="upItems"></table></div></div>
-      </div>
-      <div class="card" style="margin-top:16px"><h2>Orders with upsells</h2><div style="overflow:auto;max-height:440px"><table id="upOrders"></table></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">From the Add-Ons columns in your Sales Log (order-app sales, June 2026 on). Attach rate = orders with any upsell ÷ all orders.</p></div>
-    </section>
-
-    <!-- OPEN HOUSES -->
-    <section id="tab-openhouse" hidden>
-      <div class="kpis" id="ohKpis"></div>
-      <div class="grid2" style="margin-top:0">
-        <div class="card"><h2>Couches on floor vs. sales</h2><div class="chartwrap" style="height:240px"><canvas id="ohFloor"></canvas></div></div>
-        <div class="card"><h2>"Save my spot" leads vs. walk-ins</h2><div class="chartwrap" style="height:240px"><canvas id="ohLeads"></canvas></div></div>
-      </div>
-      <div class="card" style="margin-top:16px"><h2>Every open house</h2><div style="overflow-x:auto"><table id="ohTbl"></table></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">Conversion = sales ÷ walk-ins. "Sales Log that day" is every order-app sale on that date, as a check on the count.</p></div>
-      <div class="card" style="margin-top:16px"><h2 id="ohCheckTitle">Promo checklist</h2><div id="ohChecks"></div></div>
-    </section>
-
-    <!-- COMPETITOR ADS -->
-    <section id="tab-ads" hidden>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-6px 0 12px"><span id="adMeta" style="font-size:13px;color:var(--muted)">Loading…</span>
-        <button class="btn p" id="adPull" style="margin-left:auto">Pull new ads</button></div>
-      <div id="adChips"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select class="rk" id="adStatus"><option value="active">Active</option><option value="all">Active + ended</option><option value="ended">Ended</option></select>
-        <select class="rk" id="adFormat"><option value="">All formats</option><option value="VIDEO">Video</option><option value="IMAGE">Image</option></select>
-        <select class="rk" id="adSort"><option value="days">Longest running</option><option value="new">Newest</option></select>
-        <select class="rk" id="adView"><option value="compare">Yours vs. competitors</option><option value="grid">One grid</option></select>
-      </div>
-      <div class="card" id="adCompare" style="margin-top:12px"></div>
-      <div class="adstats" id="adStats"></div>
-      <div class="adgrid" id="adGrid"></div>
-    </section>
-
-    <!-- CASH POSITION -->
-    <section id="tab-cash" hidden><div id="cashBody"></div></section>
-  </main>
-</div>
-
-<div class="mask" id="m-purchase"><form class="modal" data-action="addPurchase">
-  <h3>Log a used pickup</h3>
-  <div class="two">
-    <label>Pickup date<input type="date" name="date" required></label>
-    <label>Where from<select name="source"><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Google</option><option>Other</option></select></label>
-  </div>
-  <label>Couch<input name="item" required placeholder="e.g. Ashley gray 3pc sectional"></label>
-  <div class="two">
-    <label>Paid ($)<input type="number" step="0.01" name="cost" required placeholder="0 if free"></label>
-    <label>Notes<input name="notes" placeholder="optional"></label>
-  </div>
-  <p class="empty" style="font-size:12.5px;margin:-4px 0 12px">B-Stock loads go on the B-Stock tab with + Load.</p>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
-</form></div>
-
-<div class="mask" id="m-expense"><form class="modal" data-action="addExpense">
-  <h3>Log an expense</h3>
-  <div class="two">
-    <label>Date<input type="date" name="date" required></label>
-    <label>Category<select name="category"><option>Advertising</option><option>Payroll</option><option>Rent</option><option>Fuel</option><option>Supplies</option><option>Software</option><option>Truck</option><option>Insurance</option><option>Utilities</option><option>Freight</option><option>Other</option></select></label>
-  </div>
-  <div class="two">
-    <label>Amount ($)<input type="number" step="0.01" name="amount" required></label>
-    <label>Vendor / who<input name="vendor" placeholder="e.g. Meta, Finley"></label>
-  </div>
-  <label>Notes<input name="notes" placeholder="optional"></label>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
-</form></div>
-<div class="mask" id="m-load"><form class="modal" data-kind="load" style="max-width:560px">
-  <h3>Add a B-Stock load</h3>
-  <div class="two">
-    <label>Load ID<input name="loadId" placeholder="e.g. GLD-7120676" required></label>
-    <label>Origin / lane<input name="origin" placeholder="e.g. Columbus OH"></label>
-  </div>
-  <div class="two">
-    <label>Arrived<input type="date" name="date" required></label>
-    <label>Total landed cost ($)<input type="number" step="0.01" name="landed" required placeholder="hammer + freight + fees"></label>
-  </div>
-  <label>Units, one per line: <span style="font-weight:500;color:var(--muted)">Name, comp price</span>
-    <textarea name="units" rows="9" required placeholder="Tisdale 6PC Fab Sect Gray, 1100&#10;Carmelo Fab PWR Sectional, 1350&#10;Mason Leather Recliner, 0" style="display:block;width:100%;margin-top:5px;padding:11px 12px;border:1px solid #d9d0c5;border-radius:10px;font-size:14px;font-family:inherit"></textarea></label>
-  <p class="empty" style="font-size:12.5px;margin:-4px 0 12px">Landed cost is split across sectionals, sofas, sleepers and loveseats only. Chairs, recliners, ottomans and mattresses get $0.</p>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save load</button></div>
-</form></div>
-
-<div class="mask" id="m-sold"><form class="modal" data-kind="sold">
-  <h3 id="soldTitle">Mark sold</h3>
-  <input type="hidden" name="id"><input type="hidden" name="uid"><input type="hidden" name="target">
-  <div class="two">
-    <label>Couch price ($)<input type="number" step="0.01" name="soldPrice" required></label>
-    <label>Date sold<input type="date" name="date" required></label>
-  </div>
-  <div class="two">
-    <label>Delivery fee ($)<input type="number" step="0.01" name="delivery" placeholder="0 if pickup"></label>
-    <label>Other upsell ($)<input type="number" step="0.01" name="upOther" placeholder="optional"></label>
-  </div>
-  <div style="font-size:13px;font-weight:600;margin:-2px 0 6px">Upsells</div>
-  <div id="upBoxes" style="margin-bottom:10px"></div>
-  <div class="row" style="border-top:1px solid var(--line);margin-bottom:10px"><span>Total</span><b id="soldTotal">$0</b></div>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
-</form></div>
-<div class="mask" id="m-cash"><form class="modal" data-kind="cash" style="max-width:560px;max-height:92vh;overflow:auto">
-  <h3>Today's balances</h3>
-  <div class="two"><label>Date<input type="date" name="date" required></label><label>Note<input name="note" placeholder="optional"></label></div>
-  <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Business</p>
-  <div class="two"><label>Checking ··9926<input type="number" step="0.01" name="checking9926" required></label><label>Tax Reserve ··7229<input type="number" step="0.01" name="taxReserve7229"></label></div>
-  <div class="two"><label>Cash in safe<input type="number" step="0.01" name="safe"></label><label>Venmo in transit<input type="number" step="0.01" name="venmo" placeholder="not yet in 9926"></label></div>
-  <label>Stripe<input type="number" step="0.01" name="stripe"><span id="stripeNow" style="font-weight:500;color:var(--muted);font-size:12px"></span></label>
-  <div class="two"><label>Ink ··2078 owed<input type="number" step="0.01" name="ink2078"></label><label>Ink ··1602 owed<input type="number" step="0.01" name="ink1602"></label></div>
-  <div class="two"><label>Amex ··91000 owed<input type="number" step="0.01" name="amex91000"></label><label>Rent + utilities<input type="number" step="0.01" name="bills"></label></div>
-  <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Personal</p>
-  <div class="two"><label>Free Checking ··5908<input type="number" step="0.01" name="personal5908"></label><label>Stocks<input type="number" step="0.01" name="stocks"></label></div>
-  <div class="two"><label>Marcus ··6620 Travel<input type="number" step="0.01" name="marcus6620"></label><label>Marcus ··6569 Online<input type="number" step="0.01" name="marcus6569"></label></div>
-  <div class="two"><label>Capital One ··8760 owed<input type="number" step="0.01" name="capone8760"></label><label>Discover ··6166 owed<input type="number" step="0.01" name="discover6166"></label></div>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
-</form></div>
-<div class="mask" id="m-goals"><form class="modal" data-kind="goals">
-  <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
-  <div class="two"><label>Sales<input type="number" name="sales" min="0"></label><label>Revenue ($)<input type="number" name="revenue" min="0"></label></div>
-  <div class="two"><label>Net profit ($)<input type="number" name="net" min="0"></label><label>Average sale ($)<input type="number" name="avg" min="0"></label></div>
-  <label>Labor % of sales (target)<input type="number" name="labor" min="0" step="0.5" placeholder="e.g. 10"></label>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
-</form></div>
-<div class="mask" id="m-oh"><form class="modal" data-kind="oh">
-  <h3 id="ohModalTitle">Add an open house</h3>
-  <input type="hidden" name="id">
-  <div class="two"><label>Date<input type="date" name="date" required></label><label>Time<input name="time" placeholder="e.g. 10am-12pm"></label></div>
-  <div class="two"><label>Walk-ins<input type="number" name="walkins" min="0"></label><label>Sales<input type="number" name="sales" min="0"></label></div>
-  <div class="two"><label>Couches on floor<input type="number" name="floor" min="0"></label><label>Days promoted before<input type="number" name="promoDays" min="0"></label></div>
-  <div class="two"><label>"Save my spot" leads<input type="number" name="leads" min="0"></label><label>Note<input name="note" placeholder="e.g. $50 off every couch"></label></div>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
-</form></div>
-<input type="file" accept="image/*" id="photoIn" hidden>
-<div class="mask" id="m-photo"><div class="modal lb" style="max-width:640px">
-  <h3 id="pvTitle" style="margin-bottom:12px"></h3><img id="pvImg" alt="">
-  <div class="acts"><button type="button" class="btn" data-close>Close</button><button type="button" class="btn" id="pvRemove">Remove</button><button type="button" class="btn p" id="pvReplace">Replace</button></div>
-</div></div>
-<div class="toast" id="toast"></div>
-
-<script>
-const $ = id => document.getElementById(id);
-const money = n => (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US');
-const pct = n => isFinite(n) ? Math.round(n * 100) + '%' : '–';
-const num = v => { if (typeof v === 'number') return v; const s = String(v || '').replace(/[$,\s]/g, ''); const neg = /^\(.*\)$/.test(s); const n = parseFloat(s.replace(/[()]/g, '')); return isNaN(n) ? 0 : (neg ? -n : n); };
-const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function toDate(v){
-  if (!v) return null;
-  const s = String(v).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/) || (s.length > 10 && /T00:00:00(\.000)?Z$/.test(s) ? s.match(/^(\d{4})-(\d{2})-(\d{2})/) : null);
-  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
-  const d = new Date(s); return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-function col(headers, keys, not){
-  const h = headers.map(x => String(x).toLowerCase().trim());
-  for (const k of keys){ const i = h.findIndex(x => x === k); if (i > -1) return i; }
-  for (const k of keys){ const i = h.findIndex(x => x.includes(k) && !(not||[]).some(n => x.includes(n))); if (i > -1) return i; }
-  return -1;
-}
-const inMonth = (dt, y, m) => dt && dt.getFullYear() === y && dt.getMonth() === m;
-const mkey = (y, m) => y + '-' + m;
-function back(y, m, k){ const d = new Date(y, m - k, 1); return { y: d.getFullYear(), m: d.getMonth() }; }
-function chg(a, b, invert, vs){
-  if (!b) return '<div class="c flat">&ndash;</div>';
-  const p = (a - b) / Math.abs(b) * 100, good = invert ? p <= 0 : p >= 0;
-  return `<div class="c ${Math.abs(p)<0.5?'flat':good?'up':'dn'}">${p>=0?'&uarr;':'&darr;'} ${Math.abs(p).toFixed(0)}% vs ${vs || 'last month'}</div>`;
-}
-function chgSmall(a, b, invert){
-  if (!b) return '<span class="c flat">&ndash;</span>';
-  const p = (a - b) / Math.abs(b) * 100, good = invert ? p <= 0 : p >= 0;
-  return `<span class="c ${Math.abs(p)<0.5?'flat':good?'up':'dn'}">${p>=0?'&uarr;':'&darr;'}${Math.abs(p).toFixed(0)}%</span>`;
-}
-const kpiHtml = list => list.map(([l,v,c]) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div>${c||''}</div>`).join('');
-function bars(el, pairs, fmt){
-  const max = Math.max(1, ...pairs.map(p=>p[1]));
-  el.innerHTML = pairs.length ? pairs.map(([k,v,extra]) => `<div class="brow"><div class="t"><span>${esc(k)}</span><b>${fmt(v)}${extra||''}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div>`).join('')
-    : '<p class="empty">Nothing logged yet this month.</p>';
-}
-function groupSum(list, key, val){ const m = {}; list.forEach(x => m[x[key]] = (m[x[key]]||0) + x[val]); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
-const charts = {};
-function chartIn(id, cfg){ if (charts[id]) charts[id].destroy(); if (window.Chart) charts[id] = new Chart($(id), cfg); }
-const baseOpts = (money_) => ({ responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-  plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } } },
-  scales: { y: { ticks: money_ ? { callback: v => '$' + (v >= 1000 ? (v/1000) + 'k' : v) } : { precision: 0 }, grid: { color: '#f0ebe4' } }, x: { grid: { display: false } } } });
-
-let RAW = null, DATA = null, tab = 'sales', SALES_FILTER = 'all';
-const now = new Date();
-
-// ---------- normalize ----------
-function normSource(s){
-  const t = String(s || '').toLowerCase();
-  if (!t.trim()) return 'Other';
-  if (/meta|fb ad|facebook ad|instagram ad|(facebook|instagram) or (facebook|instagram) ad|\bad\b.*(facebook|instagram)/.test(t) || /^(facebook|instagram).*\bad\b/.test(t)) return 'Meta Ads';
-  if (/marketplace/.test(t)) return 'Marketplace';
-  if (/refer|friend|family|word of mouth/.test(t)) return 'Referrals';
-  if (/previous|past customer|repeat/.test(t)) return 'Previous Customer';
-  if (/google/.test(t)) return 'Google';
-  if (/tiktok/.test(t)) return 'TikTok';
-  if (/yard|sign/.test(t)) return 'Yard Signs';
-  if (/craigslist/.test(t)) return 'Craigslist';
-  if (/drive|walk/.test(t)) return 'Drive-by';
-  return String(s).trim();
-}
-const isMetaSpend = e => {
-  const t = (e.cat + ' ' + (e.vendor||'') + ' ' + (e.notes||'')).toLowerCase();
-  if (/google|yard|sign|seo|vistaprint/.test(t)) return false;
-  return /meta|facebook|fb|insta|boost/.test(t) || (/advertising/.test(e.cat.toLowerCase()) && !(e.vendor||e.notes));
+const CFG = {
+  PORT: process.env.PORT || 3000,
+  PASSWORD: process.env.APP_PASSWORD || '',
+  API: (process.env.SHEETS_API_URL || '').trim(),
+  KEY: (process.env.SHEETS_KEY || '').trim(),
+  REDIS_URL: (process.env.UPSTASH_REDIS_REST_URL || '').trim(),
+  REDIS_TOKEN: (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim(),
+  JOTFORM_KEY: (process.env.JOTFORM_API_KEY || '').trim(),
+  JOTFORM_BASE: (process.env.JOTFORM_API_BASE || 'https://api.jotform.com').trim().replace(/\/$/, ''),
+  WORKLOG_FORM: (process.env.WORKLOG_FORM_ID || '260845178882066').trim(),
+  STRIPE_KEY: (process.env.STRIPE_SECRET_KEY || '').trim(),
 };
 
-function parse(d){
-  const sh = (d.sales && d.sales.headers) || [], srows = (d.sales && d.sales.rows) || [];
-  const S = {
-    date: col(sh, ['date']), source: col(sh, ['source','how did you find']), name: col(sh, ['customer','name'], ['first']),
-    pay: col(sh, ['payment']), type: col(sh, ['order type','pickup or delivery','fulfillment','type'], ['tax']),
-    price: col(sh, ['couch price','price'], ['total','sale']), disc: col(sh, ['discount']), del: col(sh, ['delivery'], ['type']),
-    sub: col(sh, ['subtotal','sub total']), total: col(sh, ['total'], ['sub']), tax: col(sh, ['sales tax','tax'], ['rate']),
-    addons: col(sh, ['add-ons','addons','add ons','upsells'], ['$']), addonAmt: col(sh, ['add-ons $','addons $','add-ons$','upsells $']),
-  };
-  const sales = srows.map(r => {
-    const price = num(r[S.price]), disc = Math.abs(num(r[S.disc])), del = num(r[S.del]);
-    const rev = S.sub > -1 && num(r[S.sub]) ? num(r[S.sub]) : price - disc + del;
-    let type = S.type > -1 ? String(r[S.type]) : (del > 0 ? 'Delivery' : 'Pickup');
-    type = /deliver/i.test(type) ? 'Delivery' : 'Pickup';
-    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, del, addons: S.addons > -1 ? String(r[S.addons] || '').trim() : '', addonAmt: S.addonAmt > -1 ? num(r[S.addonAmt]) : 0, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
-  }).filter(x => x.date && x.rev > 0);
-
-  const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), soldDelivery: num(x.soldDelivery), soldUpsellTotal: num(x.soldUpsellTotal), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
-  const expenses = (d.expenses || []).map(x => ({ id: x.id, date: toDate(x.date), cat: x.category || 'Other', vendor: x.vendor || '', notes: x.notes || '', amt: num(x.amount), live: true })).filter(x => x.date && x.amt);
-
-  const H = d.history || { sales: [], expenses: [] };
-  const hSales = H.sales.map(([dt, title, cost, sold]) => ({ date: toDate(dt), source: 'Ivy Flip import', name: title, pay: '', type: 'Not tracked', rev: sold, cost })).filter(x => x.date);
-  const hExp = H.expenses.map(([dt, cat, vendor, amt, notes]) => ({ date: toDate(dt), cat, vendor, notes: notes || '', amt })).filter(x => x.date && x.amt);
-  const hMonths = new Set(hSales.map(x => mkey(x.date.getFullYear(), x.date.getMonth())));
-
-  const showings = (d.showings || []).map(([iso, title, color]) => {
-    const at = new Date(iso), t = String(title || '');
-    let status = 'Showed';
-    if (/cancel/i.test(t)) status = 'Canceled';
-    else if (/no.?show/i.test(t) || color === '8') status = 'No-show';
-    else if (color === '2' || color === '10') status = 'Bought';
-    else if (at > new Date()) status = 'Upcoming';
-    const name = t.replace(/\(.*?\)/g, '').replace(/^\s*showing\s*(for)?\s*/i, '').trim() || '—';
-    return { at, date: new Date(at.getFullYear(), at.getMonth(), at.getDate()), name, status };
-  }).filter(x => !isNaN(x.at));
-
-  const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, showingsError: d.showingsError };
+// ---------- password ----------
+const SECRET = crypto.createHash('sha256').update('bcd:' + CFG.PASSWORD).digest('hex');
+function authed(req) {
+  const c = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('bcd='));
+  return !!CFG.PASSWORD && !!c && c.slice(4) === SECRET;
 }
-
-// ---------- date ranges (one per tab) ----------
-const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-const day0 = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-function mondayOf(d){ const x = day0(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
-const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const spanDays = R => Math.round((R.to - R.from) / 864e5) + 1;
-function makeRange(kind, anchor){
-  const t = day0(anchor || new Date());
-  if (kind === 'month') return { kind, from: new Date(t.getFullYear(), t.getMonth(), 1), to: new Date(t.getFullYear(), t.getMonth() + 1, 0) };
-  if (kind === 'week') { const m = mondayOf(t); return { kind, from: m, to: addDays(m, 6) }; }
-  if (kind === 'd30') return { kind, from: addDays(t, -29), to: t };
-  if (kind === 'd90') return { kind, from: addDays(t, -89), to: t };
-  if (kind === 'ytd') return { kind, from: new Date(t.getFullYear(), 0, 1), to: t };
-  if (kind === 'all') return { kind, from: new Date(2026, 0, 1), to: addDays(day0(new Date()), 120) };
-  return { kind: 'custom', from: addDays(t, -29), to: t };
-}
-function shiftRange(R, dir){
-  if (R.kind === 'month') return makeRange('month', new Date(R.from.getFullYear(), R.from.getMonth() + dir, 1));
-  if (R.kind === 'week') return makeRange('week', addDays(R.from, 7 * dir));
-  if (R.kind === 'ytd') { const y = R.from.getFullYear() + dir; return { kind: 'ytd', from: new Date(y, 0, 1), to: y === new Date().getFullYear() ? day0(new Date()) : new Date(y, 11, 31) }; }
-  if (R.kind === 'all') return R;
-  const n = spanDays(R) * dir;
-  return { kind: R.kind === 'custom' ? 'custom' : R.kind, from: addDays(R.from, n), to: addDays(R.to, n) };
-}
-const prevRange = R => R.kind === 'all' ? { kind: 'custom', from: addDays(R.from, -1), to: addDays(R.from, -1) } : shiftRange(R, -1);
-const fmtD = (d, y) => d.toLocaleDateString('en-US', y ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' });
-function rangeLabel(R){
-  if (R.kind === 'month') return R.from.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  if (R.kind === 'all') return 'All time';
-  if (R.kind === 'ytd') return R.from.getFullYear() + ' to date';
-  const y = R.from.getFullYear() !== R.to.getFullYear() || R.to.getFullYear() !== new Date().getFullYear();
-  return fmtD(R.from, y) + ' – ' + fmtD(R.to, y);
-}
-const vsLabel = R => ({ month: 'last month', week: 'last week', d30: 'prior 30 days', d90: 'prior 90 days', ytd: 'last year' })[R.kind] || 'prior period';
-const inR = (d, R) => !!d && d >= R.from && d <= R.to;
-const DEFAULT_KIND = { sales: 'month', showings: 'month', meta: 'month', bstock: 'all', payroll: 'week', cash: 'd30' };
-const RANGES = {};
-const getR = t => RANGES[t] || (RANGES[t] = makeRange(DEFAULT_KIND[t]));
-const isHistDay = d => RAW.hMonths.has(mkey(d.getFullYear(), d.getMonth()));
-// Chart buckets: daily up to ~2 months, monthly beyond that.
-function buckets(R){
-  const end = R.to > day0(new Date()) ? day0(new Date()) : R.to;
-  const out = [];
-  if (spanDays(R) <= 62) { for (let d = new Date(R.from); d <= R.to; d = addDays(d, 1)) out.push({ from: new Date(d), to: new Date(d), label: fmtD(d), future: d > end }); }
-  else { const stop = R.to > end ? new Date(end.getFullYear(), end.getMonth() + 1, 0) : R.to;
-    for (let d = new Date(R.from.getFullYear(), R.from.getMonth(), 1); d <= stop; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
-    out.push({ from: d < R.from ? R.from : d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0), label: MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''), future: d > end }); }
-  return out;
-}
-
-// ---------- upsells ----------
-const UPSELLS = [{ id: 'scotchgard', label: 'Scotchgard', price: 49 }, { id: 'wrap', label: 'Plastic Wrap', price: 99 }, { id: 'removal', label: 'Couch Removal', price: 125 }];
-function soldSum(){
-  const f = $('m-sold').querySelector('form'), el = f.elements;
-  const up = UPSELLS.filter(u => (f.querySelector('[data-up="' + u.id + '"]') || {}).checked).reduce((a, u) => a + u.price, 0) + (Number(el.upOther.value) || 0);
-  $('soldTotal').textContent = money((Number(el.soldPrice.value) || 0) + (Number(el.delivery.value) || 0) + up) + ' before tax';
-}
-document.addEventListener('input', e => { if (e.target.closest('#m-sold')) soldSum(); });
-document.addEventListener('change', e => { if (e.target.closest('#m-sold')) soldSum(); });
-const upItem = t => /scotch/i.test(t) ? 'Scotchgard' : /wrap/i.test(t) ? 'Plastic Wrap' : /remov|haul/i.test(t) ? 'Couch Removal' : /pillow/i.test(t) ? 'Pillows' : /throw|blanket/i.test(t) ? 'Throw' : 'Other';
-function upItems(s){ return String(s || '').split(/[,;+|]| and /i).map(x => x.replace(/\(.*?\)|\$[\d.,]+/g, '').trim()).filter(Boolean).map(upItem); }
-function renderUpsells(){
-  const R = getR('upsells'), vs = vsLabel(R);
-  const calc = R2 => { const L = RAW.sales.filter(x => inR(x.date, R2)), withUp = L.filter(x => x.addons || x.addonAmt > 0);
-    const rev = L.reduce((a, x) => a + (x.addonAmt || 0), 0);
-    return { L, withUp, rev, n: L.length, rate: L.length ? withUp.length / L.length : NaN, per: L.length ? rev / L.length : 0, perUp: withUp.length ? rev / withUp.length : 0 }; };
-  const A = calc(R), B = calc(prevRange(R));
-  const items = {}; A.withUp.forEach(x => { const its = upItems(x.addons); const each = its.length ? (x.addonAmt || 0) / its.length : 0;
-    (its.length ? its : ['Other']).forEach(it => { const o = items[it] = items[it] || { n: 0, rev: 0 }; o.n++; o.rev += each; }); });
-  const itemRows = Object.entries(items).sort((a, b) => b[1].n - a[1].n);
-  const top = itemRows[0];
-  $('upKpis').innerHTML = kpiHtml([
-    ['Upsell revenue', money(A.rev), chg(A.rev, B.rev, false, vs)],
-    ['Attach rate', pct(A.rate), chg(A.rate || 0, B.rate || 0, false, vs)],
-    ['Orders with an upsell', A.withUp.length + ' / ' + A.n, ''],
-    ['Upsell $ per order', money(A.per), chg(A.per, B.per, false, vs)],
-    ['Avg when they buy one', money(A.perUp), ''],
-    ['Most popular', top ? esc(top[0]) : '–', top ? `<div class="c flat">${top[1].n} sold</div>` : ''],
-  ]);
-  $('upItems').innerHTML = `<tr><th>Upsell</th><th class="n">Sold</th><th class="n">% of orders</th><th class="n">Revenue</th></tr>` +
-    (itemRows.length ? itemRows.map(([k, o], i) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${PIE[i % PIE.length]};margin-right:8px"></span>${esc(k)}</td><td class="n"><b>${o.n}</b></td><td class="n">${A.n ? pct(o.n / A.n) : '–'}</td><td class="n">${money(o.rev)}</td></tr>`).join('')
-      : '<tr><td colspan="4" class="empty">No upsells in this range.</td></tr>');
-  pieIn('upPie', itemRows.map(([k, o]) => [k, o.n]), v => v + ' sold');
-  const bk = buckets(R).filter(b => !b.future), rows = bk.map(b => calc({ from: b.from, to: b.to }));
-  const o = baseOpts(true); o.scales.y2 = { position: 'right', min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { display: false } };
-  chartIn('upChart', { data: { labels: bk.map(b => b.label), datasets: [
-    { type: 'bar', label: 'Upsell revenue', data: rows.map(r => r.rev), backgroundColor: '#b0524c', borderRadius: 4 },
-    { type: 'line', label: 'Attach rate', data: rows.map(r => isFinite(r.rate) ? Math.round(r.rate * 100) : null), borderColor: '#2b1d16', backgroundColor: '#2b1d16', yAxisID: 'y2', tension: .3, pointRadius: 2 } ] }, options: o });
-  const recent = A.withUp.slice().sort((a, b) => b.date - a.date).slice(0, 40);
-  $('upOrders').innerHTML = `<tr><th>Date</th><th>Customer</th><th>Upsells</th><th class="n">Upsell $</th><th class="n hide-m">Order</th></tr>` +
-    (recent.length ? recent.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td>${esc(x.addons || '–')}</td><td class="n"><b>${money(x.addonAmt)}</b></td><td class="n hide-m">${money(x.rev)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">None in this range.</td></tr>');
-}
-
-// ---------- goals ----------
-const GOAL_FIELDS = [['sales', 'Sales', v => String(Math.round(v))], ['revenue', 'Revenue', money], ['net', 'Net profit', money], ['avg', 'Average sale', money]];
-function renderGoals(){
-  const R = getR('goals'), mk = R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0');
-  const G = (RAW.goals || {})[mk] || {}, A = period(R), today = day0(new Date());
-  const days = spanDays(R), elapsed = R.to < today ? days : R.from > today ? 0 : dayDiff(R.from, today) + 1, live = elapsed > 0 && elapsed < days;
-  const actual = { sales: A.count, revenue: A.gross, net: A.net, avg: A.avgSale };
-  const pace = k => k === 'avg' ? actual.avg : elapsed ? actual[k] / elapsed * days : 0;
-  $('goalCards').innerHTML = GOAL_FIELDS.map(([k, label, fmt]) => {
-    const t = G[k], a = actual[k], pr = t ? Math.min(1, a / t) : 0, p = pace(k), ok = t ? p >= t : null;
-    return `<div class="card kpi"><div class="l">${label}</div><div class="v">${fmt(a)}${t ? ` <span style="font-size:15px;color:var(--muted);font-weight:600">/ ${fmt(t)}</span>` : ''}</div>
-      ${t ? `<div class="bar" style="height:8px;margin:10px 0 6px"><i style="width:${pr * 100}%;background:${ok ? 'var(--green)' : 'var(--red)'}"></i></div>
-      <div class="c ${ok ? 'up' : 'dn'}">${live && k !== 'avg' ? (ok ? 'On pace for ' : 'Behind: on pace for ') + fmt(p) : a >= t ? 'Hit' : (elapsed >= days ? 'Missed by ' + fmt(t - a) : fmt(t - a) + ' to go')}</div>` : '<div class="c flat">No target set</div>'}</div>`;
-  }).join('');
-  $('goalNote').textContent = live ? `Day ${elapsed} of ${days} · ${days - elapsed} days left` : '';
-  // road to $100K
-  const months = []; for (let k = 11; k >= 0; k--) { const d = new Date(today.getFullYear(), today.getMonth() - k, 1); months.push({ d, P: period({ from: d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0) }) }); }
-  while (months.length > 1 && !months[0].P.gross) months.shift();
-  const cur = months[months.length - 1], curPace = cur.P.gross / Math.max(1, today.getDate()) * new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const o = baseOpts(true);
-  chartIn('goalChart', { data: { labels: months.map(m => MON[m.d.getMonth()]), datasets: [
-    { type: 'bar', label: 'Revenue', data: months.map((m, i) => i === months.length - 1 ? Math.round(curPace) : Math.round(m.P.gross)), backgroundColor: months.map((m, i) => i === months.length - 1 ? '#d9a39f' : '#b0524c'), borderRadius: 4 },
-    { type: 'line', label: '$100K goal', data: months.map(() => 100000), borderColor: '#2e7d4f', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 } ] }, options: o });
-  const last3 = months.slice(-4, -1).map(m => m.P), avgPrice = last3.reduce((a, p) => a + p.gross, 0) / Math.max(1, last3.reduce((a, p) => a + p.count, 0)), avgCount = last3.reduce((a, p) => a + p.count, 0) / 3;
-  $('roadNote').innerHTML = `This month is on pace for <b>${money(curPace)}</b> (lighter bar). At your recent average sale of <b>${money(avgPrice)}</b>, $100K takes <b>${Math.ceil(100000 / avgPrice)} sales a month</b> (you've averaged ${Math.round(avgCount)}). At your recent volume, it takes a <b>${money(100000 / Math.max(1, avgCount))}</b> average sale.`;
-  // team
-  const pay = A.e.filter(x => /payroll/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
-  const ppl = {}; if (PAY) PAY.entries.filter(e => inR(toDate(e.date), R)).forEach(e => { const k = fname(e.name); const p = ppl[k] = ppl[k] || { shows: 0, sold: 0, hours: 0 }; p.shows += e.shows; p.sold += e.sold; p.hours += e.hours; });
-  $('teamTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Showings hosted</th><th class="n">Sold</th><th class="n">Close rate</th></tr>` +
-    (Object.keys(ppl).length ? Object.entries(ppl).sort((a, b) => b[1].sold - a[1].sold).map(([k, p]) => `<tr><td><b>${esc(k)}</b></td><td class="n">${p.hours.toFixed(1)}</td><td class="n">${p.shows}</td><td class="n"><b>${p.sold}</b></td><td class="n">${p.shows ? pct(p.sold / p.shows) : '–'}</td></tr>`).join('')
-      : `<tr><td colspan="5" class="empty">${PAY ? 'No Work Log entries this month.' : 'Loading the Work Log...'}</td></tr>`);
-  $('teamNote').innerHTML = `Labor is <b>${A.gross ? pct(pay / A.gross) : '–'}</b> of sales this month${G.labor ? ` (target ${G.labor}%)` : ''}.`;
-}
-function openGoals(){
-  const R = getR('goals'), mk = R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0'), G = (RAW.goals || {})[mk] || {}, f = $('m-goals').querySelector('form').elements;
-  f.month.value = mk; ['sales', 'revenue', 'net', 'avg', 'labor'].forEach(k => f[k].value = G[k] || '');
-  $('goalsTitle').textContent = 'Goals for ' + rangeLabel(R); $('m-goals').classList.add('on');
-}
-
-// ---------- couch photos ----------
-const photoKeyOf = x => x.kind === 'used' ? 'p:' + x.id : 'u:' + x.id + ':' + x.uid;
-function photoCell(x){
-  const k = photoKeyOf(x), v = RAW.photos[k];
-  return v ? `<img class="thumb" src="/api/photo/${encodeURIComponent(k)}?v=${v}" alt="" loading="lazy" data-pview="${esc(k)}" data-pname="${esc(x.name)}">`
-    : `<button class="pbtn" data-padd="${esc(k)}" title="Add a photo">+ Photo</button>`;
-}
-let photoTarget = null;
-function shrinkPhoto(file){
-  return new Promise((resolve, reject) => {
-    const img = new Image(), url = URL.createObjectURL(file);
-    img.onload = () => { const max = 1100, sc = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-      let q = 0.8, out = c.toDataURL('image/jpeg', q); while (out.length > 900000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
-      resolve(out); };
-    img.onerror = () => reject(new Error("Couldn't read that photo")); img.src = url;
-  });
-}
-
-// ---------- sales tracker ----------
-function period(R){
-  const hs = RAW.hSales.filter(x => inR(x.date, R) && isHistDay(x.date));
-  const s = hs.filter(x => x.rev > 0).concat(RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)));
-  const p = hs.filter(x => x.cost > 0).map(x => ({ date: x.date, source: 'Cost of couches sold', item: x.name, units: 1, cost: x.cost }))
-    .concat(RAW.purchases.filter(x => inR(x.date, R) && !isHistDay(x.date)))
-    .concat(RAW.loads.filter(l => inR(l.arrived, R) && !isHistDay(l.arrived)).map(l => ({
-      date: l.arrived, source: 'Bstock', item: l.loadId + ' load', loadId: l.loadId, units: l.units.filter(u => u.cost > 0).length || 1, cost: l.landed, fromLoad: true })));
-  const e = RAW.hExp.filter(x => inR(x.date, R) && isHistDay(x.date)).concat(RAW.expenses.filter(x => inR(x.date, R) && !isHistDay(x.date)));
-  const live = s.filter(x => x.type !== 'Not tracked');
-  const gross = s.reduce((a,x)=>a+x.rev,0), cogs = p.reduce((a,x)=>a+x.cost,0), exp = e.reduce((a,x)=>a+x.amt,0);
-  const units = p.reduce((a,x)=>a+x.units,0), gp = gross - cogs, net = gp - exp;
-  return { s, p, e, live, gross, cogs, exp, gp, net, margin: gross ? net/gross : 0, count: s.length, units,
-    avgSale: s.length ? gross/s.length : 0, avgBuy: units ? cogs/units : 0,
-    gpFlip: s.length ? gp/s.length : 0, netFlip: s.length ? net/s.length : 0,
-    delivery: live.filter(x=>x.type==='Delivery').length, anyHist: hs.length > 0 || RAW.hExp.some(x => inR(x.date, R) && isHistDay(x.date)), allHist: live.length === 0 && hs.length > 0 };
-}
-
-function renderSales(){
-  const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
-  $('histNote').hidden = !A.anyHist;
-  $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
-    : "Part of this range comes from your Ivy Flip export, which has no lead source or pickup/delivery. Those charts only count the newer sales.";
-  $('kpis').innerHTML = kpiHtml([
-    ['Gross Sales', money(A.gross), chg(A.gross, B.gross, false, vs)],
-    ['Cost of Goods', money(A.cogs), chg(A.cogs, B.cogs, true, vs)],
-    ['Expenses', money(A.exp), chg(A.exp, B.exp, true, vs)],
-    ['Gross Profit', money(A.gp), chg(A.gp, B.gp, false, vs)],
-    ['Net Profit', money(A.net), chg(A.net, B.net, false, vs)],
-    ['Net Margin', pct(A.margin), chg(A.margin, B.margin, false, vs)],
-  ]);
-  $('insights').innerHTML = [
-    ['Sales', A.count, B.count, String(A.count)],
-    ['Couches purchased', A.units, B.units, String(A.units)],
-    ['Average sale price', A.avgSale, B.avgSale, money(A.avgSale)],
-    ['Average purchase price', A.avgBuy, B.avgBuy, money(A.avgBuy), true],
-    ['Average gross profit per flip', A.gpFlip, B.gpFlip, money(A.gpFlip)],
-    ['Average net profit per flip', A.netFlip, B.netFlip, money(A.netFlip)],
-  ].map(([l,a,b2,v,inv]) => `<div class="row"><span>${l}</span><span><b>${v}</b> ${chgSmall(a,b2,inv)}</span></div>`).join('');
-  // ----- every couch you own: B-Stock units + used pickups -----
-  const today0 = day0(new Date());
-  const stock = [];
-  RAW.loads.forEach(l => l.units.forEach(u => stock.push({ kind: 'bstock', id: l.id, uid: u.uid, name: u.name, src: 'B-Stock · ' + l.loadId, cost: u.cost, comp: u.comp || 0,
-    got: l.arrived, status: u.status, soldPrice: u.soldPrice, sold: u.sold, del: Number(u.soldDelivery) || 0, up: Number(u.soldUpsellTotal) || 0, ups: u.soldUpsells || [] })));
-  RAW.purchases.forEach(p => stock.push({ kind: 'used', id: p.id, uid: '', name: p.item || 'Used couch', src: 'Used · ' + (p.source || 'Other'), cost: p.cost, comp: 0,
-    got: p.date, status: p.status === 'sold' ? 'sold' : 'in', soldPrice: p.soldPrice, sold: p.sold, del: p.soldDelivery || 0, up: p.soldUpsellTotal || 0, ups: p.soldUpsells || [] }));
-  const inStock = stock.filter(x => x.status === 'in').map(x => ({ ...x, days: dayDiff(x.got, today0) })).sort((a, b2) => b2.days - a.days);
-  const f = SALES_FILTER;
-  const shown = inStock.filter(x => f === 'all' || x.kind === f);
-  const aged = inStock.filter(x => x.days >= 21).length;
-  $('stockNote').textContent = `${inStock.length} couches · ${money(inStock.reduce((a, x) => a + x.cost, 0))} cost on the floor${aged ? ' · ' + aged + ' over 21 days' : ''}`;
-  $('stockTbl').innerHTML = `<tr><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
-    (shown.length ? shown.map(x => `<tr><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
-      <td class="n hide-m">${x.comp ? money(x.comp) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td>
-      <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button>` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
-      : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
-  const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
-  const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = A.live.length;
-  $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (liveOrders > soldR.length && !A.allHist ? ` · <span style="color:var(--bad)">${liveOrders - soldR.length} order-app sale${liveOrders - soldR.length === 1 ? '' : 's'} not matched to a couch yet</span>` : '');
-  $('soldTbl').innerHTML = `<tr><th>Sold</th><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Couch $</th><th class="n hide-m">Delivery</th><th class="n hide-m">Upsells</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
-    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n hide-m">${x.del ? money(x.del) : '–'}</td><td class="n hide-m" title="${esc(x.ups.map(u => u.label).join(', '))}">${x.up ? money(x.up) : '–'}</td><td class="n">${money(x.soldPrice - x.cost + x.up)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
-      <td class="n"><button class="btn sm" data-unit="${esc(x.id)}:${x.kind === 'used' ? 'p' : esc(x.uid)}:in">Undo</button></td></tr>`).join('')
-      : `<tr><td colspan="11" class="empty">No couches marked sold in this range.</td></tr>`);
-
-  // ----- expenses -----
-  const PE = period(prevRange(R)), days = Math.max(1, Math.min(spanDays(R), dayDiff(R.from, today0) + 1));
-  const cats = groupSum(A.e, 'cat', 'amt'), pcats = Object.fromEntries(groupSum(PE.e, 'cat', 'amt'));
-  const adSpend = A.e.filter(x => /advert/i.test(x.cat)).reduce((a, x) => a + x.amt, 0), pay = A.e.filter(x => /payroll/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
-  $('expKpis').innerHTML = kpiHtml([
-    ['Spent', money(A.exp), chg(A.exp, PE.exp, true, vs)],
-    ['Per day', money(A.exp / days), ''],
-    ['% of sales', A.gross ? pct(A.exp / A.gross) : '–', A.gross && PE.gross ? chg(A.exp / A.gross, PE.exp / PE.gross, true, vs) : ''],
-    ['Ads % of sales', A.gross ? pct(adSpend / A.gross) : '–', `<div class="c flat">${money(adSpend)} on ads</div>`],
-    ['Payroll % of sales', A.gross ? pct(pay / A.gross) : '–', `<div class="c flat">${money(pay)} payroll</div>`],
-    ['Biggest category', cats[0] ? esc(cats[0][0]) : '–', cats[0] ? `<div class="c flat">${money(cats[0][1])} · ${pct(cats[0][1] / A.exp)}</div>` : ''],
-  ]);
-  pieIn('expPie', cats, money);
-  const top = cats.slice(0, 5).map(c => c[0]), bk2 = buckets(R).filter(b => !b.future);
-  const weekly = spanDays(R) > 14 && spanDays(R) <= 62;
-  let eb = bk2;
-  if (weekly) { eb = []; for (let m = mondayOf(R.from); m <= (R.to > today0 ? today0 : R.to); m = addDays(m, 7)) eb.push({ from: m < R.from ? R.from : m, to: addDays(m, 6), label: 'Wk of ' + fmtD(m) }); }
-  const ebSets = top.concat(cats.length > 5 ? ['Other spending'] : []).map((c, i) => ({ label: c, backgroundColor: PIE[i % PIE.length], borderRadius: 3,
-    data: eb.map(b => A.e.filter(x => x.date >= b.from && x.date <= b.to && (c === 'Other spending' ? !top.includes(x.cat) : x.cat === c)).reduce((a, x) => a + x.amt, 0)) }));
-  const eo = baseOpts(true); eo.scales.x.stacked = true; eo.scales.y.stacked = true;
-  chartIn('expBar', { type: 'bar', data: { labels: eb.map(b => b.label), datasets: ebSets }, options: eo });
-  $('expTbl').innerHTML = `<tr><th>Category</th><th class="n">Spent</th><th class="n">Share</th><th class="n hide-m">% of sales</th><th class="n">vs ${vs}</th></tr>` +
-    (cats.length ? cats.map(([c, v], i) => { const pv = pcats[c] || 0, d = v - pv;
-      return `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${PIE[i % PIE.length]};margin-right:8px"></span>${esc(c)}</td><td class="n"><b>${money(v)}</b></td><td class="n">${pct(v / A.exp)}</td><td class="n hide-m">${A.gross ? pct(v / A.gross) : '–'}</td>
-        <td class="n"><span class="c ${!pv ? 'flat' : d > 0.5 ? 'dn' : d < -0.5 ? 'up' : 'flat'}" style="font-size:12.5px;font-weight:700">${!pv ? 'new' : (d >= 0 ? '+' : '') + money(d)}</span></td></tr>`; }).join('')
-      : `<tr><td colspan="5" class="empty">No expenses in this range.</td></tr>`);
-  const big = A.e.slice().sort((a, b2) => b2.amt - a.amt).slice(0, 8);
-  $('expBig').innerHTML = big.length ? big.map(x => `<div class="row"><span>${esc(x.vendor || x.cat)}${x.notes ? ` <span style="color:var(--muted);font-size:12.5px">· ${esc(x.notes)}</span>` : ''}<div style="font-size:12px;color:var(--muted)">${fmtD(x.date)} · ${esc(x.cat)}</div></span><b>${money(x.amt)}</b></div>`).join('') : '<p class="empty">Nothing yet.</p>';
-
-  // purchases + expenses entered in the dashboard
-  const L = [...A.p.filter(x => x.live).map(x => ({ kind: 'purchases', id: x.id, date: x.date, what: 'Purchase', desc: [x.item, x.units > 1 ? x.units + ' units' : '', x.loadId].filter(Boolean).join(' · '), cat: x.source, amt: x.cost })),
-             ...A.e.filter(x => x.live).map(x => ({ kind: 'expenses', id: x.id, date: x.date, what: 'Expense', desc: [x.vendor, x.notes].filter(Boolean).join(' · '), cat: x.cat, amt: x.amt }))]
-    .sort((a, b2) => b2.date - a.date);
-  $('logCard').hidden = A.allHist;
-  $('logTbl').innerHTML = `<tr><th>Date</th><th>Type</th><th>Category</th><th class="hide-m">Details</th><th class="n">Amount</th><th></th></tr>` +
-    (L.length ? L.map(x => `<tr><td>${fmtD(x.date)}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n"><button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
-      : `<tr><td colspan="6" class="empty">Nothing logged in this range.</td></tr>`);
-
-  const rows = A.s.slice().sort((a,b2)=>b2.date-a.date);
-  $('salesTbl').innerHTML = `<tr><th>Date</th><th>Customer / couch</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
-    (rows.length ? rows.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type==='Not tracked'?'&ndash;':x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
-      : `<tr><td colspan="6" class="empty">No sales in this range.</td></tr>`);
-
-  const bk = buckets(R), sa = [], co = [], ex = [], ne = []; let s = 0, c = 0, e = 0;
-  bk.forEach(b => {
-    const ib = d => d >= b.from && d <= b.to;
-    A.s.filter(x => ib(x.date)).forEach(x => s += x.rev);
-    A.p.filter(x => ib(x.date)).forEach(x => c += x.cost);
-    A.e.filter(x => ib(x.date)).forEach(x => e += x.amt);
-    const k = !b.future; sa.push(k?s:null); co.push(k?c:null); ex.push(k?e:null); ne.push(k?s-c-e:null);
-  });
-  const ds = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w||2, tension: .3, pointRadius: 0 });
-  const o = baseOpts(true); o.plugins.tooltip = { callbacks: { label: i => i.dataset.label + ': ' + money(i.raw) } };
-  chartIn('chart', { type: 'line', data: { labels: bk.map(b => b.label), datasets: [ ds('Sales', sa, '#b0524c', 3), ds('Net profit', ne, '#2e7d4f', 3), ds('Cost of goods', co, '#c9a89a'), ds('Expenses', ex, '#2b1d16') ] }, options: o });
-}
-
-// ---------- showings ----------
-function shStats(list){
-  const c = st => list.filter(x => x.status === st).length;
-  const booked = list.length, canceled = c('Canceled'), noshow = c('No-show'), bought = c('Bought'), upcoming = c('Upcoming');
-  const showed = c('Showed') + bought, past = booked - upcoming;
-  return { booked, canceled, noshow, bought, upcoming, showed, showRate: past ? showed / past : NaN, conv: showed ? bought / showed : NaN };
-}
-function renderShowings(){
-  const R = getR('showings'), list = RAW.showings.filter(x => inR(x.date, R)), PR = prevRange(R), vs = vsLabel(R);
-  const A = shStats(list), B = shStats(RAW.showings.filter(x => inR(x.date, PR)));
-  $('shKpis').innerHTML = kpiHtml([
-    ['Total booked', A.booked, chg(A.booked, B.booked, false, vs)],
-    ['Canceled', A.canceled, chg(A.canceled, B.canceled, true, vs)],
-    ['No-shows', A.noshow, chg(A.noshow, B.noshow, true, vs)],
-    ['Showed up', A.showed, chg(A.showed, B.showed, false, vs)],
-    ['Purchased', A.bought, chg(A.bought, B.bought, false, vs)],
-    ['Show rate', pct(A.showRate), chg(A.showRate || 0, B.showRate || 0, false, vs)],
-    ['Conversion', pct(A.conv), chg(A.conv || 0, B.conv || 0, false, vs)],
-  ]);
-  const bk = buckets(R), sets = { Bought: [], Showed: [], 'No-show': [], Canceled: [], Upcoming: [] };
-  bk.forEach(b => { const dl = list.filter(x => x.date >= b.from && x.date <= b.to); Object.keys(sets).forEach(k => sets[k].push(dl.filter(x => x.status === k).length)); });
-  const colors = { Bought: '#2e7d4f', Showed: '#b0524c', 'No-show': '#2b1d16', Canceled: '#d9cfc4', Upcoming: '#8fb0d6' };
-  const o = baseOpts(false); o.scales.x.stacked = true; o.scales.y.stacked = true;
-  chartIn('shChart', { type: 'bar', data: { labels: bk.map(b => b.label), datasets: Object.keys(sets).map(k => ({ label: k === 'Showed' ? 'Showed, no buy' : k, data: sets[k], backgroundColor: colors[k], borderRadius: 3 })) }, options: o });
-
-  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const dow = DOW.map((n, i) => { const st = shStats(list.filter(x => x.at.getDay() === i)); return [n, st.booked, ` &middot; ${st.showed} showed &middot; ${st.bought} bought`]; }).filter(x => x[1]);
-  bars($('shDow'), dow, v => v + ' booked');
-
-  const endD = R.to > day0(new Date()) ? day0(new Date()) : R.to, endY = endD.getFullYear(), endM = endD.getMonth();
-  $('shTrend').innerHTML = `<tr><th>Month</th><th class="n">Booked</th><th class="n">Canceled</th><th class="n">Show rate</th><th class="n">Bought</th><th class="n">Conversion</th></tr>` +
-    [0,1,2,3,4,5].map(k => { const t = back(endY, endM, k), st = shStats(RAW.showings.filter(x => inMonth(x.date, t.y, t.m)));
-      return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${st.booked}</td><td class="n">${st.canceled}</td><td class="n">${pct(st.showRate)}</td><td class="n">${st.bought}</td><td class="n"><b>${pct(st.conv)}</b></td></tr>`; }).join('');
-
-  const pc = { Bought: 'g', Canceled: 'x', 'No-show': 'ns', Upcoming: 'u', Showed: '' };
-  const rows = list.slice().sort((a, b2) => b2.at - a.at);
-  $('shTbl').innerHTML = `<tr><th>Date</th><th>Time</th><th>Customer</th><th>Result</th></tr>` +
-    (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span></td></tr>`).join('')
-      : `<tr><td colspan="4" class="empty">${RAW.showingsError ? 'Could not read the calendar: ' + esc(RAW.showingsError) : 'No showings on the calendar in this range.'}</td></tr>`);
-}
-
-// ---------- meta ads ----------
-function metaRange(R){
-  const exp = RAW.hExp.filter(x => inR(x.date, R) && isHistDay(x.date)).concat(RAW.expenses.filter(x => inR(x.date, R) && !isHistDay(x.date)));
-  const spend = exp.filter(isMetaSpend).reduce((a, x) => a + x.amt, 0);
-  const all = RAW.sales.filter(x => inR(x.date, R));
-  const ms = all.filter(x => x.source === 'Meta Ads');
-  const rev = ms.reduce((a, x) => a + x.rev, 0);
-  return { spend, sales: ms.length, rev, tracked: all.length > 0, share: all.length ? ms.length / all.length : NaN,
-    cps: ms.length ? spend / ms.length : NaN, roas: spend ? rev / spend : NaN };
-}
-function renderMeta(){
-  const R = getR('meta'), A = metaRange(R), B = metaRange(prevRange(R)), vs = vsLabel(R);
-  const t = v => A.tracked ? v : '–';
-  $('mKpis').innerHTML = kpiHtml([
-    ['Ad spend', money(A.spend), chg(A.spend, B.spend, true, vs)],
-    ['Sales from Meta', t(A.sales), A.tracked ? chg(A.sales, B.sales, false, vs) : ''],
-    ['Meta revenue', t(money(A.rev)), A.tracked ? chg(A.rev, B.rev, false, vs) : ''],
-    ['Cost per sale', t(isFinite(A.cps) ? money(A.cps) : '–'), A.tracked ? chg(A.cps || 0, B.cps || 0, true, vs) : ''],
-    ['Return on ad spend', t(isFinite(A.roas) ? A.roas.toFixed(1) + 'x' : '–'), A.tracked ? chg(A.roas || 0, B.roas || 0, false, vs) : ''],
-    ['Share of sales', t(pct(A.share)), A.tracked ? chg(A.share || 0, B.share || 0, false, vs) : ''],
-  ]);
-  const bk = buckets(R).filter(b => !b.future), rows = bk.map(b => ({ label: b.label, ...metaRange({ from: b.from, to: b.to }) }));
-  chartIn('mChart', { type: 'bar', data: { labels: rows.map(r => r.label), datasets: [
-    { label: 'Ad spend', data: rows.map(r => r.spend), backgroundColor: '#2b1d16', borderRadius: 4 },
-    { label: 'Meta revenue', data: rows.map(r => r.tracked ? r.rev : null), backgroundColor: '#b0524c', borderRadius: 4 } ] }, options: baseOpts(true) });
-  const endD = R.to > day0(new Date()) ? day0(new Date()) : R.to, endY = endD.getFullYear(), endM = endD.getMonth();
-  const mrows = [0,1,2,3,4,5].map(k => { const b = back(endY, endM, k); return { ...b, ...metaRange({ from: new Date(b.y, b.m, 1), to: new Date(b.y, b.m + 1, 0) }) }; });
-  $('mTbl').innerHTML = `<tr><th>Month</th><th class="n">Spend</th><th class="n">Meta sales</th><th class="n">Revenue</th><th class="n">Cost / sale</th><th class="n">ROAS</th></tr>` +
-    mrows.map(r => `<tr><td>${MON[r.m]} ${r.y}</td><td class="n">${money(r.spend)}</td><td class="n">${r.tracked ? r.sales : '–'}</td><td class="n">${r.tracked ? money(r.rev) : '–'}</td><td class="n">${r.tracked && isFinite(r.cps) ? money(r.cps) : '–'}</td><td class="n"><b>${r.tracked && isFinite(r.roas) ? r.roas.toFixed(1) + 'x' : '–'}</b></td></tr>`).join('');
-}
-
-// ---------- b-stock ----------
-const dayDiff = (a, b) => Math.max(0, Math.round((b - a) / 864e5));
-function loadStats(l){
-  const sold = l.units.filter(u => u.status === 'sold'), dud = l.units.filter(u => u.status === 'dud');
-  const rev = sold.reduce((a, u) => a + u.soldPrice, 0), soldCost = sold.reduce((a, u) => a + u.cost, 0);
-  const dts = sold.filter(u => u.sold).map(u => dayDiff(l.arrived, u.sold));
-  const left = l.units.filter(u => u.status === 'in'), leftComp = left.reduce((a, u) => a + (u.comp || 0), 0);
-  return { n: l.units.length, sold: sold.length, dud: dud.length, left: left.length, rev, gp: rev - soldCost,
-    profitVsLoad: rev - l.landed, mult: l.landed ? rev / l.landed : 0, days: dts.length ? dts.reduce((a, b) => a + b, 0) / dts.length : NaN,
-    paid: l.units.filter(u => u.cost > 0).length, each: (l.units.find(u => u.cost > 0) || {}).cost || 0, leftComp };
-}
-function renderBstock(){
-  const R = getR('bstock'), el = $('bsBody'), loads = RAW.loads.filter(l => inR(l.arrived, R)).sort((a, b) => b.arrived - a.arrived);
-  if (!loads.length) { el.innerHTML = `<div class="card"><h2>${RAW.loads.length ? 'No loads arrived in this range' : 'No loads yet'}</h2><p class="empty">${RAW.loads.length ? 'Pick a wider range, or All time.' : "Click <b>+ Load</b> and paste the units, or send Claude the manifest and the landed cost and it'll give you the lines to paste."}</p></div>`; return; }
-  const all = loads.map(loadStats), T = k => all.reduce((a, x) => a + x[k], 0);
-  const landed = loads.reduce((a, l) => a + l.landed, 0), soldCost = loads.reduce((a, l) => a + l.units.filter(u => u.status === 'sold').reduce((b, u) => b + u.cost, 0), 0);
-  const dts = loads.flatMap(l => l.units.filter(u => u.status === 'sold' && u.sold).map(u => dayDiff(l.arrived, u.sold)));
-  el.innerHTML = `<p class="empty" style="margin:-6px 0 12px;font-size:13px">Loads that arrived in this range. Mark couches sold on the Sales Tracker.</p><div class="kpis">${kpiHtml([
-    ['Loads', loads.length], ['Landed cost', money(landed)], ['Sold', T('sold') + ' / ' + T('n')],
-    ['Revenue', money(T('rev'))], ['Gross profit on sold', money(T('rev') - soldCost)],
-    ['Avg. days to sell', dts.length ? (dts.reduce((a, b) => a + b, 0) / dts.length).toFixed(1) : '–'],
-  ])}</div>` + loads.map((l, i) => { const st = all[i];
-    return `<div class="card" style="margin-bottom:16px">
-      <h2>${esc(l.loadId)} <small>${esc(l.origin)} &middot; arrived ${fmtD(l.arrived)} &middot; ${money(l.landed)} landed &middot; ${money(st.each)} per couch</small></h2>
-      <div class="kpis" style="margin-bottom:12px">${kpiHtml([
-        ['Sold', st.sold + ' / ' + st.n], ['Revenue', money(st.rev)], ['Gross profit', money(st.gp)],
-        ['Paid back', pct(st.mult)], ['Avg. days to sell', isFinite(st.days) ? st.days.toFixed(1) : '–'], ['Still in stock (comps)', money(st.leftComp)],
-      ])}</div>
-      <div style="overflow-x:auto"><table><tr><th>Unit</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th>Status</th><th class="n">Sold for</th><th class="n hide-m">Days</th><th></th></tr>${
-      l.units.map(u => `<tr><td>${esc(u.name)}</td><td class="n">${money(u.cost)}</td><td class="n hide-m">${u.comp ? money(u.comp) : '–'}</td>
-        <td><span class="pill ${u.status==='sold'?'g':u.status==='dud'?'x':''}">${u.status==='sold'?'Sold':u.status==='dud'?'Dud':'In stock'}</span></td>
-        <td class="n">${u.status==='sold' ? '<b>' + money(u.soldPrice) + '</b>' : '–'}</td>
-        <td class="n hide-m">${u.status==='sold' && u.sold ? dayDiff(l.arrived, u.sold) : u.status==='in' ? '<span style="color:var(--muted)">' + dayDiff(l.arrived, new Date()) + '</span>' : '–'}</td>
-        <td class="n" style="white-space:nowrap">${u.status==='in'
-          ? `<button class="btn sm" data-unit="${l.id}:${u.uid}:dud">Dud</button>`
-          : `<button class="btn sm" data-unit="${l.id}:${u.uid}:in">Undo</button>`}</td></tr>`).join('')}</table></div>
-      <div style="margin-top:10px;text-align:right"><button class="btn sm" data-del="loads:${l.id}">Delete load</button></div>
-    </div>`; }).join('');
-}
-
-// ---------- payroll ----------
-let PAY = null;
-// Weeks before the dashboard took over payroll were already paid (and are in the Ivy Flip expenses).
-const PAID_BEFORE = '2026-10-19';
-const VENMO = { zach: 'zpierce54', gunnarr: 'wildflowertimes', finley: 'Finley-Lotzin', collin: 'Collin-Comer', luke: 'Lmp9412', joey: 'joey-menendez-0' };
-const venmoLink = (user, amt, note) => `https://venmo.com/${encodeURIComponent(user)}?txn=pay&amount=${amt.toFixed(2)}&note=${encodeURIComponent(note)}`;
-function sentSet(wkey){ try { return new Set(JSON.parse(localStorage.getItem('bcdVenmo:' + wkey) || '[]')); } catch { return new Set(); } }
-function saveSent(wkey, set){ try { localStorage.setItem('bcdVenmo:' + wkey, JSON.stringify([...set])); } catch {} }
-const fname = s => String(s || '').trim().split(/\s+/)[0] || 'Unknown';
-const pkey = s => fname(s).toLowerCase().replace(/^gunarr$/, 'gunnarr');
-const weekPaid = wkey => (PAY.paid || {})[wkey] || (wkey < PAID_BEFORE ? 'before dashboard' : '');
-async function loadPayroll(fresh){
-  $('payTbl').innerHTML = '<tr><td class="empty">Loading the Work Log...</td></tr>';
-  try {
-    const r = await fetch('/api/payroll' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
-    const d = await r.json(); if (d.error && !d.entries) throw new Error(d.error);
-    PAY = d; renderPayroll(); if (tab === 'goals') renderGoals();
-  } catch (e) { $('payTbl').innerHTML = `<tr><td class="empty">Couldn't load payroll: ${esc(e.message)}</td></tr>`; }
-}
-// One Mon-Sun week (cleaning bonus is per week), limited to dates inside [a, b].
-function payWeekLines(mon, a, b){
-  const wkey = ymd(mon), sun = ymd(addDays(mon, 6)), lo = a > wkey ? a : wkey, hi = b < sun ? b : sun;
-  const ents = PAY.entries.filter(e => e.date >= lo && e.date <= hi);
-  const people = {}, blank = k => ({ key: k, name: k[0].toUpperCase() + k.slice(1), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, tip: 0, days: 0 });
-  ents.forEach(e => { const k = pkey(e.name); const p = people[k] = people[k] || { ...blank(k), name: fname(e.name) };
-    p.hours += e.hours; p.tip += e.tip || 0; p.deep += e.deep; p.spot += e.spot; p.sold += e.sold; p.shows += e.shows; p.days++; });
-  const adj = (PAY.adj || {})[wkey] || {};
-  const fullWeek = lo === wkey && hi === sun;
-  if (fullWeek) Object.keys(adj).forEach(k => { if (!people[k] && adj[k].amount) people[k] = blank(k); });
-  return { ents, lines: Object.values(people).map(p => {
-    const rate = PAY.rates[p.key] ?? 0, hourly = p.hours * rate, showBonus = p.sold * 20, cleanBonus = p.deep >= 4 ? 20 : 0;
-    const a2 = fullWeek ? (adj[p.key] || { amount: 0, note: '' }) : { amount: 0, note: '' };
-    return { ...p, rate, hourly, showBonus, cleanBonus, adj: a2.amount || 0, adjNote: a2.note || '', total: hourly + showBonus + cleanBonus + p.tip + (a2.amount || 0) };
-  }) };
-}
-function payRange(R){
-  const a = ymd(R.from), b = ymd(R.to > day0(new Date()) ? addDays(day0(new Date()), 7) : R.to);
-  const merged = {}, ents = [], weeks = [];
-  for (let m = mondayOf(R.from); ymd(m) <= ymd(R.to); m = addDays(m, 7)) {
-    const W = payWeekLines(m, a, ymd(R.to));
-    ents.push(...W.ents);
-    const total = W.lines.reduce((t, l) => t + l.total, 0), hours = W.lines.reduce((t, l) => t + l.hours, 0);
-    weeks.push({ mon: new Date(m), total, hours, n: W.lines.length });
-    W.lines.forEach(l => { const p = merged[l.key];
-      if (!p) merged[l.key] = { ...l };
-      else ['hours','deep','spot','sold','shows','tip','days','hourly','showBonus','cleanBonus','adj','total'].forEach(k => p[k] += l[k]); });
+app.post('/login', (req, res) => {
+  if (CFG.PASSWORD && req.body.password === CFG.PASSWORD) {
+    res.setHeader('Set-Cookie', `bcd=${SECRET}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 60}; Secure`);
+    return res.redirect('/');
   }
-  const lines = Object.values(merged).sort((x, y) => y.total - x.total);
-  const sales = RAW ? RAW.sales.filter(s => inR(s.date, R)).reduce((t, s) => t + s.rev, 0) : 0;
-  const tot = k => lines.reduce((t, l) => t + l[k], 0);
-  const single = R.kind === 'week' || (R.from.getDay() === 1 && spanDays(R) === 7);
-  return { ents, lines, weeks, single, wkey: ymd(R.from), total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('tip') + tot('adj'), sales };
+  res.redirect('/?bad=1');
+});
+app.get('/logout', (req, res) => { res.setHeader('Set-Cookie', 'bcd=; Path=/; Max-Age=0'); res.redirect('/'); });
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
+app.get('/healthz', (req, res) => res.send('ok'));
+const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
+app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
+['icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
+app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
+
+// ---------- storage: Upstash Redis, or a local file as fallback ----------
+const FILE = path.join(__dirname, 'data', 'store.json');
+async function kget(key, dflt) {
+  if (CFG.REDIS_URL) {
+    const r = await fetch(`${CFG.REDIS_URL}/get/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${CFG.REDIS_TOKEN}` } });
+    const j = await r.json();
+    if (j.error) throw new Error('Redis: ' + j.error);
+    return j.result ? JSON.parse(j.result) : dflt;
+  }
+  try { return JSON.parse(fs.readFileSync(FILE, 'utf8'))[key] ?? dflt; } catch { return dflt; }
 }
-function venmoBtn(l, W){
-  const user = VENMO[l.key];
-  if (!user) return '<span style="font-size:12px;color:var(--muted)">No Venmo</span>';
-  if (!(l.total > 0)) return '';
-  const sent = sentSet(W.wkey).has(l.key);
-  const note = 'Week of ' + fmtD(toDate(W.wkey)) + ' - ' + fmtD(addDays(toDate(W.wkey), 6));
-  return `<a class="btn sm ${sent ? '' : 'p'}" style="text-decoration:none;white-space:nowrap" target="_blank" rel="noopener" href="${venmoLink(user, Math.round(l.total * 100) / 100, note)}" data-venmo="${esc(l.key)}">${sent ? 'Opened ✓' : 'Pay ' + money(l.total)}</a>`;
+async function kset(key, val) {
+  if (CFG.REDIS_URL) {
+    const r = await fetch(`${CFG.REDIS_URL}/set/${encodeURIComponent(key)}`, {
+      method: 'POST', headers: { Authorization: `Bearer ${CFG.REDIS_TOKEN}` }, body: JSON.stringify(val),
+    });
+    const j = await r.json();
+    if (j.error) throw new Error('Redis: ' + j.error);
+    return;
+  }
+  let all = {};
+  try { all = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch {}
+  all[key] = val;
+  fs.mkdirSync(path.dirname(FILE), { recursive: true });
+  fs.writeFileSync(FILE, JSON.stringify(all));
 }
-function renderPayroll(){
-  if (!PAY) return loadPayroll();
-  const R = getR('payroll'), W = payRange(R), P = payRange(prevRange(R)), vs = vsLabel(R);
-  const paidAt = W.single ? weekPaid(W.wkey) : '';
-  $('payWarn').hidden = !PAY.error; $('payWarn').textContent = PAY.error || '';
-  const fs = PAY.fieldsSeen || {}, miss = ['name', 'hours', 'deep cleans', 'showings sold'].filter(k => !fs[k] && !(k === 'hours' && fs.start && fs.end));
-  $('payFields').innerHTML = PAY.entries.length ? 'Reading the Work Log: ' + Object.entries(fs).map(([k, v]) => `<b>${esc(k)}</b> = "${esc(v)}"`).join(' · ') +
-    (miss.length ? `<br><span style="color:var(--bad)">Couldn't find: ${miss.join(', ')}. Use the Adjust column for those.</span>` : '') : '';
-  const sun = addDays(R.from, 6);
-  $('payKpis').innerHTML = kpiHtml([
-    ['Payroll', money(W.total), chg(W.total, P.total, true, vs)],
-    ['Hours', W.hours.toFixed(1), chg(W.hours, P.hours, false, vs)],
-    ['Bonuses, tips + adjustments', money(W.bonus), chg(W.bonus, P.bonus, false, vs)],
-    ['Sales', money(W.sales), chg(W.sales, P.sales, false, vs)],
-    ['Labor % of sales', W.sales ? pct(W.total / W.sales) : '–', W.sales && P.sales ? chg(W.total / W.sales, P.total / P.sales, true, vs) : ''],
-    W.single ? ['Status', paidAt ? '<span class="pill g">Paid</span>' : '<span class="pill">Not paid</span>', paidAt ? `<div class="c flat">${paidAt === 'before dashboard' ? 'Paid before the dashboard' : 'Marked ' + esc(paidAt)}</div>` : `<div class="c flat">Payday ${fmtD(sun)}</div>`]
-      : ['Weeks', W.weeks.length, `<div class="c flat">${W.weeks.filter(w => weekPaid(ymd(w.mon))).length} paid</div>`],
-  ]);
-  $('payTitle').innerHTML = (W.single ? "This week's pay" : 'Pay in this range') + ' <small>Mon–Sun, paid Sunday &middot; $20 per showing sold &middot; $20 at 4+ deep cleans in a week</small>';
-  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Tips</th><th class="n">Adjust</th><th class="n">Total</th>${W.single && !paidAt ? '<th></th>' : ''}</tr>` +
-    (W.lines.length ? W.lines.map(l => `<tr><td><b>${esc(l.name)}</b><div style="font-size:12px;color:var(--muted)">${l.days} day${l.days===1?'':'s'} logged</div></td>
-      <td class="n">${l.hours.toFixed(2)}</td>
-      <td class="n"><input class="cell" type="number" step="0.5" value="${l.rate}" data-rate="${esc(l.key)}" aria-label="Rate for ${esc(l.name)}"></td>
-      <td class="n hide-m">${money(l.hourly)}</td>
-      <td class="n hide-m">${l.sold}${l.sold ? ` <span style="color:var(--muted)">(${money(l.showBonus)})</span>` : ''}</td>
-      <td class="n hide-m">${l.deep} / ${l.spot}${l.cleanBonus ? ` <span class="pill g">+${money(l.cleanBonus)}</span>` : ''}</td>
-      <td class="n">${money(l.showBonus + l.cleanBonus)}</td>
-      <td class="n">${l.tip ? money(l.tip) : '–'}</td>
-      <td class="n">${W.single ? `<input class="cell" type="number" step="1" value="${l.adj || ''}" placeholder="0" data-adj="${esc(l.key)}" title="${esc(l.adjNote)}" aria-label="Adjustment for ${esc(l.name)}">` : (l.adj ? money(l.adj) : '–')}</td>
-      <td class="n"><b>${money(l.total)}</b></td>${W.single && !paidAt ? `<td class="n">${venmoBtn(l, W)}</td>` : ''}</tr>`).join('') +
-      `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.tip,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td>${W.single && !paidAt ? '<td></td>' : ''}</tr>`
-      : `<tr><td colspan="11" class="empty">${PAY.error ? esc(PAY.error) : 'No Work Log entries in this range.'}</td></tr>`);
-  $('payBtn').hidden = !W.single || paidAt === 'before dashboard';
-  $('payBtn').textContent = paidAt ? 'Undo paid' : 'Mark week paid';
-  $('payBtn').disabled = !W.lines.length && !paidAt;
-  $('payLog').innerHTML = `<tr><th>Date</th><th>Who</th><th class="n">Hours</th><th class="n">Deep</th><th class="n">Spot</th><th class="n hide-m">Showings</th><th class="n">Sold</th><th class="n hide-m">Tip</th></tr>` +
-    (W.ents.length ? W.ents.slice().sort((x, y) => y.date.localeCompare(x.date)).map(e => `<tr><td>${toDate(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${esc(e.name)}</td><td class="n">${e.hours}</td><td class="n">${e.deep}</td><td class="n">${e.spot}</td><td class="n hide-m">${e.shows}</td><td class="n">${e.sold}</td><td class="n hide-m">${e.tip ? money(e.tip) : ''}</td></tr>`).join('')
-      : '<tr><td colspan="8" class="empty">Nothing logged.</td></tr>');
-  // Weekly table: weeks in the range, or the last 8 weeks when looking at one week.
-  let wl = W.weeks;
-  if (W.single) { wl = []; for (let k = 0; k < 8; k++) { const m = addDays(R.from, -7 * k), X = payRange({ kind: 'week', from: m, to: addDays(m, 6) }); wl.push({ mon: m, total: X.total, hours: X.hours, n: X.lines.length }); } }
-  else wl = wl.slice().reverse();
-  $('payTrendTitle').textContent = W.single ? 'Last 8 weeks' : 'Weeks in this range';
-  $('payTrend').innerHTML = `<tr><th>Week</th><th class="n">Hours</th><th class="n">Payroll</th><th class="n">Sales</th><th class="n">Labor %</th><th>Status</th></tr>` +
-    wl.map(w => { const sales = RAW ? RAW.sales.filter(s => s.date >= w.mon && s.date <= addDays(w.mon, 6)).reduce((t, s) => t + s.rev, 0) : 0, pd = weekPaid(ymd(w.mon));
-      return `<tr><td>${fmtD(w.mon)} – ${fmtD(addDays(w.mon, 6))}</td><td class="n">${w.hours.toFixed(1)}</td><td class="n"><b>${money(w.total)}</b></td><td class="n">${money(sales)}</td><td class="n">${sales ? pct(w.total / sales) : '–'}</td><td>${pd ? '<span class="pill g">Paid</span>' : w.n ? '<span class="pill">Not paid</span>' : '–'}</td></tr>`; }).join('');
+const KEYS = { purchases: 'bcd:purchases', expenses: 'bcd:expenses', loads: 'bcd:loads', cash: 'bcd:cash',
+  rates: 'bcd:payrollRates', openhouses: 'bcd:openhouses', adj: 'bcd:payrollAdj', paid: 'bcd:payrollPaid' };
+
+// Past months imported from Ivy Flip (Jan-Sep 2026).
+let HISTORY = { sales: [], expenses: [] };
+try { HISTORY = require('./history.json'); } catch { console.log('No history.json'); }
+
+// ---------- Google (sales, showings, bstock) ----------
+// Google is slow (5-30s). Serve the last copy instantly and refresh it in the
+// background. The last copy is also saved to Redis so a redeploy starts warm.
+let cache = { at: 0, data: null }, inflight = null;
+async function fetchGoogle() {
+  const r = await fetch(`${CFG.API}?key=${encodeURIComponent(CFG.KEY)}`);
+  const text = await r.text();
+  let j;
+  try { j = JSON.parse(text); } catch { throw new Error('Apps Script did not return data. Check the deployment.'); }
+  if (j.error) throw new Error('Sheet: ' + j.error);
+  cache = { at: Date.now(), data: j };
+  kset('bcd:googleCache', cache).catch(() => {});
+  return j;
 }
-async function post(url, body){ const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Failed'); return j; }
-document.addEventListener('change', async e => {
-  const t = e.target;
+function refreshGoogle() {
+  if (!inflight) inflight = fetchGoogle().finally(() => { inflight = null; });
+  return inflight;
+}
+async function google(force) {
+  if (!CFG.API) return demoData();
+  if (!cache.data) { try { const c = await kget('bcd:googleCache', null); if (c && c.data) cache = c; } catch {} }
+  if (cache.data) {
+    if (force || Date.now() - cache.at > 60 * 1000) refreshGoogle().catch(e => console.log('Google refresh failed:', e.message));
+    return { ...cache.data, cachedAt: cache.at };
+  }
+  return refreshGoogle();
+}
+// Keep it warm: refresh every 5 minutes even when nobody is looking.
+if (CFG.API) setInterval(() => refreshGoogle().catch(() => {}), 5 * 60 * 1000);
+
+// imports.json: one-time records (e.g. Ivy Flip months after the history cutoff).
+// Each record has a fixed id, so it is added once and never duplicated.
+// Deleted imports are remembered so they don't come back.
+async function getExpenses() {
+  let list = await kget(KEYS.expenses, []);
+  let imp = [];
+  try { imp = JSON.parse(fs.readFileSync(path.join(__dirname, 'imports.json'), 'utf8')).expenses || []; } catch {}
+  if (imp.length) {
+    const gone = new Set(await kget('bcd:deletedImports', []));
+    const have = new Set(list.map(x => x.id));
+    const add = imp.filter(x => !have.has(x.id) && !gone.has(x.id));
+    if (add.length) { list = list.concat(add); await kset(KEYS.expenses, list); }
+  }
+  return list;
+}
+
+// Open houses: starts with the events from the Open House Tracker sheet.
+const OH_SEED = [
+  ['2026-08-22', '11am-2pm', 15, 5, null, null, null], ['2026-09-05', '10am-1pm', 8, 5, null, null, 16],
+  ['2026-09-12', '11am-2pm', 12, 5, null, null, 10], ['2026-09-26', '1pm-4pm', 14, 5, 24, 5, 8],
+  ['2026-10-08', '5-8pm', 5, 1, null, 6, 7, 'Grand opening'], ['2026-10-11', '2-5pm', 7, 1, 19, 2, 2],
+  ['2026-10-18', '1-3pm', 8, 3, 21, 5, 2], ['2026-10-24', '10am-12pm', 8, 0, 14, 3, 4, '$50 off every couch'],
+].map(([date, time, walkins, sales, floor, promoDays, leads, note]) => ({ id: 'oh-' + date, date, time, walkins, sales, floor, promoDays, leads, note: note || '', checks: {} }));
+async function getOpenHouses() {
+  let list = await kget(KEYS.openhouses, null);
+  if (list === null) { list = OH_SEED; await kset(KEYS.openhouses, list); }
+  return list;
+}
+const optNum = v => v === '' || v == null ? null : Number(v);
+app.post('/api/openhouse', async (req, res) => {
   try {
-    if (t.dataset.ohcheck) { const [id, idx] = t.dataset.ohcheck.split(':'); await post('/api/openhouse/check', { id, idx, on: t.checked });
-      const o = RAW.openhouses.find(x => x.id === id); o.checks = o.checks || {}; if (t.checked) o.checks[idx] = true; else delete o.checks[idx]; renderOpenHouse(); }
-    else if (t.dataset.rate) { await post('/api/payroll/rate', { name: t.dataset.rate, rate: t.value }); PAY.rates[t.dataset.rate] = Number(t.value); toast('Rate saved'); renderPayroll(); }
-    else if (t.dataset.adj !== undefined) {
-      const week = ymd(getR('payroll').from), note = t.title || '';
-      await post('/api/payroll/adjust', { week, name: t.dataset.adj, amount: t.value, note });
-      PAY.adj[week] = PAY.adj[week] || {}; PAY.adj[week][t.dataset.adj] = { amount: Number(t.value) || 0, note }; toast('Adjustment saved'); renderPayroll();
-    }
-  } catch (err) { toast(err.message); }
+    const d = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return res.status(400).json({ error: 'Date is required' });
+    const list = await getOpenHouses();
+    let o = d.id && list.find(x => x.id === d.id);
+    if (!o) { o = { id: 'oh-' + Date.now().toString(36), checks: {} }; list.push(o); }
+    Object.assign(o, { date: d.date, time: clean(d.time, 40), note: clean(d.note, 120),
+      walkins: optNum(d.walkins), sales: optNum(d.sales), floor: optNum(d.floor), promoDays: optNum(d.promoDays), leads: optNum(d.leads) });
+    await kset(KEYS.openhouses, list);
+    res.json({ ok: true, id: o.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/openhouse/check', async (req, res) => {
+  try {
+    const { id, idx, on } = req.body || {};
+    const list = await getOpenHouses(), o = list.find(x => x.id === id);
+    if (!o) return res.status(404).json({ error: 'Not found' });
+    o.checks = o.checks || {}; if (on) o.checks[idx] = true; else delete o.checks[idx];
+    await kset(KEYS.openhouses, list);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ---------- sales & sourcing ----------
-const PIE = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7b61c4', '#b0524c', '#9aa0a6', '#2b1d16'];
-function pieIn(id, pairs, fmt){
-  const total = pairs.reduce((a, p) => a + p[1], 0);
-  chartIn(id, { type: 'doughnut', data: { labels: pairs.map(p => p[0]), datasets: [{ data: pairs.map(p => p[1]), backgroundColor: pairs.map((p, i) => PIE[i % PIE.length]), borderWidth: 2, borderColor: '#fff' }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { boxWidth: 12, usePointStyle: true } },
-      tooltip: { callbacks: { label: i => i.label + ': ' + fmt(i.raw) + ' (' + (total ? Math.round(i.raw / total * 100) : 0) + '%)' } } } } });
+app.get('/api/data', async (req, res) => {
+  try {
+    const [g, purchases, expenses, loads, openhouses] = await Promise.all([
+      google(req.query.fresh === '1'), getPurchases(), getExpenses(), getLoads(), getOpenHouses(),
+    ]);
+    const photos = await kget('bcd:photos', {}).catch(() => ({}));
+    const goals = await getGoals().catch(() => ({}));
+    res.json({ ...g, purchases, expenses, loads, openhouses, photos, goals, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- purchases + expenses ----------
+const clean = (v, n = 200) => String(v ?? '').trim().slice(0, n);
+app.post('/api/add', async (req, res) => {
+  try {
+    const { action, data = {} } = req.body || {};
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(data.date) ? data.date : new Date().toISOString().slice(0, 10);
+    const id = Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+    if (action === 'addPurchase') {
+      const cost = Number(data.cost);
+      if (!(cost >= 0)) return res.status(400).json({ error: 'Cost is required' });
+      const list = await kget(KEYS.purchases, []);
+      list.push({ id, date, source: clean(data.source, 40) || 'Other', item: clean(data.item), units: Math.max(1, parseInt(data.units) || 1),
+        cost: Math.round(cost * 100) / 100, loadId: clean(data.loadId, 40), notes: clean(data.notes), status: 'in', soldPrice: 0, soldDate: '' });
+      await kset(KEYS.purchases, list);
+    } else if (action === 'addExpense') {
+      const amount = Number(data.amount);
+      if (!(amount > 0)) return res.status(400).json({ error: 'Amount is required' });
+      const list = await kget(KEYS.expenses, []);
+      list.push({ id, date, category: clean(data.category, 40) || 'Other', amount: Math.round(amount * 100) / 100,
+        vendor: clean(data.vendor, 80), notes: clean(data.notes) });
+      await kset(KEYS.expenses, list);
+    } else return res.status(400).json({ error: 'bad action' });
+    res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/delete', async (req, res) => {
+  try {
+    const { kind, id } = req.body || {};
+    if (!['purchases', 'expenses', 'loads', 'openhouses'].includes(kind)) return res.status(400).json({ error: 'bad kind' });
+    const list = await kget(KEYS[kind], []);
+    await kset(KEYS[kind], list.filter(x => x.id !== id));
+    if (/^(ivy-|imp-)/.test(String(id))) { const g = await kget('bcd:deletedImports', []); g.push(id); await kset('bcd:deletedImports', g); }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- B-Stock loads ----------
+// First run: loads-seed.json (Aug-Oct loads from the Bstock sheet) becomes the starting list.
+// Adds records from imports.json (by id) once; ids you delete are remembered and never re-added.
+async function mergeImports(key, list, field) {
+  let imp = [];
+  try { imp = JSON.parse(fs.readFileSync(path.join(__dirname, 'imports.json'), 'utf8'))[field] || []; } catch {}
+  if (!imp.length) return list;
+  const gone = new Set(await kget('bcd:deletedImports', [])), have = new Set(list.map(x => x.id));
+  const add = imp.filter(x => !have.has(x.id) && !gone.has(x.id));
+  if (add.length) { list = list.concat(add); await kset(key, list); }
+  return list;
 }
-function shareTable(el, pairs, fmt, head){
-  const total = pairs.reduce((a, p) => a + p[1], 0);
-  $(el).innerHTML = `<tr><th>${head}</th><th class="n">${fmt === money ? 'Revenue' : 'Orders'}</th><th class="n">Share</th></tr>` +
-    (pairs.length ? pairs.map((p, i) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${PIE[i % PIE.length]};margin-right:8px"></span>${esc(p[0])}</td><td class="n"><b>${fmt(p[1])}</b></td><td class="n">${total ? pct(p[1] / total) : '–'}</td></tr>`).join('') +
-      `<tr><td><b>Total</b></td><td class="n"><b>${fmt(total)}</b></td><td></td></tr>` : `<tr><td colspan="3" class="empty">Nothing in this range.</td></tr>`);
+async function getPurchases() { return mergeImports(KEYS.purchases, await kget(KEYS.purchases, []), 'purchases'); }
+async function getLoads() {
+  let loads = await kget(KEYS.loads, null);
+  if (!loads || !loads.length) {
+    let seed = null;
+    try { seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'loads-seed.json'), 'utf8')); } catch (e) { console.log('loads-seed.json not readable:', e.message); }
+    if (Array.isArray(seed) && seed.length) { loads = seed; await kset(KEYS.loads, loads); }
+    else loads = loads || [];
+  }
+  return mergeImports(KEYS.loads, loads, 'loads');
 }
-// Where each sold couch came from: B-Stock units and used pickups marked sold in the range.
-function invSources(R){
-  const out = {};
-  RAW.loads.forEach(l => l.units.forEach(u => { if (u.status === 'sold' && inR(u.sold, R)) out.Bstock = (out.Bstock || 0) + u.soldPrice; }));
-  RAW.purchases.forEach(p => { if (p.status === 'sold' && inR(p.sold, R)) out[p.source || 'Other'] = (out[p.source || 'Other'] || 0) + p.soldPrice; });
-  return Object.entries(out).sort((a, b) => b[1] - a[1]);
+// Landed cost is split only across sectionals, sofas, sleepers and loveseats.
+// Chairs, recliners, ottomans, consoles, mattresses get $0.
+const PAID = /sectional|sofa|sleeper|loveseat|love seat|couch|sect\b|\bmod\b|modular/i;
+function allocate(load) {
+  const paid = load.units.filter(u => PAID.test(u.name));
+  const each = paid.length ? Math.round(load.landed / paid.length * 100) / 100 : 0;
+  load.units.forEach(u => { u.cost = PAID.test(u.name) ? each : 0; });
+  return load;
 }
-function renderSources(){
-  const R = getR('sources'), live = RAW.sales.filter(x => inR(x.date, R)), hist = RAW.hSales.some(x => inR(x.date, R) && isHistDay(x.date) && x.rev > 0);
-  $('srcNote').hidden = !hist;
-  const del = live.filter(x => x.type === 'Delivery').length;
-  const ful = [['Delivery', del], ['Pickup', live.length - del]].filter(p => p[1]);
-  const src = groupSum(live, 'source', 'rev');
-  const inv = invSources(R);
-  pieIn('pieFul', ful, v => v + ' orders'); shareTable('tblFul', ful, v => String(v), 'Fulfillment');
-  const dl = live.filter(x => x.type === 'Delivery'), fees = dl.reduce((a, x) => a + (x.del || 0), 0), PR = prevRange(R);
-  const pdl = RAW.sales.filter(x => inR(x.date, PR) && x.type === 'Delivery'), pfees = pdl.reduce((a, x) => a + (x.del || 0), 0);
-  const fGross = live.reduce((a, x) => a + x.rev, 0);
-  $('feeBox').innerHTML = `<div class="row"><span><b>Delivery fees collected</b></span><span><b>${money(fees)}</b> ${chgSmall(fees, pfees)}</span></div>
-    <div class="row"><span>Average fee per delivery</span><b>${dl.length ? money(fees / dl.length) : '–'}</b></div>
-    <div class="row"><span>Share of sales</span><b>${fGross ? pct(fees / fGross) : '–'}</b></div>`;
-  pieIn('pieSrc', src, money); shareTable('tblSrc', src, money, 'Sales source');
-  pieIn('pieInv', inv, money); shareTable('tblInv', inv, money, 'Inventory source');
-  const invTotal = inv.reduce((a, p) => a + p[1], 0), gross = live.reduce((a, x) => a + x.rev, 0);
-  $('invNote').textContent = `Counts couches marked Sold on the B-Stock tab or Log sale under Used couches: ${money(invTotal)} of ${money(gross)} in sales this range.`;
-  // month by month
-  const endY = R.to > day0(new Date()) ? new Date().getFullYear() : R.to.getFullYear(), endM = R.to > day0(new Date()) ? new Date().getMonth() : R.to.getMonth();
-  $('srcTrend').innerHTML = `<tr><th>Month</th><th class="n">Sales</th><th class="n">Delivery %</th><th class="n">Delivery fees</th><th class="n hide-m">Top source</th><th class="n">Meta Ads %</th><th class="n">B-Stock %</th></tr>` +
-    [0,1,2,3,4,5].map(k => { const t = back(endY, endM, k), MR = { from: new Date(t.y, t.m, 1), to: new Date(t.y, t.m + 1, 0) };
-      const L = RAW.sales.filter(x => inR(x.date, MR)), rev = L.reduce((a, x) => a + x.rev, 0), top = groupSum(L, 'source', 'rev')[0];
-      const meta = L.filter(x => x.source === 'Meta Ads').reduce((a, x) => a + x.rev, 0), iv = invSources(MR), ivT = iv.reduce((a, p) => a + p[1], 0), bs = (iv.find(p => p[0] === 'Bstock') || [0, 0])[1];
-      return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${L.length || '–'}</td><td class="n">${L.length ? pct(L.filter(x => x.type === 'Delivery').length / L.length) : '–'}</td><td class="n">${L.length ? money(L.reduce((a, x) => a + (x.type === 'Delivery' ? x.del || 0 : 0), 0)) : '–'}</td><td class="n hide-m">${top ? esc(top[0]) : '–'}</td><td class="n">${rev ? pct(meta / rev) : '–'}</td><td class="n">${ivT ? pct(bs / ivT) : '–'}</td></tr>`; }).join('');
+app.post('/api/loads', async (req, res) => {
+  try {
+    const d = req.body || {};
+    const landed = Number(d.landed);
+    if (!(landed > 0)) return res.status(400).json({ error: 'Total landed cost is required' });
+    const units = (Array.isArray(d.units) ? d.units : []).map((u, i) => ({
+      uid: 'u' + i + crypto.randomBytes(2).toString('hex'), name: clean(u.name, 120), comp: Math.max(0, Number(u.comp) || 0),
+      status: 'in', soldPrice: 0, soldDate: '',
+    })).filter(u => u.name);
+    if (!units.length) return res.status(400).json({ error: 'Add at least one unit' });
+    const loads = await getLoads();
+    const load = allocate({ id: Date.now().toString(36) + crypto.randomBytes(3).toString('hex'), loadId: clean(d.loadId, 40),
+      origin: clean(d.origin, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : new Date().toISOString().slice(0, 10),
+      landed: Math.round(landed * 100) / 100, notes: clean(d.notes), units });
+    loads.push(load);
+    await kset(KEYS.loads, loads);
+    res.json({ ok: true, id: load.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/loads/unit', async (req, res) => {
+  try {
+    const { id, uid, status, soldPrice, soldDate } = req.body || {};
+    const loads = await getLoads();
+    const u = (loads.find(l => l.id === id) || { units: [] }).units.find(x => x.uid === uid);
+    if (!u) return res.status(404).json({ error: 'Unit not found' });
+    if (!['in', 'sold', 'dud'].includes(status)) return res.status(400).json({ error: 'bad status' });
+    u.status = status;
+    u.soldPrice = status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
+    u.soldDate = status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
+    saleDetails(u, req.body || {}, status);
+    await kset(KEYS.loads, loads);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Couch price, delivery fee and upsells recorded when a couch is marked sold.
+function saleDetails(target, body, status) {
+  const sold = status === 'sold';
+  target.soldDelivery = sold ? Math.max(0, Number(body.delivery) || 0) : 0;
+  target.soldUpsells = sold && Array.isArray(body.upsells) ? body.upsells.map(u => ({ label: clean(u.label, 40), price: Math.max(0, Number(u.price) || 0) })).filter(u => u.label && u.price) : [];
+  target.soldUpsellTotal = target.soldUpsells.reduce((a, u) => a + u.price, 0);
 }
 
-// ---------- open houses ----------
-const PROMO = {
-  'One time': ['Put open house date and time in all bios', 'Edit announcement bar on website', 'Edit & enable open house page on website',
-    "Text blast showings who didn't show up or didn't buy", 'Email blast all customers', 'Text blast "Save my spot" sign-ups a day before',
-    'Pin event to FB page', 'Pin promo post to Instagram and TikTok', 'Link open house page in bio on all profiles', 'Boost open house event on Facebook',
-    'Post a personal / vulnerable post', 'Create story highlight on all profiles', 'Add open house promo video to Traffic campaign', 'List open house promo on FB Marketplace',
-    'Create Facebook event', 'Email First Dibs list'],
-  'Recurring': ['Post in the event discussion tab', 'Promote in other local FB groups', 'Post promo in your FB group (@everyone)',
-    '1/3 of daily short-form videos have an open house CTA', 'Message every single lead (Marketplace, TikTok, etc.)', 'Follow up Marketplace leads from the open house listing',
-    'Post daily stories (landing page + "Save my spot" link)'],
-};
-const PROMO_ALL = Object.values(PROMO).flat();
-function ohStats(o){
-  const d = toDate(o.date), salesLog = d ? RAW.sales.filter(s => +s.date === +d) : [];
-  const done = PROMO_ALL.filter((_, i) => (o.checks || {})[i]).length;
-  return { d, conv: o.walkins ? o.sales / o.walkins : NaN, salesLog: salesLog.length, salesLogRev: salesLog.reduce((a, s) => a + s.rev, 0), done };
+// Log (or undo) the sale of a used pickup
+app.post('/api/purchases/sale', async (req, res) => {
+  try {
+    const { id, status, soldPrice, soldDate } = req.body || {};
+    const list = await kget(KEYS.purchases, []);
+    const p = list.find(x => x.id === id);
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    p.status = status === 'sold' ? 'sold' : 'in';
+    p.soldPrice = p.status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
+    p.soldDate = p.status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
+    saleDetails(p, req.body || {}, p.status);
+    await kset(KEYS.purchases, list);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- payroll (reads the Jotform Work Log) ----------
+// Default hourly rates. Editable on the Payroll tab (saved in Redis).
+const DEFAULT_RATES = { collin: 20, luke: 20, zach: 20, joey: 20, gunnarr: 18, finley: 21 };
+let wl = { at: 0, data: null };
+
+const lc = s => String(s || '').toLowerCase();
+function ansText(a) {
+  if (a == null) return '';
+  if (typeof a === 'string' || typeof a === 'number') return String(a);
+  if (a.first || a.last) return [a.first, a.last].filter(Boolean).join(' ');
+  return Object.values(a).filter(v => typeof v === 'string').join(' ');
 }
-function renderOpenHouse(){
-  const R = getR('openhouse'), list = (RAW.openhouses || []).filter(o => inR(toDate(o.date), R)).sort((a, b) => a.date.localeCompare(b.date));
-  const past = list.filter(o => toDate(o.date) <= day0(new Date()));
-  const T = k => past.reduce((a, o) => a + (Number(o[k]) || 0), 0);
-  const walk = T('walkins'), sales = T('sales');
-  const withFloor = past.filter(o => o.floor), withPromo = past.filter(o => o.promoDays);
-  $('ohKpis').innerHTML = kpiHtml([
-    ['Open houses', past.length], ['Walk-ins', walk, `<div class="c flat">${past.length ? (walk / past.length).toFixed(1) : 0} per event</div>`],
-    ['Sales', sales, `<div class="c flat">${past.length ? (sales / past.length).toFixed(1) : 0} per event</div>`], ['Conversion', pct(walk ? sales / walk : NaN)],
-    ['"Save my spot" leads', T('leads')], ['Avg. couches on floor', withFloor.length ? Math.round(withFloor.reduce((a, o) => a + Number(o.floor), 0) / withFloor.length) : '–'],
-  ]);
-  // next or most recent event gets the checklist
-  const all = (RAW.openhouses || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-  const next = all.find(o => toDate(o.date) >= day0(new Date())) || all[all.length - 1];
-  $('ohCheckTitle').innerHTML = next ? `Promo checklist <small>${esc(fmtD(toDate(next.date), true))}${next.time ? ' &middot; ' + esc(next.time) : ''} &middot; ${ohStats(next).done} of ${PROMO_ALL.length} done</small>` : 'Promo checklist';
-  let i = 0;
-  $('ohChecks').innerHTML = next ? Object.entries(PROMO).map(([grp, items]) => `<div style="font-weight:700;font-size:13px;margin:10px 0 4px">${grp}</div>` +
-    items.map(t => { const k = i++; return `<label class="chk"><input type="checkbox" data-ohcheck="${esc(next.id)}:${k}" ${(next.checks || {})[k] ? 'checked' : ''}> ${esc(t)}</label>`; }).join('')).join('')
-    : '<p class="empty">Add an open house to start its checklist.</p>';
-  $('ohTbl').innerHTML = `<tr><th>Date</th><th class="hide-m">Time</th><th class="n">Walk-ins</th><th class="n">Sales</th><th class="n">Conversion</th><th class="n hide-m">On floor</th><th class="n hide-m">Days promoted</th><th class="n hide-m">Leads</th><th class="n hide-m">Promo done</th><th class="n hide-m">Sales Log that day</th><th></th></tr>` +
-    (list.length ? list.slice().reverse().map(o => { const st = ohStats(o);
-      return `<tr><td><b>${fmtD(st.d)}</b>${o.note ? `<div style="font-size:12px;color:var(--muted)">${esc(o.note)}</div>` : ''}</td><td class="hide-m">${esc(o.time || '')}</td>
-        <td class="n">${o.walkins ?? '–'}</td><td class="n">${o.sales ?? '–'}</td><td class="n"><b>${pct(st.conv)}</b></td>
-        <td class="n hide-m">${o.floor || '–'}</td><td class="n hide-m">${o.promoDays || '–'}</td><td class="n hide-m">${o.leads || '–'}</td>
-        <td class="n hide-m">${st.done ? st.done + '/' + PROMO_ALL.length : '–'}</td><td class="n hide-m">${st.salesLog ? st.salesLog + ' · ' + money(st.salesLogRev) : '–'}</td>
-        <td class="n" style="white-space:nowrap"><button class="btn sm" data-ohedit="${esc(o.id)}">Edit</button> <button class="btn sm" data-del="openhouses:${esc(o.id)}">Delete</button></td></tr>`; }).join('')
-      : `<tr><td colspan="11" class="empty">No open houses in this range.</td></tr>`);
-  // does more inventory on the floor mean more sales?
-  const pts = past.filter(o => o.floor && o.sales != null).map(o => ({ x: Number(o.floor), y: Number(o.sales) }));
-  const lpts = past.filter(o => o.leads && o.walkins != null).map(o => ({ x: Number(o.leads), y: Number(o.walkins) }));
-  const so = (xt, yt) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: xt } }, y: { beginAtZero: true, title: { display: true, text: yt }, ticks: { precision: 0 } } } });
-  chartIn('ohFloor', { type: 'scatter', data: { datasets: [{ data: pts, backgroundColor: '#b0524c', pointRadius: 6 }] }, options: so('Couches on floor', 'Sales') });
-  chartIn('ohLeads', { type: 'scatter', data: { datasets: [{ data: lpts, backgroundColor: '#2b1d16', pointRadius: 6 }] }, options: so('"Save my spot" leads', 'Walk-ins') });
-  void withPromo;
+function ansDate(q) {
+  const a = q.answer;
+  if (a && typeof a === 'object' && a.year && a.month && a.day) return `${a.year}-${String(a.month).padStart(2, '0')}-${String(a.day).padStart(2, '0')}`;
+  const t = String(q.prettyFormat || a || '');
+  let m = t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = t.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/); if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  return '';
 }
-function openOH(o){
-  const m = $('m-oh'), f = m.querySelector('form').elements;
-  o = o || {};
-  f.id.value = o.id || ''; f.date.value = o.date || todayStr(); f.time.value = o.time || ''; f.note.value = o.note || '';
-  ['walkins', 'sales', 'floor', 'promoDays', 'leads'].forEach(k => f[k].value = o[k] ?? '');
-  $('ohModalTitle').textContent = o.id ? 'Edit open house' : 'Add an open house';
-  m.classList.add('on');
+function ansMinutes(q) {
+  const a = q.answer;
+  let h, mi, ap;
+  if (a && typeof a === 'object' && (a.hourSelect || a.timeInput)) {
+    if (a.timeInput) { const m = String(a.timeInput).match(/(\d{1,2}):(\d{2})/); if (m) { h = +m[1]; mi = +m[2]; } }
+    else { h = +a.hourSelect; mi = +(a.minuteSelect || 0); }
+    ap = a.ampm;
+  } else {
+    const m = String(q.prettyFormat || a || '').match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+    if (!m) return null; h = +m[1]; mi = +m[2]; ap = m[3];
+  }
+  if (isNaN(h)) return null;
+  if (ap && /pm/i.test(ap) && h < 12) h += 12;
+  if (ap && /am/i.test(ap) && h === 12) h = 0;
+  return h * 60 + (mi || 0);
 }
+const numOf = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.\-]/g, '')); return isNaN(n) ? 0 : n; };
+
+// Find each field by its question text so it keeps working if the form changes order.
+function parseWorkLog(subs) {
+  const fieldsSeen = {};
+  const entries = subs.filter(s => s.status !== 'DELETED').map(s => {
+    const qs = Object.values(s.answers || {}).filter(q => q && q.text && q.answer !== undefined && q.answer !== '');
+    const find = (re, not) => qs.find(q => re.test(q.text) && !(not && not.test(q.text)));
+    const mark = (k, q) => { if (q) fieldsSeen[k] = q.text; return q; };
+    const qName = mark('name', find(/name|employee|who/i, /customer|client/i));
+    const qDate = mark('date', find(/date|day/i, /birth/i) || qs.find(q => q.type === 'control_datetime'));
+    const qHours = mark('hours', find(/hours/i, /bonus/i));
+    const qTip = mark('tips', find(/tip/i));
+    const qIn = mark('start', find(/start time|^start\b|clock.?in|time.?in|arriv/i));
+    const qOut = mark('end', find(/end time|^end\b|clock.?out|time.?out|time you left/i));
+    const qDeep = mark('deep cleans', find(/deep/i));
+    const qSpot = mark('spot cleans', find(/spot/i));
+    const qSold = mark('showings sold', find(/sold|purchas|convert|bought|closed/i, /deep|spot|hour|clean/i));
+    const qShows = mark('showings', find(/showing/i, /sold|purchas|convert|bought|closed/i));
+    let hours = qHours ? numOf(ansText(qHours.answer)) : 0;
+    if (!hours && qIn && qOut) {
+      const a = ansMinutes(qIn), b = ansMinutes(qOut);
+      if (a != null && b != null) hours = Math.round(((b - a + (b < a ? 1440 : 0)) / 60) * 100) / 100;
+    }
+    const date = (qDate && ansDate(qDate)) || String(s.created_at || '').slice(0, 10);
+    return {
+      id: s.id, date, name: qName ? ansText(qName.answer).trim() : 'Unknown',
+      hours, deep: qDeep ? numOf(ansText(qDeep.answer)) : 0, spot: qSpot ? numOf(ansText(qSpot.answer)) : 0,
+      sold: qSold ? numOf(ansText(qSold.answer)) : 0, shows: qShows ? numOf(ansText(qShows.answer)) : 0,
+      tip: qTip ? numOf(ansText(qTip.answer)) : 0,
+    };
+  });
+  return { entries, fieldsSeen };
+}
+
+async function workLog(force) {
+  if (!CFG.JOTFORM_KEY) return { entries: [], fieldsSeen: {}, error: 'Add JOTFORM_API_KEY in Railway to load the Work Log.' };
+  if (!force && wl.data && Date.now() - wl.at < 2 * 60 * 1000) return wl.data;
+  const url = `${CFG.JOTFORM_BASE}/form/${CFG.WORKLOG_FORM}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=1000&orderby=created_at`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if (j.responseCode && j.responseCode !== 200) throw new Error('Jotform: ' + (j.message || j.responseCode));
+  wl = { at: Date.now(), data: parseWorkLog(j.content || []) };
+  return wl.data;
+}
+
+app.get('/api/payroll', async (req, res) => {
+  try {
+    let log;
+    try { log = await workLog(req.query.fresh === '1'); } catch (e) { log = { entries: [], fieldsSeen: {}, error: e.message }; }
+    const [rates, adj, paid] = await Promise.all([kget(KEYS.rates, {}), kget(KEYS.adj, {}), kget(KEYS.paid, {})]);
+    res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/payroll/rate', async (req, res) => {
+  try {
+    const key = lc(clean(req.body.name, 40)).split(' ')[0];
+    const rate = Number(req.body.rate);
+    if (!key || !(rate >= 0)) return res.status(400).json({ error: 'Name and rate required' });
+    const rates = await kget(KEYS.rates, {}); rates[key] = rate; await kset(KEYS.rates, rates);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/payroll/adjust', async (req, res) => {
+  try {
+    const { week, name, amount, note } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return res.status(400).json({ error: 'bad week' });
+    const key = lc(clean(name, 40)).split(' ')[0];
+    const adj = await kget(KEYS.adj, {});
+    adj[week] = adj[week] || {};
+    adj[week][key] = { amount: Number(amount) || 0, note: clean(note, 120) };
+    await kset(KEYS.adj, adj);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Mark a week paid: adds one Payroll expense per person (dated the Sunday). Undo removes them.
+app.post('/api/payroll/paid', async (req, res) => {
+  try {
+    const { week, lines, undo } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return res.status(400).json({ error: 'bad week' });
+    const paid = await kget(KEYS.paid, {});
+    let list = await kget(KEYS.expenses, []);
+    list = list.filter(x => !String(x.id).startsWith('pay-' + week + '-'));
+    if (undo) { delete paid[week]; }
+    else {
+      const sun = new Date(week + 'T12:00:00Z'); sun.setUTCDate(sun.getUTCDate() + 6);
+      const d = sun.toISOString().slice(0, 10);
+      (Array.isArray(lines) ? lines : []).filter(l => Number(l.total) > 0).forEach(l => list.push({
+        id: `pay-${week}-${lc(l.name).replace(/[^a-z0-9]/g, '')}`, date: d, category: 'Payroll',
+        amount: Math.round(Number(l.total) * 100) / 100, vendor: clean(l.name, 60), notes: 'Weekly payroll ' + week,
+      }));
+      paid[week] = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    }
+    await kset(KEYS.expenses, list); await kset(KEYS.paid, paid);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ---------- cash position ----------
-let CASH = null;
-const HEALTH = [[15000, 'Strong', 'g', 'Over a month of expenses on hand after bills'], [7500, 'Healthy', 'u', 'Half a month to a month of expenses after bills'],
-  [0, 'Tight', '', 'Positive, but under half a month of expenses after bills'], [-Infinity, 'Danger', 'd', 'Cards and bills are more than the cash on hand']];
-function cashCalc(s){
-  const v = k => Number(s[k]) || 0;
-  const bizCards = v('ink2078') + v('ink1602') + v('amex91000'), persCards = v('capone8760') + v('discover6166');
-  const netBiz = v('checking9926') + v('safe') + v('stripe') + v('venmo') - bizCards;
-  const afterBills = netBiz - (s.bills == null || s.bills === '' ? 3000 : v('bills'));
-  const netPers = v('personal5908') + v('marcus6620') + v('marcus6569') - persCards;
-  const combined = netBiz + netPers;
-  const h = HEALTH.find(x => afterBills >= x[0]);
-  return { bizCards, persCards, netBiz, afterBills, netPers, combined, withStocks: combined + v('stocks'), health: h };
+let stripeCache = { at: 0, data: null };
+async function stripeBalance(force) {
+  if (!CFG.STRIPE_KEY) return { error: 'Add STRIPE_SECRET_KEY in Railway to pull Stripe automatically.' };
+  if (!force && stripeCache.data && Date.now() - stripeCache.at < 2 * 60 * 1000) return stripeCache.data;
+  const r = await fetch('https://api.stripe.com/v1/balance', { headers: { Authorization: `Bearer ${CFG.STRIPE_KEY}` } });
+  const j = await r.json();
+  if (j.error) return { error: 'Stripe: ' + j.error.message };
+  const usd = arr => (arr || []).filter(x => x.currency === 'usd').reduce((a, x) => a + x.amount, 0) / 100;
+  const data = { pending: usd(j.pending), available: usd(j.available), total: usd(j.pending) + usd(j.available), at: new Date().toISOString() };
+  stripeCache = { at: Date.now(), data };
+  return data;
 }
-const delta = (a, b) => b == null ? '<div class="c flat">First entry</div>' : Math.abs(a - b) < 0.5 ? '<div class="c flat">No change vs last entry</div>' : `<div class="c ${a > b ? 'up' : 'dn'}">${a > b ? '&uarr; +' : '&darr; '}${money(a - b)} vs last entry</div>`;
-async function loadCash(fresh){
-  try {
-    const r = await fetch('/api/cash' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
-    const d = await r.json(); if (d.error) throw new Error(d.error);
-    CASH = d; renderCash();
-  } catch (e) { $('cashBody').innerHTML = `<div class="err" style="display:block">Couldn't load cash: ${esc(e.message)}</div>`; }
-}
-function renderCash(){
-  if (!CASH) return loadCash();
-  const R = getR('cash'), allSnaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const snaps = allSnaps.filter(x => inR(toDate(x.date), R));
-  const last = snaps[snaps.length - 1] || (R.to >= day0(new Date()) ? allSnaps[allSnaps.length - 1] : null);
-  const prev = last ? allSnaps[allSnaps.findIndex(x => x.date === last.date) - 1] : null;
-  const sb = CASH.stripe || {};
-  if (!last) { $('cashBody').innerHTML = allSnaps.length ? `<div class="card"><h2>No entries in this range</h2><p class="empty">Pick another range.</p></div>` : `<div class="card"><h2>No balances yet</h2><p class="empty">Click <b>+ Today's balances</b> and type in your accounts. Takes about a minute; tomorrow it pre-fills with today's numbers so you only change what moved.</p></div>`; return; }
-  const C = cashCalc(last), Pv = prev ? cashCalc(prev) : null;
-  const now0 = new Date(); const mTax = RAW ? RAW.sales.filter(s => inMonth(s.date, now0.getFullYear(), now0.getMonth())).reduce((t, s) => t + (s.tax || 0), 0) : 0;
-  const row = (l, v, neg, note) => `<div class="row"><span>${l}${note ? `<div style="font-size:12px;color:var(--muted)">${note}</div>` : ''}</span><b style="${neg ? 'color:var(--bad)' : ''}">${neg ? '−' : ''}${money(v)}</b></div>`;
-  const stripeNote = last.stripeAuto ? 'pulled from Stripe when saved' : 'typed in';
-  $('cashBody').innerHTML = `
-    <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <span class="pill ${C.health[2]}" style="font-size:15px;padding:6px 14px">${C.health[1]}</span>
-      <span style="font-size:14px;color:var(--muted)">${C.health[3]} &middot; as of ${toDate(last.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}${last.note ? ' &middot; ' + esc(last.note) : ''}</span>
-    </div>
-    <div class="kpis">${kpiHtml([
-      ['Net business', money(C.netBiz), delta(C.netBiz, Pv && Pv.netBiz)],
-      ['Business after bills', money(C.afterBills), delta(C.afterBills, Pv && Pv.afterBills)],
-      ['Net personal', money(C.netPers), delta(C.netPers, Pv && Pv.netPers)],
-      ['Combined', money(C.combined), delta(C.combined, Pv && Pv.combined)],
-      ['Combined + stocks', money(C.withStocks), delta(C.withStocks, Pv && Pv.withStocks)],
-      ['Tax reserve (not spendable)', money(last.taxReserve7229 || 0), `<div class="c flat">${money(mTax)} sales tax collected this month</div>`],
-    ])}</div>
-    <div class="grid2" style="margin-top:0">
-      <div class="card"><h2>Business</h2>
-        ${row('Commerce Business Checking ··9926', last.checking9926)}
-        ${row('Cash in safe', last.safe)}
-        ${row('Stripe not yet paid out', last.stripe, false, stripeNote)}
-        ${row('Venmo in transit', last.venmo, false, 'Not yet posted to 9926')}
-        ${row('Chase Ink ··2078', last.ink2078, true)}
-        ${row('Chase Ink ··1602', last.ink1602, true)}
-        ${row('Amex Blue Business ··91000', last.amex91000, true)}
-        <div class="row"><span><b>Net business</b></span><b>${money(C.netBiz)}</b></div>
-        ${row('Rent + utilities', last.bills == null ? 3000 : last.bills, true)}
-        <div class="row"><span><b>After bills</b></span><b>${money(C.afterBills)}</b></div>
-        <div class="row" style="opacity:.6"><span>Commerce Tax Reserve ··7229<div style="font-size:12px">Shown, never counted as spendable</div></span><b>${money(last.taxReserve7229 || 0)}</b></div>
-      </div>
-      <div class="card"><h2>Personal</h2>
-        ${row('Commerce Free Checking ··5908', last.personal5908)}
-        ${row('Marcus Savings ··6620 (Travel)', last.marcus6620)}
-        ${row('Marcus Savings ··6569 (Online)', last.marcus6569)}
-        ${row('Capital One ··8760', last.capone8760, true)}
-        ${row('Discover ··6166', last.discover6166, true)}
-        <div class="row"><span><b>Net personal</b></span><b>${money(C.netPers)}</b></div>
-        <div class="row"><span>Stocks</span><b>${money(last.stocks || 0)}</b></div>
-        <div class="row"><span><b>Combined + stocks</b></span><b>${money(C.withStocks)}</b></div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:16px"><h2>Trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
-    <div class="card" style="margin-top:16px"><h2>Entries in this range ${snaps.length > 1 ? `<small>Net business ${(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz) >= 0 ? '+' : ''}${money(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz)} over the range</small>` : ''}</h2><div style="overflow-x:auto"><table>
-      <tr><th>Date</th><th class="n">Net business</th><th class="n hide-m">After bills</th><th class="n">Personal</th><th class="n">Combined</th><th>Health</th><th class="hide-m">Note</th><th></th></tr>
-      ${snaps.slice().reverse().map(s => { const X = cashCalc(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n"><b>${money(X.netBiz)}</b></td><td class="n hide-m">${money(X.afterBills)}</td><td class="n">${money(X.netPers)}</td><td class="n">${money(X.combined)}</td><td><span class="pill ${X.health[2]}">${X.health[1]}</span>${s.score ? ` <span style="font-size:12px;color:var(--muted)">${s.score}/10</span>` : ''}</td><td class="hide-m" style="font-size:12.5px;color:var(--muted);max-width:280px">${esc(s.note || '')}</td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
-    </table></div>
-    <p class="empty" style="margin-top:12px;font-size:12.5px">Health uses business after bills: Strong $15K+, Healthy $7.5K+, Tight $0+, Danger below $0. Stripe now: ${sb.error ? esc(sb.error) : money(sb.total || 0) + ' (' + money(sb.pending || 0) + ' pending, ' + money(sb.available || 0) + ' available).'}</p></div>`;
-  const recent = snaps, o = baseOpts(true);
-  const line = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w || 2, tension: .3, pointRadius: recent.length < 15 ? 3 : 0 });
-  chartIn('cashChart', { type: 'line', data: { labels: recent.map(s => fmtD(toDate(s.date))),
-    datasets: [line('Net business', recent.map(s => cashCalc(s).netBiz), '#b0524c', 3), line('Net personal', recent.map(s => cashCalc(s).netPers), '#2e7d4f'), line('Combined', recent.map(s => cashCalc(s).combined), '#2b1d16')] }, options: o });
-}
-function openCash(){
-  const m = $('m-cash'), f = m.querySelector('form').elements, last = CASH && CASH.snaps.length ? CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)).pop() : {};
-  ['checking9926','taxReserve7229','safe','venmo','ink2078','ink1602','amex91000','personal5908','marcus6620','marcus6569','capone8760','discover6166'].forEach(k => f[k].value = last[k] != null ? last[k] : '');
-  f.stocks.value = last.stocks != null ? last.stocks : 40000; f.bills.value = last.bills != null ? last.bills : 3000;
-  f.date.value = todayStr(); f.stripe.value = ''; f.note.value = '';
-  const sb = (CASH && CASH.stripe) || {};
-  $('stripeNow').textContent = sb.error ? 'Not connected. Type the Stripe balance in.' : 'Leave blank to pull automatically (now ' + money(sb.total || 0) + ').';
-  m.classList.add('on');
-}
-
-// ---------- competitor ads ----------
-let ADSD = null;
-const AST = { brand: '', status: 'active', format: '', sort: 'days', newOnly: false, view: 'compare' };
-const agoTxt = t => { if (!t) return 'never'; const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' days ago'; };
-async function loadAds(){
-  try {
-    const r = await fetch('/api/ads', { cache: 'no-store' });
-    const d = await r.json(); if (d.error) throw new Error(d.error);
-    ADSD = d; renderAds();
-  } catch (e) { $('adGrid').innerHTML = `<div class="adempty">Couldn't load ads: ${esc(e.message)}</div>`; }
-}
-function renderAds(){
-  if (!ADSD) return loadAds();
-  const d = ADSD, week = Date.now() - 7 * 864e5;
-  let m = d.hasToken ? 'Last pulled ' + agoTxt(d.lastRun) + ' · pulls new ads every morning at 6am' : 'Add APIFY_TOKEN in Railway to pull ads.';
-  if (d.running) m += ' · pulling now (takes a few minutes)…';
-  if (d.lastError && (!d.lastRun || d.lastError.at > d.lastRun)) m += ` · <span style="color:var(--bad)">Last pull failed: ${esc(d.lastError.message)}</span>`;
-  $('adMeta').innerHTML = m;
-  const mine = new Set(d.mine || []), others = d.brands.filter(b => !mine.has(b));
-  $('adChips').innerHTML = ['', ...(d.mine || []), ...others].map(b => `<span class="adchip${AST.brand === b ? ' on' : ''}${mine.has(b) && AST.brand !== b ? ' adyours' : ''}" data-adbrand="${esc(b)}">${b ? esc(b) + (mine.has(b) ? ' (you)' : '') : 'All brands'}</span>`).join('') +
-    `<span class="adchip${AST.newOnly ? ' on' : ''}" data-adnew="1">New this week</span>`;
-  let ads = d.ads.filter(a => (!AST.brand || a.brand === AST.brand) && (AST.status === 'all' || (AST.status === 'active' ? a.active : !a.active)) &&
-    (!AST.format || a.format === AST.format || (AST.format === 'IMAGE' && a.format !== 'VIDEO')) && (!AST.newOnly || (a.start && a.start > week)));
-  ads.sort(AST.sort === 'days' ? (a, b) => (b.days || 0) - (a.days || 0) : (a, b) => (b.start || 0) - (a.start || 0));
-  const statsOf = list => { const act = list.filter(a => a.active), ds = act.map(a => a.days || 0);
-    return { act: act.length, fresh: list.filter(a => a.start && a.start > week).length, avg: ds.length ? ds.reduce((x, y) => x + y, 0) / ds.length : 0,
-      max: ds.length ? Math.max(...ds) : 0, video: act.length ? act.filter(a => a.format === 'VIDEO').length / act.length : NaN, proven: act.filter(a => (a.days || 0) >= 30).length }; };
-  const Y = statsOf(d.ads.filter(a => mine.has(a.brand))), C = statsOf(d.ads.filter(a => !mine.has(a.brand)));
-  const nComp = Math.max(1, others.length);
-  $('adCompare').innerHTML = `<h2>You vs. competitors</h2><div style="overflow-x:auto"><table>
-    <tr><th></th><th class="n">You</th><th class="n">Competitors (all ${others.length})</th><th class="n">Competitor average</th></tr>
-    <tr><td>Active ads</td><td class="n"><b>${Y.act}</b></td><td class="n">${C.act}</td><td class="n">${(C.act / nComp).toFixed(1)}</td></tr>
-    <tr><td>New this week</td><td class="n"><b>${Y.fresh}</b></td><td class="n">${C.fresh}</td><td class="n">${(C.fresh / nComp).toFixed(1)}</td></tr>
-    <tr><td>Running 30+ days (proven)</td><td class="n"><b>${Y.proven}</b></td><td class="n">${C.proven}</td><td class="n">${(C.proven / nComp).toFixed(1)}</td></tr>
-    <tr><td>Average days running</td><td class="n"><b>${Y.avg.toFixed(0)}</b></td><td class="n" colspan="2">${C.avg.toFixed(0)}</td></tr>
-    <tr><td>Longest running</td><td class="n"><b>${Y.max}d</b></td><td class="n" colspan="2">${C.max}d</td></tr>
-    <tr><td>Video share</td><td class="n"><b>${pct(Y.video)}</b></td><td class="n" colspan="2">${pct(C.video)}</td></tr>
-  </table></div>${!(d.mine || []).length || !d.ads.some(a => mine.has(a.brand)) ? '<p class="empty" style="font-size:12.5px;margin-top:10px">Your ads show up after the next pull.</p>' : ''}`;
-  $('adStats').innerHTML = [...(d.mine || []), ...others].filter(b => !AST.brand || b === AST.brand).map(b => {
-    const mineList = d.ads.filter(a => a.brand === b), act = mineList.filter(a => a.active), top = act.slice().sort((x, y) => (y.days || 0) - (x.days || 0))[0];
-    return `<div class="card adstat" data-adbrand="${esc(b)}" style="${mine.has(b) ? 'border-color:var(--red)' : ''}"><b>${esc(b)}${mine.has(b) ? ' (you)' : ''}</b><span>${act.length} active · ${mineList.filter(a => a.start && a.start > week).length} new this week${top ? ` · longest ${top.days}d` : ''}</span></div>`;
-  }).join('');
-  const card = a => {
-    const cls = a.days >= 60 ? 'proven' : a.days >= 30 ? 'strong' : '', isNew = a.start && a.start > week, yours = mine.has(a.brand);
-    const fd = t => t ? fmtD(new Date(t), true) : '—';
-    const media = a.video ? `<video src="${esc(a.video)}" poster="${esc(a.image || '')}" controls preload="none" playsinline></video>`
-      : a.image ? `<img src="${esc(a.image)}" loading="lazy" alt="">` : `<div class="adnone">Preview unavailable.<br>Open it in the Ad Library.</div>`;
-    return `<div class="adc" style="${yours ? 'border:2px solid var(--red)' : ''}"><div class="adm">${media}<div class="addays ${cls}">${a.days ?? '?'} days</div>
-        ${yours ? '<div class="adtag new">YOURS</div>' : !a.active ? '<div class="adtag ended">Ended</div>' : isNew ? '<div class="adtag new">NEW</div>' : ''}</div>
-      <div class="adb"><div class="adr"><span class="adbrand">${esc(a.brand)}</span><span>${esc(a.format)}</span></div>
-        <div class="adr"><span>Started ${fd(a.start)}</span><span>${a.active ? 'Running' : 'Stopped ' + fd(a.end)}</span></div>
-        ${a.title ? `<div class="adtitle">${esc(a.title)}</div>` : ''}
-        <div class="adcopy">${esc(a.body)}</div>
-        ${a.body && a.body.length > 220 ? '<button class="admore">Show more</button>' : ''}
-        <div class="adlinks"><a href="https://www.facebook.com/ads/library/?id=${esc(a.id)}" target="_blank" rel="noopener">View in Ad Library</a>${a.link ? `<a href="${esc(a.link)}" target="_blank" rel="noopener">Landing page</a>` : ''}</div>
-      </div></div>`;
-  };
-  const empty = msg => `<div class="adempty">${msg}</div>`;
-  if (AST.view === 'compare' && !AST.brand) {
-    const yourAds = ads.filter(a => mine.has(a.brand)), theirAds = ads.filter(a => !mine.has(a.brand));
-    $('adGrid').className = '';
-    $('adGrid').innerHTML = `<div class="adcmp"><div><h3>Your ads (${yourAds.length})</h3><div class="adgrid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${yourAds.slice(0, 40).map(card).join('') || empty('None match these filters yet.')}</div></div>
-      <div><h3>Competitors (${theirAds.length})</h3><div class="adgrid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${theirAds.slice(0, 40).map(card).join('') || empty(d.lastRun ? 'No ads match these filters.' : 'No ads yet. Tap “Pull new ads”.')}</div></div></div>`;
-    return;
+const CASH_FIELDS = ['checking9926', 'taxReserve7229', 'safe', 'venmo', 'ink2078', 'ink1602', 'amex91000',
+  'personal5908', 'marcus6620', 'marcus6569', 'capone8760', 'discover6166', 'stocks', 'bills', 'stripe'];
+// Balances from before the dashboard (imports.json "cash"), added once by date.
+async function getCash() {
+  let snaps = await kget(KEYS.cash, []);
+  let imp = [];
+  try { imp = JSON.parse(fs.readFileSync(path.join(__dirname, 'imports.json'), 'utf8')).cash || []; } catch {}
+  if (imp.length) {
+    const gone = new Set(await kget('bcd:deletedCash', [])), have = new Set(snaps.map(x => x.date));
+    const add = imp.filter(x => !have.has(x.date) && !gone.has(x.date));
+    if (add.length) { snaps = snaps.concat(add).sort((a, b) => a.date.localeCompare(b.date)); await kset(KEYS.cash, snaps); }
   }
-  $('adGrid').className = 'adgrid';
-  if (!ads.length) { $('adGrid').innerHTML = empty(d.lastRun ? 'No ads match these filters.' : 'No ads yet. Tap “Pull new ads” to run the first pull.'); return; }
-  $('adGrid').innerHTML = ads.slice(0, 120).map(card).join('') + (ads.length > 120 ? empty(`Showing the first 120 of ${ads.length}. Narrow it with the filters.`) : '');
+  return snaps;
 }
-document.addEventListener('click', e => {
-  const c = e.target.closest('[data-adbrand]');
-  if (c) { AST.brand = c.dataset.adbrand; renderAds(); return; }
-  if (e.target.closest('[data-adnew]')) { AST.newOnly = !AST.newOnly; renderAds(); return; }
-  if (e.target.classList.contains('admore')) { const cp = e.target.previousElementSibling; cp.classList.toggle('open'); e.target.textContent = cp.classList.contains('open') ? 'Show less' : 'Show more'; }
-});
-['Status', 'Format', 'Sort', 'View'].forEach(k => document.getElementById('ad' + k).addEventListener('change', e => { AST[k.toLowerCase()] = e.target.value; renderAds(); }));
-document.getElementById('adPull').addEventListener('click', async () => {
-  try { await post('/api/ads/refresh', {}); toast('Pulling new ads. Takes a few minutes; this page updates on its own.'); $('adPull').disabled = true;
-    const iv = setInterval(async () => { await loadAds(); if (!ADSD.running) { clearInterval(iv); $('adPull').disabled = false; } }, 20000);
-  } catch (err) { toast(err.message); }
-});
-
-// ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash' };
-DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
-function syncRangeBar(){
-  const R = getR(tab);
-  $('monLabel').textContent = rangeLabel(R);
-  $('rKind').value = R.kind;
-  $('rCustom').hidden = R.kind !== 'custom';
-  $('rFrom').value = ymd(R.from); $('rTo').value = ymd(R.to > addDays(day0(new Date()), 60) ? day0(new Date()) : R.to);
-  $('prev').disabled = $('next').disabled = R.kind === 'all';
-}
-function render(){
-  if (!RAW) return;
-  syncRangeBar();
-  $('monNav').hidden = tab === 'ads';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
-}
-function setTab(t){
-  tab = t;
-  document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
-  Object.keys(TITLES).forEach(k => $('tab-' + k).hidden = k !== t);
-  $('title').textContent = TITLES[t];
-  syncRangeBar();
-  document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
-  try { localStorage.setItem('bcdTab', t); } catch {}
-  render();
-}
-async function load(fresh){
-  $('err').style.display = 'none';
+app.get('/api/cash', async (req, res) => {
   try {
-    const r = await fetch('/api/data' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
-    if (r.status === 401) return location.reload();
-    const d = await r.json(); if (d.error) throw new Error(d.error);
-    DATA = d; $('demo').hidden = !d.demo; $('fileWarn').hidden = d.storage !== 'file' || d.demo;
-    RAW = parse(d);
-    $('synced').textContent = 'Synced ' + new Date(d.cachedAt || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
-    render();
-    // Load the other tabs' data in the background so switching tabs is instant.
-    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); }, 400); }
-  } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
-}
-
-$('prev').onclick = () => { RANGES[tab] = shiftRange(getR(tab), -1); render(); };
-$('next').onclick = () => { RANGES[tab] = shiftRange(getR(tab), 1); render(); };
-$('rKind').onchange = () => { const k = $('rKind').value, R = getR(tab);
-  RANGES[tab] = k === 'custom' ? { kind: 'custom', from: R.from, to: R.to > day0(new Date()) ? day0(new Date()) : R.to } : makeRange(k); render(); };
-const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('rTo').value); if (f && t2 && f <= t2) { RANGES[tab] = { kind: 'custom', from: f, to: t2 }; render(); } };
-$('rFrom').onchange = customChange; $('rTo').onchange = customChange;
-$('ohAdd').onclick = () => openOH();
-$('goalEdit').onclick = () => openGoals();
-$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
-$('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
-$('payBtn').onclick = async () => {
-  const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
-  try { await post('/api/payroll/paid', { week: W.wkey, undo: paid, lines: W.lines.map(l => ({ name: l.name, total: l.total })) });
-    toast(paid ? 'Marked unpaid' : 'Marked paid and added to Expenses'); await loadPayroll(true); load(true); } catch (e) { toast(e.message); }
-};
-document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.dataset.tab));
-
-const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
-document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open); m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
-document.querySelectorAll('.mask').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('on'); });
-  if (!m.querySelector('form')) return;
-  m.querySelector('form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const f = e.target, btn = f.querySelector('.btn.p'), label = btn.textContent; btn.disabled = true; btn.textContent = 'Saving...';
-    const data = Object.fromEntries(new FormData(f).entries());
-    let url = '/api/add', body = { action: f.dataset.action, data };
-    if (f.dataset.kind === 'load') {
-      url = '/api/loads';
-      body = { ...data, units: data.units.split(/\n/).map(line => {
-        const t = line.trim(); if (!t) return null;
-        const mm = t.match(/^(.*?)[,\t|]\s*\$?([\d,]+(?:\.\d+)?)\s*$/);
-        return mm ? { name: mm[1].trim(), comp: parseFloat(mm[2].replace(/,/g, '')) } : { name: t, comp: 0 };
-      }).filter(Boolean) };
-    } else if (f.dataset.kind === 'goals') {
-      url = '/api/goals'; body = { month: data.month, goals: data };
-    } else if (f.dataset.kind === 'oh') {
-      url = '/api/openhouse'; body = data;
-    } else if (f.dataset.kind === 'cash') {
-      url = '/api/cash'; body = data;
-    } else if (f.dataset.kind === 'sold') {
-      url = data.target === 'purchase' ? '/api/purchases/sale' : '/api/loads/unit';
-      const ups = UPSELLS.filter(u => f.querySelector('[data-up="' + u.id + '"]').checked).map(u => ({ label: u.label, price: u.price }));
-      if (Number(data.upOther) > 0) ups.push({ label: 'Other', price: Number(data.upOther) });
-      body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date, delivery: data.delivery, upsells: ups };
+    const [snaps, stripe] = await Promise.all([getCash(), stripeBalance(req.query.fresh === '1').catch(e => ({ error: e.message }))]);
+    res.json({ ok: true, snaps, stripe });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/cash', async (req, res) => {
+  try {
+    const d = req.body || {};
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : new Date().toISOString().slice(0, 10);
+    const snap = { date, savedAt: new Date().toISOString(), note: clean(d.note, 200) };
+    CASH_FIELDS.forEach(k => { snap[k] = Math.round(Math.abs(numOf(d[k])) * 100) / 100; });
+    if (d.stripe === '' || d.stripe == null) {
+      const sb = await stripeBalance(true).catch(() => ({}));
+      snap.stripe = sb.total || 0; snap.stripeAuto = !sb.error;
     }
-    try {
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Save failed');
-      m.classList.remove('on'); f.reset(); toast('Saved');
-      if (f.dataset.kind === 'cash') loadCash(); else load(true);
-    } catch (err) { toast(err.message); }
-    btn.disabled = false; btn.textContent = label;
-  });
+    let snaps = (await kget(KEYS.cash, [])).filter(x => x.date !== date);
+    snaps.push(snap); snaps.sort((a, b) => a.date.localeCompare(b.date));
+    await kset(KEYS.cash, snaps);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
-document.addEventListener('click', async e => {
-  const sb = e.target.closest('[data-sold]');
-  if (sb) { const [id, uid] = sb.dataset.sold.split(':'), m = $('m-sold'), f = m.querySelector('form');
-    const el = f.elements; el.id.value = id; el.uid.value = uid; el.target.value = sb.dataset.target || 'unit'; el.soldPrice.value = sb.dataset.comp || ''; el.date.value = todayStr();
-    el.delivery.value = ''; el.upOther.value = '';
-    $('upBoxes').innerHTML = UPSELLS.map(u => `<label class="chk"><input type="checkbox" data-up="${u.id}"> ${u.label} <span style="margin-left:auto;color:var(--muted)">+${money(u.price)}</span></label>`).join('');
-    soldSum(); $('soldTitle').textContent = 'Sold: ' + sb.dataset.name; m.classList.add('on'); return; }
-  const ub = e.target.closest('[data-unit]');
-  if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
-    const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
-    const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
-  const vb = e.target.closest('[data-venmo]');
-  if (vb) {
-    const R = getR('payroll'), W = payRange(R), set = sentSet(W.wkey); set.add(vb.dataset.venmo); saveSent(W.wkey, set);
-    const due = W.lines.filter(l => l.total > 0 && VENMO[l.key]);
-    if (due.length && due.every(l => set.has(l.key)) && !(PAY.paid || {})[W.wkey]) {
-      post('/api/payroll/paid', { week: W.wkey, lines: W.lines.map(l => ({ name: l.name, total: l.total })) })
-        .then(() => { toast('Everyone opened. Week marked paid and added to Expenses. Undo if a payment didn\'t go through.'); loadPayroll(true); load(true); })
-        .catch(err => toast(err.message));
-    } else setTimeout(renderPayroll, 300);
-    return;
-  }
-  const pa = e.target.closest('[data-padd]');
-  if (pa) { photoTarget = pa.dataset.padd; $('photoIn').value = ''; $('photoIn').click(); return; }
-  const pv = e.target.closest('[data-pview]');
-  if (pv) { photoTarget = pv.dataset.pview; $('pvImg').src = pv.src; $('pvTitle').textContent = pv.dataset.pname || 'Photo'; $('m-photo').classList.add('on'); return; }
-  const sf = e.target.closest('[data-sf]');
-  if (sf) { SALES_FILTER = sf.dataset.sf; renderSales(); return; }
-  const oe = e.target.closest('[data-ohedit]');
-  if (oe) { openOH((RAW.openhouses || []).find(o => o.id === oe.dataset.ohedit)); return; }
-  const cd = e.target.closest('[data-cashdel]');
-  if (cd) { if (cd.dataset.armed !== '1') { cd.dataset.armed = '1'; cd.textContent = 'Tap again'; setTimeout(() => { cd.dataset.armed = ''; cd.textContent = 'Delete'; }, 3000); return; }
-    try { await post('/api/cash/delete', { date: cd.dataset.cashdel }); toast('Deleted'); loadCash(); } catch (err) { toast(err.message); } return; }
-  const b = e.target.closest('[data-del]'); if (!b) return;
-  if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Tap again'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Delete'; }, 3000); return; }
-  const [kind, id] = b.dataset.del.split(':');
-  const r = await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, id }) });
-  const j = await r.json(); toast(j.ok ? 'Deleted' : (j.error || 'Delete failed')); load(true);
+app.post('/api/cash/delete', async (req, res) => {
+  try {
+    const snaps = (await kget(KEYS.cash, [])).filter(x => x.date !== req.body.date);
+    await kset(KEYS.cash, snaps);
+    const g = await kget('bcd:deletedCash', []); if (!g.includes(req.body.date)) { g.push(req.body.date); await kset('bcd:deletedCash', g); }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
-$('photoIn').addEventListener('change', async () => {
-  const file = $('photoIn').files[0]; if (!file || !photoTarget) return;
-  toast('Uploading photo...');
-  try { const data = await shrinkPhoto(file); const j = await post('/api/photo', { key: photoTarget, data });
-    RAW.photos[photoTarget] = j.v; $('m-photo').classList.remove('on'); toast('Photo saved'); render(); } catch (err) { toast(err.message); }
-});
-$('pvReplace').onclick = () => { $('photoIn').value = ''; $('photoIn').click(); };
-$('pvRemove').onclick = async () => { try { await post('/api/photo/delete', { key: photoTarget }); delete RAW.photos[photoTarget]; $('m-photo').classList.remove('on'); toast('Photo removed'); render(); } catch (err) { toast(err.message); } };
-function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
-let saved = 'sales'; try { saved = localStorage.getItem('bcdTab') || 'sales'; } catch {}
-setTab(TITLES[saved] ? saved : 'sales');
-load();
-setInterval(() => load(), 5 * 60 * 1000);
-</script>
-</body></html>
+// ---------- competitor ads (moved from the separate Ad Tracker) ----------
+// Pulls competitors' Meta ads from the Facebook Ad Library through Apify once a day
+// and keeps every ad it has seen, so you can rank them by how long they've run.
+const ADS = {
+  TOKEN: (process.env.APIFY_TOKEN || '').trim(),
+  ACTOR: process.env.APIFY_ACTOR || 'apify~facebook-ads-scraper',
+  PER_BRAND: Number(process.env.RESULTS_PER_BRAND || 100),
+  HOUR_CT: Number(process.env.RUN_HOUR_CT || 6),
+  BASE: process.env.APIFY_BASE || 'https://api.apify.com',
+  // Point these at the old Ad Tracker's Upstash to keep its history (defaults to the dashboard's).
+  REDIS_URL: (process.env.ADS_REDIS_URL || process.env.UPSTASH_REDIS_REST_URL || '').trim(),
+  REDIS_TOKEN: (process.env.ADS_REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '').trim(),
+  KEY: 'adtracker:v1',
+};
+let BRANDS = [];
+try { BRANDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'brands.json'), 'utf8')); } catch { console.log('No brands.json'); }
+let adsMem = null, adsRunning = false;
+async function adsLoad() {
+  if (ADS.REDIS_URL) {
+    try {
+      const r = await fetch(`${ADS.REDIS_URL}/get/${ADS.KEY}`, { headers: { Authorization: `Bearer ${ADS.REDIS_TOKEN}` } });
+      const j = await r.json();
+      if (j.result) return JSON.parse(j.result);
+    } catch (e) { console.error('Ads load failed:', e.message); }
+  }
+  else { try { const v = await kget(ADS.KEY, null); if (v) return v; } catch {} }
+  return adsMem || { ads: {}, pages: {}, lastRun: null, lastError: null, runs: [] };
+}
+async function adsSave(state) {
+  adsMem = state;
+  if (!ADS.REDIS_URL) { try { await kset(ADS.KEY, state); } catch {} return; }
+  try { await fetch(`${ADS.REDIS_URL}/set/${ADS.KEY}`, { method: 'POST', headers: { Authorization: `Bearer ${ADS.REDIS_TOKEN}` }, body: JSON.stringify(state) }); }
+  catch (e) { console.error('Ads save failed:', e.message); }
+}
+const adsNorm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function adsLibraryUrl(brand, pageId) {
+  const base = 'https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&media_type=all';
+  if (pageId) return `${base}&search_type=page&view_all_page_id=${pageId}`;
+  return `${base}&search_type=keyword_exact_phrase&q=${encodeURIComponent('"' + brand.name + '"')}`;
+}
+async function adsRunApify(startUrls) {
+  const t = ADS.TOKEN;
+  const start = await fetch(`${ADS.BASE}/v2/acts/${ADS.ACTOR}/runs?token=${t}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ startUrls: startUrls.map(url => ({ url })), resultsLimit: ADS.PER_BRAND * startUrls.length, activeStatus: '', isDetailsPerAd: false }),
+  });
+  const sj = await start.json();
+  if (!sj.data || !sj.data.id) throw new Error('Apify did not start: ' + JSON.stringify(sj).slice(0, 300));
+  let run = sj.data;
+  for (let i = 0; i < 80 && ['READY', 'RUNNING'].includes(run.status); i++) {
+    await new Promise(r => setTimeout(r, 15000));
+    run = (await (await fetch(`${ADS.BASE}/v2/actor-runs/${sj.data.id}?token=${t}`)).json()).data;
+  }
+  if (run.status !== 'SUCCEEDED') throw new Error('Apify run ended with status ' + run.status);
+  return (await fetch(`${ADS.BASE}/v2/datasets/${run.defaultDatasetId}/items?clean=true&format=json&token=${t}`)).json();
+}
+function adsToAd(it, brandName, now) {
+  const s = it.snapshot || {}, card = (s.cards && s.cards[0]) || {}, vid = (s.videos && s.videos[0]) || {}, img = (s.images && s.images[0]) || {};
+  const video = vid.videoHdUrl || vid.videoSdUrl || card.videoHdUrl || card.videoSdUrl || null;
+  const image = vid.videoPreviewImageUrl || card.videoPreviewImageUrl || img.originalImageUrl || img.resizedImageUrl || card.originalImageUrl || card.resizedImageUrl || null;
+  const body = (s.body && (s.body.text || s.body)) || card.body || '';
+  return { id: String(it.adArchiveID || it.adArchiveId || it.ad_archive_id), brand: brandName, pageId: String(it.pageID || it.pageId || ''), pageName: it.pageName || '',
+    start: it.startDate ? it.startDate * 1000 : null, end: it.endDate ? it.endDate * 1000 : null, active: !!it.isActive, platforms: it.publisherPlatform || [],
+    format: (s.displayFormat || (video ? 'VIDEO' : 'IMAGE')).toUpperCase(), title: s.title || card.title || '', body: typeof body === 'string' ? body : '',
+    cta: s.ctaText || card.ctaText || '', link: s.linkUrl || card.linkUrl || '', video, image, versions: (s.cards && s.cards.length) || 1, lastSeen: now };
+}
+async function adsRefresh() {
+  if (adsRunning) return { skipped: true };
+  if (!ADS.TOKEN) throw new Error('APIFY_TOKEN is not set');
+  adsRunning = true;
+  const state = await adsLoad(), now = Date.now();
+  try {
+    const items = await adsRunApify(BRANDS.map(b => adsLibraryUrl(b, b.pageId || state.pages[b.name])));
+    const seen = new Set();
+    for (const it of items) {
+      const pn = adsNorm(it.pageName);
+      const brand = BRANDS.find(b => adsNorm(b.name) === pn || (b.pageId && String(it.pageID) === String(b.pageId)) || (state.pages[b.name] && String(it.pageID) === state.pages[b.name]));
+      if (!brand) continue;
+      if (it.pageID && !state.pages[brand.name]) state.pages[brand.name] = String(it.pageID);
+      const ad = adsToAd(it, brand.name, now);
+      if (!ad.id || ad.id === 'undefined') continue;
+      const prev = state.ads[ad.id];
+      ad.firstSeen = prev ? prev.firstSeen : now;
+      state.ads[ad.id] = { ...prev, ...ad };
+      seen.add(ad.id);
+    }
+    for (const ad of Object.values(state.ads)) if (ad.active && !seen.has(ad.id)) { ad.active = false; ad.end = ad.end && ad.end < now ? ad.end : now; }
+    state.lastRun = now; state.lastError = null;
+    state.runs = [{ at: now, items: items.length, kept: seen.size }, ...(state.runs || [])].slice(0, 30);
+    await adsSave(state);
+    return { items: items.length, kept: seen.size };
+  } catch (e) { state.lastError = { at: now, message: e.message }; await adsSave(state); throw e; }
+  finally { adsRunning = false; }
+}
+const ctHour = () => Number(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }));
+if (ADS.TOKEN) {
+  setInterval(async () => {
+    const s = await adsLoad();
+    if ((!s.lastRun || Date.now() - s.lastRun > 20 * 3600 * 1000) && ctHour() === ADS.HOUR_CT) adsRefresh().catch(e => console.error('Scheduled ads refresh failed:', e.message));
+  }, 10 * 60 * 1000);
+}
+app.get('/api/ads', async (req, res) => {
+  try {
+    const s = await adsLoad(), now = Date.now();
+    const ads = Object.values(s.ads).map(a => { const endAt = a.active ? now : (a.end || a.lastSeen || now); return { ...a, days: a.start ? Math.max(1, Math.round((endAt - a.start) / 86400000)) : null }; });
+    res.json({ ok: true, brands: BRANDS.map(b => b.name), mine: BRANDS.filter(b => b.mine).map(b => b.name), ads, lastRun: s.lastRun, lastError: s.lastError, running: adsRunning, hasToken: !!ADS.TOKEN });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/ads/refresh', (req, res) => {
+  if (!ADS.TOKEN) return res.status(400).json({ error: 'Add APIFY_TOKEN in Railway first.' });
+  if (adsRunning) return res.json({ ok: true, running: true });
+  adsRefresh().catch(e => console.error('Manual ads refresh failed:', e.message));
+  res.json({ ok: true, started: true });
+});
+
+// ---------- goals ----------
+const GOAL_SEED = { '2026-10': { sales: 50 }, '2026-11': { sales: 55, revenue: 70000, net: 20000, avg: 1275 } };
+async function getGoals() { let g = await kget('bcd:goals', null); if (g === null) { g = GOAL_SEED; await kset('bcd:goals', g); } return g; }
+app.post('/api/goals', async (req, res) => {
+  try {
+    const { month, goals } = req.body || {};
+    if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'bad month' });
+    const g = await getGoals(), o = {};
+    ['sales', 'revenue', 'net', 'avg', 'labor'].forEach(k => { const v = Number(goals && goals[k]); if (v > 0) o[k] = v; });
+    g[month] = o; await kset('bcd:goals', g);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- couch photos ----------
+// Each photo is shrunk in the browser (about 100-300 KB) and saved in Upstash under its own key.
+const photoKey = k => 'bcd:photo:' + String(k).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 120);
+app.post('/api/photo', async (req, res) => {
+  try {
+    const { key, data } = req.body || {};
+    if (!key || !/^data:image\/(jpeg|png|webp);base64,/.test(data || '')) return res.status(400).json({ error: 'Pick a photo' });
+    if (data.length > 1.3e6) return res.status(400).json({ error: 'Photo too large' });
+    await kset(photoKey(key), data);
+    const idx = await kget('bcd:photos', {}); idx[key] = Date.now(); await kset('bcd:photos', idx);
+    res.json({ ok: true, v: idx[key] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/photo/delete', async (req, res) => {
+  try {
+    const idx = await kget('bcd:photos', {}); delete idx[req.body.key]; await kset('bcd:photos', idx);
+    await kset(photoKey(req.body.key), '');
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/photo/:key', async (req, res) => {
+  try {
+    const data = await kget(photoKey(req.params.key), '');
+    const m = String(data).match(/^data:(image\/[a-z]+);base64,(.*)$/);
+    if (!m) return res.status(404).send('No photo');
+    res.setHeader('Content-Type', m[1]); res.setHeader('Cache-Control', 'private, max-age=604800');
+    res.send(Buffer.from(m[2], 'base64'));
+  } catch (e) { res.status(500).send(e.message); }
+});
+
+// ---------- demo data (only before SHEETS_API_URL is set) ----------
+function demoData() {
+  const H = ['Date', 'Source', 'Customer', 'Phone', 'Payment', 'Order Type', 'ZIP', 'Tax Rate', 'Couch Price',
+    'Discount', 'Delivery', 'Subtotal', 'Tax', 'Fee', 'Total', 'Receipt', 'Add-Ons', 'Add-Ons $'];
+  const src = ['Meta Ads', 'Marketplace', 'Facebook or Instagram Ad', 'TikTok', 'Referral', 'Google', 'Meta Ads', 'Craigslist'];
+  const now = new Date();
+  const rows = [], showings = [];
+  for (let m = 0; m < 3; m++) {
+    for (let i = 0; i < 34 - m * 4; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1 + (i * 7) % 27);
+      const price = [899, 1050, 1250, 1299, 1499, 1650, 1950, 699][i % 8];
+      const del = i % 3 === 0 ? 0 : 150;
+      rows.push([d.toISOString().slice(0, 10), src[i % 8], 'Customer ' + i, '', i % 4 ? 'Card' : 'Venmo',
+        del ? 'Delivery' : 'Pickup', '63069', '9.68%', price, 0, del, price + del, 0, 0, 0, '',
+        ['', 'Scotchgard', '', 'Plastic Wrap, Scotchgard', '', 'Couch Removal', '', ''][i % 8], [0, 49, 0, 148, 0, 125, 0, 0][i % 8]]);
+    }
+    for (let i = 0; i < 90; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1 + i % 28, 10 + i % 8, (i % 3) * 20);
+      const t = i % 9 === 0 ? '(No show) ' : i % 2 ? '(Canceled) ' : '';
+      showings.push([d.toISOString(), t + 'Showing for Customer ' + i, !t && i % 4 === 0 ? '2' : '']);
+    }
+  }
+  return { ok: true, demo: true, at: new Date().toISOString(), sales: { headers: H, rows }, showings };
+}
+
+app.listen(CFG.PORT, () => console.log('Billy\'s Couches dashboard on ' + CFG.PORT));
