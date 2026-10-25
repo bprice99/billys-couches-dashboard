@@ -19,6 +19,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
+app.use('/api/photo', express.json({ limit: '4mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -175,7 +176,8 @@ app.get('/api/data', async (req, res) => {
     const [g, purchases, expenses, loads, openhouses] = await Promise.all([
       google(req.query.fresh === '1'), kget(KEYS.purchases, []), getExpenses(), getLoads(), getOpenHouses(),
     ]);
-    res.json({ ...g, purchases, expenses, loads, openhouses, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
+    const photos = await kget('bcd:photos', {}).catch(() => ({}));
+    res.json({ ...g, purchases, expenses, loads, openhouses, photos, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -583,7 +585,7 @@ app.get('/api/ads', async (req, res) => {
   try {
     const s = await adsLoad(), now = Date.now();
     const ads = Object.values(s.ads).map(a => { const endAt = a.active ? now : (a.end || a.lastSeen || now); return { ...a, days: a.start ? Math.max(1, Math.round((endAt - a.start) / 86400000)) : null }; });
-    res.json({ ok: true, brands: BRANDS.map(b => b.name), ads, lastRun: s.lastRun, lastError: s.lastError, running: adsRunning, hasToken: !!ADS.TOKEN });
+    res.json({ ok: true, brands: BRANDS.map(b => b.name), mine: BRANDS.filter(b => b.mine).map(b => b.name), ads, lastRun: s.lastRun, lastError: s.lastError, running: adsRunning, hasToken: !!ADS.TOKEN });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/ads/refresh', (req, res) => {
@@ -591,6 +593,36 @@ app.post('/api/ads/refresh', (req, res) => {
   if (adsRunning) return res.json({ ok: true, running: true });
   adsRefresh().catch(e => console.error('Manual ads refresh failed:', e.message));
   res.json({ ok: true, started: true });
+});
+
+// ---------- couch photos ----------
+// Each photo is shrunk in the browser (about 100-300 KB) and saved in Upstash under its own key.
+const photoKey = k => 'bcd:photo:' + String(k).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 120);
+app.post('/api/photo', async (req, res) => {
+  try {
+    const { key, data } = req.body || {};
+    if (!key || !/^data:image\/(jpeg|png|webp);base64,/.test(data || '')) return res.status(400).json({ error: 'Pick a photo' });
+    if (data.length > 1.3e6) return res.status(400).json({ error: 'Photo too large' });
+    await kset(photoKey(key), data);
+    const idx = await kget('bcd:photos', {}); idx[key] = Date.now(); await kset('bcd:photos', idx);
+    res.json({ ok: true, v: idx[key] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/photo/delete', async (req, res) => {
+  try {
+    const idx = await kget('bcd:photos', {}); delete idx[req.body.key]; await kset('bcd:photos', idx);
+    await kset(photoKey(req.body.key), '');
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/photo/:key', async (req, res) => {
+  try {
+    const data = await kget(photoKey(req.params.key), '');
+    const m = String(data).match(/^data:(image\/[a-z]+);base64,(.*)$/);
+    if (!m) return res.status(404).send('No photo');
+    res.setHeader('Content-Type', m[1]); res.setHeader('Cache-Control', 'private, max-age=604800');
+    res.send(Buffer.from(m[2], 'base64'));
+  } catch (e) { res.status(500).send(e.message); }
 });
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
