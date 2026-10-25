@@ -67,6 +67,26 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .pies{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .piewrap{height:240px}
 @media (max-width:1100px){.pies{grid-template-columns:1fr}}
+.adchip{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer;user-select:none;margin:0 6px 8px 0}
+.adchip.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+.adstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:8px 0 18px}
+.adstat{cursor:pointer;padding:14px 16px}.adstat b{display:block;font-size:15px}.adstat span{font-size:13px;color:var(--muted)}
+.adgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.adc{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.adm{position:relative;background:#111;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center}
+.adm img,.adm video{width:100%;height:100%;object-fit:cover;display:block}
+.adnone{color:#aaa;font-size:13px;padding:20px;text-align:center}
+.addays{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.95);border-radius:999px;padding:5px 10px;font-weight:800;font-size:14px}
+.addays.proven{background:var(--green);color:#fff}.addays.strong{background:#b7791f;color:#fff}
+.adtag{position:absolute;top:10px;right:10px;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;background:#fff}
+.adtag.new{background:var(--red);color:#fff}.adtag.ended{background:#555;color:#fff}
+.adb{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.adr{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.adbrand{font-weight:700;color:var(--text);font-size:14px}.adtitle{font-weight:700;font-size:14px}
+.adcopy{font-size:13px;line-height:1.45;white-space:pre-wrap;max-height:5.8em;overflow:hidden}.adcopy.open{max-height:none}
+.admore{font-size:12px;color:var(--red);cursor:pointer;font-weight:600;background:none;border:0;padding:0;text-align:left}
+.adlinks{display:flex;gap:10px;margin-top:auto;padding-top:8px;font-size:12px}
+.adempty{grid-column:1/-1;text-align:center;color:var(--muted);padding:50px 20px}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
@@ -103,6 +123,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <a class="nav" data-tab="showings">Showings</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" data-tab="meta">Meta Ads</a>
+    <a class="nav" data-tab="ads">Competitor Ads</a>
     <a class="nav" data-tab="bstock">B-Stock Loads</a>
     <a class="nav" data-tab="payroll">Payroll</a>
     <a class="nav" data-tab="cash">Cash Position</a>
@@ -130,18 +151,26 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div class="kpis" id="kpis"></div>
-      <div class="card"><h2>Running totals this month</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
-      <div class="grid2">
-        <div class="card"><h2>Sales insights</h2><div id="insights"></div></div>
-        <div class="card"><h2>Expenses by category</h2><div id="expcats"></div></div>
+      <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
+      <div class="card" style="margin-top:16px"><h2 style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">Couches in stock <small id="stockNote"></small>
+        <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
+        <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Click <b>Sold</b> when a couch sells. B-Stock couches show up here once their load is added on the B-Stock tab; used couches with + Used pickup.</p></div>
+      <div class="card" style="margin-top:16px"><h2>Couches sold in this range <small id="soldNote"></small></h2><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
+      <div class="card" style="margin-top:16px"><h2>Expenses</h2>
+        <div class="kpis" id="expKpis" style="margin-bottom:14px"></div>
+        <div class="grid2" style="margin-top:0;grid-template-columns:1fr 1.6fr">
+          <div><div class="piewrap"><canvas id="expPie"></canvas></div></div>
+          <div><div class="chartwrap" style="height:240px"><canvas id="expBar"></canvas></div></div>
+        </div>
+        <div class="grid2">
+          <div><h2 style="font-size:14px">By category</h2><div style="overflow-x:auto"><table id="expTbl"></table></div></div>
+          <div><h2 style="font-size:14px">Biggest expenses</h2><div id="expBig"></div></div>
+        </div>
       </div>
-      <div class="grid2">
-        <div class="card"><h2>Revenue by source</h2><div id="sources"></div></div>
-        <div class="card"><h2>Pickup vs. delivery</h2><div id="fulfill"></div><h2 style="margin-top:22px">Purchases by source</h2><div id="psources"></div></div>
-      </div>
-      <div class="card" style="margin-top:16px"><h2>Used couches <small id="usedNote"></small></h2><div style="overflow-x:auto"><table id="usedTbl"></table></div></div>
-      <div class="card" style="margin-top:16px" id="logCard"><h2>Purchases &amp; expenses logged this month</h2><div style="overflow-x:auto"><table id="logTbl"></table></div></div>
-      <div class="card" style="margin-top:16px"><h2>Sales this month</h2><div style="overflow-x:auto"><table id="salesTbl"></table></div></div>
+      <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
+      <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses you entered</h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
+      <div class="card" style="margin-top:16px"><h2>Order-app sales</h2><div style="overflow:auto;max-height:440px"><table id="salesTbl"></table></div></div>
     </section>
 
     <!-- SHOWINGS -->
@@ -185,7 +214,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <section id="tab-sources" hidden>
       <div class="note" id="srcNote" hidden>Ivy Flip months have no lead source or pickup/delivery, so only order-app sales (June 2026 on) are counted here.</div>
       <div class="pies">
-        <div class="card"><h2>Pickup vs. delivery</h2><div class="piewrap"><canvas id="pieFul"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblFul"></table></div></div>
+        <div class="card"><h2>Pickup vs. delivery</h2><div class="piewrap"><canvas id="pieFul"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblFul"></table></div><div id="feeBox" style="margin-top:12px"></div></div>
         <div class="card"><h2>Inventory source <small>where sold couches were bought</small></h2><div class="piewrap"><canvas id="pieInv"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblInv"></table></div><p class="empty" style="font-size:12px;margin-top:10px" id="invNote"></p></div>
         <div class="card"><h2>Sales source <small>how buyers found you</small></h2><div class="piewrap"><canvas id="pieSrc"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblSrc"></table></div></div>
       </div>
@@ -202,6 +231,20 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
       <div class="card" style="margin-top:16px"><h2>Every open house</h2><div style="overflow-x:auto"><table id="ohTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Conversion = sales ÷ walk-ins. "Sales Log that day" is every order-app sale on that date, as a check on the count.</p></div>
       <div class="card" style="margin-top:16px"><h2 id="ohCheckTitle">Promo checklist</h2><div id="ohChecks"></div></div>
+    </section>
+
+    <!-- COMPETITOR ADS -->
+    <section id="tab-ads" hidden>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-6px 0 12px"><span id="adMeta" style="font-size:13px;color:var(--muted)">Loading…</span>
+        <button class="btn p" id="adPull" style="margin-left:auto">Pull new ads</button></div>
+      <div id="adChips"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="rk" id="adStatus"><option value="active">Active</option><option value="all">Active + ended</option><option value="ended">Ended</option></select>
+        <select class="rk" id="adFormat"><option value="">All formats</option><option value="VIDEO">Video</option><option value="IMAGE">Image</option></select>
+        <select class="rk" id="adSort"><option value="days">Longest running</option><option value="new">Newest</option></select>
+      </div>
+      <div class="adstats" id="adStats"></div>
+      <div class="adgrid" id="adGrid"></div>
     </section>
 
     <!-- CASH POSITION -->
@@ -334,7 +377,7 @@ const baseOpts = (money_) => ({ responsive: true, maintainAspectRatio: false, in
   plugins: { legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } } },
   scales: { y: { ticks: money_ ? { callback: v => '$' + (v >= 1000 ? (v/1000) + 'k' : v) } : { precision: 0 }, grid: { color: '#f0ebe4' } }, x: { grid: { display: false } } } });
 
-let RAW = null, DATA = null, tab = 'sales';
+let RAW = null, DATA = null, tab = 'sales', SALES_FILTER = 'all';
 const now = new Date();
 
 // ---------- normalize ----------
@@ -371,7 +414,7 @@ function parse(d){
     const rev = S.sub > -1 && num(r[S.sub]) ? num(r[S.sub]) : price - disc + del;
     let type = S.type > -1 ? String(r[S.type]) : (del > 0 ? 'Delivery' : 'Pickup');
     type = /deliver/i.test(type) ? 'Delivery' : 'Pickup';
-    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
+    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, del, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
   }).filter(x => x.date && x.rev > 0);
 
   const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
@@ -486,28 +529,59 @@ function renderSales(){
     ['Average gross profit per flip', A.gpFlip, B.gpFlip, money(A.gpFlip)],
     ['Average net profit per flip', A.netFlip, B.netFlip, money(A.netFlip)],
   ].map(([l,a,b2,v,inv]) => `<div class="row"><span>${l}</span><span><b>${v}</b> ${chgSmall(a,b2,inv)}</span></div>`).join('');
-  bars($('expcats'), groupSum(A.e, 'cat', 'amt'), money);
-  bars($('sources'), groupSum(A.live, 'source', 'rev'), money);
-  bars($('psources'), groupSum(A.p, 'source', 'cost'), money);
-  const n = A.live.length, pk = n - A.delivery;
-  $('fulfill').innerHTML = !n ? '<p class="empty">No order-app sales in this range.</p>' :
-    `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${Math.round(A.delivery/n*100)}%</b></div><div class="bar"><i style="width:${A.delivery/n*100}%"></i></div></div>
-     <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${Math.round(pk/n*100)}%</b></div><div class="bar"><i style="width:${pk/n*100}%;background:var(--dark)"></i></div></div>`;
-
-  // used pickups: every one still in stock, plus any picked up or sold in this range
-  const used = RAW.purchases.filter(x => x.status !== 'sold' || inR(x.sold, R) || inR(x.date, R))
-    .sort((a, b2) => (a.status === 'sold') - (b2.status === 'sold') || a.date - b2.date);
-  const inStock = RAW.purchases.filter(x => x.status !== 'sold');
-  $('usedNote').textContent = inStock.length + ' in stock · ' + money(inStock.reduce((a, x) => a + x.cost, 0)) + ' paid';
+  // ----- every couch you own: B-Stock units + used pickups -----
   const today0 = day0(new Date());
-  $('usedTbl').innerHTML = `<tr><th>Picked up</th><th>Couch</th><th class="hide-m">From</th><th class="n">Paid</th><th>Status</th><th class="n">Sold for</th><th class="n hide-m">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
-    (used.length ? used.map(x => { const sold = x.status === 'sold';
-      return `<tr><td>${fmtD(x.date)}</td><td>${esc(x.item)}</td><td class="hide-m">${esc(x.source)}</td><td class="n">${money(x.cost)}</td>
-        <td><span class="pill ${sold?'g':''}">${sold?'Sold':'In stock'}</span></td><td class="n">${sold ? '<b>' + money(x.soldPrice) + '</b>' : '–'}</td>
-        <td class="n hide-m">${sold ? money(x.soldPrice - x.cost) : '–'}</td><td class="n hide-m">${Math.max(0, Math.round(((sold && x.sold ? x.sold : today0) - x.date) / 864e5))}</td>
-        <td class="n" style="white-space:nowrap">${sold ? `<button class="btn sm" data-unit="${esc(x.id)}:p:in">Undo</button>`
-          : `<button class="btn sm" data-sold="${esc(x.id)}:" data-target="purchase" data-name="${esc(x.item)}">Log sale</button>`}</td></tr>`; }).join('')
-      : `<tr><td colspan="9" class="empty">No used pickups logged yet. Use + Used pickup.</td></tr>`);
+  const stock = [];
+  RAW.loads.forEach(l => l.units.forEach(u => stock.push({ kind: 'bstock', id: l.id, uid: u.uid, name: u.name, src: 'B-Stock · ' + l.loadId, cost: u.cost, comp: u.comp || 0,
+    got: l.arrived, status: u.status, soldPrice: u.soldPrice, sold: u.sold })));
+  RAW.purchases.forEach(p => stock.push({ kind: 'used', id: p.id, uid: '', name: p.item || 'Used couch', src: 'Used · ' + (p.source || 'Other'), cost: p.cost, comp: 0,
+    got: p.date, status: p.status === 'sold' ? 'sold' : 'in', soldPrice: p.soldPrice, sold: p.sold }));
+  const inStock = stock.filter(x => x.status === 'in').map(x => ({ ...x, days: dayDiff(x.got, today0) })).sort((a, b2) => b2.days - a.days);
+  const f = SALES_FILTER;
+  const shown = inStock.filter(x => f === 'all' || x.kind === f);
+  const aged = inStock.filter(x => x.days >= 21).length;
+  $('stockNote').textContent = `${inStock.length} couches · ${money(inStock.reduce((a, x) => a + x.cost, 0))} cost on the floor${aged ? ' · ' + aged + ' over 21 days' : ''}`;
+  $('stockTbl').innerHTML = `<tr><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
+    (shown.length ? shown.map(x => `<tr><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
+      <td class="n hide-m">${x.comp ? money(x.comp) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td>
+      <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button>` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
+      : `<tr><td colspan="6" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
+  const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
+  const sRev = soldR.reduce((a, x) => a + x.soldPrice, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = A.live.length;
+  $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (liveOrders > soldR.length && !A.allHist ? ` · <span style="color:var(--bad)">${liveOrders - soldR.length} order-app sale${liveOrders - soldR.length === 1 ? '' : 's'} not matched to a couch yet</span>` : '');
+  $('soldTbl').innerHTML = `<tr><th>Sold</th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Sold for</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
+    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n">${money(x.soldPrice - x.cost)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
+      <td class="n"><button class="btn sm" data-unit="${esc(x.id)}:${x.kind === 'used' ? 'p' : esc(x.uid)}:in">Undo</button></td></tr>`).join('')
+      : `<tr><td colspan="8" class="empty">No couches marked sold in this range.</td></tr>`);
+
+  // ----- expenses -----
+  const PE = period(prevRange(R)), days = Math.max(1, Math.min(spanDays(R), dayDiff(R.from, today0) + 1));
+  const cats = groupSum(A.e, 'cat', 'amt'), pcats = Object.fromEntries(groupSum(PE.e, 'cat', 'amt'));
+  const adSpend = A.e.filter(x => /advert/i.test(x.cat)).reduce((a, x) => a + x.amt, 0), pay = A.e.filter(x => /payroll/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
+  $('expKpis').innerHTML = kpiHtml([
+    ['Spent', money(A.exp), chg(A.exp, PE.exp, true, vs)],
+    ['Per day', money(A.exp / days), ''],
+    ['% of sales', A.gross ? pct(A.exp / A.gross) : '–', A.gross && PE.gross ? chg(A.exp / A.gross, PE.exp / PE.gross, true, vs) : ''],
+    ['Ads % of sales', A.gross ? pct(adSpend / A.gross) : '–', `<div class="c flat">${money(adSpend)} on ads</div>`],
+    ['Payroll % of sales', A.gross ? pct(pay / A.gross) : '–', `<div class="c flat">${money(pay)} payroll</div>`],
+    ['Biggest category', cats[0] ? esc(cats[0][0]) : '–', cats[0] ? `<div class="c flat">${money(cats[0][1])} · ${pct(cats[0][1] / A.exp)}</div>` : ''],
+  ]);
+  pieIn('expPie', cats, money);
+  const top = cats.slice(0, 5).map(c => c[0]), bk2 = buckets(R).filter(b => !b.future);
+  const weekly = spanDays(R) > 14 && spanDays(R) <= 62;
+  let eb = bk2;
+  if (weekly) { eb = []; for (let m = mondayOf(R.from); m <= (R.to > today0 ? today0 : R.to); m = addDays(m, 7)) eb.push({ from: m < R.from ? R.from : m, to: addDays(m, 6), label: 'Wk of ' + fmtD(m) }); }
+  const ebSets = top.concat(cats.length > 5 ? ['Other spending'] : []).map((c, i) => ({ label: c, backgroundColor: PIE[i % PIE.length], borderRadius: 3,
+    data: eb.map(b => A.e.filter(x => x.date >= b.from && x.date <= b.to && (c === 'Other spending' ? !top.includes(x.cat) : x.cat === c)).reduce((a, x) => a + x.amt, 0)) }));
+  const eo = baseOpts(true); eo.scales.x.stacked = true; eo.scales.y.stacked = true;
+  chartIn('expBar', { type: 'bar', data: { labels: eb.map(b => b.label), datasets: ebSets }, options: eo });
+  $('expTbl').innerHTML = `<tr><th>Category</th><th class="n">Spent</th><th class="n">Share</th><th class="n hide-m">% of sales</th><th class="n">vs ${vs}</th></tr>` +
+    (cats.length ? cats.map(([c, v], i) => { const pv = pcats[c] || 0, d = v - pv;
+      return `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${PIE[i % PIE.length]};margin-right:8px"></span>${esc(c)}</td><td class="n"><b>${money(v)}</b></td><td class="n">${pct(v / A.exp)}</td><td class="n hide-m">${A.gross ? pct(v / A.gross) : '–'}</td>
+        <td class="n"><span class="c ${!pv ? 'flat' : d > 0.5 ? 'dn' : d < -0.5 ? 'up' : 'flat'}" style="font-size:12.5px;font-weight:700">${!pv ? 'new' : (d >= 0 ? '+' : '') + money(d)}</span></td></tr>`; }).join('')
+      : `<tr><td colspan="5" class="empty">No expenses in this range.</td></tr>`);
+  const big = A.e.slice().sort((a, b2) => b2.amt - a.amt).slice(0, 8);
+  $('expBig').innerHTML = big.length ? big.map(x => `<div class="row"><span>${esc(x.vendor || x.cat)}${x.notes ? ` <span style="color:var(--muted);font-size:12.5px">· ${esc(x.notes)}</span>` : ''}<div style="font-size:12px;color:var(--muted)">${fmtD(x.date)} · ${esc(x.cat)}</div></span><b>${money(x.amt)}</b></div>`).join('') : '<p class="empty">Nothing yet.</p>';
 
   // purchases + expenses entered in the dashboard
   const L = [...A.p.filter(x => x.live).map(x => ({ kind: 'purchases', id: x.id, date: x.date, what: 'Purchase', desc: [x.item, x.units > 1 ? x.units + ' units' : '', x.loadId].filter(Boolean).join(' · '), cat: x.source, amt: x.cost })),
@@ -625,7 +699,7 @@ function renderBstock(){
   const all = loads.map(loadStats), T = k => all.reduce((a, x) => a + x[k], 0);
   const landed = loads.reduce((a, l) => a + l.landed, 0), soldCost = loads.reduce((a, l) => a + l.units.filter(u => u.status === 'sold').reduce((b, u) => b + u.cost, 0), 0);
   const dts = loads.flatMap(l => l.units.filter(u => u.status === 'sold' && u.sold).map(u => dayDiff(l.arrived, u.sold)));
-  el.innerHTML = `<p class="empty" style="margin:-6px 0 12px;font-size:13px">Loads that arrived in this range. Sales count whenever they happened.</p><div class="kpis">${kpiHtml([
+  el.innerHTML = `<p class="empty" style="margin:-6px 0 12px;font-size:13px">Loads that arrived in this range. Mark couches sold on the Sales Tracker.</p><div class="kpis">${kpiHtml([
     ['Loads', loads.length], ['Landed cost', money(landed)], ['Sold', T('sold') + ' / ' + T('n')],
     ['Revenue', money(T('rev'))], ['Gross profit on sold', money(T('rev') - soldCost)],
     ['Avg. days to sell', dts.length ? (dts.reduce((a, b) => a + b, 0) / dts.length).toFixed(1) : '–'],
@@ -642,7 +716,7 @@ function renderBstock(){
         <td class="n">${u.status==='sold' ? '<b>' + money(u.soldPrice) + '</b>' : '–'}</td>
         <td class="n hide-m">${u.status==='sold' && u.sold ? dayDiff(l.arrived, u.sold) : u.status==='in' ? '<span style="color:var(--muted)">' + dayDiff(l.arrived, new Date()) + '</span>' : '–'}</td>
         <td class="n" style="white-space:nowrap">${u.status==='in'
-          ? `<button class="btn sm" data-sold="${l.id}:${u.uid}" data-name="${esc(u.name)}" data-comp="${u.comp||''}">Sold</button> <button class="btn sm" data-unit="${l.id}:${u.uid}:dud">Dud</button>`
+          ? `<button class="btn sm" data-unit="${l.id}:${u.uid}:dud">Dud</button>`
           : `<button class="btn sm" data-unit="${l.id}:${u.uid}:in">Undo</button>`}</td></tr>`).join('')}</table></div>
       <div style="margin-top:10px;text-align:right"><button class="btn sm" data-del="loads:${l.id}">Delete load</button></div>
     </div>`; }).join('');
@@ -788,17 +862,23 @@ function renderSources(){
   const src = groupSum(live, 'source', 'rev');
   const inv = invSources(R);
   pieIn('pieFul', ful, v => v + ' orders'); shareTable('tblFul', ful, v => String(v), 'Fulfillment');
+  const dl = live.filter(x => x.type === 'Delivery'), fees = dl.reduce((a, x) => a + (x.del || 0), 0), PR = prevRange(R);
+  const pdl = RAW.sales.filter(x => inR(x.date, PR) && x.type === 'Delivery'), pfees = pdl.reduce((a, x) => a + (x.del || 0), 0);
+  const fGross = live.reduce((a, x) => a + x.rev, 0);
+  $('feeBox').innerHTML = `<div class="row"><span><b>Delivery fees collected</b></span><span><b>${money(fees)}</b> ${chgSmall(fees, pfees)}</span></div>
+    <div class="row"><span>Average fee per delivery</span><b>${dl.length ? money(fees / dl.length) : '–'}</b></div>
+    <div class="row"><span>Share of sales</span><b>${fGross ? pct(fees / fGross) : '–'}</b></div>`;
   pieIn('pieSrc', src, money); shareTable('tblSrc', src, money, 'Sales source');
   pieIn('pieInv', inv, money); shareTable('tblInv', inv, money, 'Inventory source');
   const invTotal = inv.reduce((a, p) => a + p[1], 0), gross = live.reduce((a, x) => a + x.rev, 0);
   $('invNote').textContent = `Counts couches marked Sold on the B-Stock tab or Log sale under Used couches: ${money(invTotal)} of ${money(gross)} in sales this range.`;
   // month by month
   const endY = R.to > day0(new Date()) ? new Date().getFullYear() : R.to.getFullYear(), endM = R.to > day0(new Date()) ? new Date().getMonth() : R.to.getMonth();
-  $('srcTrend').innerHTML = `<tr><th>Month</th><th class="n">Sales</th><th class="n">Delivery %</th><th class="n hide-m">Top source</th><th class="n">Meta Ads %</th><th class="n">B-Stock %</th></tr>` +
+  $('srcTrend').innerHTML = `<tr><th>Month</th><th class="n">Sales</th><th class="n">Delivery %</th><th class="n">Delivery fees</th><th class="n hide-m">Top source</th><th class="n">Meta Ads %</th><th class="n">B-Stock %</th></tr>` +
     [0,1,2,3,4,5].map(k => { const t = back(endY, endM, k), MR = { from: new Date(t.y, t.m, 1), to: new Date(t.y, t.m + 1, 0) };
       const L = RAW.sales.filter(x => inR(x.date, MR)), rev = L.reduce((a, x) => a + x.rev, 0), top = groupSum(L, 'source', 'rev')[0];
       const meta = L.filter(x => x.source === 'Meta Ads').reduce((a, x) => a + x.rev, 0), iv = invSources(MR), ivT = iv.reduce((a, p) => a + p[1], 0), bs = (iv.find(p => p[0] === 'Bstock') || [0, 0])[1];
-      return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${L.length || '–'}</td><td class="n">${L.length ? pct(L.filter(x => x.type === 'Delivery').length / L.length) : '–'}</td><td class="n hide-m">${top ? esc(top[0]) : '–'}</td><td class="n">${rev ? pct(meta / rev) : '–'}</td><td class="n">${ivT ? pct(bs / ivT) : '–'}</td></tr>`; }).join('');
+      return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${L.length || '–'}</td><td class="n">${L.length ? pct(L.filter(x => x.type === 'Delivery').length / L.length) : '–'}</td><td class="n">${L.length ? money(L.reduce((a, x) => a + (x.type === 'Delivery' ? x.del || 0 : 0), 0)) : '–'}</td><td class="n hide-m">${top ? esc(top[0]) : '–'}</td><td class="n">${rev ? pct(meta / rev) : '–'}</td><td class="n">${ivT ? pct(bs / ivT) : '–'}</td></tr>`; }).join('');
 }
 
 // ---------- open houses ----------
@@ -936,8 +1016,8 @@ function renderCash(){
     </div>
     <div class="card" style="margin-top:16px"><h2>Trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
     <div class="card" style="margin-top:16px"><h2>Entries in this range ${snaps.length > 1 ? `<small>Net business ${(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz) >= 0 ? '+' : ''}${money(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz)} over the range</small>` : ''}</h2><div style="overflow-x:auto"><table>
-      <tr><th>Date</th><th class="n">Net business</th><th class="n hide-m">After bills</th><th class="n">Personal</th><th class="n">Combined</th><th>Health</th><th></th></tr>
-      ${snaps.slice().reverse().map(s => { const X = cashCalc(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n"><b>${money(X.netBiz)}</b></td><td class="n hide-m">${money(X.afterBills)}</td><td class="n">${money(X.netPers)}</td><td class="n">${money(X.combined)}</td><td><span class="pill ${X.health[2]}">${X.health[1]}</span></td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
+      <tr><th>Date</th><th class="n">Net business</th><th class="n hide-m">After bills</th><th class="n">Personal</th><th class="n">Combined</th><th>Health</th><th class="hide-m">Note</th><th></th></tr>
+      ${snaps.slice().reverse().map(s => { const X = cashCalc(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n"><b>${money(X.netBiz)}</b></td><td class="n hide-m">${money(X.afterBills)}</td><td class="n">${money(X.netPers)}</td><td class="n">${money(X.combined)}</td><td><span class="pill ${X.health[2]}">${X.health[1]}</span>${s.score ? ` <span style="font-size:12px;color:var(--muted)">${s.score}/10</span>` : ''}</td><td class="hide-m" style="font-size:12.5px;color:var(--muted);max-width:280px">${esc(s.note || '')}</td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
     </table></div>
     <p class="empty" style="margin-top:12px;font-size:12.5px">Health uses business after bills: Strong $15K+, Healthy $7.5K+, Tight $0+, Danger below $0. Stripe now: ${sb.error ? esc(sb.error) : money(sb.total || 0) + ' (' + money(sb.pending || 0) + ' pending, ' + money(sb.available || 0) + ' available).'}</p></div>`;
   const recent = snaps, o = baseOpts(true);
@@ -955,9 +1035,66 @@ function openCash(){
   m.classList.add('on');
 }
 
+// ---------- competitor ads ----------
+let ADSD = null;
+const AST = { brand: '', status: 'active', format: '', sort: 'days', newOnly: false };
+const agoTxt = t => { if (!t) return 'never'; const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' days ago'; };
+async function loadAds(){
+  try {
+    const r = await fetch('/api/ads', { cache: 'no-store' });
+    const d = await r.json(); if (d.error) throw new Error(d.error);
+    ADSD = d; renderAds();
+  } catch (e) { $('adGrid').innerHTML = `<div class="adempty">Couldn't load ads: ${esc(e.message)}</div>`; }
+}
+function renderAds(){
+  if (!ADSD) return loadAds();
+  const d = ADSD, week = Date.now() - 7 * 864e5;
+  let m = d.hasToken ? 'Last pulled ' + agoTxt(d.lastRun) + ' · pulls new ads every morning at 6am' : 'Add APIFY_TOKEN in Railway to pull ads.';
+  if (d.running) m += ' · pulling now (takes a few minutes)…';
+  if (d.lastError && (!d.lastRun || d.lastError.at > d.lastRun)) m += ` · <span style="color:var(--bad)">Last pull failed: ${esc(d.lastError.message)}</span>`;
+  $('adMeta').innerHTML = m;
+  $('adChips').innerHTML = ['', ...d.brands].map(b => `<span class="adchip${AST.brand === b ? ' on' : ''}" data-adbrand="${esc(b)}">${b ? esc(b) : 'All brands'}</span>`).join('') +
+    `<span class="adchip${AST.newOnly ? ' on' : ''}" data-adnew="1">New this week</span>`;
+  let ads = d.ads.filter(a => (!AST.brand || a.brand === AST.brand) && (AST.status === 'all' || (AST.status === 'active' ? a.active : !a.active)) &&
+    (!AST.format || a.format === AST.format || (AST.format === 'IMAGE' && a.format !== 'VIDEO')) && (!AST.newOnly || (a.start && a.start > week)));
+  ads.sort(AST.sort === 'days' ? (a, b) => (b.days || 0) - (a.days || 0) : (a, b) => (b.start || 0) - (a.start || 0));
+  $('adStats').innerHTML = d.brands.filter(b => !AST.brand || b === AST.brand).map(b => {
+    const mine = d.ads.filter(a => a.brand === b), act = mine.filter(a => a.active), top = act.slice().sort((x, y) => (y.days || 0) - (x.days || 0))[0];
+    return `<div class="card adstat" data-adbrand="${esc(b)}"><b>${esc(b)}</b><span>${act.length} active · ${mine.filter(a => a.start && a.start > week).length} new this week${top ? ` · longest ${top.days}d` : ''}</span></div>`;
+  }).join('');
+  if (!ads.length) { $('adGrid').innerHTML = `<div class="adempty">${d.lastRun ? 'No ads match these filters.' : 'No ads yet. Tap “Pull new ads” to run the first pull.'}</div>`; return; }
+  $('adGrid').innerHTML = ads.slice(0, 120).map(a => {
+    const cls = a.days >= 60 ? 'proven' : a.days >= 30 ? 'strong' : '', isNew = a.start && a.start > week;
+    const fd = t => t ? fmtD(new Date(t), true) : '—';
+    const media = a.video ? `<video src="${esc(a.video)}" poster="${esc(a.image || '')}" controls preload="none" playsinline></video>`
+      : a.image ? `<img src="${esc(a.image)}" loading="lazy" alt="">` : `<div class="adnone">Preview unavailable.<br>Open it in the Ad Library.</div>`;
+    return `<div class="adc"><div class="adm">${media}<div class="addays ${cls}">${a.days ?? '?'} days</div>
+        ${!a.active ? '<div class="adtag ended">Ended</div>' : isNew ? '<div class="adtag new">NEW</div>' : ''}</div>
+      <div class="adb"><div class="adr"><span class="adbrand">${esc(a.brand)}</span><span>${esc(a.format)}</span></div>
+        <div class="adr"><span>Started ${fd(a.start)}</span><span>${a.active ? 'Running' : 'Stopped ' + fd(a.end)}</span></div>
+        ${a.title ? `<div class="adtitle">${esc(a.title)}</div>` : ''}
+        <div class="adcopy">${esc(a.body)}</div>
+        ${a.body && a.body.length > 220 ? '<button class="admore">Show more</button>' : ''}
+        <div class="adlinks"><a href="https://www.facebook.com/ads/library/?id=${esc(a.id)}" target="_blank" rel="noopener">View in Ad Library</a>${a.link ? `<a href="${esc(a.link)}" target="_blank" rel="noopener">Landing page</a>` : ''}</div>
+      </div></div>`;
+  }).join('') + (ads.length > 120 ? `<div class="adempty">Showing the first 120 of ${ads.length}. Narrow it with the filters.</div>` : '');
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-adbrand]');
+  if (c) { AST.brand = c.dataset.adbrand; renderAds(); return; }
+  if (e.target.closest('[data-adnew]')) { AST.newOnly = !AST.newOnly; renderAds(); return; }
+  if (e.target.classList.contains('admore')) { const cp = e.target.previousElementSibling; cp.classList.toggle('open'); e.target.textContent = cp.classList.contains('open') ? 'Show less' : 'Show more'; }
+});
+['Status', 'Format', 'Sort'].forEach(k => document.getElementById('ad' + k).addEventListener('change', e => { AST[k.toLowerCase()] = e.target.value; renderAds(); }));
+document.getElementById('adPull').addEventListener('click', async () => {
+  try { await post('/api/ads/refresh', {}); toast('Pulling new ads. Takes a few minutes; this page updates on its own.'); $('adPull').disabled = true;
+    const iv = setInterval(async () => { await loadAds(); if (!ADSD.running) { clearInterval(iv); $('adPull').disabled = false; } }, 20000);
+  } catch (err) { toast(err.message); }
+});
+
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', sources: 'Sales & Sourcing', showings: 'Showings', openhouse: 'Open Houses', meta: 'Meta Ads', bstock: 'B-Stock Loads', payroll: 'Payroll', cash: 'Cash Position' };
-DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.openhouse = 'all';
+const TITLES = { sales: 'Sales Tracker', sources: 'Sales & Sourcing', showings: 'Showings', openhouse: 'Open Houses', meta: 'Meta Ads', ads: 'Competitor Ads', bstock: 'B-Stock Loads', payroll: 'Payroll', cash: 'Cash Position' };
+DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
   $('monLabel').textContent = rangeLabel(R);
@@ -969,7 +1106,8 @@ function syncRangeBar(){
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  ({ sales: renderSales, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
+  $('monNav').hidden = tab === 'ads';
+  ({ sales: renderSales, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
 }
 function setTab(t){
   tab = t;
@@ -1002,7 +1140,7 @@ $('rKind').onchange = () => { const k = $('rKind').value, R = getR(tab);
 const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('rTo').value); if (f && t2 && f <= t2) { RANGES[tab] = { kind: 'custom', from: f, to: t2 }; render(); } };
 $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
-$('refresh').onclick = () => { if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
+$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
 $('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
 $('payBtn').onclick = async () => {
   const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
@@ -1053,6 +1191,8 @@ document.addEventListener('click', async e => {
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
     const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
+  const sf = e.target.closest('[data-sf]');
+  if (sf) { SALES_FILTER = sf.dataset.sf; renderSales(); return; }
   const oe = e.target.closest('[data-ohedit]');
   if (oe) { openOH((RAW.openhouses || []).find(o => o.id === oe.dataset.ohedit)); return; }
   const cd = e.target.closest('[data-cashdel]');
