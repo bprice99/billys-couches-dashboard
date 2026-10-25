@@ -79,7 +79,7 @@ async function kset(key, val) {
   fs.writeFileSync(FILE, JSON.stringify(all));
 }
 const KEYS = { purchases: 'bcd:purchases', expenses: 'bcd:expenses', loads: 'bcd:loads', cash: 'bcd:cash',
-  rates: 'bcd:payrollRates', adj: 'bcd:payrollAdj', paid: 'bcd:payrollPaid' };
+  rates: 'bcd:payrollRates', openhouses: 'bcd:openhouses', adj: 'bcd:payrollAdj', paid: 'bcd:payrollPaid' };
 
 // Past months imported from Ivy Flip (Jan-Sep 2026).
 let HISTORY = { sales: [], expenses: [] };
@@ -131,12 +131,49 @@ async function getExpenses() {
   return list;
 }
 
+// Open houses: starts with the events from the Open House Tracker sheet.
+const OH_SEED = [
+  ['2026-08-22', '11am-2pm', 15, 5, null, null, null], ['2026-09-05', '10am-1pm', 8, 5, null, null, 16],
+  ['2026-09-12', '11am-2pm', 12, 5, null, null, 10], ['2026-09-26', '1pm-4pm', 14, 5, 24, 5, 8],
+  ['2026-10-08', '5-8pm', 5, 1, null, 6, 7, 'Grand opening'], ['2026-10-11', '2-5pm', 7, 1, 19, 2, 2],
+  ['2026-10-18', '1-3pm', 8, 3, 21, 5, 2], ['2026-10-24', '10am-12pm', 8, 0, 14, 3, 4, '$50 off every couch'],
+].map(([date, time, walkins, sales, floor, promoDays, leads, note]) => ({ id: 'oh-' + date, date, time, walkins, sales, floor, promoDays, leads, note: note || '', checks: {} }));
+async function getOpenHouses() {
+  let list = await kget(KEYS.openhouses, null);
+  if (list === null) { list = OH_SEED; await kset(KEYS.openhouses, list); }
+  return list;
+}
+const optNum = v => v === '' || v == null ? null : Number(v);
+app.post('/api/openhouse', async (req, res) => {
+  try {
+    const d = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date)) return res.status(400).json({ error: 'Date is required' });
+    const list = await getOpenHouses();
+    let o = d.id && list.find(x => x.id === d.id);
+    if (!o) { o = { id: 'oh-' + Date.now().toString(36), checks: {} }; list.push(o); }
+    Object.assign(o, { date: d.date, time: clean(d.time, 40), note: clean(d.note, 120),
+      walkins: optNum(d.walkins), sales: optNum(d.sales), floor: optNum(d.floor), promoDays: optNum(d.promoDays), leads: optNum(d.leads) });
+    await kset(KEYS.openhouses, list);
+    res.json({ ok: true, id: o.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/openhouse/check', async (req, res) => {
+  try {
+    const { id, idx, on } = req.body || {};
+    const list = await getOpenHouses(), o = list.find(x => x.id === id);
+    if (!o) return res.status(404).json({ error: 'Not found' });
+    o.checks = o.checks || {}; if (on) o.checks[idx] = true; else delete o.checks[idx];
+    await kset(KEYS.openhouses, list);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/data', async (req, res) => {
   try {
-    const [g, purchases, expenses, loads] = await Promise.all([
-      google(req.query.fresh === '1'), kget(KEYS.purchases, []), getExpenses(), getLoads(),
+    const [g, purchases, expenses, loads, openhouses] = await Promise.all([
+      google(req.query.fresh === '1'), kget(KEYS.purchases, []), getExpenses(), getLoads(), getOpenHouses(),
     ]);
-    res.json({ ...g, purchases, expenses, loads, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
+    res.json({ ...g, purchases, expenses, loads, openhouses, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -169,7 +206,7 @@ app.post('/api/add', async (req, res) => {
 app.post('/api/delete', async (req, res) => {
   try {
     const { kind, id } = req.body || {};
-    if (!['purchases', 'expenses', 'loads'].includes(kind)) return res.status(400).json({ error: 'bad kind' });
+    if (!['purchases', 'expenses', 'loads', 'openhouses'].includes(kind)) return res.status(400).json({ error: 'bad kind' });
     const list = await kget(KEYS[kind], []);
     await kset(KEYS[kind], list.filter(x => x.id !== id));
     if (String(id).startsWith('ivy-')) { const g = await kget('bcd:deletedImports', []); g.push(id); await kset('bcd:deletedImports', g); }
@@ -295,8 +332,9 @@ function parseWorkLog(subs) {
     const qName = mark('name', find(/name|employee|who/i, /customer|client/i));
     const qDate = mark('date', find(/date|day/i, /birth/i) || qs.find(q => q.type === 'control_datetime'));
     const qHours = mark('hours', find(/hours/i, /bonus/i));
-    const qIn = mark('start', find(/start|clock.?in|time.?in|arriv/i));
-    const qOut = mark('end', find(/end|clock.?out|time.?out|leave|left/i));
+    const qTip = mark('tips', find(/tip/i));
+    const qIn = mark('start', find(/start time|^start\b|clock.?in|time.?in|arriv/i));
+    const qOut = mark('end', find(/end time|^end\b|clock.?out|time.?out|time you left/i));
     const qDeep = mark('deep cleans', find(/deep/i));
     const qSpot = mark('spot cleans', find(/spot/i));
     const qSold = mark('showings sold', find(/sold|purchas|convert|bought|closed/i, /deep|spot|hour|clean/i));
@@ -311,6 +349,7 @@ function parseWorkLog(subs) {
       id: s.id, date, name: qName ? ansText(qName.answer).trim() : 'Unknown',
       hours, deep: qDeep ? numOf(ansText(qDeep.answer)) : 0, spot: qSpot ? numOf(ansText(qSpot.answer)) : 0,
       sold: qSold ? numOf(ansText(qSold.answer)) : 0, shows: qShows ? numOf(ansText(qShows.answer)) : 0,
+      tip: qTip ? numOf(ansText(qTip.answer)) : 0,
     };
   });
   return { entries, fieldsSeen };
