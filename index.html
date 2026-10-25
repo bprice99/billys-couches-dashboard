@@ -61,6 +61,12 @@ td.n,th.n{text-align:right}
 .pill.x{background:#f1ece6;color:#8a7d72;text-decoration:line-through}
 .pill.ns{background:#2b1d16;color:#fff}
 .pill.u{background:#e6eef8;color:#2a5a8a}
+select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:600;font-family:inherit;color:var(--text)}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
+.chk input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--red);flex:none}
+.pies{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.piewrap{height:240px}
+@media (max-width:1100px){.pies{grid-template-columns:1fr}}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
@@ -93,7 +99,9 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <nav class="side">
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
+    <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
     <a class="nav" data-tab="showings">Showings</a>
+    <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" data-tab="meta">Meta Ads</a>
     <a class="nav" data-tab="bstock">B-Stock Loads</a>
     <a class="nav" data-tab="payroll">Payroll</a>
@@ -104,12 +112,15 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <main class="main">
     <div class="top">
       <h1 id="title">Sales Tracker</h1>
-      <div class="mon" id="monNav"><button id="prev" aria-label="Previous month">&larr;</button><span id="monLabel"></span><button id="next" aria-label="Next month">&rarr;</button></div>
+      <div class="mon" id="monNav" style="flex-wrap:wrap"><button id="prev" aria-label="Previous period">&larr;</button><span id="monLabel" style="min-width:150px"></span><button id="next" aria-label="Next period">&rarr;</button>
+        <select class="rk" id="rKind" aria-label="Date range"><option value="month">Month</option><option value="week">Week</option><option value="d30">Last 30 days</option><option value="d90">Last 90 days</option><option value="ytd">Year to date</option><option value="all">All time</option><option value="custom">Custom</option></select>
+        <span id="rCustom" hidden><input class="rd" type="date" id="rFrom" aria-label="From"> – <input class="rd" type="date" id="rTo" aria-label="To"></span></div>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn p" data-open="purchase" data-only="sales">+ Used pickup</button>
       <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
       <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
+      <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
     </div>
     <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
     <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
@@ -158,17 +169,39 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 
     <!-- PAYROLL -->
     <section id="tab-payroll" hidden>
-      <div class="top" style="margin-top:-6px"><div class="mon"><button id="wkPrev" aria-label="Previous week">&larr;</button><span id="wkLabel" style="min-width:150px"></span><button id="wkNext" aria-label="Next week">&rarr;</button></div>
-        <button class="btn p" id="payBtn" style="margin-left:auto">Mark week paid</button></div>
+      <div class="top" style="margin-top:-6px;justify-content:flex-end"><button class="btn p" id="payBtn">Mark week paid</button></div>
       <div class="err" id="payWarn" hidden></div>
       <div class="kpis" id="payKpis"></div>
-      <div class="card"><h2>This week's pay <small>Mon–Sun, paid Sunday &middot; $20 per showing sold &middot; $20 at 4+ deep cleans</small></h2><div style="overflow-x:auto"><table id="payTbl"></table></div>
+      <div class="card"><h2 id="payTitle">This week's pay</h2><div style="overflow-x:auto"><table id="payTbl"></table></div>
         <p class="empty" style="margin-top:12px;font-size:12.5px">Edit a rate or type an adjustment (tips, corrections) and it saves on its own. "Mark week paid" adds each person's total to Expenses as Payroll.</p>
         <p class="empty" style="margin-top:6px;font-size:12px" id="payFields"></p></div>
       <div class="grid2">
         <div class="card"><h2>Work Log entries this week</h2><div style="overflow-x:auto"><table id="payLog"></table></div></div>
-        <div class="card"><h2>Last 8 weeks</h2><div style="overflow-x:auto"><table id="payTrend"></table></div></div>
+        <div class="card"><h2 id="payTrendTitle">Last 8 weeks</h2><div style="overflow-x:auto"><table id="payTrend"></table></div></div>
       </div>
+    </section>
+
+    <!-- SALES & SOURCING -->
+    <section id="tab-sources" hidden>
+      <div class="note" id="srcNote" hidden>Ivy Flip months have no lead source or pickup/delivery, so only order-app sales (June 2026 on) are counted here.</div>
+      <div class="pies">
+        <div class="card"><h2>Pickup vs. delivery</h2><div class="piewrap"><canvas id="pieFul"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblFul"></table></div></div>
+        <div class="card"><h2>Inventory source <small>where sold couches were bought</small></h2><div class="piewrap"><canvas id="pieInv"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblInv"></table></div><p class="empty" style="font-size:12px;margin-top:10px" id="invNote"></p></div>
+        <div class="card"><h2>Sales source <small>how buyers found you</small></h2><div class="piewrap"><canvas id="pieSrc"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblSrc"></table></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="srcTrend"></table></div></div>
+    </section>
+
+    <!-- OPEN HOUSES -->
+    <section id="tab-openhouse" hidden>
+      <div class="kpis" id="ohKpis"></div>
+      <div class="grid2" style="margin-top:0">
+        <div class="card"><h2>Couches on floor vs. sales</h2><div class="chartwrap" style="height:240px"><canvas id="ohFloor"></canvas></div></div>
+        <div class="card"><h2>"Save my spot" leads vs. walk-ins</h2><div class="chartwrap" style="height:240px"><canvas id="ohLeads"></canvas></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2>Every open house</h2><div style="overflow-x:auto"><table id="ohTbl"></table></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Conversion = sales ÷ walk-ins. "Sales Log that day" is every order-app sale on that date, as a check on the count.</p></div>
+      <div class="card" style="margin-top:16px"><h2 id="ohCheckTitle">Promo checklist</h2><div id="ohChecks"></div></div>
     </section>
 
     <!-- CASH POSITION -->
@@ -244,6 +277,15 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="two"><label>Capital One ··8760 owed<input type="number" step="0.01" name="capone8760"></label><label>Discover ··6166 owed<input type="number" step="0.01" name="discover6166"></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
+<div class="mask" id="m-oh"><form class="modal" data-kind="oh">
+  <h3 id="ohModalTitle">Add an open house</h3>
+  <input type="hidden" name="id">
+  <div class="two"><label>Date<input type="date" name="date" required></label><label>Time<input name="time" placeholder="e.g. 10am-12pm"></label></div>
+  <div class="two"><label>Walk-ins<input type="number" name="walkins" min="0"></label><label>Sales<input type="number" name="sales" min="0"></label></div>
+  <div class="two"><label>Couches on floor<input type="number" name="floor" min="0"></label><label>Days promoted before<input type="number" name="promoDays" min="0"></label></div>
+  <div class="two"><label>"Save my spot" leads<input type="number" name="leads" min="0"></label><label>Note<input name="note" placeholder="e.g. $50 off every couch"></label></div>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
+</form></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -294,7 +336,6 @@ const baseOpts = (money_) => ({ responsive: true, maintainAspectRatio: false, in
 
 let RAW = null, DATA = null, tab = 'sales';
 const now = new Date();
-let cur = { y: now.getFullYear(), m: now.getMonth() };
 
 // ---------- normalize ----------
 function normSource(s){
@@ -353,102 +394,146 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, showingsError: d.showingsError };
+  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], showingsError: d.showingsError };
+}
+
+// ---------- date ranges (one per tab) ----------
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const day0 = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function mondayOf(d){ const x = day0(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const spanDays = R => Math.round((R.to - R.from) / 864e5) + 1;
+function makeRange(kind, anchor){
+  const t = day0(anchor || new Date());
+  if (kind === 'month') return { kind, from: new Date(t.getFullYear(), t.getMonth(), 1), to: new Date(t.getFullYear(), t.getMonth() + 1, 0) };
+  if (kind === 'week') { const m = mondayOf(t); return { kind, from: m, to: addDays(m, 6) }; }
+  if (kind === 'd30') return { kind, from: addDays(t, -29), to: t };
+  if (kind === 'd90') return { kind, from: addDays(t, -89), to: t };
+  if (kind === 'ytd') return { kind, from: new Date(t.getFullYear(), 0, 1), to: t };
+  if (kind === 'all') return { kind, from: new Date(2026, 0, 1), to: addDays(day0(new Date()), 120) };
+  return { kind: 'custom', from: addDays(t, -29), to: t };
+}
+function shiftRange(R, dir){
+  if (R.kind === 'month') return makeRange('month', new Date(R.from.getFullYear(), R.from.getMonth() + dir, 1));
+  if (R.kind === 'week') return makeRange('week', addDays(R.from, 7 * dir));
+  if (R.kind === 'ytd') { const y = R.from.getFullYear() + dir; return { kind: 'ytd', from: new Date(y, 0, 1), to: y === new Date().getFullYear() ? day0(new Date()) : new Date(y, 11, 31) }; }
+  if (R.kind === 'all') return R;
+  const n = spanDays(R) * dir;
+  return { kind: R.kind === 'custom' ? 'custom' : R.kind, from: addDays(R.from, n), to: addDays(R.to, n) };
+}
+const prevRange = R => R.kind === 'all' ? { kind: 'custom', from: addDays(R.from, -1), to: addDays(R.from, -1) } : shiftRange(R, -1);
+const fmtD = (d, y) => d.toLocaleDateString('en-US', y ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' });
+function rangeLabel(R){
+  if (R.kind === 'month') return R.from.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  if (R.kind === 'all') return 'All time';
+  if (R.kind === 'ytd') return R.from.getFullYear() + ' to date';
+  const y = R.from.getFullYear() !== R.to.getFullYear() || R.to.getFullYear() !== new Date().getFullYear();
+  return fmtD(R.from, y) + ' – ' + fmtD(R.to, y);
+}
+const vsLabel = R => ({ month: 'last month', week: 'last week', d30: 'prior 30 days', d90: 'prior 90 days', ytd: 'last year' })[R.kind] || 'prior period';
+const inR = (d, R) => !!d && d >= R.from && d <= R.to;
+const DEFAULT_KIND = { sales: 'month', showings: 'month', meta: 'month', bstock: 'all', payroll: 'week', cash: 'd30' };
+const RANGES = {};
+const getR = t => RANGES[t] || (RANGES[t] = makeRange(DEFAULT_KIND[t]));
+const isHistDay = d => RAW.hMonths.has(mkey(d.getFullYear(), d.getMonth()));
+// Chart buckets: daily up to ~2 months, monthly beyond that.
+function buckets(R){
+  const end = R.to > day0(new Date()) ? day0(new Date()) : R.to;
+  const out = [];
+  if (spanDays(R) <= 62) { for (let d = new Date(R.from); d <= R.to; d = addDays(d, 1)) out.push({ from: new Date(d), to: new Date(d), label: fmtD(d), future: d > end }); }
+  else { const stop = R.to > end ? new Date(end.getFullYear(), end.getMonth() + 1, 0) : R.to;
+    for (let d = new Date(R.from.getFullYear(), R.from.getMonth(), 1); d <= stop; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
+    out.push({ from: d < R.from ? R.from : d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0), label: MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''), future: d > end }); }
+  return out;
 }
 
 // ---------- sales tracker ----------
-function month(y, m){
-  const hist = RAW.hMonths.has(mkey(y, m));
-  let s, p, e;
-  if (hist) {
-    const hs = RAW.hSales.filter(x => inMonth(x.date, y, m));
-    s = hs.filter(x => x.rev > 0);
-    p = hs.filter(x => x.cost > 0).map(x => ({ date: x.date, source: 'Cost of couches sold', item: x.name, units: 1, cost: x.cost }));
-    e = RAW.hExp.filter(x => inMonth(x.date, y, m));
-  } else {
-    s = RAW.sales.filter(x => inMonth(x.date, y, m));
-    p = RAW.purchases.filter(x => inMonth(x.date, y, m)).concat(RAW.loads.filter(l => inMonth(l.arrived, y, m)).map(l => ({
+function period(R){
+  const hs = RAW.hSales.filter(x => inR(x.date, R) && isHistDay(x.date));
+  const s = hs.filter(x => x.rev > 0).concat(RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)));
+  const p = hs.filter(x => x.cost > 0).map(x => ({ date: x.date, source: 'Cost of couches sold', item: x.name, units: 1, cost: x.cost }))
+    .concat(RAW.purchases.filter(x => inR(x.date, R) && !isHistDay(x.date)))
+    .concat(RAW.loads.filter(l => inR(l.arrived, R) && !isHistDay(l.arrived)).map(l => ({
       date: l.arrived, source: 'Bstock', item: l.loadId + ' load', loadId: l.loadId, units: l.units.filter(u => u.cost > 0).length || 1, cost: l.landed, fromLoad: true })));
-    e = RAW.expenses.filter(x => inMonth(x.date, y, m));
-  }
+  const e = RAW.hExp.filter(x => inR(x.date, R) && isHistDay(x.date)).concat(RAW.expenses.filter(x => inR(x.date, R) && !isHistDay(x.date)));
+  const live = s.filter(x => x.type !== 'Not tracked');
   const gross = s.reduce((a,x)=>a+x.rev,0), cogs = p.reduce((a,x)=>a+x.cost,0), exp = e.reduce((a,x)=>a+x.amt,0);
   const units = p.reduce((a,x)=>a+x.units,0), gp = gross - cogs, net = gp - exp;
-  return { s, p, e, gross, cogs, exp, gp, net, margin: gross ? net/gross : 0, count: s.length, units,
+  return { s, p, e, live, gross, cogs, exp, gp, net, margin: gross ? net/gross : 0, count: s.length, units,
     avgSale: s.length ? gross/s.length : 0, avgBuy: units ? cogs/units : 0,
     gpFlip: s.length ? gp/s.length : 0, netFlip: s.length ? net/s.length : 0,
-    delivery: s.filter(x=>x.type==='Delivery').length, hist };
+    delivery: live.filter(x=>x.type==='Delivery').length, anyHist: hs.length > 0 || RAW.hExp.some(x => inR(x.date, R) && isHistDay(x.date)), allHist: live.length === 0 && hs.length > 0 };
 }
 
 function renderSales(){
-  const { y, m } = cur, A = month(y, m), b = back(y, m, 1), B = month(b.y, b.m);
-  $('histNote').hidden = !A.hist;
+  const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
+  $('histNote').hidden = !A.anyHist;
+  $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
+    : "Part of this range comes from your Ivy Flip export, which has no lead source or pickup/delivery. Those charts only count the newer sales.";
   $('kpis').innerHTML = kpiHtml([
-    ['Gross Sales', money(A.gross), chg(A.gross, B.gross)],
-    ['Cost of Goods', money(A.cogs), chg(A.cogs, B.cogs, true)],
-    ['Expenses', money(A.exp), chg(A.exp, B.exp, true)],
-    ['Gross Profit', money(A.gp), chg(A.gp, B.gp)],
-    ['Net Profit', money(A.net), chg(A.net, B.net)],
-    ['Net Margin', pct(A.margin), chg(A.margin, B.margin)],
+    ['Gross Sales', money(A.gross), chg(A.gross, B.gross, false, vs)],
+    ['Cost of Goods', money(A.cogs), chg(A.cogs, B.cogs, true, vs)],
+    ['Expenses', money(A.exp), chg(A.exp, B.exp, true, vs)],
+    ['Gross Profit', money(A.gp), chg(A.gp, B.gp, false, vs)],
+    ['Net Profit', money(A.net), chg(A.net, B.net, false, vs)],
+    ['Net Margin', pct(A.margin), chg(A.margin, B.margin, false, vs)],
   ]);
   $('insights').innerHTML = [
     ['Sales', A.count, B.count, String(A.count)],
-    [A.hist ? 'Couches with a cost' : 'Couches purchased', A.units, B.units, String(A.units)],
+    ['Couches purchased', A.units, B.units, String(A.units)],
     ['Average sale price', A.avgSale, B.avgSale, money(A.avgSale)],
     ['Average purchase price', A.avgBuy, B.avgBuy, money(A.avgBuy), true],
     ['Average gross profit per flip', A.gpFlip, B.gpFlip, money(A.gpFlip)],
     ['Average net profit per flip', A.netFlip, B.netFlip, money(A.netFlip)],
   ].map(([l,a,b2,v,inv]) => `<div class="row"><span>${l}</span><span><b>${v}</b> ${chgSmall(a,b2,inv)}</span></div>`).join('');
   bars($('expcats'), groupSum(A.e, 'cat', 'amt'), money);
-  bars($('sources'), groupSum(A.s, 'source', 'rev'), money);
+  bars($('sources'), groupSum(A.live, 'source', 'rev'), money);
   bars($('psources'), groupSum(A.p, 'source', 'cost'), money);
-  const pk = A.count - A.delivery;
-  $('fulfill').innerHTML = A.hist ? '<p class="empty">Not tracked in Ivy Flip for this month.</p>' :
-    `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${A.count?Math.round(A.delivery/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?A.delivery/A.count*100:0}%"></i></div></div>
-     <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${A.count?Math.round(pk/A.count*100):0}%</b></div><div class="bar"><i style="width:${A.count?pk/A.count*100:0}%;background:var(--dark)"></i></div></div>`;
+  const n = A.live.length, pk = n - A.delivery;
+  $('fulfill').innerHTML = !n ? '<p class="empty">No order-app sales in this range.</p>' :
+    `<div class="brow"><div class="t"><span>Delivery</span><b>${A.delivery} &middot; ${Math.round(A.delivery/n*100)}%</b></div><div class="bar"><i style="width:${A.delivery/n*100}%"></i></div></div>
+     <div class="brow"><div class="t"><span>Pickup</span><b>${pk} &middot; ${Math.round(pk/n*100)}%</b></div><div class="bar"><i style="width:${pk/n*100}%;background:var(--dark)"></i></div></div>`;
 
-  // used pickups: every one still in stock, plus any sold this month
-  const used = RAW.purchases.filter(x => x.status !== 'sold' || inMonth(x.sold, y, m) || inMonth(x.date, y, m))
+  // used pickups: every one still in stock, plus any picked up or sold in this range
+  const used = RAW.purchases.filter(x => x.status !== 'sold' || inR(x.sold, R) || inR(x.date, R))
     .sort((a, b2) => (a.status === 'sold') - (b2.status === 'sold') || a.date - b2.date);
   const inStock = RAW.purchases.filter(x => x.status !== 'sold');
   $('usedNote').textContent = inStock.length + ' in stock · ' + money(inStock.reduce((a, x) => a + x.cost, 0)) + ' paid';
-  const today0 = new Date(); today0.setHours(0,0,0,0);
+  const today0 = day0(new Date());
   $('usedTbl').innerHTML = `<tr><th>Picked up</th><th>Couch</th><th class="hide-m">From</th><th class="n">Paid</th><th>Status</th><th class="n">Sold for</th><th class="n hide-m">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
     (used.length ? used.map(x => { const sold = x.status === 'sold';
-      return `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td>${esc(x.item)}</td><td class="hide-m">${esc(x.source)}</td><td class="n">${money(x.cost)}</td>
+      return `<tr><td>${fmtD(x.date)}</td><td>${esc(x.item)}</td><td class="hide-m">${esc(x.source)}</td><td class="n">${money(x.cost)}</td>
         <td><span class="pill ${sold?'g':''}">${sold?'Sold':'In stock'}</span></td><td class="n">${sold ? '<b>' + money(x.soldPrice) + '</b>' : '–'}</td>
         <td class="n hide-m">${sold ? money(x.soldPrice - x.cost) : '–'}</td><td class="n hide-m">${Math.max(0, Math.round(((sold && x.sold ? x.sold : today0) - x.date) / 864e5))}</td>
         <td class="n" style="white-space:nowrap">${sold ? `<button class="btn sm" data-unit="${esc(x.id)}:p:in">Undo</button>`
           : `<button class="btn sm" data-sold="${esc(x.id)}:" data-target="purchase" data-name="${esc(x.item)}">Log sale</button>`}</td></tr>`; }).join('')
       : `<tr><td colspan="9" class="empty">No used pickups logged yet. Use + Used pickup.</td></tr>`);
 
-  // logged purchases + expenses (live months only)
-  $('logCard').hidden = A.hist;
-  if (!A.hist) {
-    const L = [...A.p.filter(x => !x.fromLoad).map(x => ({ kind: 'purchases', id: x.id, date: x.date, what: 'Purchase', desc: [x.item, x.units > 1 ? x.units + ' units' : '', x.loadId].filter(Boolean).join(' · '), cat: x.source, amt: x.cost })),
-               ...A.e.map(x => ({ kind: 'expenses', id: x.id, date: x.date, what: 'Expense', desc: [x.vendor, x.notes].filter(Boolean).join(' · '), cat: x.cat, amt: x.amt }))]
-      .sort((a, b2) => b2.date - a.date);
-    $('logTbl').innerHTML = `<tr><th>Date</th><th>Type</th><th>Category</th><th class="hide-m">Details</th><th class="n">Amount</th><th></th></tr>` +
-      (L.length ? L.map(x => `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n"><button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
-        : `<tr><td colspan="6" class="empty">Nothing logged yet. Use + Purchase and + Expense.</td></tr>`);
-  }
+  // purchases + expenses entered in the dashboard
+  const L = [...A.p.filter(x => x.live).map(x => ({ kind: 'purchases', id: x.id, date: x.date, what: 'Purchase', desc: [x.item, x.units > 1 ? x.units + ' units' : '', x.loadId].filter(Boolean).join(' · '), cat: x.source, amt: x.cost })),
+             ...A.e.filter(x => x.live).map(x => ({ kind: 'expenses', id: x.id, date: x.date, what: 'Expense', desc: [x.vendor, x.notes].filter(Boolean).join(' · '), cat: x.cat, amt: x.amt }))]
+    .sort((a, b2) => b2.date - a.date);
+  $('logCard').hidden = A.allHist;
+  $('logTbl').innerHTML = `<tr><th>Date</th><th>Type</th><th>Category</th><th class="hide-m">Details</th><th class="n">Amount</th><th></th></tr>` +
+    (L.length ? L.map(x => `<tr><td>${fmtD(x.date)}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n"><button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
+      : `<tr><td colspan="6" class="empty">Nothing logged in this range.</td></tr>`);
 
   const rows = A.s.slice().sort((a,b2)=>b2.date-a.date);
-  $('salesTbl').innerHTML = `<tr><th>Date</th><th>${A.hist?'Couch':'Customer'}</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
-    (rows.length ? rows.map(x => `<tr><td>${x.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type==='Not tracked'?'&ndash;':x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
-      : `<tr><td colspan="6" class="empty">No sales logged this month yet.</td></tr>`);
+  $('salesTbl').innerHTML = `<tr><th>Date</th><th>Customer / couch</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
+    (rows.length ? rows.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type==='Not tracked'?'&ndash;':x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
+      : `<tr><td colspan="6" class="empty">No sales in this range.</td></tr>`);
 
-  const days = new Date(y, m + 1, 0).getDate(), td = (y === now.getFullYear() && m === now.getMonth()) ? now.getDate() : days;
-  const labels = [], sa = [], co = [], ex = [], ne = []; let s = 0, c = 0, e = 0;
-  for (let d = 1; d <= days; d++){
-    labels.push(d);
-    A.s.filter(x=>x.date.getDate()===d).forEach(x=>s+=x.rev);
-    A.p.filter(x=>x.date.getDate()===d).forEach(x=>c+=x.cost);
-    A.e.filter(x=>x.date.getDate()===d).forEach(x=>e+=x.amt);
-    const k = d <= td; sa.push(k?s:null); co.push(k?c:null); ex.push(k?e:null); ne.push(k?s-c-e:null);
-  }
+  const bk = buckets(R), sa = [], co = [], ex = [], ne = []; let s = 0, c = 0, e = 0;
+  bk.forEach(b => {
+    const ib = d => d >= b.from && d <= b.to;
+    A.s.filter(x => ib(x.date)).forEach(x => s += x.rev);
+    A.p.filter(x => ib(x.date)).forEach(x => c += x.cost);
+    A.e.filter(x => ib(x.date)).forEach(x => e += x.amt);
+    const k = !b.future; sa.push(k?s:null); co.push(k?c:null); ex.push(k?e:null); ne.push(k?s-c-e:null);
+  });
   const ds = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w||2, tension: .3, pointRadius: 0 });
-  const o = baseOpts(true); o.plugins.tooltip = { callbacks: { title: i => 'Day ' + i[0].label, label: i => i.dataset.label + ': ' + money(i.raw) } };
-  chartIn('chart', { type: 'line', data: { labels, datasets: [ ds('Sales', sa, '#b0524c', 3), ds('Net profit', ne, '#2e7d4f', 3), ds('Cost of goods', co, '#c9a89a'), ds('Expenses', ex, '#2b1d16') ] }, options: o });
+  const o = baseOpts(true); o.plugins.tooltip = { callbacks: { label: i => i.dataset.label + ': ' + money(i.raw) } };
+  chartIn('chart', { type: 'line', data: { labels: bk.map(b => b.label), datasets: [ ds('Sales', sa, '#b0524c', 3), ds('Net profit', ne, '#2e7d4f', 3), ds('Cost of goods', co, '#c9a89a'), ds('Expenses', ex, '#2b1d16') ] }, options: o });
 }
 
 // ---------- showings ----------
@@ -459,68 +544,68 @@ function shStats(list){
   return { booked, canceled, noshow, bought, upcoming, showed, showRate: past ? showed / past : NaN, conv: showed ? bought / showed : NaN };
 }
 function renderShowings(){
-  const { y, m } = cur, list = RAW.showings.filter(x => inMonth(x.date, y, m)), b = back(y, m, 1);
-  const A = shStats(list), B = shStats(RAW.showings.filter(x => inMonth(x.date, b.y, b.m)));
-  const salesCount = month(y, m).count;
+  const R = getR('showings'), list = RAW.showings.filter(x => inR(x.date, R)), PR = prevRange(R), vs = vsLabel(R);
+  const A = shStats(list), B = shStats(RAW.showings.filter(x => inR(x.date, PR)));
   $('shKpis').innerHTML = kpiHtml([
-    ['Total booked', A.booked, chg(A.booked, B.booked)],
-    ['Canceled', A.canceled, chg(A.canceled, B.canceled, true)],
-    ['No-shows', A.noshow, chg(A.noshow, B.noshow, true)],
-    ['Showed up', A.showed, chg(A.showed, B.showed)],
-    ['Purchased', A.bought, chg(A.bought, B.bought)],
-    ['Show rate', pct(A.showRate), chg(A.showRate || 0, B.showRate || 0)],
-    ['Conversion', pct(A.conv), chg(A.conv || 0, B.conv || 0)],
+    ['Total booked', A.booked, chg(A.booked, B.booked, false, vs)],
+    ['Canceled', A.canceled, chg(A.canceled, B.canceled, true, vs)],
+    ['No-shows', A.noshow, chg(A.noshow, B.noshow, true, vs)],
+    ['Showed up', A.showed, chg(A.showed, B.showed, false, vs)],
+    ['Purchased', A.bought, chg(A.bought, B.bought, false, vs)],
+    ['Show rate', pct(A.showRate), chg(A.showRate || 0, B.showRate || 0, false, vs)],
+    ['Conversion', pct(A.conv), chg(A.conv || 0, B.conv || 0, false, vs)],
   ]);
-  const days = new Date(y, m + 1, 0).getDate(), labels = [], sets = { Bought: [], Showed: [], 'No-show': [], Canceled: [], Upcoming: [] };
-  for (let d = 1; d <= days; d++){ labels.push(d); const dl = list.filter(x => x.date.getDate() === d); Object.keys(sets).forEach(k => sets[k].push(dl.filter(x => x.status === k).length)); }
+  const bk = buckets(R), sets = { Bought: [], Showed: [], 'No-show': [], Canceled: [], Upcoming: [] };
+  bk.forEach(b => { const dl = list.filter(x => x.date >= b.from && x.date <= b.to); Object.keys(sets).forEach(k => sets[k].push(dl.filter(x => x.status === k).length)); });
   const colors = { Bought: '#2e7d4f', Showed: '#b0524c', 'No-show': '#2b1d16', Canceled: '#d9cfc4', Upcoming: '#8fb0d6' };
   const o = baseOpts(false); o.scales.x.stacked = true; o.scales.y.stacked = true;
-  chartIn('shChart', { type: 'bar', data: { labels, datasets: Object.keys(sets).map(k => ({ label: k === 'Showed' ? 'Showed, no buy' : k, data: sets[k], backgroundColor: colors[k], borderRadius: 3 })) }, options: o });
+  chartIn('shChart', { type: 'bar', data: { labels: bk.map(b => b.label), datasets: Object.keys(sets).map(k => ({ label: k === 'Showed' ? 'Showed, no buy' : k, data: sets[k], backgroundColor: colors[k], borderRadius: 3 })) }, options: o });
 
   const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const dow = DOW.map((n, i) => { const st = shStats(list.filter(x => x.at.getDay() === i)); return [n, st.booked, ` &middot; ${st.showed} showed &middot; ${st.bought} bought`]; }).filter(x => x[1]);
   bars($('shDow'), dow, v => v + ' booked');
 
+  const endD = R.to > day0(new Date()) ? day0(new Date()) : R.to, endY = endD.getFullYear(), endM = endD.getMonth();
   $('shTrend').innerHTML = `<tr><th>Month</th><th class="n">Booked</th><th class="n">Canceled</th><th class="n">Show rate</th><th class="n">Bought</th><th class="n">Conversion</th></tr>` +
-    [5,4,3,2,1,0].map(k => { const t = back(y, m, k), st = shStats(RAW.showings.filter(x => inMonth(x.date, t.y, t.m)));
+    [0,1,2,3,4,5].map(k => { const t = back(endY, endM, k), st = shStats(RAW.showings.filter(x => inMonth(x.date, t.y, t.m)));
       return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${st.booked}</td><td class="n">${st.canceled}</td><td class="n">${pct(st.showRate)}</td><td class="n">${st.bought}</td><td class="n"><b>${pct(st.conv)}</b></td></tr>`; }).join('');
 
   const pc = { Bought: 'g', Canceled: 'x', 'No-show': 'ns', Upcoming: 'u', Showed: '' };
   const rows = list.slice().sort((a, b2) => b2.at - a.at);
   $('shTbl').innerHTML = `<tr><th>Date</th><th>Time</th><th>Customer</th><th>Result</th></tr>` +
     (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span></td></tr>`).join('')
-      : `<tr><td colspan="4" class="empty">${RAW.showingsError ? 'Could not read the calendar: ' + esc(RAW.showingsError) : 'No showings on the calendar this month.'}</td></tr>`);
-  void salesCount;
+      : `<tr><td colspan="4" class="empty">${RAW.showingsError ? 'Could not read the calendar: ' + esc(RAW.showingsError) : 'No showings on the calendar in this range.'}</td></tr>`);
 }
 
 // ---------- meta ads ----------
-function metaMonth(y, m){
-  const exp = RAW.hMonths.has(mkey(y, m)) ? RAW.hExp.filter(x => inMonth(x.date, y, m)) : RAW.expenses.filter(x => inMonth(x.date, y, m));
+function metaRange(R){
+  const exp = RAW.hExp.filter(x => inR(x.date, R) && isHistDay(x.date)).concat(RAW.expenses.filter(x => inR(x.date, R) && !isHistDay(x.date)));
   const spend = exp.filter(isMetaSpend).reduce((a, x) => a + x.amt, 0);
-  const all = RAW.sales.filter(x => inMonth(x.date, y, m));
+  const all = RAW.sales.filter(x => inR(x.date, R));
   const ms = all.filter(x => x.source === 'Meta Ads');
   const rev = ms.reduce((a, x) => a + x.rev, 0);
   return { spend, sales: ms.length, rev, tracked: all.length > 0, share: all.length ? ms.length / all.length : NaN,
     cps: ms.length ? spend / ms.length : NaN, roas: spend ? rev / spend : NaN };
 }
 function renderMeta(){
-  const { y, m } = cur, A = metaMonth(y, m), b = back(y, m, 1), B = metaMonth(b.y, b.m);
+  const R = getR('meta'), A = metaRange(R), B = metaRange(prevRange(R)), vs = vsLabel(R);
   const t = v => A.tracked ? v : '–';
   $('mKpis').innerHTML = kpiHtml([
-    ['Ad spend', money(A.spend), chg(A.spend, B.spend, true)],
-    ['Sales from Meta', t(A.sales), A.tracked ? chg(A.sales, B.sales) : ''],
-    ['Meta revenue', t(money(A.rev)), A.tracked ? chg(A.rev, B.rev) : ''],
-    ['Cost per sale', t(isFinite(A.cps) ? money(A.cps) : '–'), A.tracked ? chg(A.cps || 0, B.cps || 0, true) : ''],
-    ['Return on ad spend', t(isFinite(A.roas) ? A.roas.toFixed(1) + 'x' : '–'), A.tracked ? chg(A.roas || 0, B.roas || 0) : ''],
-    ['Share of sales', t(pct(A.share)), A.tracked ? chg(A.share || 0, B.share || 0) : ''],
+    ['Ad spend', money(A.spend), chg(A.spend, B.spend, true, vs)],
+    ['Sales from Meta', t(A.sales), A.tracked ? chg(A.sales, B.sales, false, vs) : ''],
+    ['Meta revenue', t(money(A.rev)), A.tracked ? chg(A.rev, B.rev, false, vs) : ''],
+    ['Cost per sale', t(isFinite(A.cps) ? money(A.cps) : '–'), A.tracked ? chg(A.cps || 0, B.cps || 0, true, vs) : ''],
+    ['Return on ad spend', t(isFinite(A.roas) ? A.roas.toFixed(1) + 'x' : '–'), A.tracked ? chg(A.roas || 0, B.roas || 0, false, vs) : ''],
+    ['Share of sales', t(pct(A.share)), A.tracked ? chg(A.share || 0, B.share || 0, false, vs) : ''],
   ]);
-  const ks = [5,4,3,2,1,0].map(k => back(y, m, k)), rows = ks.map(k => ({ ...k, ...metaMonth(k.y, k.m) }));
-  const o = baseOpts(true);
-  chartIn('mChart', { type: 'bar', data: { labels: rows.map(r => MON[r.m]), datasets: [
+  const bk = buckets(R).filter(b => !b.future), rows = bk.map(b => ({ label: b.label, ...metaRange({ from: b.from, to: b.to }) }));
+  chartIn('mChart', { type: 'bar', data: { labels: rows.map(r => r.label), datasets: [
     { label: 'Ad spend', data: rows.map(r => r.spend), backgroundColor: '#2b1d16', borderRadius: 4 },
-    { label: 'Meta revenue', data: rows.map(r => r.tracked ? r.rev : null), backgroundColor: '#b0524c', borderRadius: 4 } ] }, options: o });
+    { label: 'Meta revenue', data: rows.map(r => r.tracked ? r.rev : null), backgroundColor: '#b0524c', borderRadius: 4 } ] }, options: baseOpts(true) });
+  const endD = R.to > day0(new Date()) ? day0(new Date()) : R.to, endY = endD.getFullYear(), endM = endD.getMonth();
+  const mrows = [0,1,2,3,4,5].map(k => { const b = back(endY, endM, k); return { ...b, ...metaRange({ from: new Date(b.y, b.m, 1), to: new Date(b.y, b.m + 1, 0) }) }; });
   $('mTbl').innerHTML = `<tr><th>Month</th><th class="n">Spend</th><th class="n">Meta sales</th><th class="n">Revenue</th><th class="n">Cost / sale</th><th class="n">ROAS</th></tr>` +
-    rows.slice().reverse().map(r => `<tr><td>${MON[r.m]} ${r.y}</td><td class="n">${money(r.spend)}</td><td class="n">${r.tracked ? r.sales : '–'}</td><td class="n">${r.tracked ? money(r.rev) : '–'}</td><td class="n">${r.tracked && isFinite(r.cps) ? money(r.cps) : '–'}</td><td class="n"><b>${r.tracked && isFinite(r.roas) ? r.roas.toFixed(1) + 'x' : '–'}</b></td></tr>`).join('');
+    mrows.map(r => `<tr><td>${MON[r.m]} ${r.y}</td><td class="n">${money(r.spend)}</td><td class="n">${r.tracked ? r.sales : '–'}</td><td class="n">${r.tracked ? money(r.rev) : '–'}</td><td class="n">${r.tracked && isFinite(r.cps) ? money(r.cps) : '–'}</td><td class="n"><b>${r.tracked && isFinite(r.roas) ? r.roas.toFixed(1) + 'x' : '–'}</b></td></tr>`).join('');
 }
 
 // ---------- b-stock ----------
@@ -535,18 +620,18 @@ function loadStats(l){
     paid: l.units.filter(u => u.cost > 0).length, each: (l.units.find(u => u.cost > 0) || {}).cost || 0, leftComp };
 }
 function renderBstock(){
-  const el = $('bsBody'), loads = RAW.loads.slice().sort((a, b) => b.arrived - a.arrived);
-  if (!loads.length) { el.innerHTML = `<div class="card"><h2>No loads yet</h2><p class="empty">Click <b>+ Load</b> and paste the units, or send Claude the manifest and the landed cost and it'll give you the lines to paste.</p></div>`; return; }
+  const R = getR('bstock'), el = $('bsBody'), loads = RAW.loads.filter(l => inR(l.arrived, R)).sort((a, b) => b.arrived - a.arrived);
+  if (!loads.length) { el.innerHTML = `<div class="card"><h2>${RAW.loads.length ? 'No loads arrived in this range' : 'No loads yet'}</h2><p class="empty">${RAW.loads.length ? 'Pick a wider range, or All time.' : "Click <b>+ Load</b> and paste the units, or send Claude the manifest and the landed cost and it'll give you the lines to paste."}</p></div>`; return; }
   const all = loads.map(loadStats), T = k => all.reduce((a, x) => a + x[k], 0);
   const landed = loads.reduce((a, l) => a + l.landed, 0), soldCost = loads.reduce((a, l) => a + l.units.filter(u => u.status === 'sold').reduce((b, u) => b + u.cost, 0), 0);
   const dts = loads.flatMap(l => l.units.filter(u => u.status === 'sold' && u.sold).map(u => dayDiff(l.arrived, u.sold)));
-  $('bsBody').innerHTML = `<div class="kpis">${kpiHtml([
-    ['Loads', loads.length], ['Couches bought', T('paid')], ['Sold', T('sold') + ' / ' + T('n')],
+  el.innerHTML = `<p class="empty" style="margin:-6px 0 12px;font-size:13px">Loads that arrived in this range. Sales count whenever they happened.</p><div class="kpis">${kpiHtml([
+    ['Loads', loads.length], ['Landed cost', money(landed)], ['Sold', T('sold') + ' / ' + T('n')],
     ['Revenue', money(T('rev'))], ['Gross profit on sold', money(T('rev') - soldCost)],
     ['Avg. days to sell', dts.length ? (dts.reduce((a, b) => a + b, 0) / dts.length).toFixed(1) : '–'],
   ])}</div>` + loads.map((l, i) => { const st = all[i];
     return `<div class="card" style="margin-bottom:16px">
-      <h2>${esc(l.loadId)} <small>${esc(l.origin)} &middot; arrived ${l.arrived.toLocaleDateString('en-US',{month:'short',day:'numeric'})} &middot; ${money(l.landed)} landed &middot; ${money(st.each)} per couch</small></h2>
+      <h2>${esc(l.loadId)} <small>${esc(l.origin)} &middot; arrived ${fmtD(l.arrived)} &middot; ${money(l.landed)} landed &middot; ${money(st.each)} per couch</small></h2>
       <div class="kpis" style="margin-bottom:12px">${kpiHtml([
         ['Sold', st.sold + ' / ' + st.n], ['Revenue', money(st.rev)], ['Gross profit', money(st.gp)],
         ['Paid back', pct(st.mult)], ['Avg. days to sell', isFinite(st.days) ? st.days.toFixed(1) : '–'], ['Still in stock (comps)', money(st.leftComp)],
@@ -565,11 +650,11 @@ function renderBstock(){
 
 // ---------- payroll ----------
 let PAY = null;
-const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-function mondayOf(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
-let wk = mondayOf(new Date());
+// Weeks before the dashboard took over payroll were already paid (and are in the Ivy Flip expenses).
+const PAID_BEFORE = '2026-10-19';
 const fname = s => String(s || '').trim().split(/\s+/)[0] || 'Unknown';
 const pkey = s => fname(s).toLowerCase().replace(/^gunarr$/, 'gunnarr');
+const weekPaid = wkey => (PAY.paid || {})[wkey] || (wkey < PAID_BEFORE ? 'before dashboard' : '');
 async function loadPayroll(fresh){
   $('payTbl').innerHTML = '<tr><td class="empty">Loading the Work Log...</td></tr>';
   try {
@@ -578,74 +663,204 @@ async function loadPayroll(fresh){
     PAY = d; renderPayroll();
   } catch (e) { $('payTbl').innerHTML = `<tr><td class="empty">Couldn't load payroll: ${esc(e.message)}</td></tr>`; }
 }
-function payWeek(mon){
-  const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
-  const a = ymd(mon), b = ymd(sun), wkey = a;
-  const ents = PAY.entries.filter(e => e.date >= a && e.date <= b);
-  const people = {};
-  ents.forEach(e => { const k = pkey(e.name); const p = people[k] = people[k] || { key: k, name: fname(e.name), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, days: 0 };
-    p.hours += e.hours; p.deep += e.deep; p.spot += e.spot; p.sold += e.sold; p.shows += e.shows; p.days++; });
+// One Mon-Sun week (cleaning bonus is per week), limited to dates inside [a, b].
+function payWeekLines(mon, a, b){
+  const wkey = ymd(mon), sun = ymd(addDays(mon, 6)), lo = a > wkey ? a : wkey, hi = b < sun ? b : sun;
+  const ents = PAY.entries.filter(e => e.date >= lo && e.date <= hi);
+  const people = {}, blank = k => ({ key: k, name: k[0].toUpperCase() + k.slice(1), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, tip: 0, days: 0 });
+  ents.forEach(e => { const k = pkey(e.name); const p = people[k] = people[k] || { ...blank(k), name: fname(e.name) };
+    p.hours += e.hours; p.tip += e.tip || 0; p.deep += e.deep; p.spot += e.spot; p.sold += e.sold; p.shows += e.shows; p.days++; });
   const adj = (PAY.adj || {})[wkey] || {};
-  Object.keys(adj).forEach(k => { if (!people[k] && adj[k].amount) people[k] = { key: k, name: k[0].toUpperCase() + k.slice(1), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, days: 0 }; });
-  const lines = Object.values(people).map(p => {
+  const fullWeek = lo === wkey && hi === sun;
+  if (fullWeek) Object.keys(adj).forEach(k => { if (!people[k] && adj[k].amount) people[k] = blank(k); });
+  return { ents, lines: Object.values(people).map(p => {
     const rate = PAY.rates[p.key] ?? 0, hourly = p.hours * rate, showBonus = p.sold * 20, cleanBonus = p.deep >= 4 ? 20 : 0;
-    const a2 = adj[p.key] || { amount: 0, note: '' };
-    return { ...p, rate, hourly, showBonus, cleanBonus, adj: a2.amount || 0, adjNote: a2.note || '', total: hourly + showBonus + cleanBonus + (a2.amount || 0) };
-  }).sort((x, y) => y.total - x.total);
-  const sales = RAW ? RAW.sales.filter(s => ymd(s.date) >= a && ymd(s.date) <= b).reduce((t, s) => t + s.rev, 0) : 0;
+    const a2 = fullWeek ? (adj[p.key] || { amount: 0, note: '' }) : { amount: 0, note: '' };
+    return { ...p, rate, hourly, showBonus, cleanBonus, adj: a2.amount || 0, adjNote: a2.note || '', total: hourly + showBonus + cleanBonus + p.tip + (a2.amount || 0) };
+  }) };
+}
+function payRange(R){
+  const a = ymd(R.from), b = ymd(R.to > day0(new Date()) ? addDays(day0(new Date()), 7) : R.to);
+  const merged = {}, ents = [], weeks = [];
+  for (let m = mondayOf(R.from); ymd(m) <= ymd(R.to); m = addDays(m, 7)) {
+    const W = payWeekLines(m, a, ymd(R.to));
+    ents.push(...W.ents);
+    const total = W.lines.reduce((t, l) => t + l.total, 0), hours = W.lines.reduce((t, l) => t + l.hours, 0);
+    weeks.push({ mon: new Date(m), total, hours, n: W.lines.length });
+    W.lines.forEach(l => { const p = merged[l.key];
+      if (!p) merged[l.key] = { ...l };
+      else ['hours','deep','spot','sold','shows','tip','days','hourly','showBonus','cleanBonus','adj','total'].forEach(k => p[k] += l[k]); });
+  }
+  const lines = Object.values(merged).sort((x, y) => y.total - x.total);
+  const sales = RAW ? RAW.sales.filter(s => inR(s.date, R)).reduce((t, s) => t + s.rev, 0) : 0;
   const tot = k => lines.reduce((t, l) => t + l[k], 0);
-  return { a, b, mon, sun, ents, lines, total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('adj'), sales, paid: (PAY.paid || {})[wkey] };
+  const single = R.kind === 'week' || (R.from.getDay() === 1 && spanDays(R) === 7);
+  return { ents, lines, weeks, single, wkey: ymd(R.from), total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('tip') + tot('adj'), sales };
 }
 function renderPayroll(){
   if (!PAY) return loadPayroll();
-  const W = payWeek(wk), prev = new Date(wk); prev.setDate(prev.getDate() - 7); const P = payWeek(prev);
-  const f = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  $('wkLabel').textContent = f(W.mon) + ' – ' + f(W.sun);
+  const R = getR('payroll'), W = payRange(R), P = payRange(prevRange(R)), vs = vsLabel(R);
+  const paidAt = W.single ? weekPaid(W.wkey) : '';
   $('payWarn').hidden = !PAY.error; $('payWarn').textContent = PAY.error || '';
   const fs = PAY.fieldsSeen || {}, miss = ['name', 'hours', 'deep cleans', 'showings sold'].filter(k => !fs[k] && !(k === 'hours' && fs.start && fs.end));
   $('payFields').innerHTML = PAY.entries.length ? 'Reading the Work Log: ' + Object.entries(fs).map(([k, v]) => `<b>${esc(k)}</b> = "${esc(v)}"`).join(' · ') +
     (miss.length ? `<br><span style="color:var(--bad)">Couldn't find: ${miss.join(', ')}. Use the Adjust column for those.</span>` : '') : '';
+  const sun = addDays(R.from, 6);
   $('payKpis').innerHTML = kpiHtml([
-    ['Payroll this week', money(W.total), chg(W.total, P.total, true, 'last week')],
-    ['Hours', W.hours.toFixed(1), chg(W.hours, P.hours, false, 'last week')],
-    ['Bonuses + adjustments', money(W.bonus), chg(W.bonus, P.bonus, false, 'last week')],
-    ['Sales this week', money(W.sales), chg(W.sales, P.sales, false, 'last week')],
-    ['Labor % of sales', W.sales ? pct(W.total / W.sales) : '–', W.sales && P.sales ? chg(W.total / W.sales, P.total / P.sales, true, 'last week') : ''],
-    ['Status', W.paid ? '<span class="pill g">Paid</span>' : '<span class="pill">Not paid</span>', W.paid ? `<div class="c flat">Marked ${esc(W.paid)}</div>` : `<div class="c flat">Payday ${f(W.sun)}</div>`],
+    ['Payroll', money(W.total), chg(W.total, P.total, true, vs)],
+    ['Hours', W.hours.toFixed(1), chg(W.hours, P.hours, false, vs)],
+    ['Bonuses, tips + adjustments', money(W.bonus), chg(W.bonus, P.bonus, false, vs)],
+    ['Sales', money(W.sales), chg(W.sales, P.sales, false, vs)],
+    ['Labor % of sales', W.sales ? pct(W.total / W.sales) : '–', W.sales && P.sales ? chg(W.total / W.sales, P.total / P.sales, true, vs) : ''],
+    W.single ? ['Status', paidAt ? '<span class="pill g">Paid</span>' : '<span class="pill">Not paid</span>', paidAt ? `<div class="c flat">${paidAt === 'before dashboard' ? 'Paid before the dashboard' : 'Marked ' + esc(paidAt)}</div>` : `<div class="c flat">Payday ${fmtD(sun)}</div>`]
+      : ['Weeks', W.weeks.length, `<div class="c flat">${W.weeks.filter(w => weekPaid(ymd(w.mon))).length} paid</div>`],
   ]);
-  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Adjust</th><th class="n">Total</th></tr>` +
+  $('payTitle').innerHTML = (W.single ? "This week's pay" : 'Pay in this range') + ' <small>Mon–Sun, paid Sunday &middot; $20 per showing sold &middot; $20 at 4+ deep cleans in a week</small>';
+  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Tips</th><th class="n">Adjust</th><th class="n">Total</th></tr>` +
     (W.lines.length ? W.lines.map(l => `<tr><td><b>${esc(l.name)}</b><div style="font-size:12px;color:var(--muted)">${l.days} day${l.days===1?'':'s'} logged</div></td>
       <td class="n">${l.hours.toFixed(2)}</td>
       <td class="n"><input class="cell" type="number" step="0.5" value="${l.rate}" data-rate="${esc(l.key)}" aria-label="Rate for ${esc(l.name)}"></td>
       <td class="n hide-m">${money(l.hourly)}</td>
       <td class="n hide-m">${l.sold}${l.sold ? ` <span style="color:var(--muted)">(${money(l.showBonus)})</span>` : ''}</td>
-      <td class="n hide-m">${l.deep} / ${l.spot}${l.cleanBonus ? ' <span class="pill g">+$20</span>' : ''}</td>
+      <td class="n hide-m">${l.deep} / ${l.spot}${l.cleanBonus ? ` <span class="pill g">+${money(l.cleanBonus)}</span>` : ''}</td>
       <td class="n">${money(l.showBonus + l.cleanBonus)}</td>
-      <td class="n"><input class="cell" type="number" step="1" value="${l.adj || ''}" placeholder="0" data-adj="${esc(l.key)}" title="${esc(l.adjNote)}" aria-label="Adjustment for ${esc(l.name)}"></td>
+      <td class="n">${l.tip ? money(l.tip) : '–'}</td>
+      <td class="n">${W.single ? `<input class="cell" type="number" step="1" value="${l.adj || ''}" placeholder="0" data-adj="${esc(l.key)}" title="${esc(l.adjNote)}" aria-label="Adjustment for ${esc(l.name)}">` : (l.adj ? money(l.adj) : '–')}</td>
       <td class="n"><b>${money(l.total)}</b></td></tr>`).join('') +
-      `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td></tr>`
-      : `<tr><td colspan="9" class="empty">${PAY.error ? esc(PAY.error) : 'No Work Log entries this week.'}</td></tr>`);
-  $('payBtn').textContent = W.paid ? 'Undo paid' : 'Mark week paid';
-  $('payBtn').disabled = !W.lines.length && !W.paid;
-  $('payLog').innerHTML = `<tr><th>Date</th><th>Who</th><th class="n">Hours</th><th class="n">Deep</th><th class="n">Spot</th><th class="n hide-m">Showings</th><th class="n">Sold</th></tr>` +
-    (W.ents.length ? W.ents.slice().sort((x, y) => x.date.localeCompare(y.date)).map(e => `<tr><td>${toDate(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${esc(e.name)}</td><td class="n">${e.hours}</td><td class="n">${e.deep}</td><td class="n">${e.spot}</td><td class="n hide-m">${e.shows}</td><td class="n">${e.sold}</td></tr>`).join('')
-      : '<tr><td colspan="7" class="empty">Nothing logged.</td></tr>');
+      `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.tip,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td></tr>`
+      : `<tr><td colspan="10" class="empty">${PAY.error ? esc(PAY.error) : 'No Work Log entries in this range.'}</td></tr>`);
+  $('payBtn').hidden = !W.single || paidAt === 'before dashboard';
+  $('payBtn').textContent = paidAt ? 'Undo paid' : 'Mark week paid';
+  $('payBtn').disabled = !W.lines.length && !paidAt;
+  $('payLog').innerHTML = `<tr><th>Date</th><th>Who</th><th class="n">Hours</th><th class="n">Deep</th><th class="n">Spot</th><th class="n hide-m">Showings</th><th class="n">Sold</th><th class="n hide-m">Tip</th></tr>` +
+    (W.ents.length ? W.ents.slice().sort((x, y) => y.date.localeCompare(x.date)).map(e => `<tr><td>${toDate(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${esc(e.name)}</td><td class="n">${e.hours}</td><td class="n">${e.deep}</td><td class="n">${e.spot}</td><td class="n hide-m">${e.shows}</td><td class="n">${e.sold}</td><td class="n hide-m">${e.tip ? money(e.tip) : ''}</td></tr>`).join('')
+      : '<tr><td colspan="8" class="empty">Nothing logged.</td></tr>');
+  // Weekly table: weeks in the range, or the last 8 weeks when looking at one week.
+  let wl = W.weeks;
+  if (W.single) { wl = []; for (let k = 0; k < 8; k++) { const m = addDays(R.from, -7 * k), X = payRange({ kind: 'week', from: m, to: addDays(m, 6) }); wl.push({ mon: m, total: X.total, hours: X.hours, n: X.lines.length }); } }
+  else wl = wl.slice().reverse();
+  $('payTrendTitle').textContent = W.single ? 'Last 8 weeks' : 'Weeks in this range';
   $('payTrend').innerHTML = `<tr><th>Week</th><th class="n">Hours</th><th class="n">Payroll</th><th class="n">Sales</th><th class="n">Labor %</th><th>Status</th></tr>` +
-    [0,1,2,3,4,5,6,7].map(k => { const m = new Date(wk); m.setDate(m.getDate() - 7 * k); const X = payWeek(m);
-      return `<tr><td>${f(X.mon)} – ${f(X.sun)}</td><td class="n">${X.hours.toFixed(1)}</td><td class="n"><b>${money(X.total)}</b></td><td class="n">${money(X.sales)}</td><td class="n">${X.sales ? pct(X.total / X.sales) : '–'}</td><td>${X.paid ? '<span class="pill g">Paid</span>' : X.lines.length ? '<span class="pill">Not paid</span>' : '–'}</td></tr>`; }).join('');
+    wl.map(w => { const sales = RAW ? RAW.sales.filter(s => s.date >= w.mon && s.date <= addDays(w.mon, 6)).reduce((t, s) => t + s.rev, 0) : 0, pd = weekPaid(ymd(w.mon));
+      return `<tr><td>${fmtD(w.mon)} – ${fmtD(addDays(w.mon, 6))}</td><td class="n">${w.hours.toFixed(1)}</td><td class="n"><b>${money(w.total)}</b></td><td class="n">${money(sales)}</td><td class="n">${sales ? pct(w.total / sales) : '–'}</td><td>${pd ? '<span class="pill g">Paid</span>' : w.n ? '<span class="pill">Not paid</span>' : '–'}</td></tr>`; }).join('');
 }
 async function post(url, body){ const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Failed'); return j; }
 document.addEventListener('change', async e => {
   const t = e.target;
   try {
-    if (t.dataset.rate) { await post('/api/payroll/rate', { name: t.dataset.rate, rate: t.value }); PAY.rates[t.dataset.rate] = Number(t.value); toast('Rate saved'); renderPayroll(); }
+    if (t.dataset.ohcheck) { const [id, idx] = t.dataset.ohcheck.split(':'); await post('/api/openhouse/check', { id, idx, on: t.checked });
+      const o = RAW.openhouses.find(x => x.id === id); o.checks = o.checks || {}; if (t.checked) o.checks[idx] = true; else delete o.checks[idx]; renderOpenHouse(); }
+    else if (t.dataset.rate) { await post('/api/payroll/rate', { name: t.dataset.rate, rate: t.value }); PAY.rates[t.dataset.rate] = Number(t.value); toast('Rate saved'); renderPayroll(); }
     else if (t.dataset.adj !== undefined) {
-      const week = ymd(wk), note = t.title || '';
+      const week = ymd(getR('payroll').from), note = t.title || '';
       await post('/api/payroll/adjust', { week, name: t.dataset.adj, amount: t.value, note });
       PAY.adj[week] = PAY.adj[week] || {}; PAY.adj[week][t.dataset.adj] = { amount: Number(t.value) || 0, note }; toast('Adjustment saved'); renderPayroll();
     }
   } catch (err) { toast(err.message); }
 });
+
+// ---------- sales & sourcing ----------
+const PIE = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7b61c4', '#b0524c', '#9aa0a6', '#2b1d16'];
+function pieIn(id, pairs, fmt){
+  const total = pairs.reduce((a, p) => a + p[1], 0);
+  chartIn(id, { type: 'doughnut', data: { labels: pairs.map(p => p[0]), datasets: [{ data: pairs.map(p => p[1]), backgroundColor: pairs.map((p, i) => PIE[i % PIE.length]), borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: i => i.label + ': ' + fmt(i.raw) + ' (' + (total ? Math.round(i.raw / total * 100) : 0) + '%)' } } } } });
+}
+function shareTable(el, pairs, fmt, head){
+  const total = pairs.reduce((a, p) => a + p[1], 0);
+  $(el).innerHTML = `<tr><th>${head}</th><th class="n">${fmt === money ? 'Revenue' : 'Orders'}</th><th class="n">Share</th></tr>` +
+    (pairs.length ? pairs.map((p, i) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${PIE[i % PIE.length]};margin-right:8px"></span>${esc(p[0])}</td><td class="n"><b>${fmt(p[1])}</b></td><td class="n">${total ? pct(p[1] / total) : '–'}</td></tr>`).join('') +
+      `<tr><td><b>Total</b></td><td class="n"><b>${fmt(total)}</b></td><td></td></tr>` : `<tr><td colspan="3" class="empty">Nothing in this range.</td></tr>`);
+}
+// Where each sold couch came from: B-Stock units and used pickups marked sold in the range.
+function invSources(R){
+  const out = {};
+  RAW.loads.forEach(l => l.units.forEach(u => { if (u.status === 'sold' && inR(u.sold, R)) out.Bstock = (out.Bstock || 0) + u.soldPrice; }));
+  RAW.purchases.forEach(p => { if (p.status === 'sold' && inR(p.sold, R)) out[p.source || 'Other'] = (out[p.source || 'Other'] || 0) + p.soldPrice; });
+  return Object.entries(out).sort((a, b) => b[1] - a[1]);
+}
+function renderSources(){
+  const R = getR('sources'), live = RAW.sales.filter(x => inR(x.date, R)), hist = RAW.hSales.some(x => inR(x.date, R) && isHistDay(x.date) && x.rev > 0);
+  $('srcNote').hidden = !hist;
+  const del = live.filter(x => x.type === 'Delivery').length;
+  const ful = [['Delivery', del], ['Pickup', live.length - del]].filter(p => p[1]);
+  const src = groupSum(live, 'source', 'rev');
+  const inv = invSources(R);
+  pieIn('pieFul', ful, v => v + ' orders'); shareTable('tblFul', ful, v => String(v), 'Fulfillment');
+  pieIn('pieSrc', src, money); shareTable('tblSrc', src, money, 'Sales source');
+  pieIn('pieInv', inv, money); shareTable('tblInv', inv, money, 'Inventory source');
+  const invTotal = inv.reduce((a, p) => a + p[1], 0), gross = live.reduce((a, x) => a + x.rev, 0);
+  $('invNote').textContent = `Counts couches marked Sold on the B-Stock tab or Log sale under Used couches: ${money(invTotal)} of ${money(gross)} in sales this range.`;
+  // month by month
+  const endY = R.to > day0(new Date()) ? new Date().getFullYear() : R.to.getFullYear(), endM = R.to > day0(new Date()) ? new Date().getMonth() : R.to.getMonth();
+  $('srcTrend').innerHTML = `<tr><th>Month</th><th class="n">Sales</th><th class="n">Delivery %</th><th class="n hide-m">Top source</th><th class="n">Meta Ads %</th><th class="n">B-Stock %</th></tr>` +
+    [0,1,2,3,4,5].map(k => { const t = back(endY, endM, k), MR = { from: new Date(t.y, t.m, 1), to: new Date(t.y, t.m + 1, 0) };
+      const L = RAW.sales.filter(x => inR(x.date, MR)), rev = L.reduce((a, x) => a + x.rev, 0), top = groupSum(L, 'source', 'rev')[0];
+      const meta = L.filter(x => x.source === 'Meta Ads').reduce((a, x) => a + x.rev, 0), iv = invSources(MR), ivT = iv.reduce((a, p) => a + p[1], 0), bs = (iv.find(p => p[0] === 'Bstock') || [0, 0])[1];
+      return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${L.length || '–'}</td><td class="n">${L.length ? pct(L.filter(x => x.type === 'Delivery').length / L.length) : '–'}</td><td class="n hide-m">${top ? esc(top[0]) : '–'}</td><td class="n">${rev ? pct(meta / rev) : '–'}</td><td class="n">${ivT ? pct(bs / ivT) : '–'}</td></tr>`; }).join('');
+}
+
+// ---------- open houses ----------
+const PROMO = {
+  'One time': ['Put open house date and time in all bios', 'Edit announcement bar on website', 'Edit & enable open house page on website',
+    "Text blast showings who didn't show up or didn't buy", 'Email blast all customers', 'Text blast "Save my spot" sign-ups a day before',
+    'Pin event to FB page', 'Pin promo post to Instagram and TikTok', 'Link open house page in bio on all profiles', 'Boost open house event on Facebook',
+    'Post a personal / vulnerable post', 'Create story highlight on all profiles', 'Add open house promo video to Traffic campaign', 'List open house promo on FB Marketplace',
+    'Create Facebook event', 'Email First Dibs list'],
+  'Recurring': ['Post in the event discussion tab', 'Promote in other local FB groups', 'Post promo in your FB group (@everyone)',
+    '1/3 of daily short-form videos have an open house CTA', 'Message every single lead (Marketplace, TikTok, etc.)', 'Follow up Marketplace leads from the open house listing',
+    'Post daily stories (landing page + "Save my spot" link)'],
+};
+const PROMO_ALL = Object.values(PROMO).flat();
+function ohStats(o){
+  const d = toDate(o.date), salesLog = d ? RAW.sales.filter(s => +s.date === +d) : [];
+  const done = PROMO_ALL.filter((_, i) => (o.checks || {})[i]).length;
+  return { d, conv: o.walkins ? o.sales / o.walkins : NaN, salesLog: salesLog.length, salesLogRev: salesLog.reduce((a, s) => a + s.rev, 0), done };
+}
+function renderOpenHouse(){
+  const R = getR('openhouse'), list = (RAW.openhouses || []).filter(o => inR(toDate(o.date), R)).sort((a, b) => a.date.localeCompare(b.date));
+  const past = list.filter(o => toDate(o.date) <= day0(new Date()));
+  const T = k => past.reduce((a, o) => a + (Number(o[k]) || 0), 0);
+  const walk = T('walkins'), sales = T('sales');
+  const withFloor = past.filter(o => o.floor), withPromo = past.filter(o => o.promoDays);
+  $('ohKpis').innerHTML = kpiHtml([
+    ['Open houses', past.length], ['Walk-ins', walk, `<div class="c flat">${past.length ? (walk / past.length).toFixed(1) : 0} per event</div>`],
+    ['Sales', sales, `<div class="c flat">${past.length ? (sales / past.length).toFixed(1) : 0} per event</div>`], ['Conversion', pct(walk ? sales / walk : NaN)],
+    ['"Save my spot" leads', T('leads')], ['Avg. couches on floor', withFloor.length ? Math.round(withFloor.reduce((a, o) => a + Number(o.floor), 0) / withFloor.length) : '–'],
+  ]);
+  // next or most recent event gets the checklist
+  const all = (RAW.openhouses || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const next = all.find(o => toDate(o.date) >= day0(new Date())) || all[all.length - 1];
+  $('ohCheckTitle').innerHTML = next ? `Promo checklist <small>${esc(fmtD(toDate(next.date), true))}${next.time ? ' &middot; ' + esc(next.time) : ''} &middot; ${ohStats(next).done} of ${PROMO_ALL.length} done</small>` : 'Promo checklist';
+  let i = 0;
+  $('ohChecks').innerHTML = next ? Object.entries(PROMO).map(([grp, items]) => `<div style="font-weight:700;font-size:13px;margin:10px 0 4px">${grp}</div>` +
+    items.map(t => { const k = i++; return `<label class="chk"><input type="checkbox" data-ohcheck="${esc(next.id)}:${k}" ${(next.checks || {})[k] ? 'checked' : ''}> ${esc(t)}</label>`; }).join('')).join('')
+    : '<p class="empty">Add an open house to start its checklist.</p>';
+  $('ohTbl').innerHTML = `<tr><th>Date</th><th class="hide-m">Time</th><th class="n">Walk-ins</th><th class="n">Sales</th><th class="n">Conversion</th><th class="n hide-m">On floor</th><th class="n hide-m">Days promoted</th><th class="n hide-m">Leads</th><th class="n hide-m">Promo done</th><th class="n hide-m">Sales Log that day</th><th></th></tr>` +
+    (list.length ? list.slice().reverse().map(o => { const st = ohStats(o);
+      return `<tr><td><b>${fmtD(st.d)}</b>${o.note ? `<div style="font-size:12px;color:var(--muted)">${esc(o.note)}</div>` : ''}</td><td class="hide-m">${esc(o.time || '')}</td>
+        <td class="n">${o.walkins ?? '–'}</td><td class="n">${o.sales ?? '–'}</td><td class="n"><b>${pct(st.conv)}</b></td>
+        <td class="n hide-m">${o.floor || '–'}</td><td class="n hide-m">${o.promoDays || '–'}</td><td class="n hide-m">${o.leads || '–'}</td>
+        <td class="n hide-m">${st.done ? st.done + '/' + PROMO_ALL.length : '–'}</td><td class="n hide-m">${st.salesLog ? st.salesLog + ' · ' + money(st.salesLogRev) : '–'}</td>
+        <td class="n" style="white-space:nowrap"><button class="btn sm" data-ohedit="${esc(o.id)}">Edit</button> <button class="btn sm" data-del="openhouses:${esc(o.id)}">Delete</button></td></tr>`; }).join('')
+      : `<tr><td colspan="11" class="empty">No open houses in this range.</td></tr>`);
+  // does more inventory on the floor mean more sales?
+  const pts = past.filter(o => o.floor && o.sales != null).map(o => ({ x: Number(o.floor), y: Number(o.sales) }));
+  const lpts = past.filter(o => o.leads && o.walkins != null).map(o => ({ x: Number(o.leads), y: Number(o.walkins) }));
+  const so = (xt, yt) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: xt } }, y: { beginAtZero: true, title: { display: true, text: yt }, ticks: { precision: 0 } } } });
+  chartIn('ohFloor', { type: 'scatter', data: { datasets: [{ data: pts, backgroundColor: '#b0524c', pointRadius: 6 }] }, options: so('Couches on floor', 'Sales') });
+  chartIn('ohLeads', { type: 'scatter', data: { datasets: [{ data: lpts, backgroundColor: '#2b1d16', pointRadius: 6 }] }, options: so('"Save my spot" leads', 'Walk-ins') });
+  void withPromo;
+}
+function openOH(o){
+  const m = $('m-oh'), f = m.querySelector('form').elements;
+  o = o || {};
+  f.id.value = o.id || ''; f.date.value = o.date || todayStr(); f.time.value = o.time || ''; f.note.value = o.note || '';
+  ['walkins', 'sales', 'floor', 'promoDays', 'leads'].forEach(k => f[k].value = o[k] ?? '');
+  $('ohModalTitle').textContent = o.id ? 'Edit open house' : 'Add an open house';
+  m.classList.add('on');
+}
 
 // ---------- cash position ----------
 let CASH = null;
@@ -671,9 +886,12 @@ async function loadCash(fresh){
 }
 function renderCash(){
   if (!CASH) return loadCash();
-  const snaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)), last = snaps[snaps.length - 1], prev = snaps[snaps.length - 2];
+  const R = getR('cash'), allSnaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const snaps = allSnaps.filter(x => inR(toDate(x.date), R));
+  const last = snaps[snaps.length - 1] || (R.to >= day0(new Date()) ? allSnaps[allSnaps.length - 1] : null);
+  const prev = last ? allSnaps[allSnaps.findIndex(x => x.date === last.date) - 1] : null;
   const sb = CASH.stripe || {};
-  if (!last) { $('cashBody').innerHTML = `<div class="card"><h2>No balances yet</h2><p class="empty">Click <b>+ Today's balances</b> and type in your accounts. Takes about a minute; tomorrow it pre-fills with today's numbers so you only change what moved.</p></div>`; return; }
+  if (!last) { $('cashBody').innerHTML = allSnaps.length ? `<div class="card"><h2>No entries in this range</h2><p class="empty">Pick another range.</p></div>` : `<div class="card"><h2>No balances yet</h2><p class="empty">Click <b>+ Today's balances</b> and type in your accounts. Takes about a minute; tomorrow it pre-fills with today's numbers so you only change what moved.</p></div>`; return; }
   const C = cashCalc(last), Pv = prev ? cashCalc(prev) : null;
   const now0 = new Date(); const mTax = RAW ? RAW.sales.filter(s => inMonth(s.date, now0.getFullYear(), now0.getMonth())).reduce((t, s) => t + (s.tax || 0), 0) : 0;
   const row = (l, v, neg, note) => `<div class="row"><span>${l}${note ? `<div style="font-size:12px;color:var(--muted)">${note}</div>` : ''}</span><b style="${neg ? 'color:var(--bad)' : ''}">${neg ? '−' : ''}${money(v)}</b></div>`;
@@ -717,14 +935,14 @@ function renderCash(){
       </div>
     </div>
     <div class="card" style="margin-top:16px"><h2>Trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
-    <div class="card" style="margin-top:16px"><h2>Every entry</h2><div style="overflow-x:auto"><table>
+    <div class="card" style="margin-top:16px"><h2>Entries in this range ${snaps.length > 1 ? `<small>Net business ${(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz) >= 0 ? '+' : ''}${money(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz)} over the range</small>` : ''}</h2><div style="overflow-x:auto"><table>
       <tr><th>Date</th><th class="n">Net business</th><th class="n hide-m">After bills</th><th class="n">Personal</th><th class="n">Combined</th><th>Health</th><th></th></tr>
       ${snaps.slice().reverse().map(s => { const X = cashCalc(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n"><b>${money(X.netBiz)}</b></td><td class="n hide-m">${money(X.afterBills)}</td><td class="n">${money(X.netPers)}</td><td class="n">${money(X.combined)}</td><td><span class="pill ${X.health[2]}">${X.health[1]}</span></td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
     </table></div>
     <p class="empty" style="margin-top:12px;font-size:12.5px">Health uses business after bills: Strong $15K+, Healthy $7.5K+, Tight $0+, Danger below $0. Stripe now: ${sb.error ? esc(sb.error) : money(sb.total || 0) + ' (' + money(sb.pending || 0) + ' pending, ' + money(sb.available || 0) + ' available).'}</p></div>`;
-  const recent = snaps.slice(-60), o = baseOpts(true);
+  const recent = snaps, o = baseOpts(true);
   const line = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w || 2, tension: .3, pointRadius: recent.length < 15 ? 3 : 0 });
-  chartIn('cashChart', { type: 'line', data: { labels: recent.map(s => toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})),
+  chartIn('cashChart', { type: 'line', data: { labels: recent.map(s => fmtD(toDate(s.date))),
     datasets: [line('Net business', recent.map(s => cashCalc(s).netBiz), '#b0524c', 3), line('Net personal', recent.map(s => cashCalc(s).netPers), '#2e7d4f'), line('Combined', recent.map(s => cashCalc(s).combined), '#2b1d16')] }, options: o });
 }
 function openCash(){
@@ -738,18 +956,27 @@ function openCash(){
 }
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', showings: 'Showings', meta: 'Meta Ads', bstock: 'B-Stock Loads', payroll: 'Payroll', cash: 'Cash Position' };
+const TITLES = { sales: 'Sales Tracker', sources: 'Sales & Sourcing', showings: 'Showings', openhouse: 'Open Houses', meta: 'Meta Ads', bstock: 'B-Stock Loads', payroll: 'Payroll', cash: 'Cash Position' };
+DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.openhouse = 'all';
+function syncRangeBar(){
+  const R = getR(tab);
+  $('monLabel').textContent = rangeLabel(R);
+  $('rKind').value = R.kind;
+  $('rCustom').hidden = R.kind !== 'custom';
+  $('rFrom').value = ymd(R.from); $('rTo').value = ymd(R.to > addDays(day0(new Date()), 60) ? day0(new Date()) : R.to);
+  $('prev').disabled = $('next').disabled = R.kind === 'all';
+}
 function render(){
   if (!RAW) return;
-  $('monLabel').textContent = new Date(cur.y, cur.m, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  ({ sales: renderSales, showings: renderShowings, meta: renderMeta, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
+  syncRangeBar();
+  ({ sales: renderSales, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
 }
 function setTab(t){
   tab = t;
   document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
   Object.keys(TITLES).forEach(k => $('tab-' + k).hidden = k !== t);
   $('title').textContent = TITLES[t];
-  $('monNav').hidden = ['bstock', 'payroll', 'cash'].includes(t);
+  syncRangeBar();
   document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
   try { localStorage.setItem('bcdTab', t); } catch {}
   render();
@@ -768,16 +995,19 @@ async function load(fresh){
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
-$('prev').onclick = () => { const b = back(cur.y, cur.m, 1); cur = b; render(); };
-$('next').onclick = () => { const b = back(cur.y, cur.m, -1); cur = b; render(); };
+$('prev').onclick = () => { RANGES[tab] = shiftRange(getR(tab), -1); render(); };
+$('next').onclick = () => { RANGES[tab] = shiftRange(getR(tab), 1); render(); };
+$('rKind').onchange = () => { const k = $('rKind').value, R = getR(tab);
+  RANGES[tab] = k === 'custom' ? { kind: 'custom', from: R.from, to: R.to > day0(new Date()) ? day0(new Date()) : R.to } : makeRange(k); render(); };
+const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('rTo').value); if (f && t2 && f <= t2) { RANGES[tab] = { kind: 'custom', from: f, to: t2 }; render(); } };
+$('rFrom').onchange = customChange; $('rTo').onchange = customChange;
+$('ohAdd').onclick = () => openOH();
 $('refresh').onclick = () => { if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
-$('wkPrev').onclick = () => { wk.setDate(wk.getDate() - 7); wk = new Date(wk); renderPayroll(); };
-$('wkNext').onclick = () => { wk.setDate(wk.getDate() + 7); wk = new Date(wk); renderPayroll(); };
 $('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
 $('payBtn').onclick = async () => {
-  const W = payWeek(wk);
-  try { await post('/api/payroll/paid', { week: ymd(wk), undo: !!W.paid, lines: W.lines.map(l => ({ name: l.name, total: l.total })) });
-    toast(W.paid ? 'Marked unpaid' : 'Marked paid and added to Expenses'); await loadPayroll(true); load(true); } catch (e) { toast(e.message); }
+  const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
+  try { await post('/api/payroll/paid', { week: W.wkey, undo: paid, lines: W.lines.map(l => ({ name: l.name, total: l.total })) });
+    toast(paid ? 'Marked unpaid' : 'Marked paid and added to Expenses'); await loadPayroll(true); load(true); } catch (e) { toast(e.message); }
 };
 document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 
@@ -797,6 +1027,8 @@ document.querySelectorAll('.mask').forEach(m => {
         const mm = t.match(/^(.*?)[,\t|]\s*\$?([\d,]+(?:\.\d+)?)\s*$/);
         return mm ? { name: mm[1].trim(), comp: parseFloat(mm[2].replace(/,/g, '')) } : { name: t, comp: 0 };
       }).filter(Boolean) };
+    } else if (f.dataset.kind === 'oh') {
+      url = '/api/openhouse'; body = data;
     } else if (f.dataset.kind === 'cash') {
       url = '/api/cash'; body = data;
     } else if (f.dataset.kind === 'sold') {
@@ -821,6 +1053,8 @@ document.addEventListener('click', async e => {
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
     const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
+  const oe = e.target.closest('[data-ohedit]');
+  if (oe) { openOH((RAW.openhouses || []).find(o => o.id === oe.dataset.ohedit)); return; }
   const cd = e.target.closest('[data-cashdel]');
   if (cd) { if (cd.dataset.armed !== '1') { cd.dataset.armed = '1'; cd.textContent = 'Tap again'; setTimeout(() => { cd.dataset.armed = ''; cd.textContent = 'Delete'; }, 3000); return; }
     try { await post('/api/cash/delete', { date: cd.dataset.cashdel }); toast('Deleted'); loadCash(); } catch (err) { toast(err.message); } return; }
