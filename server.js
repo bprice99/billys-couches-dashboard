@@ -415,7 +415,7 @@ app.post('/api/payroll/paid', async (req, res) => {
         id: `pay-${week}-${lc(l.name).replace(/[^a-z0-9]/g, '')}`, date: d, category: 'Payroll',
         amount: Math.round(Number(l.total) * 100) / 100, vendor: clean(l.name, 60), notes: 'Weekly payroll ' + week,
       }));
-      paid[week] = new Date().toISOString().slice(0, 10);
+      paid[week] = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
     }
     await kset(KEYS.expenses, list); await kset(KEYS.paid, paid);
     res.json({ ok: true });
