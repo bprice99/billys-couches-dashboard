@@ -87,6 +87,13 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .admore{font-size:12px;color:var(--red);cursor:pointer;font-weight:600;background:none;border:0;padding:0;text-align:left}
 .adlinks{display:flex;gap:10px;margin-top:auto;padding-top:8px;font-size:12px}
 .adempty{grid-column:1/-1;text-align:center;color:var(--muted);padding:50px 20px}
+.pbtn{width:56px;height:42px;border:1px dashed #cbbfb2;border-radius:8px;background:#fbf8f4;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;line-height:1.1}
+img.thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;cursor:zoom-in;background:var(--cream)}
+.lb img{max-width:100%;max-height:70vh;border-radius:12px;display:block;margin:0 auto 14px}
+.adyours{background:var(--red)!important;color:#fff!important}
+.adcmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.adcmp h3{font-size:15px;margin:0 0 10px}
+@media (max-width:800px){.adcmp{grid-template-columns:1fr}}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
@@ -120,13 +127,13 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
     <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
-    <a class="nav" data-tab="showings">Showings</a>
+    <a class="nav" data-tab="showings">Showing Tracker</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
-    <a class="nav" data-tab="meta">Meta Ads</a>
-    <a class="nav" data-tab="ads">Competitor Ads</a>
-    <a class="nav" data-tab="bstock">B-Stock Loads</a>
+    <a class="nav" data-tab="meta">Ad Performance</a>
+    <a class="nav" data-tab="ads">Ad Library</a>
+    <a class="nav" data-tab="bstock">B-Stock</a>
     <a class="nav" data-tab="payroll">Payroll</a>
-    <a class="nav" data-tab="cash">Cash Position</a>
+    <a class="nav" data-tab="cash">Daily Cash</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
 
@@ -242,7 +249,9 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
         <select class="rk" id="adStatus"><option value="active">Active</option><option value="all">Active + ended</option><option value="ended">Ended</option></select>
         <select class="rk" id="adFormat"><option value="">All formats</option><option value="VIDEO">Video</option><option value="IMAGE">Image</option></select>
         <select class="rk" id="adSort"><option value="days">Longest running</option><option value="new">Newest</option></select>
+        <select class="rk" id="adView"><option value="compare">Yours vs. competitors</option><option value="grid">One grid</option></select>
       </div>
+      <div class="card" id="adCompare" style="margin-top:12px"></div>
       <div class="adstats" id="adStats"></div>
       <div class="adgrid" id="adGrid"></div>
     </section>
@@ -329,6 +338,11 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="two"><label>"Save my spot" leads<input type="number" name="leads" min="0"></label><label>Note<input name="note" placeholder="e.g. $50 off every couch"></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
+<input type="file" accept="image/*" id="photoIn" hidden>
+<div class="mask" id="m-photo"><div class="modal lb" style="max-width:640px">
+  <h3 id="pvTitle" style="margin-bottom:12px"></h3><img id="pvImg" alt="">
+  <div class="acts"><button type="button" class="btn" data-close>Close</button><button type="button" class="btn" id="pvRemove">Remove</button><button type="button" class="btn p" id="pvReplace">Replace</button></div>
+</div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -437,7 +451,7 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], showingsError: d.showingsError };
+  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, showingsError: d.showingsError };
 }
 
 // ---------- date ranges (one per tab) ----------
@@ -488,6 +502,26 @@ function buckets(R){
     for (let d = new Date(R.from.getFullYear(), R.from.getMonth(), 1); d <= stop; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
     out.push({ from: d < R.from ? R.from : d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0), label: MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''), future: d > end }); }
   return out;
+}
+
+// ---------- couch photos ----------
+const photoKeyOf = x => x.kind === 'used' ? 'p:' + x.id : 'u:' + x.id + ':' + x.uid;
+function photoCell(x){
+  const k = photoKeyOf(x), v = RAW.photos[k];
+  return v ? `<img class="thumb" src="/api/photo/${encodeURIComponent(k)}?v=${v}" alt="" loading="lazy" data-pview="${esc(k)}" data-pname="${esc(x.name)}">`
+    : `<button class="pbtn" data-padd="${esc(k)}" title="Add a photo">+ Photo</button>`;
+}
+let photoTarget = null;
+function shrinkPhoto(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const max = 1100, sc = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      let q = 0.8, out = c.toDataURL('image/jpeg', q); while (out.length > 900000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      resolve(out); };
+    img.onerror = () => reject(new Error("Couldn't read that photo")); img.src = url;
+  });
 }
 
 // ---------- sales tracker ----------
@@ -541,18 +575,18 @@ function renderSales(){
   const shown = inStock.filter(x => f === 'all' || x.kind === f);
   const aged = inStock.filter(x => x.days >= 21).length;
   $('stockNote').textContent = `${inStock.length} couches · ${money(inStock.reduce((a, x) => a + x.cost, 0))} cost on the floor${aged ? ' · ' + aged + ' over 21 days' : ''}`;
-  $('stockTbl').innerHTML = `<tr><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
-    (shown.length ? shown.map(x => `<tr><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
+  $('stockTbl').innerHTML = `<tr><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
+    (shown.length ? shown.map(x => `<tr><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
       <td class="n hide-m">${x.comp ? money(x.comp) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td>
       <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button>` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
-      : `<tr><td colspan="6" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
+      : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
   const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
   const sRev = soldR.reduce((a, x) => a + x.soldPrice, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = A.live.length;
   $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (liveOrders > soldR.length && !A.allHist ? ` · <span style="color:var(--bad)">${liveOrders - soldR.length} order-app sale${liveOrders - soldR.length === 1 ? '' : 's'} not matched to a couch yet</span>` : '');
-  $('soldTbl').innerHTML = `<tr><th>Sold</th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Sold for</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
-    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n">${money(x.soldPrice - x.cost)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
+  $('soldTbl').innerHTML = `<tr><th>Sold</th><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Sold for</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
+    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n">${money(x.soldPrice - x.cost)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
       <td class="n"><button class="btn sm" data-unit="${esc(x.id)}:${x.kind === 'used' ? 'p' : esc(x.uid)}:in">Undo</button></td></tr>`).join('')
-      : `<tr><td colspan="8" class="empty">No couches marked sold in this range.</td></tr>`);
+      : `<tr><td colspan="9" class="empty">No couches marked sold in this range.</td></tr>`);
 
   // ----- expenses -----
   const PE = period(prevRange(R)), days = Math.max(1, Math.min(spanDays(R), dayDiff(R.from, today0) + 1));
@@ -1037,7 +1071,7 @@ function openCash(){
 
 // ---------- competitor ads ----------
 let ADSD = null;
-const AST = { brand: '', status: 'active', format: '', sort: 'days', newOnly: false };
+const AST = { brand: '', status: 'active', format: '', sort: 'days', newOnly: false, view: 'compare' };
 const agoTxt = t => { if (!t) return 'never'; const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' days ago'; };
 async function loadAds(){
   try {
@@ -1053,23 +1087,37 @@ function renderAds(){
   if (d.running) m += ' · pulling now (takes a few minutes)…';
   if (d.lastError && (!d.lastRun || d.lastError.at > d.lastRun)) m += ` · <span style="color:var(--bad)">Last pull failed: ${esc(d.lastError.message)}</span>`;
   $('adMeta').innerHTML = m;
-  $('adChips').innerHTML = ['', ...d.brands].map(b => `<span class="adchip${AST.brand === b ? ' on' : ''}" data-adbrand="${esc(b)}">${b ? esc(b) : 'All brands'}</span>`).join('') +
+  const mine = new Set(d.mine || []), others = d.brands.filter(b => !mine.has(b));
+  $('adChips').innerHTML = ['', ...(d.mine || []), ...others].map(b => `<span class="adchip${AST.brand === b ? ' on' : ''}${mine.has(b) && AST.brand !== b ? ' adyours' : ''}" data-adbrand="${esc(b)}">${b ? esc(b) + (mine.has(b) ? ' (you)' : '') : 'All brands'}</span>`).join('') +
     `<span class="adchip${AST.newOnly ? ' on' : ''}" data-adnew="1">New this week</span>`;
   let ads = d.ads.filter(a => (!AST.brand || a.brand === AST.brand) && (AST.status === 'all' || (AST.status === 'active' ? a.active : !a.active)) &&
     (!AST.format || a.format === AST.format || (AST.format === 'IMAGE' && a.format !== 'VIDEO')) && (!AST.newOnly || (a.start && a.start > week)));
   ads.sort(AST.sort === 'days' ? (a, b) => (b.days || 0) - (a.days || 0) : (a, b) => (b.start || 0) - (a.start || 0));
-  $('adStats').innerHTML = d.brands.filter(b => !AST.brand || b === AST.brand).map(b => {
-    const mine = d.ads.filter(a => a.brand === b), act = mine.filter(a => a.active), top = act.slice().sort((x, y) => (y.days || 0) - (x.days || 0))[0];
-    return `<div class="card adstat" data-adbrand="${esc(b)}"><b>${esc(b)}</b><span>${act.length} active · ${mine.filter(a => a.start && a.start > week).length} new this week${top ? ` · longest ${top.days}d` : ''}</span></div>`;
+  const statsOf = list => { const act = list.filter(a => a.active), ds = act.map(a => a.days || 0);
+    return { act: act.length, fresh: list.filter(a => a.start && a.start > week).length, avg: ds.length ? ds.reduce((x, y) => x + y, 0) / ds.length : 0,
+      max: ds.length ? Math.max(...ds) : 0, video: act.length ? act.filter(a => a.format === 'VIDEO').length / act.length : NaN, proven: act.filter(a => (a.days || 0) >= 30).length }; };
+  const Y = statsOf(d.ads.filter(a => mine.has(a.brand))), C = statsOf(d.ads.filter(a => !mine.has(a.brand)));
+  const nComp = Math.max(1, others.length);
+  $('adCompare').innerHTML = `<h2>You vs. competitors</h2><div style="overflow-x:auto"><table>
+    <tr><th></th><th class="n">You</th><th class="n">Competitors (all ${others.length})</th><th class="n">Competitor average</th></tr>
+    <tr><td>Active ads</td><td class="n"><b>${Y.act}</b></td><td class="n">${C.act}</td><td class="n">${(C.act / nComp).toFixed(1)}</td></tr>
+    <tr><td>New this week</td><td class="n"><b>${Y.fresh}</b></td><td class="n">${C.fresh}</td><td class="n">${(C.fresh / nComp).toFixed(1)}</td></tr>
+    <tr><td>Running 30+ days (proven)</td><td class="n"><b>${Y.proven}</b></td><td class="n">${C.proven}</td><td class="n">${(C.proven / nComp).toFixed(1)}</td></tr>
+    <tr><td>Average days running</td><td class="n"><b>${Y.avg.toFixed(0)}</b></td><td class="n" colspan="2">${C.avg.toFixed(0)}</td></tr>
+    <tr><td>Longest running</td><td class="n"><b>${Y.max}d</b></td><td class="n" colspan="2">${C.max}d</td></tr>
+    <tr><td>Video share</td><td class="n"><b>${pct(Y.video)}</b></td><td class="n" colspan="2">${pct(C.video)}</td></tr>
+  </table></div>${!(d.mine || []).length || !d.ads.some(a => mine.has(a.brand)) ? '<p class="empty" style="font-size:12.5px;margin-top:10px">Your ads show up after the next pull.</p>' : ''}`;
+  $('adStats').innerHTML = [...(d.mine || []), ...others].filter(b => !AST.brand || b === AST.brand).map(b => {
+    const mineList = d.ads.filter(a => a.brand === b), act = mineList.filter(a => a.active), top = act.slice().sort((x, y) => (y.days || 0) - (x.days || 0))[0];
+    return `<div class="card adstat" data-adbrand="${esc(b)}" style="${mine.has(b) ? 'border-color:var(--red)' : ''}"><b>${esc(b)}${mine.has(b) ? ' (you)' : ''}</b><span>${act.length} active · ${mineList.filter(a => a.start && a.start > week).length} new this week${top ? ` · longest ${top.days}d` : ''}</span></div>`;
   }).join('');
-  if (!ads.length) { $('adGrid').innerHTML = `<div class="adempty">${d.lastRun ? 'No ads match these filters.' : 'No ads yet. Tap “Pull new ads” to run the first pull.'}</div>`; return; }
-  $('adGrid').innerHTML = ads.slice(0, 120).map(a => {
-    const cls = a.days >= 60 ? 'proven' : a.days >= 30 ? 'strong' : '', isNew = a.start && a.start > week;
+  const card = a => {
+    const cls = a.days >= 60 ? 'proven' : a.days >= 30 ? 'strong' : '', isNew = a.start && a.start > week, yours = mine.has(a.brand);
     const fd = t => t ? fmtD(new Date(t), true) : '—';
     const media = a.video ? `<video src="${esc(a.video)}" poster="${esc(a.image || '')}" controls preload="none" playsinline></video>`
       : a.image ? `<img src="${esc(a.image)}" loading="lazy" alt="">` : `<div class="adnone">Preview unavailable.<br>Open it in the Ad Library.</div>`;
-    return `<div class="adc"><div class="adm">${media}<div class="addays ${cls}">${a.days ?? '?'} days</div>
-        ${!a.active ? '<div class="adtag ended">Ended</div>' : isNew ? '<div class="adtag new">NEW</div>' : ''}</div>
+    return `<div class="adc" style="${yours ? 'border:2px solid var(--red)' : ''}"><div class="adm">${media}<div class="addays ${cls}">${a.days ?? '?'} days</div>
+        ${yours ? '<div class="adtag new">YOURS</div>' : !a.active ? '<div class="adtag ended">Ended</div>' : isNew ? '<div class="adtag new">NEW</div>' : ''}</div>
       <div class="adb"><div class="adr"><span class="adbrand">${esc(a.brand)}</span><span>${esc(a.format)}</span></div>
         <div class="adr"><span>Started ${fd(a.start)}</span><span>${a.active ? 'Running' : 'Stopped ' + fd(a.end)}</span></div>
         ${a.title ? `<div class="adtitle">${esc(a.title)}</div>` : ''}
@@ -1077,7 +1125,18 @@ function renderAds(){
         ${a.body && a.body.length > 220 ? '<button class="admore">Show more</button>' : ''}
         <div class="adlinks"><a href="https://www.facebook.com/ads/library/?id=${esc(a.id)}" target="_blank" rel="noopener">View in Ad Library</a>${a.link ? `<a href="${esc(a.link)}" target="_blank" rel="noopener">Landing page</a>` : ''}</div>
       </div></div>`;
-  }).join('') + (ads.length > 120 ? `<div class="adempty">Showing the first 120 of ${ads.length}. Narrow it with the filters.</div>` : '');
+  };
+  const empty = msg => `<div class="adempty">${msg}</div>`;
+  if (AST.view === 'compare' && !AST.brand) {
+    const yourAds = ads.filter(a => mine.has(a.brand)), theirAds = ads.filter(a => !mine.has(a.brand));
+    $('adGrid').className = '';
+    $('adGrid').innerHTML = `<div class="adcmp"><div><h3>Your ads (${yourAds.length})</h3><div class="adgrid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${yourAds.slice(0, 40).map(card).join('') || empty('None match these filters yet.')}</div></div>
+      <div><h3>Competitors (${theirAds.length})</h3><div class="adgrid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${theirAds.slice(0, 40).map(card).join('') || empty(d.lastRun ? 'No ads match these filters.' : 'No ads yet. Tap “Pull new ads”.')}</div></div></div>`;
+    return;
+  }
+  $('adGrid').className = 'adgrid';
+  if (!ads.length) { $('adGrid').innerHTML = empty(d.lastRun ? 'No ads match these filters.' : 'No ads yet. Tap “Pull new ads” to run the first pull.'); return; }
+  $('adGrid').innerHTML = ads.slice(0, 120).map(card).join('') + (ads.length > 120 ? empty(`Showing the first 120 of ${ads.length}. Narrow it with the filters.`) : '');
 }
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-adbrand]');
@@ -1085,7 +1144,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-adnew]')) { AST.newOnly = !AST.newOnly; renderAds(); return; }
   if (e.target.classList.contains('admore')) { const cp = e.target.previousElementSibling; cp.classList.toggle('open'); e.target.textContent = cp.classList.contains('open') ? 'Show less' : 'Show more'; }
 });
-['Status', 'Format', 'Sort'].forEach(k => document.getElementById('ad' + k).addEventListener('change', e => { AST[k.toLowerCase()] = e.target.value; renderAds(); }));
+['Status', 'Format', 'Sort', 'View'].forEach(k => document.getElementById('ad' + k).addEventListener('change', e => { AST[k.toLowerCase()] = e.target.value; renderAds(); }));
 document.getElementById('adPull').addEventListener('click', async () => {
   try { await post('/api/ads/refresh', {}); toast('Pulling new ads. Takes a few minutes; this page updates on its own.'); $('adPull').disabled = true;
     const iv = setInterval(async () => { await loadAds(); if (!ADSD.running) { clearInterval(iv); $('adPull').disabled = false; } }, 20000);
@@ -1093,7 +1152,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', sources: 'Sales & Sourcing', showings: 'Showings', openhouse: 'Open Houses', meta: 'Meta Ads', ads: 'Competitor Ads', bstock: 'B-Stock Loads', payroll: 'Payroll', cash: 'Cash Position' };
+const TITLES = { sales: 'Sales Tracker', sources: 'Sales & Sourcing', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash' };
 DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1153,6 +1212,7 @@ const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + St
 document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open); m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
 document.querySelectorAll('.mask').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('on'); });
+  if (!m.querySelector('form')) return;
   m.querySelector('form').addEventListener('submit', async e => {
     e.preventDefault();
     const f = e.target, btn = f.querySelector('.btn.p'), label = btn.textContent; btn.disabled = true; btn.textContent = 'Saving...';
@@ -1191,6 +1251,10 @@ document.addEventListener('click', async e => {
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
     const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
+  const pa = e.target.closest('[data-padd]');
+  if (pa) { photoTarget = pa.dataset.padd; $('photoIn').value = ''; $('photoIn').click(); return; }
+  const pv = e.target.closest('[data-pview]');
+  if (pv) { photoTarget = pv.dataset.pview; $('pvImg').src = pv.src; $('pvTitle').textContent = pv.dataset.pname || 'Photo'; $('m-photo').classList.add('on'); return; }
   const sf = e.target.closest('[data-sf]');
   if (sf) { SALES_FILTER = sf.dataset.sf; renderSales(); return; }
   const oe = e.target.closest('[data-ohedit]');
@@ -1204,6 +1268,14 @@ document.addEventListener('click', async e => {
   const r = await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, id }) });
   const j = await r.json(); toast(j.ok ? 'Deleted' : (j.error || 'Delete failed')); load(true);
 });
+$('photoIn').addEventListener('change', async () => {
+  const file = $('photoIn').files[0]; if (!file || !photoTarget) return;
+  toast('Uploading photo...');
+  try { const data = await shrinkPhoto(file); const j = await post('/api/photo', { key: photoTarget, data });
+    RAW.photos[photoTarget] = j.v; $('m-photo').classList.remove('on'); toast('Photo saved'); render(); } catch (err) { toast(err.message); }
+});
+$('pvReplace').onclick = () => { $('photoIn').value = ''; $('photoIn').click(); };
+$('pvRemove').onclick = async () => { try { await post('/api/photo/delete', { key: photoTarget }); delete RAW.photos[photoTarget]; $('m-photo').classList.remove('on'); toast('Photo removed'); render(); } catch (err) { toast(err.message); } };
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
 let saved = 'sales'; try { saved = localStorage.getItem('bcdTab') || 'sales'; } catch {}
