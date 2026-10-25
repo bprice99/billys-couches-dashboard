@@ -308,7 +308,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     </section>
 
     <!-- CASH POSITION -->
-    <section id="tab-cash" hidden><div id="cashBody"></div></section>
+    <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
   </main>
 </div>
 
@@ -374,6 +374,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 </form></div>
 <div class="mask" id="m-cash"><form class="modal" data-kind="cash" style="max-width:560px;max-height:92vh;overflow:auto">
   <h3>Today's balances</h3><p class="empty" style="font-size:12.5px;margin:-10px 0 12px">Pre-filled from your last entry. Only change what moved.</p>
+  <div id="bankPull" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px"><button type="button" class="btn sm" id="btnBankPull">Pull from banks</button><span id="bankNow" style="font-size:12px;color:var(--muted)"></span></div>
   <div class="two"><label>Date<input type="date" name="date" required></label><label>Note<input name="note" placeholder="optional"></label></div>
   <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Business</p>
   <div class="two"><label>Checking ··9926<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="checking9926" required></span><span class="mlast" data-last="checking9926"></span></label><label>Tax Reserve ··7229<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="taxReserve7229"></span><span class="mlast" data-last="taxReserve7229"></span></label></div>
@@ -1157,7 +1158,7 @@ async function loadCash(fresh){
   try {
     const r = await fetch('/api/cash' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
     const d = await r.json(); if (d.error) throw new Error(d.error);
-    CASH = d; renderCash();
+    CASH = d; renderCash(); renderBanks();
   } catch (e) { $('cashBody').innerHTML = `<div class="err" style="display:block">Couldn't load cash: ${esc(e.message)}</div>`; }
 }
 function renderCash(){
@@ -1242,9 +1243,66 @@ function openCash(){
   f.date.value = todayStr(); f.stripe.value = ''; f.note.value = '';
   const sb = (CASH && CASH.stripe) || {};
   $('stripeNow').textContent = sb.error ? 'Not connected. Type the Stripe balance in.' : 'Leave blank to pull automatically (now ' + money(sb.total || 0) + ').';
+  $('bankNow').textContent = BANKS && BANKS.banks && BANKS.banks.length ? 'Fills every linked account with today\'s balance.' : 'Connect banks on the Daily Cash tab first.';
   cashHints(); m.classList.add('on');
 }
 
+
+// ---------- bank connections (Plaid) ----------
+let BANKS = null;
+const BANK_LABEL = { checking9926: 'Checking ··9926', taxReserve7229: 'Tax Reserve ··7229', personal5908: 'Free Checking ··5908', marcus6620: 'Marcus ··6620', marcus6569: 'Marcus ··6569',
+  ink2078: 'Ink ··2078', ink1602: 'Ink ··1602', amex91000: 'Amex ··91000', capone8760: 'Capital One ··8760', discover6166: 'Discover ··6166' };
+async function loadBanks(fresh){
+  try { const r = await fetch('/api/plaid/balances' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' }); BANKS = await r.json(); }
+  catch (e) { BANKS = { error: e.message, banks: [], fields: {} }; }
+  renderBanks(); return BANKS;
+}
+function renderBanks(){
+  const el = $('bankBody'); if (!el) return;
+  if (!BANKS) { loadBanks(); return; }
+  if (BANKS.error && !BANKS.banks) { el.innerHTML = `<div class="card"><h2>Bank connections</h2><div class="err" style="display:block">${esc(BANKS.error)}</div></div>`; return; }
+  if (!BANKS.configured) { el.innerHTML = `<div class="card"><h2>Bank connections</h2><p class="empty">Add <b>PLAID_CLIENT_ID</b>, <b>PLAID_SECRET</b> and <b>PLAID_ENV</b> in Railway to pull balances automatically.</p></div>`; return; }
+  const banks = BANKS.banks || [];
+  el.innerHTML = `<div class="card"><h2>Bank connections <small>${banks.length} linked${BANKS.at ? ' · updated ' + agoTxt(Date.parse(BANKS.at)) : ''}</small></h2>
+    <p class="empty" style="font-size:12.5px;margin-top:-6px">Each morning at 7am an entry is saved from your banks if you haven't added one. Safe, Venmo and stocks carry over from your last entry.</p>
+    ${banks.map(b => `<div style="border-top:1px solid var(--line);padding:10px 0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(b.institution)}</b><span style="white-space:nowrap">${b.relink ? `<button class="btn sm p" data-bankfix="${esc(b.item_id)}">Reconnect</button> ` : ''}<button class="btn sm" data-bankdel="${esc(b.item_id)}">Remove</button></span></div>
+      ${b.error ? `<div style="color:var(--bad);font-size:12.5px">${esc(b.error)}</div>` : (b.accounts || []).map(a => `<div class="row" style="font-size:13px"><span>${esc(a.name)} ··${esc(a.mask || '')}<div style="font-size:12px;color:var(--muted)">${a.field ? '→ ' + BANK_LABEL[a.field] : 'not used in Daily Cash'}</div></span><b>${money(Math.abs(a.current ?? a.available ?? 0))}</b></div>`).join('')}</div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn p" id="btnBankAdd">+ Connect a bank</button><button class="btn" id="btnBankRefresh">Refresh</button></div></div>`;
+}
+function plaidScript(){
+  return window.Plaid ? Promise.resolve() : new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'; s.onload = ok; s.onerror = () => bad(new Error("Couldn't load Plaid")); document.head.appendChild(s); });
+}
+async function connectBank(itemId){
+  try {
+    await plaidScript();
+    const r = await fetch('/api/plaid/link-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itemId ? { itemId } : {}) });
+    const d = await r.json(); if (d.error) throw new Error(d.error);
+    Plaid.create({ token: d.link_token, onSuccess: async (public_token, meta) => {
+      if (!itemId) { const x = await fetch('/api/plaid/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ public_token, institution: meta && meta.institution && meta.institution.name }) }).then(r => r.json()); if (x.error) alert(x.error); }
+      loadBanks(true);
+    } }).open();
+  } catch (e) { alert(e.message); }
+}
+async function pullBanks(){
+  const btn = $('btnBankPull'); btn.disabled = true; $('bankNow').textContent = 'Pulling…';
+  const d = await loadBanks(true); btn.disabled = false;
+  const f = $('m-cash').querySelector('form').elements, keys = Object.keys(d.fields || {});
+  keys.forEach(k => { if (f[k]) f[k].value = fmtMoney(d.fields[k]); });
+  const errs = (d.banks || []).filter(b => b.error).length;
+  $('bankNow').textContent = keys.length ? `Filled ${keys.length} accounts from your banks${errs ? ` · ${errs} bank needs reconnecting` : ''}.` : (d.error || 'No linked accounts yet. Connect banks on the Daily Cash tab.');
+  if (keys.length) { cashDraft = true; cashHints(); }
+}
+document.addEventListener('click', async e => {
+  const t = e.target.closest('#btnBankAdd,#btnBankRefresh,#btnBankPull,[data-bankdel],[data-bankfix]'); if (!t) return;
+  e.preventDefault();
+  if (t.id === 'btnBankAdd') connectBank();
+  else if (t.id === 'btnBankRefresh') { t.disabled = true; await loadBanks(true); }
+  else if (t.id === 'btnBankPull') pullBanks();
+  else if (t.dataset.bankfix) connectBank(t.dataset.bankfix);
+  else if (t.dataset.bankdel && confirm('Remove this bank? Balances will stop pulling from it.')) {
+    await fetch('/api/plaid/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: t.dataset.bankdel }) }); loadBanks(true);
+  }
+});
 // ---------- competitor ads ----------
 let ADSD = null;
 const AST = { brand: '', status: 'active', format: '', sort: 'days', newOnly: false, view: 'compare' };
