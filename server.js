@@ -8,6 +8,8 @@
 //   JOTFORM_API_KEY             Jotform API key (Payroll tab reads the Work Log form)
 //   WORKLOG_FORM_ID             optional: defaults to 260845178882066
 //   JOTFORM_API_BASE            optional: defaults to https://api.jotform.com
+//   APIFY_TOKEN                 Competitor Ads tab (same token the old Ad Tracker used)
+//   ADS_REDIS_URL / ADS_REDIS_TOKEN  optional: the old Ad Tracker's Upstash, to keep its ad history
 //   STRIPE_SECRET_KEY           restricted key with Balance: Read (Cash tab pulls the Stripe balance)
 // Without SHEETS_API_URL it runs on demo data.
 
@@ -433,9 +435,21 @@ async function stripeBalance(force) {
 }
 const CASH_FIELDS = ['checking9926', 'taxReserve7229', 'safe', 'venmo', 'ink2078', 'ink1602', 'amex91000',
   'personal5908', 'marcus6620', 'marcus6569', 'capone8760', 'discover6166', 'stocks', 'bills', 'stripe'];
+// Balances from before the dashboard (imports.json "cash"), added once by date.
+async function getCash() {
+  let snaps = await kget(KEYS.cash, []);
+  let imp = [];
+  try { imp = JSON.parse(fs.readFileSync(path.join(__dirname, 'imports.json'), 'utf8')).cash || []; } catch {}
+  if (imp.length) {
+    const gone = new Set(await kget('bcd:deletedCash', [])), have = new Set(snaps.map(x => x.date));
+    const add = imp.filter(x => !have.has(x.date) && !gone.has(x.date));
+    if (add.length) { snaps = snaps.concat(add).sort((a, b) => a.date.localeCompare(b.date)); await kset(KEYS.cash, snaps); }
+  }
+  return snaps;
+}
 app.get('/api/cash', async (req, res) => {
   try {
-    const [snaps, stripe] = await Promise.all([kget(KEYS.cash, []), stripeBalance(req.query.fresh === '1').catch(e => ({ error: e.message }))]);
+    const [snaps, stripe] = await Promise.all([getCash(), stripeBalance(req.query.fresh === '1').catch(e => ({ error: e.message }))]);
     res.json({ ok: true, snaps, stripe });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -459,8 +473,124 @@ app.post('/api/cash/delete', async (req, res) => {
   try {
     const snaps = (await kget(KEYS.cash, [])).filter(x => x.date !== req.body.date);
     await kset(KEYS.cash, snaps);
+    const g = await kget('bcd:deletedCash', []); if (!g.includes(req.body.date)) { g.push(req.body.date); await kset('bcd:deletedCash', g); }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- competitor ads (moved from the separate Ad Tracker) ----------
+// Pulls competitors' Meta ads from the Facebook Ad Library through Apify once a day
+// and keeps every ad it has seen, so you can rank them by how long they've run.
+const ADS = {
+  TOKEN: (process.env.APIFY_TOKEN || '').trim(),
+  ACTOR: process.env.APIFY_ACTOR || 'apify~facebook-ads-scraper',
+  PER_BRAND: Number(process.env.RESULTS_PER_BRAND || 100),
+  HOUR_CT: Number(process.env.RUN_HOUR_CT || 6),
+  BASE: process.env.APIFY_BASE || 'https://api.apify.com',
+  // Point these at the old Ad Tracker's Upstash to keep its history (defaults to the dashboard's).
+  REDIS_URL: (process.env.ADS_REDIS_URL || process.env.UPSTASH_REDIS_REST_URL || '').trim(),
+  REDIS_TOKEN: (process.env.ADS_REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '').trim(),
+  KEY: 'adtracker:v1',
+};
+let BRANDS = [];
+try { BRANDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'brands.json'), 'utf8')); } catch { console.log('No brands.json'); }
+let adsMem = null, adsRunning = false;
+async function adsLoad() {
+  if (ADS.REDIS_URL) {
+    try {
+      const r = await fetch(`${ADS.REDIS_URL}/get/${ADS.KEY}`, { headers: { Authorization: `Bearer ${ADS.REDIS_TOKEN}` } });
+      const j = await r.json();
+      if (j.result) return JSON.parse(j.result);
+    } catch (e) { console.error('Ads load failed:', e.message); }
+  }
+  else { try { const v = await kget(ADS.KEY, null); if (v) return v; } catch {} }
+  return adsMem || { ads: {}, pages: {}, lastRun: null, lastError: null, runs: [] };
+}
+async function adsSave(state) {
+  adsMem = state;
+  if (!ADS.REDIS_URL) { try { await kset(ADS.KEY, state); } catch {} return; }
+  try { await fetch(`${ADS.REDIS_URL}/set/${ADS.KEY}`, { method: 'POST', headers: { Authorization: `Bearer ${ADS.REDIS_TOKEN}` }, body: JSON.stringify(state) }); }
+  catch (e) { console.error('Ads save failed:', e.message); }
+}
+const adsNorm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function adsLibraryUrl(brand, pageId) {
+  const base = 'https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&media_type=all';
+  if (pageId) return `${base}&search_type=page&view_all_page_id=${pageId}`;
+  return `${base}&search_type=keyword_exact_phrase&q=${encodeURIComponent('"' + brand.name + '"')}`;
+}
+async function adsRunApify(startUrls) {
+  const t = ADS.TOKEN;
+  const start = await fetch(`${ADS.BASE}/v2/acts/${ADS.ACTOR}/runs?token=${t}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ startUrls: startUrls.map(url => ({ url })), resultsLimit: ADS.PER_BRAND * startUrls.length, activeStatus: '', isDetailsPerAd: false }),
+  });
+  const sj = await start.json();
+  if (!sj.data || !sj.data.id) throw new Error('Apify did not start: ' + JSON.stringify(sj).slice(0, 300));
+  let run = sj.data;
+  for (let i = 0; i < 80 && ['READY', 'RUNNING'].includes(run.status); i++) {
+    await new Promise(r => setTimeout(r, 15000));
+    run = (await (await fetch(`${ADS.BASE}/v2/actor-runs/${sj.data.id}?token=${t}`)).json()).data;
+  }
+  if (run.status !== 'SUCCEEDED') throw new Error('Apify run ended with status ' + run.status);
+  return (await fetch(`${ADS.BASE}/v2/datasets/${run.defaultDatasetId}/items?clean=true&format=json&token=${t}`)).json();
+}
+function adsToAd(it, brandName, now) {
+  const s = it.snapshot || {}, card = (s.cards && s.cards[0]) || {}, vid = (s.videos && s.videos[0]) || {}, img = (s.images && s.images[0]) || {};
+  const video = vid.videoHdUrl || vid.videoSdUrl || card.videoHdUrl || card.videoSdUrl || null;
+  const image = vid.videoPreviewImageUrl || card.videoPreviewImageUrl || img.originalImageUrl || img.resizedImageUrl || card.originalImageUrl || card.resizedImageUrl || null;
+  const body = (s.body && (s.body.text || s.body)) || card.body || '';
+  return { id: String(it.adArchiveID || it.adArchiveId || it.ad_archive_id), brand: brandName, pageId: String(it.pageID || it.pageId || ''), pageName: it.pageName || '',
+    start: it.startDate ? it.startDate * 1000 : null, end: it.endDate ? it.endDate * 1000 : null, active: !!it.isActive, platforms: it.publisherPlatform || [],
+    format: (s.displayFormat || (video ? 'VIDEO' : 'IMAGE')).toUpperCase(), title: s.title || card.title || '', body: typeof body === 'string' ? body : '',
+    cta: s.ctaText || card.ctaText || '', link: s.linkUrl || card.linkUrl || '', video, image, versions: (s.cards && s.cards.length) || 1, lastSeen: now };
+}
+async function adsRefresh() {
+  if (adsRunning) return { skipped: true };
+  if (!ADS.TOKEN) throw new Error('APIFY_TOKEN is not set');
+  adsRunning = true;
+  const state = await adsLoad(), now = Date.now();
+  try {
+    const items = await adsRunApify(BRANDS.map(b => adsLibraryUrl(b, b.pageId || state.pages[b.name])));
+    const seen = new Set();
+    for (const it of items) {
+      const pn = adsNorm(it.pageName);
+      const brand = BRANDS.find(b => adsNorm(b.name) === pn || (b.pageId && String(it.pageID) === String(b.pageId)) || (state.pages[b.name] && String(it.pageID) === state.pages[b.name]));
+      if (!brand) continue;
+      if (it.pageID && !state.pages[brand.name]) state.pages[brand.name] = String(it.pageID);
+      const ad = adsToAd(it, brand.name, now);
+      if (!ad.id || ad.id === 'undefined') continue;
+      const prev = state.ads[ad.id];
+      ad.firstSeen = prev ? prev.firstSeen : now;
+      state.ads[ad.id] = { ...prev, ...ad };
+      seen.add(ad.id);
+    }
+    for (const ad of Object.values(state.ads)) if (ad.active && !seen.has(ad.id)) { ad.active = false; ad.end = ad.end && ad.end < now ? ad.end : now; }
+    state.lastRun = now; state.lastError = null;
+    state.runs = [{ at: now, items: items.length, kept: seen.size }, ...(state.runs || [])].slice(0, 30);
+    await adsSave(state);
+    return { items: items.length, kept: seen.size };
+  } catch (e) { state.lastError = { at: now, message: e.message }; await adsSave(state); throw e; }
+  finally { adsRunning = false; }
+}
+const ctHour = () => Number(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }));
+if (ADS.TOKEN) {
+  setInterval(async () => {
+    const s = await adsLoad();
+    if ((!s.lastRun || Date.now() - s.lastRun > 20 * 3600 * 1000) && ctHour() === ADS.HOUR_CT) adsRefresh().catch(e => console.error('Scheduled ads refresh failed:', e.message));
+  }, 10 * 60 * 1000);
+}
+app.get('/api/ads', async (req, res) => {
+  try {
+    const s = await adsLoad(), now = Date.now();
+    const ads = Object.values(s.ads).map(a => { const endAt = a.active ? now : (a.end || a.lastSeen || now); return { ...a, days: a.start ? Math.max(1, Math.round((endAt - a.start) / 86400000)) : null }; });
+    res.json({ ok: true, brands: BRANDS.map(b => b.name), ads, lastRun: s.lastRun, lastError: s.lastError, running: adsRunning, hasToken: !!ADS.TOKEN });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/ads/refresh', (req, res) => {
+  if (!ADS.TOKEN) return res.status(400).json({ error: 'Add APIFY_TOKEN in Railway first.' });
+  if (adsRunning) return res.json({ ok: true, running: true });
+  adsRefresh().catch(e => console.error('Manual ads refresh failed:', e.message));
+  res.json({ ok: true, started: true });
 });
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
