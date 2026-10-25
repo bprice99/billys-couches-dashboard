@@ -5,14 +5,16 @@
 //   SHEETS_KEY                  the SECRET phrase in the Apps Script
 //   UPSTASH_REDIS_REST_URL      \ where purchases + expenses are saved
 //   UPSTASH_REDIS_REST_TOKEN    / (same Upstash database as the order app is fine)
-//   INVENTORY_URL               optional: defaults to billyscouches.com/currentinventory
+//   JOTFORM_API_KEY             Jotform API key (Payroll tab reads the Work Log form)
+//   WORKLOG_FORM_ID             optional: defaults to 260845178882066
+//   JOTFORM_API_BASE            optional: defaults to https://api.jotform.com
+//   STRIPE_SECRET_KEY           restricted key with Balance: Read (Cash tab pulls the Stripe balance)
 // Without SHEETS_API_URL it runs on demo data.
 
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const cheerio = require('cheerio');
 
 const app = express();
 app.use(express.json());
@@ -25,7 +27,10 @@ const CFG = {
   KEY: (process.env.SHEETS_KEY || '').trim(),
   REDIS_URL: (process.env.UPSTASH_REDIS_REST_URL || '').trim(),
   REDIS_TOKEN: (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim(),
-  INV_URL: (process.env.INVENTORY_URL || 'https://www.billyscouches.com/currentinventory').trim(),
+  JOTFORM_KEY: (process.env.JOTFORM_API_KEY || '').trim(),
+  JOTFORM_BASE: (process.env.JOTFORM_API_BASE || 'https://api.jotform.com').trim().replace(/\/$/, ''),
+  WORKLOG_FORM: (process.env.WORKLOG_FORM_ID || '260845178882066').trim(),
+  STRIPE_KEY: (process.env.STRIPE_SECRET_KEY || '').trim(),
 };
 
 // ---------- password ----------
@@ -73,7 +78,8 @@ async function kset(key, val) {
   fs.mkdirSync(path.dirname(FILE), { recursive: true });
   fs.writeFileSync(FILE, JSON.stringify(all));
 }
-const KEYS = { purchases: 'bcd:purchases', expenses: 'bcd:expenses', seen: 'bcd:invseen', loads: 'bcd:loads' };
+const KEYS = { purchases: 'bcd:purchases', expenses: 'bcd:expenses', loads: 'bcd:loads', cash: 'bcd:cash',
+  rates: 'bcd:payrollRates', adj: 'bcd:payrollAdj', paid: 'bcd:payrollPaid' };
 
 // Past months imported from Ivy Flip (Jan-Sep 2026).
 let HISTORY = { sales: [], expenses: [] };
@@ -241,54 +247,180 @@ app.post('/api/purchases/sale', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ---------- couch list (reads the Current Inventory page) ----------
-let inv = { at: 0, data: null };
-function parseInventory(html) {
-  const $ = cheerio.load(html);
-  const secs = $('section.page-section').toArray();
-  const items = [];
-  secs.forEach((s, i) => {
-    const $s = $(s);
-    const hasBuy = $s.find('a').toArray().some(a => /buy now/i.test($(a).text()));
-    if (!hasBuy) return;
-    const els = $s.find('.sqs-block-html p, .sqs-block-html h1, .sqs-block-html h2, .sqs-block-html h3, .sqs-block-html h4').toArray()
-      .map(e => $(e).text().replace(/\s+/g, ' ').trim()).filter(Boolean);
-    const title = els.find(t => t.length > 12 && !/^\$?\d/.test(t) && !/details|imperfection|dimension|last updated/i.test(t));
-    const priceTxt = els.find(t => /^\$?\d[\d,]{2,}/.test(t));
-    if (!title || !priceTxt) return;
-    const nums = (priceTxt.match(/\d[\d,]*(\.\d+)?/g) || []).map(n => parseFloat(n.replace(/,/g, '')));
-    const all = els.join(' | ');
-    const grade = (all.match(/grade\s*[:\-]?\s*([A-D][+-]?)\b/i) || [])[1] || '';
-    let img = '';
-    for (let k = i - 1; k >= 0 && k >= i - 2 && !img; k--) {
-      const im = $(secs[k]).find('img').first();
-      img = im.attr('data-src') || im.attr('src') || '';
+// ---------- payroll (reads the Jotform Work Log) ----------
+// Default hourly rates. Editable on the Payroll tab (saved in Redis).
+const DEFAULT_RATES = { collin: 20, luke: 20, zach: 20, joey: 20, gunnarr: 18, finley: 21 };
+let wl = { at: 0, data: null };
+
+const lc = s => String(s || '').toLowerCase();
+function ansText(a) {
+  if (a == null) return '';
+  if (typeof a === 'string' || typeof a === 'number') return String(a);
+  if (a.first || a.last) return [a.first, a.last].filter(Boolean).join(' ');
+  return Object.values(a).filter(v => typeof v === 'string').join(' ');
+}
+function ansDate(q) {
+  const a = q.answer;
+  if (a && typeof a === 'object' && a.year && a.month && a.day) return `${a.year}-${String(a.month).padStart(2, '0')}-${String(a.day).padStart(2, '0')}`;
+  const t = String(q.prettyFormat || a || '');
+  let m = t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = t.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/); if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  return '';
+}
+function ansMinutes(q) {
+  const a = q.answer;
+  let h, mi, ap;
+  if (a && typeof a === 'object' && (a.hourSelect || a.timeInput)) {
+    if (a.timeInput) { const m = String(a.timeInput).match(/(\d{1,2}):(\d{2})/); if (m) { h = +m[1]; mi = +m[2]; } }
+    else { h = +a.hourSelect; mi = +(a.minuteSelect || 0); }
+    ap = a.ampm;
+  } else {
+    const m = String(q.prettyFormat || a || '').match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+    if (!m) return null; h = +m[1]; mi = +m[2]; ap = m[3];
+  }
+  if (isNaN(h)) return null;
+  if (ap && /pm/i.test(ap) && h < 12) h += 12;
+  if (ap && /am/i.test(ap) && h === 12) h = 0;
+  return h * 60 + (mi || 0);
+}
+const numOf = v => { const n = parseFloat(String(v ?? '').replace(/[^\d.\-]/g, '')); return isNaN(n) ? 0 : n; };
+
+// Find each field by its question text so it keeps working if the form changes order.
+function parseWorkLog(subs) {
+  const fieldsSeen = {};
+  const entries = subs.filter(s => s.status !== 'DELETED').map(s => {
+    const qs = Object.values(s.answers || {}).filter(q => q && q.text && q.answer !== undefined && q.answer !== '');
+    const find = (re, not) => qs.find(q => re.test(q.text) && !(not && not.test(q.text)));
+    const mark = (k, q) => { if (q) fieldsSeen[k] = q.text; return q; };
+    const qName = mark('name', find(/name|employee|who/i, /customer|client/i));
+    const qDate = mark('date', find(/date|day/i, /birth/i) || qs.find(q => q.type === 'control_datetime'));
+    const qHours = mark('hours', find(/hours/i, /bonus/i));
+    const qIn = mark('start', find(/start|clock.?in|time.?in|arriv/i));
+    const qOut = mark('end', find(/end|clock.?out|time.?out|leave|left/i));
+    const qDeep = mark('deep cleans', find(/deep/i));
+    const qSpot = mark('spot cleans', find(/spot/i));
+    const qSold = mark('showings sold', find(/sold|purchas|convert|bought|closed/i, /deep|spot|hour|clean/i));
+    const qShows = mark('showings', find(/showing/i, /sold|purchas|convert|bought|closed/i));
+    let hours = qHours ? numOf(ansText(qHours.answer)) : 0;
+    if (!hours && qIn && qOut) {
+      const a = ansMinutes(qIn), b = ansMinutes(qOut);
+      if (a != null && b != null) hours = Math.round(((b - a + (b < a ? 1440 : 0)) / 60) * 100) / 100;
     }
-    if (!img) { const im = $s.find('img').first(); img = im.attr('data-src') || im.attr('src') || ''; }
-    if (img.includes('squarespace-cdn')) img = img.split('?')[0] + '?format=300w';
-    items.push({ title, price: nums[0] || 0, retail: nums[1] && nums[1] > nums[0] ? nums[1] : 0, grade, img });
+    const date = (qDate && ansDate(qDate)) || String(s.created_at || '').slice(0, 10);
+    return {
+      id: s.id, date, name: qName ? ansText(qName.answer).trim() : 'Unknown',
+      hours, deep: qDeep ? numOf(ansText(qDeep.answer)) : 0, spot: qSpot ? numOf(ansText(qSpot.answer)) : 0,
+      sold: qSold ? numOf(ansText(qSold.answer)) : 0, shows: qShows ? numOf(ansText(qShows.answer)) : 0,
+    };
   });
-  return items;
+  return { entries, fieldsSeen };
 }
 
-app.get('/api/inventory', async (req, res) => {
+async function workLog(force) {
+  if (!CFG.JOTFORM_KEY) return { entries: [], fieldsSeen: {}, error: 'Add JOTFORM_API_KEY in Railway to load the Work Log.' };
+  if (!force && wl.data && Date.now() - wl.at < 2 * 60 * 1000) return wl.data;
+  const url = `${CFG.JOTFORM_BASE}/form/${CFG.WORKLOG_FORM}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=1000&orderby=created_at`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if (j.responseCode && j.responseCode !== 200) throw new Error('Jotform: ' + (j.message || j.responseCode));
+  wl = { at: Date.now(), data: parseWorkLog(j.content || []) };
+  return wl.data;
+}
+
+app.get('/api/payroll', async (req, res) => {
   try {
-    if (req.query.fresh !== '1' && inv.data && Date.now() - inv.at < 10 * 60 * 1000) return res.json(inv.data);
-    const r = await fetch(CFG.INV_URL, { headers: { 'User-Agent': 'Mozilla/5.0 BillysCouchesDashboard' } });
-    const items = parseInventory(await r.text());
-    // Days on floor = days since the dashboard first saw this couch on the page.
-    const seen = await kget(KEYS.seen, {});
-    const today = new Date().toISOString().slice(0, 10);
-    const count = {};
-    items.forEach(it => {
-      count[it.title] = (count[it.title] || 0) + 1;
-      it.key = it.title + (count[it.title] > 1 ? ' #' + count[it.title] : '');
-      if (!seen[it.key]) seen[it.key] = today;
-      it.firstSeen = seen[it.key];
-    });
-    await kset(KEYS.seen, seen);
-    inv = { at: Date.now(), data: { ok: true, at: new Date().toISOString(), items } };
-    res.json(inv.data);
+    let log;
+    try { log = await workLog(req.query.fresh === '1'); } catch (e) { log = { entries: [], fieldsSeen: {}, error: e.message }; }
+    const [rates, adj, paid] = await Promise.all([kget(KEYS.rates, {}), kget(KEYS.adj, {}), kget(KEYS.paid, {})]);
+    res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/payroll/rate', async (req, res) => {
+  try {
+    const key = lc(clean(req.body.name, 40)).split(' ')[0];
+    const rate = Number(req.body.rate);
+    if (!key || !(rate >= 0)) return res.status(400).json({ error: 'Name and rate required' });
+    const rates = await kget(KEYS.rates, {}); rates[key] = rate; await kset(KEYS.rates, rates);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/payroll/adjust', async (req, res) => {
+  try {
+    const { week, name, amount, note } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return res.status(400).json({ error: 'bad week' });
+    const key = lc(clean(name, 40)).split(' ')[0];
+    const adj = await kget(KEYS.adj, {});
+    adj[week] = adj[week] || {};
+    adj[week][key] = { amount: Number(amount) || 0, note: clean(note, 120) };
+    await kset(KEYS.adj, adj);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Mark a week paid: adds one Payroll expense per person (dated the Sunday). Undo removes them.
+app.post('/api/payroll/paid', async (req, res) => {
+  try {
+    const { week, lines, undo } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return res.status(400).json({ error: 'bad week' });
+    const paid = await kget(KEYS.paid, {});
+    let list = await kget(KEYS.expenses, []);
+    list = list.filter(x => !String(x.id).startsWith('pay-' + week + '-'));
+    if (undo) { delete paid[week]; }
+    else {
+      const sun = new Date(week + 'T12:00:00Z'); sun.setUTCDate(sun.getUTCDate() + 6);
+      const d = sun.toISOString().slice(0, 10);
+      (Array.isArray(lines) ? lines : []).filter(l => Number(l.total) > 0).forEach(l => list.push({
+        id: `pay-${week}-${lc(l.name).replace(/[^a-z0-9]/g, '')}`, date: d, category: 'Payroll',
+        amount: Math.round(Number(l.total) * 100) / 100, vendor: clean(l.name, 60), notes: 'Weekly payroll ' + week,
+      }));
+      paid[week] = new Date().toISOString().slice(0, 10);
+    }
+    await kset(KEYS.expenses, list); await kset(KEYS.paid, paid);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- cash position ----------
+let stripeCache = { at: 0, data: null };
+async function stripeBalance(force) {
+  if (!CFG.STRIPE_KEY) return { error: 'Add STRIPE_SECRET_KEY in Railway to pull Stripe automatically.' };
+  if (!force && stripeCache.data && Date.now() - stripeCache.at < 2 * 60 * 1000) return stripeCache.data;
+  const r = await fetch('https://api.stripe.com/v1/balance', { headers: { Authorization: `Bearer ${CFG.STRIPE_KEY}` } });
+  const j = await r.json();
+  if (j.error) return { error: 'Stripe: ' + j.error.message };
+  const usd = arr => (arr || []).filter(x => x.currency === 'usd').reduce((a, x) => a + x.amount, 0) / 100;
+  const data = { pending: usd(j.pending), available: usd(j.available), total: usd(j.pending) + usd(j.available), at: new Date().toISOString() };
+  stripeCache = { at: Date.now(), data };
+  return data;
+}
+const CASH_FIELDS = ['checking9926', 'taxReserve7229', 'safe', 'venmo', 'ink2078', 'ink1602', 'amex91000',
+  'personal5908', 'marcus6620', 'marcus6569', 'capone8760', 'discover6166', 'stocks', 'bills', 'stripe'];
+app.get('/api/cash', async (req, res) => {
+  try {
+    const [snaps, stripe] = await Promise.all([kget(KEYS.cash, []), stripeBalance(req.query.fresh === '1').catch(e => ({ error: e.message }))]);
+    res.json({ ok: true, snaps, stripe });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/cash', async (req, res) => {
+  try {
+    const d = req.body || {};
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : new Date().toISOString().slice(0, 10);
+    const snap = { date, savedAt: new Date().toISOString(), note: clean(d.note, 200) };
+    CASH_FIELDS.forEach(k => { snap[k] = Math.round(Math.abs(numOf(d[k])) * 100) / 100; });
+    if (d.stripe === '' || d.stripe == null) {
+      const sb = await stripeBalance(true).catch(() => ({}));
+      snap.stripe = sb.total || 0; snap.stripeAuto = !sb.error;
+    }
+    let snaps = (await kget(KEYS.cash, [])).filter(x => x.date !== date);
+    snaps.push(snap); snaps.sort((a, b) => a.date.localeCompare(b.date));
+    await kset(KEYS.cash, snaps);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/cash/delete', async (req, res) => {
+  try {
+    const snaps = (await kget(KEYS.cash, [])).filter(x => x.date !== req.body.date);
+    await kset(KEYS.cash, snaps);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
