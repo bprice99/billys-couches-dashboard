@@ -723,5 +723,468 @@
    "note": "Pending: ~$10K B-Stock debit, ~$1,200 forklift on Amex; Capital One $426.53 paid after snapshot (Chase total entered on Ink 1602; Marcus total on 6620)",
    "imported": true
   }
+ ],
+ "loads": [
+  {
+   "id": "imp-20260609usedgood",
+   "loadId": "2026-06-09 Used Good",
+   "origin": "",
+   "date": "2026-06-09",
+   "landed": 1469.85,
+   "notes": "Imported from Bstock sheet (Jun-Jul)",
+   "units": [
+    {
+     "uid": "u0edgood",
+     "name": "Thomasville Lowell 6-Piece Modular",
+     "cost": 489.95,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1024.0,
+     "soldDate": "2026-06-10"
+    },
+    {
+     "uid": "u1edgood",
+     "name": "Aiden & Ivy Dayna 4-Piece Fabric Modular Sectional",
+     "cost": 489.95,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1049.0,
+     "soldDate": "2026-06-11"
+    },
+    {
+     "uid": "u2edgood",
+     "name": "Henredon Murphy Sofa Collection",
+     "cost": 489.95,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 650.0,
+     "soldDate": "2026-06-23"
+    }
+   ]
+  },
+  {
+   "id": "imp-20260625mixedcondition",
+   "loadId": "2026-06-25 Mixed Condition",
+   "origin": "",
+   "date": "2026-06-25",
+   "landed": 1735.0,
+   "notes": "Imported from Bstock sheet (Jun-Jul)",
+   "units": [
+    {
+     "uid": "u0dition",
+     "name": "Lowell 6pc Mod Sect",
+     "cost": 433.75,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1250.0,
+     "soldDate": "2026-07-04"
+    },
+    {
+     "uid": "u1dition",
+     "name": "Lowell 3 pc sofa",
+     "cost": 433.75,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 550.0,
+     "soldDate": "2026-07-02"
+    },
+    {
+     "uid": "u2dition",
+     "name": "Lowell 6pc Mod Sect",
+     "cost": 433.75,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1250.0,
+     "soldDate": "2026-07-03"
+    },
+    {
+     "uid": "u3dition",
+     "name": "Ethan 6pc Modular Sect",
+     "cost": 433.75,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 500.0,
+     "soldDate": "2026-06-25"
+    }
+   ]
+  },
+  {
+   "id": "imp-20260625usedfair",
+   "loadId": "2026-06-25 Used Fair",
+   "origin": "",
+   "date": "2026-06-25",
+   "landed": 3704.21,
+   "notes": "Imported from Bstock sheet (Jun-Jul)",
+   "units": [
+    {
+     "uid": "u0edfair",
+     "name": "S+F Halston Lift Chair",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 125.0,
+     "soldDate": "2026-09-12"
+    },
+    {
+     "uid": "u1edfair",
+     "name": "S+F Halston Lift Chair",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 125.0,
+     "soldDate": "2026-09-12"
+    },
+    {
+     "uid": "u2edfair",
+     "name": "Langdon L-Shape Sectional",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 900.0,
+     "soldDate": "2026-07-07"
+    },
+    {
+     "uid": "u3edfair",
+     "name": "Paige 6pc Modular Fab Sec",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1100.0,
+     "soldDate": "2026-07-03"
+    },
+    {
+     "uid": "u4edfair",
+     "name": "Lowell 6pc Mod Sect LTG",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1300.0,
+     "soldDate": "2026-06-29"
+    },
+    {
+     "uid": "u5edfair",
+     "name": "Tisdale 6pc Fab Sect Gray",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 850.0,
+     "soldDate": "2026-06-29"
+    },
+    {
+     "uid": "u6edfair",
+     "name": "Monroe Fab Pwr Sectional",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1300.0,
+     "soldDate": "2026-06-29"
+    },
+    {
+     "uid": "u7edfair",
+     "name": "Tisdale 6pc Sect Beige",
+     "cost": 411.58,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 950.0,
+     "soldDate": "2026-07-05"
+    },
+    {
+     "uid": "u8edfair",
+     "name": "Walsen 3pc Sectional",
+     "cost": 411.57,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 899.0,
+     "soldDate": "2026-06-29"
+    }
+   ]
+  },
+  {
+   "id": "imp-20260716usedgood",
+   "loadId": "2026-07-16 Used Good",
+   "origin": "",
+   "date": "2026-07-16",
+   "landed": 1840.64,
+   "notes": "Imported from Bstock sheet (Jun-Jul)",
+   "units": [
+    {
+     "uid": "u0edgood",
+     "name": "Ella Convertible Sofa",
+     "cost": 460.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 800.0,
+     "soldDate": "2026-08-15"
+    },
+    {
+     "uid": "u1edgood",
+     "name": "Ella Convertible Sofa",
+     "cost": 460.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 600.0,
+     "soldDate": "2026-08-11"
+    },
+    {
+     "uid": "u2edgood",
+     "name": "Walsen 3PC Sectional",
+     "cost": 460.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1149.0,
+     "soldDate": "2026-06-30"
+    },
+    {
+     "uid": "u3edgood",
+     "name": "Henredon Murphy Sectional",
+     "cost": 460.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1400.0,
+     "soldDate": "2026-07-18"
+    }
+   ]
+  },
+  {
+   "id": "imp-20260729usedgood",
+   "loadId": "2026-07-29 Used Good",
+   "origin": "",
+   "date": "2026-07-29",
+   "landed": 2680.63,
+   "notes": "Imported from Bstock sheet (Jun-Jul)",
+   "units": [
+    {
+     "uid": "u0edgood",
+     "name": "Aeva Fabric Sectional",
+     "cost": 670.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 800.0,
+     "soldDate": "2026-07-30"
+    },
+    {
+     "uid": "u1edgood",
+     "name": "Wylder Lthr Pwr Sectional",
+     "cost": 670.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1550.0,
+     "soldDate": "2026-07-30"
+    },
+    {
+     "uid": "u2edgood",
+     "name": "Aubrey Lther Pwr Rec Sect",
+     "cost": 670.16,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1649.0,
+     "soldDate": "2026-07-31"
+    },
+    {
+     "uid": "u3edgood",
+     "name": "Sereen Modular L Brown",
+     "cost": 670.15,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1100.0,
+     "soldDate": "2026-07-29"
+    }
+   ]
+  },
+  {
+   "id": "imp-20260717usedgood",
+   "loadId": "2026-07-17 Used Good",
+   "origin": "",
+   "date": "2026-07-17",
+   "landed": 1683.21,
+   "notes": "Imported from Bstock sheet (Jun-Jul)",
+   "units": [
+    {
+     "uid": "u0edgood",
+     "name": "Drayden Fabric Sectional",
+     "cost": 561.07,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 950.0,
+     "soldDate": "2026-07-27"
+    },
+    {
+     "uid": "u1edgood",
+     "name": "Zakary Fab Pwr Sectional",
+     "cost": 561.07,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1350.0,
+     "soldDate": "2026-08-08"
+    },
+    {
+     "uid": "u2edgood",
+     "name": "Lowell 6pc Mod Sect LTG",
+     "cost": 561.07,
+     "comp": 0,
+     "status": "sold",
+     "soldPrice": 1299.0,
+     "soldDate": "2026-07-21"
+    }
+   ]
+  }
+ ],
+ "purchases": [
+  {
+   "id": "imp-eliteleather3seatersofa20251206",
+   "date": "2025-12-06",
+   "source": "Yard Signs",
+   "item": "Elite Leather 3 seater sofa",
+   "units": 1,
+   "cost": 0.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 400.0,
+   "soldDate": "2026-10-16"
+  },
+  {
+   "id": "imp-arhaus2piecebrownsectionalcouc20260331",
+   "date": "2026-03-31",
+   "source": "Marketplace",
+   "item": "Arhaus 2-Piece Brown Sectional Couch",
+   "units": 1,
+   "cost": 160.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 689.0,
+   "soldDate": "2026-10-01"
+  },
+  {
+   "id": "imp-ethanallen2piecewhitesectional20260630",
+   "date": "2026-06-30",
+   "source": "Marketplace",
+   "item": "Ethan Allen 2-piece white sectional",
+   "units": 1,
+   "cost": 350.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 1494.0,
+   "soldDate": "2026-10-05"
+  },
+  {
+   "id": "imp-graymanaulrreeclinersofaset20261001",
+   "date": "2026-10-01",
+   "source": "Facebook",
+   "item": "Gray Manaulr reecliner sofa set",
+   "units": 1,
+   "cost": 100.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 650.0,
+   "soldDate": "2026-10-04"
+  },
+  {
+   "id": "imp-gray2pcandottoman20261001",
+   "date": "2026-10-01",
+   "source": "Facebook",
+   "item": "Gray 2pc and ottoman",
+   "units": 1,
+   "cost": 100.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 599.0,
+   "soldDate": "2026-10-03"
+  },
+  {
+   "id": "imp-gray2pcstorageandpullout20261002",
+   "date": "2026-10-02",
+   "source": "Previous Customer",
+   "item": "Gray 2pc storage and pullout",
+   "units": 1,
+   "cost": 0.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 299.0,
+   "soldDate": "2026-10-07"
+  },
+  {
+   "id": "imp-thomasville2pcwithnailhead20261002",
+   "date": "2026-10-02",
+   "source": "Craigslist",
+   "item": "Thomasville 2pc with nailhead",
+   "units": 1,
+   "cost": 0.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 900.0,
+   "soldDate": "2026-10-07"
+  },
+  {
+   "id": "imp-gray2pc20261006",
+   "date": "2026-10-06",
+   "source": "Marketplace",
+   "item": "Gray 2pc",
+   "units": 1,
+   "cost": 150.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "sold",
+   "soldPrice": 650.0,
+   "soldDate": "2026-10-18"
+  },
+  {
+   "id": "imp-ashley2pcandottoman20261017",
+   "date": "2026-10-17",
+   "source": "Marketplace",
+   "item": "Ashley 2pc And Ottoman",
+   "units": 1,
+   "cost": 200.0,
+   "loadId": "",
+   "notes": "Imported from Ivy Flip",
+   "status": "in",
+   "soldPrice": 0,
+   "soldDate": ""
+  },
+  {
+   "id": "imp-instock-20260912-thomasville4pcleathe",
+   "date": "2026-09-12",
+   "source": "Marketplace",
+   "item": "Thomasville 4pc Leather",
+   "units": 1,
+   "cost": 300,
+   "loadId": "",
+   "notes": "Still in stock (Ivy Flip import)",
+   "status": "in",
+   "soldPrice": 0,
+   "soldDate": ""
+  },
+  {
+   "id": "imp-instock-20260603-2pieceleatherwithnai",
+   "date": "2026-06-03",
+   "source": "Marketplace",
+   "item": "2-piece leather with nailhead trim",
+   "units": 1,
+   "cost": 150,
+   "loadId": "",
+   "notes": "Still in stock (Ivy Flip import)",
+   "status": "in",
+   "soldPrice": 0,
+   "soldDate": ""
+  },
+  {
+   "id": "imp-instock-20260815-2pcbrownlazyboylong",
+   "date": "2026-08-15",
+   "source": "Facebook",
+   "item": "2 pc brown lazyboy long",
+   "units": 1,
+   "cost": 0,
+   "loadId": "",
+   "notes": "Still in stock (Ivy Flip import)",
+   "status": "in",
+   "soldPrice": 0,
+   "soldDate": ""
+  }
  ]
 }
