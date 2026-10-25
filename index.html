@@ -1,11 +1,19 @@
 <!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Billy's Couches Dashboard</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Billy's HQ"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2b1d16"><link rel="apple-touch-icon" href="/icon-180.png"><link rel="manifest" href="/manifest.json">
+<title>Billy's HQ</title>
 <script src="/chart.js"></script>
 <style>
 :root{--red:#b0524c;--red2:#963f3a;--dark:#2b1d16;--cream:#efe9e2;--bg:#f7f3ee;--line:#e8e0d6;--muted:#7a6f66;--text:#222;--green:#2e7d4f;--bad:#c0392b;--sage:#8fb59a;--gray:#c9bfb5}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{max-width:100%;overflow-x:hidden}
+button,a,select,input,label,.nav,.adchip{touch-action:manipulation}
+.btn:active,.nav:active,.adchip:active{transform:scale(.97)}
+canvas{max-width:100%}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 a{color:inherit}
@@ -108,8 +116,20 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;border-radius:12px;padding:12px 18px;font-size:14px;display:none;z-index:60}
 @media (max-width:1100px){.kpis,.kpis.k7{grid-template-columns:repeat(3,1fr)}.kpis.k4{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:800px){
-  .app{display:block}
-  .side{position:static;width:auto;height:auto;flex-direction:row;overflow-x:auto;padding:12px;gap:6px}
+  .app{display:block;width:100%}
+  .side{position:sticky;top:0;z-index:40;width:100%;height:auto;flex-direction:row;overflow-x:auto;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));gap:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .side::-webkit-scrollbar{display:none}
+  input,select,textarea,.modal input,.modal select,select.rk,input.rd,input.cell{font-size:16px}
+  .main{width:100%;overflow-x:hidden}
+  .card{padding:14px}
+  .modal{max-height:88vh;overflow:auto}
+  .mon{width:100%;flex-wrap:nowrap!important;gap:6px}
+  .mon button{padding:9px 11px;flex:none}
+  #monLabel{min-width:0!important;flex:1;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #rKind{flex:none;max-width:42%}
+  #rCustom{display:flex;gap:6px;width:100%}#rCustom[hidden]{display:none}
+  .mon:has(#rCustom:not([hidden])){flex-wrap:wrap!important}
+  .top{gap:8px}.top h1{font-size:23px}
   .brand,.side .foot{display:none}
   .nav{white-space:nowrap;padding:9px 12px}
   .main{padding:18px 14px 50px}
@@ -1201,6 +1221,8 @@ async function load(fresh){
     $('synced').textContent = 'Synced ' + new Date(d.cachedAt || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
     render();
+    // Load the other tabs' data in the background so switching tabs is instant.
+    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); }, 400); }
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
