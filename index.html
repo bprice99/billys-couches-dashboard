@@ -146,7 +146,9 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <nav class="side">
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
+    <a class="nav" data-tab="goals">Goals</a>
     <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
+    <a class="nav" data-tab="upsells">Upsells</a>
     <a class="nav" data-tab="showings">Showing Tracker</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" data-tab="meta">Ad Performance</a>
@@ -169,6 +171,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
       <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
+      <button class="btn p" id="goalEdit" data-only="goals">Set goals</button>
     </div>
     <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
     <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
@@ -246,6 +249,26 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
         <div class="card"><h2>Sales source <small>how buyers found you</small></h2><div class="piewrap"><canvas id="pieSrc"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblSrc"></table></div></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="srcTrend"></table></div></div>
+    </section>
+
+    <!-- GOALS -->
+    <section id="tab-goals" hidden>
+      <p class="empty" id="goalNote" style="margin:-6px 0 12px;font-size:13px"></p>
+      <div class="kpis k4" id="goalCards"></div>
+      <div class="card"><h2>Road to $100K a month</h2><div class="chartwrap"><canvas id="goalChart"></canvas></div><p style="font-size:14px;margin:12px 0 0" id="roadNote"></p></div>
+      <div class="card" style="margin-top:16px"><h2>Team</h2><p style="font-size:14px;margin:0 0 10px" id="teamNote"></p><div style="overflow-x:auto"><table id="teamTbl"></table></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">From the Work Log: showings each person hosted and how many bought.</p></div>
+    </section>
+
+    <!-- UPSELLS -->
+    <section id="tab-upsells" hidden>
+      <div class="kpis" id="upKpis"></div>
+      <div class="grid2" style="margin-top:0;grid-template-columns:1.6fr 1fr">
+        <div class="card"><h2>Upsell revenue and attach rate</h2><div class="chartwrap"><canvas id="upChart"></canvas></div></div>
+        <div class="card"><h2>By upsell</h2><div class="piewrap"><canvas id="upPie"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="upItems"></table></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2>Orders with upsells</h2><div style="overflow:auto;max-height:440px"><table id="upOrders"></table></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">From the Add-Ons columns in your Sales Log (order-app sales, June 2026 on). Attach rate = orders with any upsell ÷ all orders.</p></div>
     </section>
 
     <!-- OPEN HOUSES -->
@@ -329,9 +352,16 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <h3 id="soldTitle">Mark sold</h3>
   <input type="hidden" name="id"><input type="hidden" name="uid"><input type="hidden" name="target">
   <div class="two">
-    <label>Sold for ($)<input type="number" step="0.01" name="soldPrice" required></label>
+    <label>Couch price ($)<input type="number" step="0.01" name="soldPrice" required></label>
     <label>Date sold<input type="date" name="date" required></label>
   </div>
+  <div class="two">
+    <label>Delivery fee ($)<input type="number" step="0.01" name="delivery" placeholder="0 if pickup"></label>
+    <label>Other upsell ($)<input type="number" step="0.01" name="upOther" placeholder="optional"></label>
+  </div>
+  <div style="font-size:13px;font-weight:600;margin:-2px 0 6px">Upsells</div>
+  <div id="upBoxes" style="margin-bottom:10px"></div>
+  <div class="row" style="border-top:1px solid var(--line);margin-bottom:10px"><span>Total</span><b id="soldTotal">$0</b></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-cash"><form class="modal" data-kind="cash" style="max-width:560px;max-height:92vh;overflow:auto">
@@ -347,6 +377,13 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="two"><label>Free Checking ··5908<input type="number" step="0.01" name="personal5908"></label><label>Stocks<input type="number" step="0.01" name="stocks"></label></div>
   <div class="two"><label>Marcus ··6620 Travel<input type="number" step="0.01" name="marcus6620"></label><label>Marcus ··6569 Online<input type="number" step="0.01" name="marcus6569"></label></div>
   <div class="two"><label>Capital One ··8760 owed<input type="number" step="0.01" name="capone8760"></label><label>Discover ··6166 owed<input type="number" step="0.01" name="discover6166"></label></div>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
+</form></div>
+<div class="mask" id="m-goals"><form class="modal" data-kind="goals">
+  <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
+  <div class="two"><label>Sales<input type="number" name="sales" min="0"></label><label>Revenue ($)<input type="number" name="revenue" min="0"></label></div>
+  <div class="two"><label>Net profit ($)<input type="number" name="net" min="0"></label><label>Average sale ($)<input type="number" name="avg" min="0"></label></div>
+  <label>Labor % of sales (target)<input type="number" name="labor" min="0" step="0.5" placeholder="e.g. 10"></label>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-oh"><form class="modal" data-kind="oh">
@@ -442,16 +479,17 @@ function parse(d){
     pay: col(sh, ['payment']), type: col(sh, ['order type','pickup or delivery','fulfillment','type'], ['tax']),
     price: col(sh, ['couch price','price'], ['total','sale']), disc: col(sh, ['discount']), del: col(sh, ['delivery'], ['type']),
     sub: col(sh, ['subtotal','sub total']), total: col(sh, ['total'], ['sub']), tax: col(sh, ['sales tax','tax'], ['rate']),
+    addons: col(sh, ['add-ons','addons','add ons','upsells'], ['$']), addonAmt: col(sh, ['add-ons $','addons $','add-ons$','upsells $']),
   };
   const sales = srows.map(r => {
     const price = num(r[S.price]), disc = Math.abs(num(r[S.disc])), del = num(r[S.del]);
     const rev = S.sub > -1 && num(r[S.sub]) ? num(r[S.sub]) : price - disc + del;
     let type = S.type > -1 ? String(r[S.type]) : (del > 0 ? 'Delivery' : 'Pickup');
     type = /deliver/i.test(type) ? 'Delivery' : 'Pickup';
-    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, del, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
+    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, del, addons: S.addons > -1 ? String(r[S.addons] || '').trim() : '', addonAmt: S.addonAmt > -1 ? num(r[S.addonAmt]) : 0, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
   }).filter(x => x.date && x.rev > 0);
 
-  const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
+  const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), soldDelivery: num(x.soldDelivery), soldUpsellTotal: num(x.soldUpsellTotal), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
   const expenses = (d.expenses || []).map(x => ({ id: x.id, date: toDate(x.date), cat: x.category || 'Other', vendor: x.vendor || '', notes: x.notes || '', amt: num(x.amount), live: true })).filter(x => x.date && x.amt);
 
   const H = d.history || { sales: [], expenses: [] };
@@ -471,7 +509,7 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, showingsError: d.showingsError };
+  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, showingsError: d.showingsError };
 }
 
 // ---------- date ranges (one per tab) ----------
@@ -522,6 +560,88 @@ function buckets(R){
     for (let d = new Date(R.from.getFullYear(), R.from.getMonth(), 1); d <= stop; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
     out.push({ from: d < R.from ? R.from : d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0), label: MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''), future: d > end }); }
   return out;
+}
+
+// ---------- upsells ----------
+const UPSELLS = [{ id: 'scotchgard', label: 'Scotchgard', price: 49 }, { id: 'wrap', label: 'Plastic Wrap', price: 99 }, { id: 'removal', label: 'Couch Removal', price: 125 }];
+function soldSum(){
+  const f = $('m-sold').querySelector('form'), el = f.elements;
+  const up = UPSELLS.filter(u => (f.querySelector('[data-up="' + u.id + '"]') || {}).checked).reduce((a, u) => a + u.price, 0) + (Number(el.upOther.value) || 0);
+  $('soldTotal').textContent = money((Number(el.soldPrice.value) || 0) + (Number(el.delivery.value) || 0) + up) + ' before tax';
+}
+document.addEventListener('input', e => { if (e.target.closest('#m-sold')) soldSum(); });
+document.addEventListener('change', e => { if (e.target.closest('#m-sold')) soldSum(); });
+const upItem = t => /scotch/i.test(t) ? 'Scotchgard' : /wrap/i.test(t) ? 'Plastic Wrap' : /remov|haul/i.test(t) ? 'Couch Removal' : /pillow/i.test(t) ? 'Pillows' : /throw|blanket/i.test(t) ? 'Throw' : 'Other';
+function upItems(s){ return String(s || '').split(/[,;+|]| and /i).map(x => x.replace(/\(.*?\)|\$[\d.,]+/g, '').trim()).filter(Boolean).map(upItem); }
+function renderUpsells(){
+  const R = getR('upsells'), vs = vsLabel(R);
+  const calc = R2 => { const L = RAW.sales.filter(x => inR(x.date, R2)), withUp = L.filter(x => x.addons || x.addonAmt > 0);
+    const rev = L.reduce((a, x) => a + (x.addonAmt || 0), 0);
+    return { L, withUp, rev, n: L.length, rate: L.length ? withUp.length / L.length : NaN, per: L.length ? rev / L.length : 0, perUp: withUp.length ? rev / withUp.length : 0 }; };
+  const A = calc(R), B = calc(prevRange(R));
+  const items = {}; A.withUp.forEach(x => { const its = upItems(x.addons); const each = its.length ? (x.addonAmt || 0) / its.length : 0;
+    (its.length ? its : ['Other']).forEach(it => { const o = items[it] = items[it] || { n: 0, rev: 0 }; o.n++; o.rev += each; }); });
+  const itemRows = Object.entries(items).sort((a, b) => b[1].n - a[1].n);
+  const top = itemRows[0];
+  $('upKpis').innerHTML = kpiHtml([
+    ['Upsell revenue', money(A.rev), chg(A.rev, B.rev, false, vs)],
+    ['Attach rate', pct(A.rate), chg(A.rate || 0, B.rate || 0, false, vs)],
+    ['Orders with an upsell', A.withUp.length + ' / ' + A.n, ''],
+    ['Upsell $ per order', money(A.per), chg(A.per, B.per, false, vs)],
+    ['Avg when they buy one', money(A.perUp), ''],
+    ['Most popular', top ? esc(top[0]) : '–', top ? `<div class="c flat">${top[1].n} sold</div>` : ''],
+  ]);
+  $('upItems').innerHTML = `<tr><th>Upsell</th><th class="n">Sold</th><th class="n">% of orders</th><th class="n">Revenue</th></tr>` +
+    (itemRows.length ? itemRows.map(([k, o], i) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${PIE[i % PIE.length]};margin-right:8px"></span>${esc(k)}</td><td class="n"><b>${o.n}</b></td><td class="n">${A.n ? pct(o.n / A.n) : '–'}</td><td class="n">${money(o.rev)}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="empty">No upsells in this range.</td></tr>');
+  pieIn('upPie', itemRows.map(([k, o]) => [k, o.n]), v => v + ' sold');
+  const bk = buckets(R).filter(b => !b.future), rows = bk.map(b => calc({ from: b.from, to: b.to }));
+  const o = baseOpts(true); o.scales.y2 = { position: 'right', min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { display: false } };
+  chartIn('upChart', { data: { labels: bk.map(b => b.label), datasets: [
+    { type: 'bar', label: 'Upsell revenue', data: rows.map(r => r.rev), backgroundColor: '#b0524c', borderRadius: 4 },
+    { type: 'line', label: 'Attach rate', data: rows.map(r => isFinite(r.rate) ? Math.round(r.rate * 100) : null), borderColor: '#2b1d16', backgroundColor: '#2b1d16', yAxisID: 'y2', tension: .3, pointRadius: 2 } ] }, options: o });
+  const recent = A.withUp.slice().sort((a, b) => b.date - a.date).slice(0, 40);
+  $('upOrders').innerHTML = `<tr><th>Date</th><th>Customer</th><th>Upsells</th><th class="n">Upsell $</th><th class="n hide-m">Order</th></tr>` +
+    (recent.length ? recent.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td>${esc(x.addons || '–')}</td><td class="n"><b>${money(x.addonAmt)}</b></td><td class="n hide-m">${money(x.rev)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">None in this range.</td></tr>');
+}
+
+// ---------- goals ----------
+const GOAL_FIELDS = [['sales', 'Sales', v => String(Math.round(v))], ['revenue', 'Revenue', money], ['net', 'Net profit', money], ['avg', 'Average sale', money]];
+function renderGoals(){
+  const R = getR('goals'), mk = R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0');
+  const G = (RAW.goals || {})[mk] || {}, A = period(R), today = day0(new Date());
+  const days = spanDays(R), elapsed = R.to < today ? days : R.from > today ? 0 : dayDiff(R.from, today) + 1, live = elapsed > 0 && elapsed < days;
+  const actual = { sales: A.count, revenue: A.gross, net: A.net, avg: A.avgSale };
+  const pace = k => k === 'avg' ? actual.avg : elapsed ? actual[k] / elapsed * days : 0;
+  $('goalCards').innerHTML = GOAL_FIELDS.map(([k, label, fmt]) => {
+    const t = G[k], a = actual[k], pr = t ? Math.min(1, a / t) : 0, p = pace(k), ok = t ? p >= t : null;
+    return `<div class="card kpi"><div class="l">${label}</div><div class="v">${fmt(a)}${t ? ` <span style="font-size:15px;color:var(--muted);font-weight:600">/ ${fmt(t)}</span>` : ''}</div>
+      ${t ? `<div class="bar" style="height:8px;margin:10px 0 6px"><i style="width:${pr * 100}%;background:${ok ? 'var(--green)' : 'var(--red)'}"></i></div>
+      <div class="c ${ok ? 'up' : 'dn'}">${live && k !== 'avg' ? (ok ? 'On pace for ' : 'Behind: on pace for ') + fmt(p) : a >= t ? 'Hit' : (elapsed >= days ? 'Missed by ' + fmt(t - a) : fmt(t - a) + ' to go')}</div>` : '<div class="c flat">No target set</div>'}</div>`;
+  }).join('');
+  $('goalNote').textContent = live ? `Day ${elapsed} of ${days} · ${days - elapsed} days left` : '';
+  // road to $100K
+  const months = []; for (let k = 11; k >= 0; k--) { const d = new Date(today.getFullYear(), today.getMonth() - k, 1); months.push({ d, P: period({ from: d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0) }) }); }
+  while (months.length > 1 && !months[0].P.gross) months.shift();
+  const cur = months[months.length - 1], curPace = cur.P.gross / Math.max(1, today.getDate()) * new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const o = baseOpts(true);
+  chartIn('goalChart', { data: { labels: months.map(m => MON[m.d.getMonth()]), datasets: [
+    { type: 'bar', label: 'Revenue', data: months.map((m, i) => i === months.length - 1 ? Math.round(curPace) : Math.round(m.P.gross)), backgroundColor: months.map((m, i) => i === months.length - 1 ? '#d9a39f' : '#b0524c'), borderRadius: 4 },
+    { type: 'line', label: '$100K goal', data: months.map(() => 100000), borderColor: '#2e7d4f', borderDash: [6, 4], pointRadius: 0, borderWidth: 2 } ] }, options: o });
+  const last3 = months.slice(-4, -1).map(m => m.P), avgPrice = last3.reduce((a, p) => a + p.gross, 0) / Math.max(1, last3.reduce((a, p) => a + p.count, 0)), avgCount = last3.reduce((a, p) => a + p.count, 0) / 3;
+  $('roadNote').innerHTML = `This month is on pace for <b>${money(curPace)}</b> (lighter bar). At your recent average sale of <b>${money(avgPrice)}</b>, $100K takes <b>${Math.ceil(100000 / avgPrice)} sales a month</b> (you've averaged ${Math.round(avgCount)}). At your recent volume, it takes a <b>${money(100000 / Math.max(1, avgCount))}</b> average sale.`;
+  // team
+  const pay = A.e.filter(x => /payroll/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
+  const ppl = {}; if (PAY) PAY.entries.filter(e => inR(toDate(e.date), R)).forEach(e => { const k = fname(e.name); const p = ppl[k] = ppl[k] || { shows: 0, sold: 0, hours: 0 }; p.shows += e.shows; p.sold += e.sold; p.hours += e.hours; });
+  $('teamTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Showings hosted</th><th class="n">Sold</th><th class="n">Close rate</th></tr>` +
+    (Object.keys(ppl).length ? Object.entries(ppl).sort((a, b) => b[1].sold - a[1].sold).map(([k, p]) => `<tr><td><b>${esc(k)}</b></td><td class="n">${p.hours.toFixed(1)}</td><td class="n">${p.shows}</td><td class="n"><b>${p.sold}</b></td><td class="n">${p.shows ? pct(p.sold / p.shows) : '–'}</td></tr>`).join('')
+      : `<tr><td colspan="5" class="empty">${PAY ? 'No Work Log entries this month.' : 'Loading the Work Log...'}</td></tr>`);
+  $('teamNote').innerHTML = `Labor is <b>${A.gross ? pct(pay / A.gross) : '–'}</b> of sales this month${G.labor ? ` (target ${G.labor}%)` : ''}.`;
+}
+function openGoals(){
+  const R = getR('goals'), mk = R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0'), G = (RAW.goals || {})[mk] || {}, f = $('m-goals').querySelector('form').elements;
+  f.month.value = mk; ['sales', 'revenue', 'net', 'avg', 'labor'].forEach(k => f[k].value = G[k] || '');
+  $('goalsTitle').textContent = 'Goals for ' + rangeLabel(R); $('m-goals').classList.add('on');
 }
 
 // ---------- couch photos ----------
@@ -587,9 +707,9 @@ function renderSales(){
   const today0 = day0(new Date());
   const stock = [];
   RAW.loads.forEach(l => l.units.forEach(u => stock.push({ kind: 'bstock', id: l.id, uid: u.uid, name: u.name, src: 'B-Stock · ' + l.loadId, cost: u.cost, comp: u.comp || 0,
-    got: l.arrived, status: u.status, soldPrice: u.soldPrice, sold: u.sold })));
+    got: l.arrived, status: u.status, soldPrice: u.soldPrice, sold: u.sold, del: Number(u.soldDelivery) || 0, up: Number(u.soldUpsellTotal) || 0, ups: u.soldUpsells || [] })));
   RAW.purchases.forEach(p => stock.push({ kind: 'used', id: p.id, uid: '', name: p.item || 'Used couch', src: 'Used · ' + (p.source || 'Other'), cost: p.cost, comp: 0,
-    got: p.date, status: p.status === 'sold' ? 'sold' : 'in', soldPrice: p.soldPrice, sold: p.sold }));
+    got: p.date, status: p.status === 'sold' ? 'sold' : 'in', soldPrice: p.soldPrice, sold: p.sold, del: p.soldDelivery || 0, up: p.soldUpsellTotal || 0, ups: p.soldUpsells || [] }));
   const inStock = stock.filter(x => x.status === 'in').map(x => ({ ...x, days: dayDiff(x.got, today0) })).sort((a, b2) => b2.days - a.days);
   const f = SALES_FILTER;
   const shown = inStock.filter(x => f === 'all' || x.kind === f);
@@ -601,12 +721,12 @@ function renderSales(){
       <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button>` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
       : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
   const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
-  const sRev = soldR.reduce((a, x) => a + x.soldPrice, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = A.live.length;
+  const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = A.live.length;
   $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (liveOrders > soldR.length && !A.allHist ? ` · <span style="color:var(--bad)">${liveOrders - soldR.length} order-app sale${liveOrders - soldR.length === 1 ? '' : 's'} not matched to a couch yet</span>` : '');
-  $('soldTbl').innerHTML = `<tr><th>Sold</th><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Sold for</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
-    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n">${money(x.soldPrice - x.cost)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
+  $('soldTbl').innerHTML = `<tr><th>Sold</th><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Couch $</th><th class="n hide-m">Delivery</th><th class="n hide-m">Upsells</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
+    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n hide-m">${x.del ? money(x.del) : '–'}</td><td class="n hide-m" title="${esc(x.ups.map(u => u.label).join(', '))}">${x.up ? money(x.up) : '–'}</td><td class="n">${money(x.soldPrice - x.cost + x.up)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
       <td class="n"><button class="btn sm" data-unit="${esc(x.id)}:${x.kind === 'used' ? 'p' : esc(x.uid)}:in">Undo</button></td></tr>`).join('')
-      : `<tr><td colspan="9" class="empty">No couches marked sold in this range.</td></tr>`);
+      : `<tr><td colspan="11" class="empty">No couches marked sold in this range.</td></tr>`);
 
   // ----- expenses -----
   const PE = period(prevRange(R)), days = Math.max(1, Math.min(spanDays(R), dayDiff(R.from, today0) + 1));
@@ -792,7 +912,7 @@ async function loadPayroll(fresh){
   try {
     const r = await fetch('/api/payroll' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
     const d = await r.json(); if (d.error && !d.entries) throw new Error(d.error);
-    PAY = d; renderPayroll();
+    PAY = d; renderPayroll(); if (tab === 'goals') renderGoals();
   } catch (e) { $('payTbl').innerHTML = `<tr><td class="empty">Couldn't load payroll: ${esc(e.message)}</td></tr>`; }
 }
 // One Mon-Sun week (cleaning bonus is per week), limited to dates inside [a, b].
@@ -1184,8 +1304,8 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', sources: 'Sales & Sourcing', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash' };
-DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash' };
+DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
   $('monLabel').textContent = rangeLabel(R);
@@ -1198,7 +1318,7 @@ function render(){
   if (!RAW) return;
   syncRangeBar();
   $('monNav').hidden = tab === 'ads';
-  ({ sales: renderSales, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
+  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
 }
 function setTab(t){
   tab = t;
@@ -1233,6 +1353,7 @@ $('rKind').onchange = () => { const k = $('rKind').value, R = getR(tab);
 const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('rTo').value); if (f && t2 && f <= t2) { RANGES[tab] = { kind: 'custom', from: f, to: t2 }; render(); } };
 $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
+$('goalEdit').onclick = () => openGoals();
 $('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
 $('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
 $('payBtn').onclick = async () => {
@@ -1259,13 +1380,17 @@ document.querySelectorAll('.mask').forEach(m => {
         const mm = t.match(/^(.*?)[,\t|]\s*\$?([\d,]+(?:\.\d+)?)\s*$/);
         return mm ? { name: mm[1].trim(), comp: parseFloat(mm[2].replace(/,/g, '')) } : { name: t, comp: 0 };
       }).filter(Boolean) };
+    } else if (f.dataset.kind === 'goals') {
+      url = '/api/goals'; body = { month: data.month, goals: data };
     } else if (f.dataset.kind === 'oh') {
       url = '/api/openhouse'; body = data;
     } else if (f.dataset.kind === 'cash') {
       url = '/api/cash'; body = data;
     } else if (f.dataset.kind === 'sold') {
       url = data.target === 'purchase' ? '/api/purchases/sale' : '/api/loads/unit';
-      body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date };
+      const ups = UPSELLS.filter(u => f.querySelector('[data-up="' + u.id + '"]').checked).map(u => ({ label: u.label, price: u.price }));
+      if (Number(data.upOther) > 0) ups.push({ label: 'Other', price: Number(data.upOther) });
+      body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date, delivery: data.delivery, upsells: ups };
     }
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1280,7 +1405,9 @@ document.addEventListener('click', async e => {
   const sb = e.target.closest('[data-sold]');
   if (sb) { const [id, uid] = sb.dataset.sold.split(':'), m = $('m-sold'), f = m.querySelector('form');
     const el = f.elements; el.id.value = id; el.uid.value = uid; el.target.value = sb.dataset.target || 'unit'; el.soldPrice.value = sb.dataset.comp || ''; el.date.value = todayStr();
-    $('soldTitle').textContent = 'Sold: ' + sb.dataset.name; m.classList.add('on'); return; }
+    el.delivery.value = ''; el.upOther.value = '';
+    $('upBoxes').innerHTML = UPSELLS.map(u => `<label class="chk"><input type="checkbox" data-up="${u.id}"> ${u.label} <span style="margin-left:auto;color:var(--muted)">+${money(u.price)}</span></label>`).join('');
+    soldSum(); $('soldTitle').textContent = 'Sold: ' + sb.dataset.name; m.classList.add('on'); return; }
   const ub = e.target.closest('[data-unit]');
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
