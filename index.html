@@ -760,6 +760,10 @@ function renderBstock(){
 let PAY = null;
 // Weeks before the dashboard took over payroll were already paid (and are in the Ivy Flip expenses).
 const PAID_BEFORE = '2026-10-19';
+const VENMO = { zach: 'zpierce54', gunnarr: 'wildflowertimes', finley: 'Finley-Lotzin', collin: 'Collin-Comer', luke: 'Lmp9412', joey: 'joey-menendez-0' };
+const venmoLink = (user, amt, note) => `https://venmo.com/${encodeURIComponent(user)}?txn=pay&amount=${amt.toFixed(2)}&note=${encodeURIComponent(note)}`;
+function sentSet(wkey){ try { return new Set(JSON.parse(localStorage.getItem('bcdVenmo:' + wkey) || '[]')); } catch { return new Set(); } }
+function saveSent(wkey, set){ try { localStorage.setItem('bcdVenmo:' + wkey, JSON.stringify([...set])); } catch {} }
 const fname = s => String(s || '').trim().split(/\s+/)[0] || 'Unknown';
 const pkey = s => fname(s).toLowerCase().replace(/^gunarr$/, 'gunnarr');
 const weekPaid = wkey => (PAY.paid || {})[wkey] || (wkey < PAID_BEFORE ? 'before dashboard' : '');
@@ -805,6 +809,14 @@ function payRange(R){
   const single = R.kind === 'week' || (R.from.getDay() === 1 && spanDays(R) === 7);
   return { ents, lines, weeks, single, wkey: ymd(R.from), total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('tip') + tot('adj'), sales };
 }
+function venmoBtn(l, W){
+  const user = VENMO[l.key];
+  if (!user) return '<span style="font-size:12px;color:var(--muted)">No Venmo</span>';
+  if (!(l.total > 0)) return '';
+  const sent = sentSet(W.wkey).has(l.key);
+  const note = "Billy's Couches payroll " + fmtD(toDate(W.wkey)) + ' - ' + fmtD(addDays(toDate(W.wkey), 6));
+  return `<a class="btn sm ${sent ? '' : 'p'}" style="text-decoration:none;white-space:nowrap" target="_blank" rel="noopener" href="${venmoLink(user, Math.round(l.total * 100) / 100, note)}" data-venmo="${esc(l.key)}">${sent ? 'Opened ✓' : 'Pay ' + money(l.total)}</a>`;
+}
 function renderPayroll(){
   if (!PAY) return loadPayroll();
   const R = getR('payroll'), W = payRange(R), P = payRange(prevRange(R)), vs = vsLabel(R);
@@ -824,7 +836,7 @@ function renderPayroll(){
       : ['Weeks', W.weeks.length, `<div class="c flat">${W.weeks.filter(w => weekPaid(ymd(w.mon))).length} paid</div>`],
   ]);
   $('payTitle').innerHTML = (W.single ? "This week's pay" : 'Pay in this range') + ' <small>Mon–Sun, paid Sunday &middot; $20 per showing sold &middot; $20 at 4+ deep cleans in a week</small>';
-  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Tips</th><th class="n">Adjust</th><th class="n">Total</th></tr>` +
+  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Tips</th><th class="n">Adjust</th><th class="n">Total</th>${W.single && !paidAt ? '<th></th>' : ''}</tr>` +
     (W.lines.length ? W.lines.map(l => `<tr><td><b>${esc(l.name)}</b><div style="font-size:12px;color:var(--muted)">${l.days} day${l.days===1?'':'s'} logged</div></td>
       <td class="n">${l.hours.toFixed(2)}</td>
       <td class="n"><input class="cell" type="number" step="0.5" value="${l.rate}" data-rate="${esc(l.key)}" aria-label="Rate for ${esc(l.name)}"></td>
@@ -834,9 +846,9 @@ function renderPayroll(){
       <td class="n">${money(l.showBonus + l.cleanBonus)}</td>
       <td class="n">${l.tip ? money(l.tip) : '–'}</td>
       <td class="n">${W.single ? `<input class="cell" type="number" step="1" value="${l.adj || ''}" placeholder="0" data-adj="${esc(l.key)}" title="${esc(l.adjNote)}" aria-label="Adjustment for ${esc(l.name)}">` : (l.adj ? money(l.adj) : '–')}</td>
-      <td class="n"><b>${money(l.total)}</b></td></tr>`).join('') +
-      `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.tip,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td></tr>`
-      : `<tr><td colspan="10" class="empty">${PAY.error ? esc(PAY.error) : 'No Work Log entries in this range.'}</td></tr>`);
+      <td class="n"><b>${money(l.total)}</b></td>${W.single && !paidAt ? `<td class="n">${venmoBtn(l, W)}</td>` : ''}</tr>`).join('') +
+      `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.tip,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td>${W.single && !paidAt ? '<td></td>' : ''}</tr>`
+      : `<tr><td colspan="11" class="empty">${PAY.error ? esc(PAY.error) : 'No Work Log entries in this range.'}</td></tr>`);
   $('payBtn').hidden = !W.single || paidAt === 'before dashboard';
   $('payBtn').textContent = paidAt ? 'Undo paid' : 'Mark week paid';
   $('payBtn').disabled = !W.lines.length && !paidAt;
@@ -1251,6 +1263,17 @@ document.addEventListener('click', async e => {
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
     const j = await r.json(); toast(j.ok ? 'Updated' : (j.error || 'Failed')); load(true); return; }
+  const vb = e.target.closest('[data-venmo]');
+  if (vb) {
+    const R = getR('payroll'), W = payRange(R), set = sentSet(W.wkey); set.add(vb.dataset.venmo); saveSent(W.wkey, set);
+    const due = W.lines.filter(l => l.total > 0 && VENMO[l.key]);
+    if (due.length && due.every(l => set.has(l.key)) && !(PAY.paid || {})[W.wkey]) {
+      post('/api/payroll/paid', { week: W.wkey, lines: W.lines.map(l => ({ name: l.name, total: l.total })) })
+        .then(() => { toast('Everyone opened. Week marked paid and added to Expenses. Undo if a payment didn\'t go through.'); loadPayroll(true); load(true); })
+        .catch(err => toast(err.message));
+    } else setTimeout(renderPayroll, 300);
+    return;
+  }
   const pa = e.target.closest('[data-padd]');
   if (pa) { photoTarget = pa.dataset.padd; $('photoIn').value = ''; $('photoIn').click(); return; }
   const pv = e.target.closest('[data-pview]');
