@@ -18,7 +18,9 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+const compression = require('compression');
 const app = express();
+app.use(compression());
 app.use('/api/photo', express.json({ limit: '4mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -52,7 +54,9 @@ app.post('/login', (req, res) => {
 app.get('/logout', (req, res) => { res.setHeader('Set-Cookie', 'bcd=; Path=/; Max-Age=0'); res.redirect('/'); });
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
 app.get('/healthz', (req, res) => res.send('ok'));
-app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js')));
+const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
+app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
+['icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
 
 // ---------- storage: Upstash Redis, or a local file as fallback ----------
