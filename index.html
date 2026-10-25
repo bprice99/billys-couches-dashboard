@@ -928,7 +928,7 @@ function payWeekLines(mon, a, b){
   return { ents, lines: Object.values(people).map(p => {
     const rate = PAY.rates[p.key] ?? 0, hourly = p.hours * rate, showBonus = p.sold * 20, cleanBonus = p.deep >= 4 ? 20 : 0;
     const a2 = fullWeek ? (adj[p.key] || { amount: 0, note: '' }) : { amount: 0, note: '' };
-    return { ...p, rate, hourly, showBonus, cleanBonus, adj: a2.amount || 0, adjNote: a2.note || '', total: hourly + showBonus + cleanBonus + p.tip + (a2.amount || 0) };
+    return { ...p, rate, hourly, showBonus, cleanBonus, adj: a2.amount || 0, adjNote: a2.note || '', total: hourly + showBonus + cleanBonus + (a2.amount || 0) };
   }) };
 }
 function payRange(R){
@@ -947,7 +947,7 @@ function payRange(R){
   const sales = RAW ? RAW.sales.filter(s => inR(s.date, R)).reduce((t, s) => t + s.rev, 0) : 0;
   const tot = k => lines.reduce((t, l) => t + l[k], 0);
   const single = R.kind === 'week' || (R.from.getDay() === 1 && spanDays(R) === 7);
-  return { ents, lines, weeks, single, wkey: ymd(R.from), total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('tip') + tot('adj'), sales };
+  return { ents, lines, weeks, single, wkey: ymd(R.from), total: tot('total'), hours: tot('hours'), bonus: tot('showBonus') + tot('cleanBonus') + tot('adj'), tips: tot('tip'), sales };
 }
 function venmoBtn(l, W){
   const user = VENMO[l.key];
@@ -969,14 +969,14 @@ function renderPayroll(){
   $('payKpis').innerHTML = kpiHtml([
     ['Payroll', money(W.total), chg(W.total, P.total, true, vs)],
     ['Hours', W.hours.toFixed(1), chg(W.hours, P.hours, false, vs)],
-    ['Bonuses, tips + adjustments', money(W.bonus), chg(W.bonus, P.bonus, false, vs)],
+    ['Bonuses + adjustments', money(W.bonus), `<div class="c flat">+ ${money(W.tips)} customer tips (not paid by you)</div>`],
     ['Sales', money(W.sales), chg(W.sales, P.sales, false, vs)],
     ['Labor % of sales', W.sales ? pct(W.total / W.sales) : '–', W.sales && P.sales ? chg(W.total / W.sales, P.total / P.sales, true, vs) : ''],
     W.single ? ['Status', paidAt ? '<span class="pill g">Paid</span>' : '<span class="pill">Not paid</span>', paidAt ? `<div class="c flat">${paidAt === 'before dashboard' ? 'Paid before the dashboard' : 'Marked ' + esc(paidAt)}</div>` : `<div class="c flat">Payday ${fmtD(sun)}</div>`]
       : ['Weeks', W.weeks.length, `<div class="c flat">${W.weeks.filter(w => weekPaid(ymd(w.mon))).length} paid</div>`],
   ]);
   $('payTitle').innerHTML = (W.single ? "This week's pay" : 'Pay in this range') + ' <small>Mon–Sun, paid Sunday &middot; $20 per showing sold &middot; $20 at 4+ deep cleans in a week</small>';
-  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n">Tips</th><th class="n">Adjust</th><th class="n">Total</th>${W.single && !paidAt ? '<th></th>' : ''}</tr>` +
+  $('payTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Rate</th><th class="n hide-m">Hourly pay</th><th class="n hide-m">Showings sold</th><th class="n hide-m">Deep / spot</th><th class="n">Bonuses</th><th class="n" title="Tips customers gave them. Not part of what you pay.">Tips received</th><th class="n">Adjust</th><th class="n">Total</th>${W.single && !paidAt ? '<th></th>' : ''}</tr>` +
     (W.lines.length ? W.lines.map(l => `<tr><td><b>${esc(l.name)}</b><div style="font-size:12px;color:var(--muted)">${l.days} day${l.days===1?'':'s'} logged</div></td>
       <td class="n">${l.hours.toFixed(2)}</td>
       <td class="n"><input class="cell" type="number" step="0.5" value="${l.rate}" data-rate="${esc(l.key)}" aria-label="Rate for ${esc(l.name)}"></td>
@@ -984,7 +984,7 @@ function renderPayroll(){
       <td class="n hide-m">${l.sold}${l.sold ? ` <span style="color:var(--muted)">(${money(l.showBonus)})</span>` : ''}</td>
       <td class="n hide-m">${l.deep} / ${l.spot}${l.cleanBonus ? ` <span class="pill g">+${money(l.cleanBonus)}</span>` : ''}</td>
       <td class="n">${money(l.showBonus + l.cleanBonus)}</td>
-      <td class="n">${l.tip ? money(l.tip) : '–'}</td>
+      <td class="n" style="color:var(--muted)">${l.tip ? money(l.tip) : '–'}</td>
       <td class="n">${W.single ? `<input class="cell" type="number" step="1" value="${l.adj || ''}" placeholder="0" data-adj="${esc(l.key)}" title="${esc(l.adjNote)}" aria-label="Adjustment for ${esc(l.name)}">` : (l.adj ? money(l.adj) : '–')}</td>
       <td class="n"><b>${money(l.total)}</b></td>${W.single && !paidAt ? `<td class="n">${venmoBtn(l, W)}</td>` : ''}</tr>`).join('') +
       `<tr><td><b>Total</b></td><td class="n"><b>${W.hours.toFixed(2)}</b></td><td></td><td class="hide-m"></td><td class="hide-m"></td><td class="hide-m"></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.showBonus+l.cleanBonus,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.tip,0))}</b></td><td class="n"><b>${money(W.lines.reduce((t,l)=>t+l.adj,0))}</b></td><td class="n"><b>${money(W.total)}</b></td>${W.single && !paidAt ? '<td></td>' : ''}</tr>`
