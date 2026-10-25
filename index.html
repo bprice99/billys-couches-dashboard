@@ -102,6 +102,14 @@ img.thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;cursor:zoom-
 .adcmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .adcmp h3{font-size:15px;margin:0 0 10px}
 @media (max-width:800px){.adcmp{grid-template-columns:1fr}}
+.modal{position:relative}
+.xbtn{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px;line-height:1;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.xbtn:hover{color:var(--text);background:var(--cream)}
+.mwrap{position:relative;display:block}
+.mwrap::before{content:'$';position:absolute;left:12px;top:50%;transform:translateY(-50%);margin-top:2px;color:var(--muted);font-weight:600;pointer-events:none}
+.mwrap input{padding-left:24px!important;font-variant-numeric:tabular-nums}
+.mlast{display:block;font-size:11.5px;font-weight:500;color:var(--muted);margin-top:3px;min-height:14px}
+.mlast.up{color:var(--green)}.mlast.dn{color:var(--bad)}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
@@ -365,18 +373,18 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-cash"><form class="modal" data-kind="cash" style="max-width:560px;max-height:92vh;overflow:auto">
-  <h3>Today's balances</h3>
+  <h3>Today's balances</h3><p class="empty" style="font-size:12.5px;margin:-10px 0 12px">Pre-filled from your last entry. Only change what moved.</p>
   <div class="two"><label>Date<input type="date" name="date" required></label><label>Note<input name="note" placeholder="optional"></label></div>
   <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Business</p>
-  <div class="two"><label>Checking ··9926<input type="number" step="0.01" name="checking9926" required></label><label>Tax Reserve ··7229<input type="number" step="0.01" name="taxReserve7229"></label></div>
-  <div class="two"><label>Cash in safe<input type="number" step="0.01" name="safe"></label><label>Venmo in transit<input type="number" step="0.01" name="venmo" placeholder="not yet in 9926"></label></div>
-  <label>Stripe<input type="number" step="0.01" name="stripe"><span id="stripeNow" style="font-weight:500;color:var(--muted);font-size:12px"></span></label>
-  <div class="two"><label>Ink ··2078 owed<input type="number" step="0.01" name="ink2078"></label><label>Ink ··1602 owed<input type="number" step="0.01" name="ink1602"></label></div>
-  <div class="two"><label>Amex ··91000 owed<input type="number" step="0.01" name="amex91000"></label><label>Rent + utilities<input type="number" step="0.01" name="bills"></label></div>
+  <div class="two"><label>Checking ··9926<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="checking9926" required></span><span class="mlast" data-last="checking9926"></span></label><label>Tax Reserve ··7229<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="taxReserve7229"></span><span class="mlast" data-last="taxReserve7229"></span></label></div>
+  <div class="two"><label>Cash in safe<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="safe"></span><span class="mlast" data-last="safe"></span></label><label>Venmo in transit<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="venmo" placeholder="not yet in 9926"></span><span class="mlast" data-last="venmo"></span></label></div>
+  <label>Stripe<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="stripe"></span><span class="mlast" data-last="stripe"></span><span id="stripeNow" style="font-weight:500;color:var(--muted);font-size:12px"></span></label>
+  <div class="two"><label>Ink ··2078 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="ink2078"></span><span class="mlast" data-last="ink2078"></span></label><label>Ink ··1602 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="ink1602"></span><span class="mlast" data-last="ink1602"></span></label></div>
+  <div class="two"><label>Amex ··91000 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="amex91000"></span><span class="mlast" data-last="amex91000"></span></label><label>Rent + utilities<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="bills"></span><span class="mlast" data-last="bills"></span></label></div>
   <p class="empty" style="font-size:13px;font-weight:700;color:var(--text);margin:4px 0 8px">Personal</p>
-  <div class="two"><label>Free Checking ··5908<input type="number" step="0.01" name="personal5908"></label><label>Stocks<input type="number" step="0.01" name="stocks"></label></div>
-  <div class="two"><label>Marcus ··6620 Travel<input type="number" step="0.01" name="marcus6620"></label><label>Marcus ··6569 Online<input type="number" step="0.01" name="marcus6569"></label></div>
-  <div class="two"><label>Capital One ··8760 owed<input type="number" step="0.01" name="capone8760"></label><label>Discover ··6166 owed<input type="number" step="0.01" name="discover6166"></label></div>
+  <div class="two"><label>Free Checking ··5908<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="personal5908"></span><span class="mlast" data-last="personal5908"></span></label><label>Stocks<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="stocks"></span><span class="mlast" data-last="stocks"></span></label></div>
+  <div class="two"><label>Marcus ··6620 Travel<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="marcus6620"></span><span class="mlast" data-last="marcus6620"></span></label><label>Marcus ··6569 Online<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="marcus6569"></span><span class="mlast" data-last="marcus6569"></span></label></div>
+  <div class="two"><label>Capital One ··8760 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="capone8760"></span><span class="mlast" data-last="capone8760"></span></label><label>Discover ··6166 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="discover6166"></span><span class="mlast" data-last="discover6166"></span></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-goals"><form class="modal" data-kind="goals">
@@ -1213,14 +1221,28 @@ function renderCash(){
   chartIn('cashChart', { type: 'line', data: { labels: recent.map(s => fmtD(toDate(s.date))),
     datasets: [line('Net business', recent.map(s => cashCalc(s).netBiz), '#b0524c', 3), line('Net personal', recent.map(s => cashCalc(s).netPers), '#2e7d4f'), line('Combined', recent.map(s => cashCalc(s).combined), '#2b1d16')] }, options: o });
 }
+const fmtMoney = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? '' : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+const parseMoney = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? null : n; };
+let cashDraft = null, cashLast = {};
+function cashHints(){
+  document.querySelectorAll('#m-cash [data-last]').forEach(el => {
+    const k = el.dataset.last, input = $('m-cash').querySelector('[name="' + k + '"]'), now = parseMoney(input.value), was = cashLast[k];
+    if (was == null || now == null || Math.abs(now - was) < 0.005) { el.textContent = was != null ? 'Last: $' + fmtMoney(was) : ''; el.className = 'mlast'; return; }
+    const d = now - was; el.textContent = 'Last: $' + fmtMoney(was) + ' · ' + (d > 0 ? '+' : '−') + '$' + fmtMoney(Math.abs(d)); el.className = 'mlast ' + (d > 0 ? 'up' : 'dn');
+  });
+}
+document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('input[data-money]') && e.target.value !== '') e.target.value = fmtMoney(e.target.value); });
+document.addEventListener('input', e => { if (e.target.closest && e.target.closest('#m-cash')) { cashDraft = true; cashHints(); } });
 function openCash(){
+  if (cashDraft) { $('m-cash').classList.add('on'); return; }   // keep what you typed if you closed it by accident
   const m = $('m-cash'), f = m.querySelector('form').elements, last = CASH && CASH.snaps.length ? CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)).pop() : {};
-  ['checking9926','taxReserve7229','safe','venmo','ink2078','ink1602','amex91000','personal5908','marcus6620','marcus6569','capone8760','discover6166'].forEach(k => f[k].value = last[k] != null ? last[k] : '');
-  f.stocks.value = last.stocks != null ? last.stocks : 40000; f.bills.value = last.bills != null ? last.bills : 3000;
+  cashLast = last;
+  ['checking9926','taxReserve7229','safe','venmo','ink2078','ink1602','amex91000','personal5908','marcus6620','marcus6569','capone8760','discover6166'].forEach(k => f[k].value = last[k] != null ? fmtMoney(last[k]) : '');
+  f.stocks.value = fmtMoney(last.stocks != null ? last.stocks : 40000); f.bills.value = fmtMoney(last.bills != null ? last.bills : 3000);
   f.date.value = todayStr(); f.stripe.value = ''; f.note.value = '';
   const sb = (CASH && CASH.stripe) || {};
   $('stripeNow').textContent = sb.error ? 'Not connected. Type the Stripe balance in.' : 'Leave blank to pull automatically (now ' + money(sb.total || 0) + ').';
-  m.classList.add('on');
+  cashHints(); m.classList.add('on');
 }
 
 // ---------- competitor ads ----------
@@ -1368,12 +1390,15 @@ document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.datase
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
 document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open); m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
 document.querySelectorAll('.mask').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('on'); });
+  const box = m.querySelector('.modal');
+  if (box && !box.querySelector('.xbtn')) box.insertAdjacentHTML('afterbegin', '<button type="button" class="xbtn" data-close aria-label="Close">&times;</button>');
+  m.addEventListener('click', e => { if (e.target.closest('[data-close]')) m.classList.remove('on'); });
   if (!m.querySelector('form')) return;
   m.querySelector('form').addEventListener('submit', async e => {
     e.preventDefault();
     const f = e.target, btn = f.querySelector('.btn.p'), label = btn.textContent; btn.disabled = true; btn.textContent = 'Saving...';
     const data = Object.fromEntries(new FormData(f).entries());
+    f.querySelectorAll('input[data-money]').forEach(i => { const v = parseMoney(i.value); data[i.name] = v == null ? '' : String(v); });
     let url = '/api/add', body = { action: f.dataset.action, data };
     if (f.dataset.kind === 'load') {
       url = '/api/loads';
@@ -1398,7 +1423,7 @@ document.querySelectorAll('.mask').forEach(m => {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Save failed');
       m.classList.remove('on'); f.reset(); toast('Saved');
-      if (f.dataset.kind === 'cash') loadCash(); else load(true);
+      if (f.dataset.kind === 'cash') { cashDraft = null; loadCash(); } else load(true);
     } catch (err) { toast(err.message); }
     btn.disabled = false; btn.textContent = label;
   });
