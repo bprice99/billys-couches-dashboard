@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "express": "^4.19.2",
-    "chart.js": "4.4.1",
-    "cheerio": "1.0.0"
+    "chart.js": "4.4.1"
   }
 }
