@@ -204,7 +204,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
         <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
         <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Click <b>Sold</b> when a couch sells. B-Stock couches show up here once their load is added on the B-Stock tab; used couches with + Used pickup.</p></div>
-      <div class="card" style="margin-top:16px"><h2>Couches sold in this range <small id="soldNote"></small></h2><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
+      <div class="card" style="margin-top:16px"><h2>Couches sold in this range <small id="soldNote"></small></h2><div id="missBox" hidden style="margin:8px 0 14px;padding:12px;border:1px dashed var(--bad);border-radius:12px;overflow:auto"></div><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
       <div class="card" style="margin-top:16px"><h2>Expenses</h2>
         <div class="kpis" id="expKpis" style="margin-bottom:14px"></div>
         <div class="grid2" style="margin-top:0;grid-template-columns:1fr 1.6fr">
@@ -510,7 +510,7 @@ function parse(d){
     const rev = S.sub > -1 && num(r[S.sub]) ? num(r[S.sub]) : price - disc + del;
     let type = S.type > -1 ? String(r[S.type]) : (del > 0 ? 'Delivery' : 'Pickup');
     type = /deliver/i.test(type) ? 'Delivery' : 'Pickup';
-    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, del, addons: S.addons > -1 ? String(r[S.addons] || '').trim() : '', addonAmt: S.addonAmt > -1 ? num(r[S.addonAmt]) : 0, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
+    return { date: toDate(r[S.date]), source: normSource(r[S.source]), name: r[S.name] || '', pay: r[S.pay] || '', type, rev, del, price, net: price - disc, addons: S.addons > -1 ? String(r[S.addons] || '').trim() : '', addonAmt: S.addonAmt > -1 ? num(r[S.addonAmt]) : 0, tax: S.tax > -1 ? num(r[S.tax]) : 0 };
   }).filter(x => x.date && x.rev > 0);
 
   const purchases = (d.purchases || []).map(x => ({ ...x, date: toDate(x.date), sold: toDate(x.soldDate), soldPrice: num(x.soldPrice), soldDelivery: num(x.soldDelivery), soldUpsellTotal: num(x.soldUpsellTotal), units: Math.max(1, num(x.units) || 1), cost: num(x.cost), live: true })).filter(x => x.date);
@@ -690,11 +690,23 @@ function shrinkPhoto(file){
 
 // ---------- sales tracker ----------
 function trackerSold(){
-  const out = [], add = (sold, price, del, up, name) => { if (!sold) return; const rev = (Number(price) || 0) + (Number(del) || 0) + (Number(up) || 0);
-    if (rev > 0) out.push({ date: sold, rev, del: Number(del) || 0, type: del > 0 ? 'Delivery' : 'Pickup', source: 'Sales Tracker', name, live: true }); };
+  if (RAW._ts) return RAW._ts;
+  const out = [], add = (sold, price, del, up, name) => { if (!sold) return;
+    out.push({ date: sold, price: Number(price) || 0, del: Number(del) || 0, up: Number(up) || 0, name, source: 'Sales Tracker', live: true }); };
   RAW.loads.forEach(l => l.units.forEach(u => { if (u.status === 'sold') add(u.sold, u.soldPrice, u.soldDelivery, u.soldUpsellTotal, u.name); }));
   RAW.purchases.forEach(p => { if (p.status === 'sold') add(p.sold, p.soldPrice, p.soldDelivery, p.soldUpsellTotal, p.item); });
-  return out;
+  // Match each sold couch to its Sales Log order (same price, logged up to 10 days before it was marked sold)
+  // so older couches pick up the delivery fee, and leftover orders show as "missing from the tracker".
+  const log = RAW.sales.filter(x => !isHistDay(x.date)).map(x => ({ ...x, used: false }));
+  const near = (a, b) => Math.abs(a - b) < 1;
+  out.sort((a, b) => a.date - b.date).forEach(t => {
+    const pool = log.filter(l => !l.used && (t.date - l.date) / 864e5 >= -1 && (t.date - l.date) / 864e5 <= 10);
+    const hit = pool.find(l => near(l.price, t.price) || near(l.net, t.price)) || pool.find(l => near(l.rev, t.price + t.del) || near(l.rev, t.price + 150));
+    if (hit) { hit.used = true; t.order = hit; if (!t.del && hit.del) t.del = hit.del; }
+  });
+  out.forEach(t => { t.rev = t.price + t.del + t.up; t.type = t.del > 0 ? 'Delivery' : 'Pickup'; });
+  RAW._ts = out.filter(t => t.rev > 0); RAW._missing = log.filter(l => !l.used);
+  return RAW._ts;
 }
 function period(R){
   const hs = RAW.hSales.filter(x => inR(x.date, R) && isHistDay(x.date));
@@ -754,7 +766,12 @@ function renderSales(){
       : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
   const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
   const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)).length;
-  $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (liveOrders > soldR.length && !A.allHist ? ` · <span style="color:var(--bad)">${liveOrders - soldR.length} order-app sale${liveOrders - soldR.length === 1 ? '' : 's'} not matched to a couch yet</span>` : '');
+  trackerSold(); const miss = (RAW._missing || []).filter(x => inR(x.date, R));
+  $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (miss.length && !A.allHist ? ` · <a href="#" id="missLink" style="color:var(--bad)">${miss.length} Sales Log order${miss.length === 1 ? '' : 's'} (${money(miss.reduce((a, x) => a + x.rev, 0))}) not marked sold here</a>` : '');
+  $('missBox').hidden = true;
+  $('missBox').innerHTML = miss.length ? `<table><tr><th>Ordered</th><th>Customer</th><th class="n">Couch $</th><th class="n">Delivery</th><th class="n">Subtotal</th></tr>` +
+    miss.sort((a, b) => a.date - b.date).map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td class="n">${money(x.net)}</td><td class="n">${x.del ? money(x.del) : '–'}</td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('') +
+    `</table><p class="empty" style="font-size:12.5px;margin-top:8px">Find each couch under Couches in stock and tap Sold (use the order date). If it's not in stock, add it with + Used pickup first.</p>` : '';
   $('soldTbl').innerHTML = `<tr><th>Sold</th><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Couch $</th><th class="n hide-m">Delivery</th><th class="n hide-m">Upsells</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
     (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${nameCell(x)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n hide-m">${x.del ? money(x.del) : '–'}</td><td class="n hide-m" title="${esc(x.ups.map(u => u.label).join(', '))}">${x.up ? money(x.up) : '–'}</td><td class="n">${money(x.soldPrice - x.cost + x.up)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
       <td class="n"><button class="btn sm" data-unit="${esc(x.id)}:${x.kind === 'used' ? 'p' : esc(x.uid)}:in">Undo</button></td></tr>`).join('')
@@ -1644,6 +1661,7 @@ document.addEventListener('click', e => {
   inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') save(); if (ev.key === 'Escape') { done = true; render(); } });
   inp.addEventListener('blur', save);
 });
+document.addEventListener('click', e => { if (e.target.id === 'missLink') { e.preventDefault(); $('missBox').hidden = !$('missBox').hidden; } });
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
 let saved = 'sales'; try { saved = localStorage.getItem('bcdTab') || 'sales'; } catch {}
