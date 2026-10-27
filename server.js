@@ -290,6 +290,7 @@ app.post('/api/loads/unit', async (req, res) => {
     u.status = status;
     u.soldPrice = status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
     u.soldDate = status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
+    u.soldAt = status === 'sold' ? (u.soldAt || new Date().toISOString()) : '';
     saleDetails(u, req.body || {}, status);
     await kset(KEYS.loads, loads);
     res.json({ ok: true });
@@ -313,6 +314,7 @@ app.post('/api/purchases/sale', async (req, res) => {
     if (!p) return res.status(404).json({ error: 'Not found' });
     p.status = status === 'sold' ? 'sold' : 'in';
     p.soldPrice = p.status === 'sold' ? Math.max(0, Number(soldPrice) || 0) : 0;
+    p.soldAt = p.status === 'sold' ? (p.soldAt || new Date().toISOString()) : '';
     p.soldDate = p.status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
     saleDetails(p, req.body || {}, p.status);
     await kset(KEYS.purchases, list);
@@ -839,6 +841,33 @@ app.get('/offers/:id/photo/:n', async (req, res) => {
   res.set('Cache-Control', 'private, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
 });
 app.get('/offers/:id', (req, res) => res.redirect('/?offer=' + encodeURIComponent(req.params.id)));
+
+
+// ---------- "Just sold" pop-ups on billyscouches.com (real sales only) ----------
+let recentCache = { at: 0, data: null };
+const cleanCouchName = n => String(n || '')
+  .replace(/\([^)]*\)/g, ' ').replace(/\b(?=[A-Z0-9-]*\d)[A-Z0-9-]{6,}\b/g, ' ')   // drop SKUs / model codes
+  .replace(/\b(sku|item|lot|qty|#)\s*:?\s*\S+/gi, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
+app.options('/public/recent-sales', (req, res) => { offerCors(req, res); res.sendStatus(204); });
+app.get('/public/recent-sales', async (req, res) => {
+  offerCors(req, res);
+  try {
+    if (!recentCache.data || Date.now() - recentCache.at > 10 * 60 * 1000) {
+      const [loads, purchases] = await Promise.all([getLoads(), getPurchases()]);
+      const cutoff = Date.now() - 14 * 864e5, out = [];
+      const add = (name, soldDate, soldAt) => {
+        const at = soldAt ? Date.parse(soldAt) : Math.min(Date.now(), Date.parse(soldDate + 'T12:00:00-05:00'));
+        const title = cleanCouchName(name);
+        if (title.length >= 4 && at > cutoff && at <= Date.now()) out.push({ title, at: new Date(at).toISOString(), exact: !!soldAt });
+      };
+      loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) add(u.name, u.soldDate, u.soldAt); }));
+      purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) add(p.item, p.soldDate, p.soldAt); });
+      out.sort((a, b) => b.at.localeCompare(a.at));
+      recentCache = { at: Date.now(), data: out.slice(0, 20) };
+    }
+    res.set('Cache-Control', 'public, max-age=300').json({ ok: true, sales: recentCache.data });
+  } catch (e) { res.status(500).json({ error: 'unavailable' }); }
+});
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
 function demoData() {
