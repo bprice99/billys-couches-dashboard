@@ -303,6 +303,7 @@ function saleDetails(target, body, status) {
   target.soldDelivery = sold ? Math.max(0, Number(body.delivery) || 0) : 0;
   target.soldUpsells = sold && Array.isArray(body.upsells) ? body.upsells.map(u => ({ label: clean(u.label, 40), price: Math.max(0, Number(u.price) || 0) })).filter(u => u.label && u.price) : [];
   target.soldUpsellTotal = target.soldUpsells.reduce((a, u) => a + u.price, 0);
+  target.soldCustomer = sold ? clean(body.customer, 60) : '';
 }
 
 // Log (or undo) the sale of a used pickup
@@ -844,29 +845,53 @@ app.get('/offers/:id', (req, res) => res.redirect('/?offer=' + encodeURIComponen
 
 
 // ---------- "Just sold" pop-ups on billyscouches.com (real sales only) ----------
-let recentCache = { at: 0, data: null };
+let recentCache = { at: 0, data: null }, recentPhotos = {};
 const cleanCouchName = n => String(n || '')
   .replace(/\([^)]*\)/g, ' ').replace(/\b(?=[A-Z0-9-]*\d)[A-Z0-9-]{6,}\b/g, ' ')   // drop SKUs / model codes
-  .replace(/\b(sku|item|lot|qty|#)\s*:?\s*\S+/gi, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
+  .replace(/\b(sku|item|lot|qty|#)\s*:?\s*\S+/gi, ' ')
+  .replace(/\bLthr\b/gi, 'Leather').replace(/\bPwr\b/gi, 'Power').replace(/\bRecl\b/gi, 'Reclining').replace(/\bFab\b/gi, 'Fabric')
+  .replace(/\bMod\b/gi, 'Modular').replace(/\bSect?\b/gi, 'Sectional').replace(/\bTMV\b/g, 'Thomasville').replace(/\bLTG\b/g, 'Light Gray')
+  .replace(/\b(\d+)\s*PC\b/gi, '$1-Piece').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
 app.options('/public/recent-sales', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.get('/public/recent-sales', async (req, res) => {
   offerCors(req, res);
   try {
-    if (!recentCache.data || Date.now() - recentCache.at > 10 * 60 * 1000) {
-      const [loads, purchases] = await Promise.all([getLoads(), getPurchases()]);
-      const cutoff = Date.now() - 14 * 864e5, out = [];
-      const add = (name, soldDate, soldAt) => {
-        const at = soldAt ? Date.parse(soldAt) : Math.min(Date.now(), Date.parse(soldDate + 'T12:00:00-05:00'));
-        const title = cleanCouchName(name);
-        if (title.length >= 4 && at > cutoff && at <= Date.now()) out.push({ title, at: new Date(at).toISOString(), exact: !!soldAt });
-      };
-      loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) add(u.name, u.soldDate, u.soldAt); }));
-      purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) add(p.item, p.soldDate, p.soldAt); });
-      out.sort((a, b) => b.at.localeCompare(a.at));
-      recentCache = { at: Date.now(), data: out.slice(0, 20) };
-    }
+    await buildRecent();
     res.set('Cache-Control', 'public, max-age=300').json({ ok: true, sales: recentCache.data });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
+});
+async function buildRecent() {
+    if (!recentCache.data || Date.now() - recentCache.at > 10 * 60 * 1000) {
+      const [loads, purchases] = await Promise.all([getLoads(), getPurchases()]);
+      const cutoff = Date.now() - 5 * 864e5, out = [], pidx = await kget('bcd:photos', {}).catch(() => ({}));
+      const shortName = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
+        const f = w[0][0].toUpperCase() + w[0].slice(1).toLowerCase(); return w.length > 1 ? f + ' ' + w[w.length - 1][0].toUpperCase() + '.' : f; };
+      const add = (name, soldDate, soldAt, pkey, cust) => {
+        const at = soldAt ? Date.parse(soldAt) : Math.min(Date.now(), Date.parse(soldDate + 'T12:00:00-05:00'));
+        const title = cleanCouchName(name);
+        if (!(title.length >= 4 && at > cutoff && at <= Date.now())) return;
+        const row = { title, at: new Date(at).toISOString(), exact: !!soldAt };
+        if (cust) row.who = shortName(cust);
+        if (pidx[pkey]) { const t = crypto.createHash('sha1').update(pkey).digest('hex').slice(0, 16); row.photo = `/public/sale-photo/${t}?v=${pidx[pkey]}`; recentPhotos[t] = pkey; }
+        out.push(row);
+      };
+      loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) add(u.name, u.soldDate, u.soldAt, 'u:' + l.id + ':' + u.uid, u.soldCustomer); }));
+      purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) add(p.item, p.soldDate, p.soldAt, 'p:' + p.id, p.soldCustomer); });
+      out.sort((a, b) => b.at.localeCompare(a.at));
+      recentCache = { at: Date.now(), data: out.slice(0, 20) };
+      const keep = new Set(recentCache.data.filter(r => r.photo).map(r => r.photo.split('/').pop().split('?')[0]));
+      Object.keys(recentPhotos).forEach(t => { if (!keep.has(t)) delete recentPhotos[t]; });
+    }
+}
+
+// Photo for a couch in the "Just sold" feed (only couches currently in that feed are reachable).
+app.get('/public/sale-photo/:t', async (req, res) => {
+  try {
+    if (!recentPhotos[req.params.t]) await buildRecent();
+    const key = recentPhotos[req.params.t]; if (!key) return res.sendStatus(404);
+    const m = String(await kget(photoKey(key), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
+    res.set('Cache-Control', 'public, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
+  } catch (e) { res.sendStatus(404); }
 });
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
