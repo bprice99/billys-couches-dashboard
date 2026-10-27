@@ -19,9 +19,10 @@
 <form method="post" action="/login">
   <h1>Billy's Couches</h1>
   <p>Dashboard</p>
+  <input type="hidden" name="next" id="next">
   <input type="password" name="password" placeholder="Password" autofocus required>
   <div class="bad" id="bad">Wrong password. Try again.</div>
   <button type="submit">Log in</button>
 </form>
-<script>if(location.search.indexOf('bad=1')>-1)document.getElementById('bad').style.display='block';</script>
+<script>document.getElementById('next').value=location.pathname+location.search;if(location.search.indexOf('bad=1')>-1)document.getElementById('bad').style.display='block';</script>
 </body></html>
