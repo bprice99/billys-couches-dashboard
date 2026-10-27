@@ -298,6 +298,22 @@ app.post('/api/loads/unit', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Rename a couch (B-Stock unit or used pickup).
+app.post('/api/couch/rename', async (req, res) => {
+  try {
+    const { target, id, uid } = req.body || {}, name = clean(req.body.name, 120);
+    if (!name) return res.status(400).json({ error: 'Name required' });
+    if (target === 'purchase') {
+      const list = await getPurchases(), p = list.find(x => x.id === id); if (!p) return res.status(404).json({ error: 'Not found' });
+      p.item = name; await kset(KEYS.purchases, list);
+    } else {
+      const loads = await getLoads(), u = (loads.find(l => l.id === id) || { units: [] }).units.find(x => x.uid === uid);
+      if (!u) return res.status(404).json({ error: 'Not found' }); u.name = name; await kset(KEYS.loads, loads);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Couch price, delivery fee and upsells recorded when a couch is marked sold.
 function saleDetails(target, body, status) {
   const sold = status === 'sold';
