@@ -879,17 +879,46 @@ async function buildRecent() {
       const cutoff = Date.now() - 5 * 864e5, out = [], pidx = await kget('bcd:photos', {}).catch(() => ({}));
       const shortName = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
         const f = w[0][0].toUpperCase() + w[0].slice(1).toLowerCase(); return w.length > 1 ? f + ' ' + w[w.length - 1][0].toUpperCase() + '.' : f; };
-      const add = (name, soldDate, soldAt, pkey, cust) => {
-        const at = soldAt ? Date.parse(soldAt) : Math.min(Date.now(), Date.parse(soldDate + 'T12:00:00-05:00'));
+      // Sales Log rows: when the customer actually paid (receipt link carries the exact time) and who bought.
+      const log = [];
+      try {
+        const g = await google(false), sh = (g.sales && g.sales.headers) || [], rows = (g.sales && g.sales.rows) || [];
+        const H = sh.map(x => String(x).toLowerCase().trim());
+        const col = (keys, not) => { for (const k of keys) { const i = H.indexOf(k); if (i > -1) return i; }
+          for (const k of keys) { const i = H.findIndex(x => x.includes(k) && !(not || []).some(n => x.includes(n))); if (i > -1) return i; } return -1; };
+        const C = { date: col(['date']), name: col(['customer', 'name'], ['first']), price: col(['couch price', 'price'], ['total', 'sale']), disc: col(['discount']), receipt: col(['receipt']) };
+        const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
+        rows.forEach((r, i) => {
+          const m = String(C.receipt > -1 ? r[C.receipt] : '').match(/receipt\/(\d{13})/), ts = m ? Number(m[1]) : null;
+          const d = ts ? new Date(ts) : new Date(String(r[C.date] || '')); if (isNaN(d)) return;
+          const price = num(r[C.price]), net = price - Math.abs(num(r[C.disc]));
+          log.push({ i, day: d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), ts, name: String(r[C.name] || '').trim(), price, net, used: false });
+        });
+      } catch (e) { console.log('Just sold: Sales Log unavailable', e.message); }
+      const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
+      const findSale = (soldDate, soldPrice, cust) => {
+        const c = String(cust || '').toLowerCase().trim(), last = c.split(/\s+/).pop();
+        const pool = log.filter(l => !l.used && dayDiff(soldDate, l.day) >= -1 && dayDiff(soldDate, l.day) <= 10);
+        const byName = c ? pool.filter(l => l.name.toLowerCase().includes(last)) : [];
+        const byPrice = pool.filter(l => Math.abs(l.price - soldPrice) < 1 || Math.abs(l.net - soldPrice) < 1);
+        const hit = (byName.length ? byName : byPrice).sort((a, b) => Math.abs(dayDiff(soldDate, a.day)) - Math.abs(dayDiff(soldDate, b.day)))[0];
+        if (hit) hit.used = true; return hit || null;
+      };
+      const add = (name, soldDate, soldPrice, pkey, cust) => {
+        const hit = findSale(soldDate, soldPrice, cust);
+        const exact = !!(hit && hit.ts), at = exact ? hit.ts : Math.min(Date.now(), Date.parse((hit ? hit.day : soldDate) + 'T12:00:00-05:00'));
         const title = cleanCouchName(name);
         if (!(title.length >= 4 && at > cutoff && at <= Date.now())) return;
-        const row = { title, at: new Date(at).toISOString(), exact: !!soldAt };
-        if (cust) row.who = shortName(cust);
+        const row = { title, at: new Date(at).toISOString(), exact };
+        const who = shortName(cust || (hit && hit.name)); if (who) row.who = who;
         if (pidx[pkey]) { const t = crypto.createHash('sha1').update(pkey).digest('hex').slice(0, 16); row.photo = `/public/sale-photo/${t}?v=${pidx[pkey]}`; recentPhotos[t] = pkey; }
         out.push(row);
       };
-      loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) add(u.name, u.soldDate, u.soldAt, 'u:' + l.id + ':' + u.uid, u.soldCustomer); }));
-      purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) add(p.item, p.soldDate, p.soldAt, 'p:' + p.id, p.soldCustomer); });
+      const sold = [];
+      loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) sold.push([u.name, u.soldDate, u.soldPrice, 'u:' + l.id + ':' + u.uid, u.soldCustomer]); }));
+      purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) sold.push([p.item, p.soldDate, p.soldPrice, 'p:' + p.id, p.soldCustomer]); });
+      sold.sort((a, b) => (b[4] ? 1 : 0) - (a[4] ? 1 : 0));   // couches with a customer name claim their sale first
+      sold.forEach(x => add(...x));
       out.sort((a, b) => b.at.localeCompare(a.at));
       recentCache = { at: Date.now(), data: out.slice(0, 20) };
       const keep = new Set(recentCache.data.filter(r => r.photo).map(r => r.photo.split('/').pop().split('?')[0]));
