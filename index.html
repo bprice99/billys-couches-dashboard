@@ -689,9 +689,17 @@ function shrinkPhoto(file){
 }
 
 // ---------- sales tracker ----------
+function trackerSold(){
+  const out = [], add = (sold, price, del, up, name) => { if (!sold) return; const rev = (Number(price) || 0) + (Number(del) || 0) + (Number(up) || 0);
+    if (rev > 0) out.push({ date: sold, rev, del: Number(del) || 0, type: del > 0 ? 'Delivery' : 'Pickup', source: 'Sales Tracker', name, live: true }); };
+  RAW.loads.forEach(l => l.units.forEach(u => { if (u.status === 'sold') add(u.sold, u.soldPrice, u.soldDelivery, u.soldUpsellTotal, u.name); }));
+  RAW.purchases.forEach(p => { if (p.status === 'sold') add(p.sold, p.soldPrice, p.soldDelivery, p.soldUpsellTotal, p.item); });
+  return out;
+}
 function period(R){
   const hs = RAW.hSales.filter(x => inR(x.date, R) && isHistDay(x.date));
-  const s = hs.filter(x => x.rev > 0).concat(RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)));
+  // Sales = couches marked Sold here (couch price + delivery + upsells), not the Google Sales Log.
+  const s = hs.filter(x => x.rev > 0).concat(trackerSold().filter(x => inR(x.date, R) && !isHistDay(x.date)));
   const p = hs.filter(x => x.cost > 0).map(x => ({ date: x.date, source: 'Cost of couches sold', item: x.name, units: 1, cost: x.cost }))
     .concat(RAW.purchases.filter(x => inR(x.date, R) && !isHistDay(x.date)))
     .concat(RAW.loads.filter(l => inR(l.arrived, R) && !isHistDay(l.arrived)).map(l => ({
@@ -730,9 +738,9 @@ function renderSales(){
   // ----- every couch you own: B-Stock units + used pickups -----
   const today0 = day0(new Date());
   const stock = [];
-  RAW.loads.forEach(l => l.units.forEach(u => stock.push({ kind: 'bstock', id: l.id, uid: u.uid, name: u.name, src: 'B-Stock · ' + l.loadId, cost: u.cost, comp: u.comp || 0,
+  RAW.loads.forEach(l => l.units.forEach(u => stock.push({ kind: 'bstock', id: l.id, uid: u.uid, name: u.name, src: 'B-Stock · ' + l.loadId + (l.arrived ? ' · landed ' + fmtD(l.arrived) : ''), cost: u.cost, comp: u.comp || 0,
     got: l.arrived, status: u.status, soldPrice: u.soldPrice, sold: u.sold, del: Number(u.soldDelivery) || 0, up: Number(u.soldUpsellTotal) || 0, ups: u.soldUpsells || [] })));
-  RAW.purchases.forEach(p => stock.push({ kind: 'used', id: p.id, uid: '', name: p.item || 'Used couch', src: 'Used · ' + (p.source || 'Other'), cost: p.cost, comp: 0,
+  RAW.purchases.forEach(p => stock.push({ kind: 'used', id: p.id, uid: '', name: p.item || 'Used couch', src: 'Used · ' + (p.source || 'Other') + (p.date ? ' · picked up ' + fmtD(p.date) : ''), cost: p.cost, comp: 0,
     got: p.date, status: p.status === 'sold' ? 'sold' : 'in', soldPrice: p.soldPrice, sold: p.sold, del: p.soldDelivery || 0, up: p.soldUpsellTotal || 0, ups: p.soldUpsells || [] }));
   const inStock = stock.filter(x => x.status === 'in').map(x => ({ ...x, days: dayDiff(x.got, today0) })).sort((a, b2) => b2.days - a.days);
   const f = SALES_FILTER;
@@ -740,15 +748,15 @@ function renderSales(){
   const aged = inStock.filter(x => x.days >= 21).length;
   $('stockNote').textContent = `${inStock.length} couches · ${money(inStock.reduce((a, x) => a + x.cost, 0))} cost on the floor${aged ? ' · ' + aged + ' over 21 days' : ''}`;
   $('stockTbl').innerHTML = `<tr><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
-    (shown.length ? shown.map(x => `<tr><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
+    (shown.length ? shown.map(x => `<tr><td style="width:64px">${photoCell(x)}</td><td>${nameCell(x)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
       <td class="n hide-m">${x.comp ? money(x.comp) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td>
       <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button>` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
       : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
   const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
-  const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = A.live.length;
+  const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)).length;
   $('soldNote').innerHTML = `${soldR.length} marked sold · ${money(sRev - sCost)} profit` + (liveOrders > soldR.length && !A.allHist ? ` · <span style="color:var(--bad)">${liveOrders - soldR.length} order-app sale${liveOrders - soldR.length === 1 ? '' : 's'} not matched to a couch yet</span>` : '');
   $('soldTbl').innerHTML = `<tr><th>Sold</th><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n">Couch $</th><th class="n hide-m">Delivery</th><th class="n hide-m">Upsells</th><th class="n">Profit</th><th class="n hide-m">Days</th><th></th></tr>` +
-    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${esc(x.name)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n hide-m">${x.del ? money(x.del) : '–'}</td><td class="n hide-m" title="${esc(x.ups.map(u => u.label).join(', '))}">${x.up ? money(x.up) : '–'}</td><td class="n">${money(x.soldPrice - x.cost + x.up)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
+    (soldR.length ? soldR.map(x => `<tr><td>${fmtD(x.sold)}</td><td style="width:64px">${photoCell(x)}</td><td>${nameCell(x)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td><td class="n"><b>${money(x.soldPrice)}</b></td><td class="n hide-m">${x.del ? money(x.del) : '–'}</td><td class="n hide-m" title="${esc(x.ups.map(u => u.label).join(', '))}">${x.up ? money(x.up) : '–'}</td><td class="n">${money(x.soldPrice - x.cost + x.up)}</td><td class="n hide-m">${dayDiff(x.got, x.sold)}</td>
       <td class="n"><button class="btn sm" data-unit="${esc(x.id)}:${x.kind === 'used' ? 'p' : esc(x.uid)}:in">Undo</button></td></tr>`).join('')
       : `<tr><td colspan="11" class="empty">No couches marked sold in this range.</td></tr>`);
 
@@ -1616,6 +1624,25 @@ document.addEventListener('click', async e => {
     text: r.querySelector('[data-g=text]').value.trim(), done: r.querySelector('[data-g=done]').checked }));
   try { await post('/api/payroll/goals', { name: k, goals }); PAY.goals = PAY.goals || {}; PAY.goals[k] = goals.filter(g => g.text || (g.metric !== 'custom' && Number(g.target))); toast('Goals saved for ' + k[0].toUpperCase() + k.slice(1)); }
   catch (err) { toast(err.message); }
+});
+
+// ---------- rename a couch (tap the name) ----------
+const nameCell = x => `<span class="cname" data-rename="${x.kind === 'used' ? 'purchase' : 'unit'}:${esc(x.id)}:${esc(x.uid)}" title="Tap to rename">${esc(x.name)} <span style="color:var(--muted);font-size:12px">&#9998;</span></span>`;
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-rename]'); if (!el || el.querySelector('input')) return;
+  const [target, id, uid] = el.dataset.rename.split(':'), old = el.textContent.replace('✎', '').trim();
+  el.innerHTML = `<input value="${esc(old)}" style="width:100%;min-width:160px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit">`;
+  const inp = el.querySelector('input'); inp.focus(); inp.select();
+  let done = false;
+  const save = async () => { if (done) return; done = true; const name = inp.value.trim();
+    if (!name || name === old) return render();
+    try { await post('/api/couch/rename', { target, id, uid, name });
+      if (target === 'purchase') { const p = RAW.purchases.find(x => x.id === id); if (p) p.item = name; }
+      else { const l = RAW.loads.find(x => x.id === id), u = l && l.units.find(x => x.uid === uid); if (u) u.name = name; }
+      toast('Renamed'); } catch (err) { toast(err.message); }
+    render(); };
+  inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') save(); if (ev.key === 'Escape') { done = true; render(); } });
+  inp.addEventListener('blur', save);
 });
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
