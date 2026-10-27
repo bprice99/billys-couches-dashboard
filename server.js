@@ -48,13 +48,13 @@ function authed(req) {
   const c = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('bcd='));
   return !!CFG.PASSWORD && !!c && c.slice(4) === SECRET;
 }
+const safeNext = n => /^\/[\w\/?=&-]*$/.test(n || '') && !String(n).startsWith('//') ? String(n).replace(/[?&]bad=1/, '') : '/';
 app.post('/login', (req, res) => {
   if (CFG.PASSWORD && req.body.password === CFG.PASSWORD) {
     res.setHeader('Set-Cookie', `bcd=${SECRET}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 60}; Secure`);
-    const next = /^\/[a-z0-9\/_-]*$/i.test(req.body.next || '') ? req.body.next : '/';
-    return res.redirect(next);
+    return res.redirect(safeNext(req.body.next));
   }
-  res.redirect((/^\/[a-z0-9\/_-]*$/i.test(req.body.next || '') ? req.body.next : '/') + '?bad=1');
+  const n = safeNext(req.body.next); res.redirect(n + (n.includes('?') ? '&' : '?') + 'bad=1');
 });
 app.get('/logout', (req, res) => { res.setHeader('Set-Cookie', 'bcd=; Path=/; Max-Age=0'); res.redirect('/'); });
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
@@ -815,28 +815,21 @@ app.post('/public/couch-offer', async (req, res) => {
     const list = await kget('bcd:offers', []);
     list.unshift(offer); await kset('bcd:offers', list.slice(0, 500));
     const host = (process.env.PUBLIC_URL || 'https://hq.billyscouches.com').replace(/\/$/, '');
-    textAlert(`🛋️ New couch offer\n${offer.brand} · asking ${offer.asking || '?'}\n${offer.issues.length ? 'Issues: ' + offer.issues.join(', ') + '\n' : ''}${first} ${last} · ${phone}\n${offer.city || offer.zip}\n${photos.length} photo${photos.length > 1 ? 's' : ''}: ${host}/offers/${id}`).catch(e => console.error('text failed', e.message));
+    textAlert(`🛋️ New couch offer\n${offer.brand} · asking ${offer.asking || '?'}\n${offer.issues.length ? 'Issues: ' + offer.issues.join(', ') + '\n' : ''}${first} ${last} · ${phone}\n${offer.city || offer.zip}\n${photos.length} photo${photos.length > 1 ? 's' : ''}: ${host}/?offer=${id}`).catch(e => console.error('text failed', e.message));
     res.json({ ok: true });
   } catch (e) { console.error('offer failed', e); res.status(500).json({ error: 'Something went wrong. Please call (314) 899-7503.' }); }
 });
 const OFFER_STATUS = { new: 'New', contacted: 'Contacted', scheduled: 'Scheduled', bought: 'Bought', passed: 'Passed' };
-const offerPage = (title, body) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escH(title)}</title><style>*{box-sizing:border-box}body{margin:0;background:#f4eee8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#1a1716}
-.w{max-width:760px;margin:0 auto;padding:16px}a{color:#a5504a}h1{font-size:22px;margin:8px 0 14px}.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #e4dad1}
-.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #f0e8e0;font-size:15px}.row:first-child{border-top:0}.row span{color:#6b625c}.row b{text-align:right}
-.ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.ph img{width:100%;border-radius:10px;display:block}
-.btns{display:flex;gap:8px;flex-wrap:wrap}.b{flex:1;text-align:center;padding:13px;border-radius:12px;background:#a5504a;color:#fff!important;text-decoration:none;font-weight:700;border:0;font-size:15px;cursor:pointer}
-.b.g{background:#1a1716}.st{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da}.st.new{background:#a5504a;color:#fff}
-.li{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit}.li img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex:none}
-select{padding:12px;border-radius:12px;border:1px solid #d9d0c5;font-size:15px;flex:1}</style></head><body><div class="w">${body}</div></body></html>`;
-app.get(['/offers', '/offers/:id'], (req, res, next) => {
-  if (!authed(req)) return res.send(fs.readFileSync(path.join(__dirname, 'login.html'), 'utf8').replace('<form method="post" action="/login">', `<form method="post" action="/login"><input type="hidden" name="next" value="${escH(req.path)}">`));
-  next();
+app.get('/offers', (req, res) => res.redirect('/?tab=offers'));
+app.get('/api/offers', async (req, res) => {
+  try { res.json({ ok: true, offers: await kget('bcd:offers', []) }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.get('/offers', async (req, res) => {
-  const list = await kget('bcd:offers', []);
-  res.send(offerPage('Couch offers', `<p><a href="/">← Billy's HQ</a></p><h1>Couch offers <small style="font-weight:500;color:#6b625c">${list.filter(o => o.status === 'new').length} new</small></h1>` +
-    (list.length ? list.map(o => `<div class="card"><a class="li" href="/offers/${o.id}"><img src="/offers/${o.id}/photo/0" loading="lazy" alt=""><div style="flex:1"><b>${escH(o.brand)}</b> · ${escH(o.asking || '?')}<br><span style="color:#6b625c;font-size:14px">${escH(o.firstName)} ${escH(o.lastName)} · ${escH(o.city || o.zip)} · ${new Date(o.at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })}</span></div><span class="st ${o.status}">${OFFER_STATUS[o.status] || o.status}</span></a></div>`).join('') : '<p>No submissions yet.</p>')));
+app.post('/api/offers/status', async (req, res) => {
+  try {
+    const list = await kget('bcd:offers', []), o = list.find(x => x.id === req.body.id);
+    if (!o || !OFFER_STATUS[req.body.status]) return res.status(400).json({ error: 'Bad offer or status' });
+    o.status = req.body.status; await kset('bcd:offers', list); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/offers/:id/photo/:n', async (req, res) => {
   if (!authed(req)) return res.sendStatus(401);
@@ -845,25 +838,7 @@ app.get('/offers/:id/photo/:n', async (req, res) => {
   const m = String(d).match(/^data:(image\/\w+);base64,(.+)$/);
   res.set('Cache-Control', 'private, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
 });
-app.get('/offers/:id', async (req, res) => {
-  const o = (await kget('bcd:offers', [])).find(x => x.id === req.params.id);
-  if (!o) return res.status(404).send(offerPage('Not found', '<p><a href="/offers">← All offers</a></p><h1>Offer not found</h1>'));
-  const tel = o.phone.replace(/[^\d+]/g, ''), addr = [o.street, o.street2, o.city, o.state, o.zip].filter(Boolean).join(', ');
-  const R = (k, v) => v ? `<div class="row"><span>${k}</span><b>${escH(v)}</b></div>` : '';
-  res.send(offerPage('Offer · ' + o.firstName, `<p><a href="/offers">← All offers</a></p>
-  <h1>${escH(o.brand)} · ${escH(o.asking || 'no price')} <span class="st ${o.status}">${OFFER_STATUS[o.status] || o.status}</span></h1>
-  <div class="card ph">${Array.from({ length: o.photoCount }, (_, i) => `<a href="/offers/${o.id}/photo/${i}" target="_blank"><img src="/offers/${o.id}/photo/${i}" alt=""></a>`).join('')}</div>
-  <div class="card">${R('Issues', o.issues.length ? o.issues.join(', ') : 'None checked')}${R('Details', o.details)}${R('Can help load', o.helpLoad)}${R('Heard about us', o.heard)}${R('Submitted', new Date(o.at).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' }))}</div>
-  <div class="card">${R('Name', o.firstName + ' ' + o.lastName)}${R('Phone', o.phone)}${R('Email', o.email)}${R('Address', addr)}</div>
-  <div class="card btns"><a class="b" href="sms:${tel}">Text</a><a class="b" href="tel:${tel}">Call</a><a class="b g" target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(addr)}">Map</a></div>
-  <form class="card btns" method="post" action="/offers/${o.id}/status"><select name="status">${Object.entries(OFFER_STATUS).map(([k, v]) => `<option value="${k}" ${o.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select><button class="b g">Save status</button></form>`));
-});
-app.post('/offers/:id/status', async (req, res) => {
-  if (!authed(req)) return res.sendStatus(401);
-  const list = await kget('bcd:offers', []), o = list.find(x => x.id === req.params.id);
-  if (o && OFFER_STATUS[req.body.status]) { o.status = req.body.status; await kset('bcd:offers', list); }
-  res.redirect('/offers/' + req.params.id);
-});
+app.get('/offers/:id', (req, res) => res.redirect('/?offer=' + encodeURIComponent(req.params.id)));
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
 function demoData() {
