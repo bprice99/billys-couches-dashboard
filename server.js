@@ -11,6 +11,8 @@
 //   APIFY_TOKEN                 Competitor Ads tab (same token the old Ad Tracker used)
 //   ADS_REDIS_URL / ADS_REDIS_TOKEN  optional: the old Ad Tracker's Upstash, to keep its ad history
 //   PLAID_CLIENT_ID / PLAID_SECRET / PLAID_ENV   Daily Cash bank balances (PLAID_ENV = production or sandbox)
+//   TEXTMAGIC_USERNAME / TEXTMAGIC_API_KEY   texts you each Cash for Your Couch submission
+//   OFFER_ALERT_PHONES          optional: who gets the text, comma separated (default 13148997503)
 //   STRIPE_SECRET_KEY           restricted key with Balance: Read (Cash tab pulls the Stripe balance)
 // Without SHEETS_API_URL it runs on demo data.
 
@@ -23,6 +25,7 @@ const compression = require('compression');
 const app = express();
 app.use(compression());
 app.use('/api/photo', express.json({ limit: '4mb' }));
+app.use('/public/couch-offer', express.json({ limit: '15mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -48,9 +51,10 @@ function authed(req) {
 app.post('/login', (req, res) => {
   if (CFG.PASSWORD && req.body.password === CFG.PASSWORD) {
     res.setHeader('Set-Cookie', `bcd=${SECRET}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 60}; Secure`);
-    return res.redirect('/');
+    const next = /^\/[a-z0-9\/_-]*$/i.test(req.body.next || '') ? req.body.next : '/';
+    return res.redirect(next);
   }
-  res.redirect('/?bad=1');
+  res.redirect((/^\/[a-z0-9\/_-]*$/i.test(req.body.next || '') ? req.body.next : '/') + '?bad=1');
 });
 app.get('/logout', (req, res) => { res.setHeader('Set-Cookie', 'bcd=; Path=/; Max-Age=0'); res.redirect('/'); });
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
@@ -59,6 +63,7 @@ const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
 app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
 ['icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
+
 
 // ---------- storage: Upstash Redis, or a local file as fallback ----------
 const FILE = path.join(__dirname, 'data', 'store.json');
@@ -760,6 +765,105 @@ async function autoCashSnapshot() {
   await kset(KEYS.cash, snaps.concat(snap).sort((a, b) => a.date.localeCompare(b.date)));
 }
 setInterval(() => { if (ctHour() === 7) autoCashSnapshot().catch(e => console.error('Auto cash failed:', e.message)); }, 15 * 60 * 1000);
+
+
+// ---------- Cash for Your Couch (public form on billyscouches.com) ----------
+const OFFER_ORIGINS = ['https://www.billyscouches.com', 'https://billyscouches.com'];
+const offerHits = new Map();
+const escH = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function offerCors(req, res) {
+  const o = req.headers.origin || '';
+  if (OFFER_ORIGINS.includes(o) || /\.squarespace\.com$/.test(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+async function textAlert(msg) {
+  const user = (process.env.TEXTMAGIC_USERNAME || '').trim(), key = (process.env.TEXTMAGIC_API_KEY || '').trim();
+  const phones = (process.env.OFFER_ALERT_PHONES || '13148997503').replace(/[^\d,]/g, '');
+  if (!user || !key) { console.log('[offer text skipped: add TEXTMAGIC_USERNAME + TEXTMAGIC_API_KEY]\n' + msg); return false; }
+  const r = await fetch('https://rest.textmagic.com/api/v2/messages', {
+    method: 'POST', headers: { 'X-TM-Username': user, 'X-TM-Key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: msg, phones }),
+  });
+  if (!r.ok) { console.error('TextMagic', r.status, await r.text()); return false; }
+  return true;
+}
+app.options('/public/couch-offer', (req, res) => { offerCors(req, res); res.sendStatus(204); });
+app.post('/public/couch-offer', async (req, res) => {
+  offerCors(req, res);
+  try {
+    const d = req.body || {};
+    if (d.website) return res.json({ ok: true });               // honeypot: bots fill hidden fields
+    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+    const now = Date.now(), hits = (offerHits.get(ip) || []).filter(t => now - t < 10 * 60 * 1000);
+    if (hits.length >= 5) return res.status(429).json({ error: 'Too many submissions. Please call (314) 899-7503.' });
+    offerHits.set(ip, hits.concat(now));
+    const first = clean(d.firstName, 40), last = clean(d.lastName, 40), phone = clean(d.phone, 30);
+    const photos = (Array.isArray(d.photos) ? d.photos : []).filter(x => /^data:image\/(jpeg|png|webp);base64,/.test(x) && x.length < 1400000).slice(0, 10);
+    if (!first || phone.replace(/\D/g, '').length < 10 || !clean(d.brand) || !photos.length || !clean(d.street) || !clean(d.heard))
+      return res.status(400).json({ error: 'Please fill in every required field and add at least one photo.' });
+    const id = now.toString(36) + crypto.randomBytes(3).toString('hex');
+    const offer = {
+      id, at: new Date().toISOString(), status: 'new',
+      brand: clean(d.brand, 60), issues: (Array.isArray(d.issues) ? d.issues : []).map(x => clean(x, 40)).slice(0, 10),
+      details: clean(d.details, 1000), asking: clean(d.asking, 60), helpLoad: clean(d.helpLoad, 5),
+      firstName: first, lastName: last, phone, email: clean(d.email, 120),
+      street: clean(d.street, 120), street2: clean(d.street2, 80), city: clean(d.city, 60), state: clean(d.state, 30), zip: clean(d.zip, 12),
+      heard: clean(d.heard, 80), photoCount: photos.length,
+    };
+    for (let i = 0; i < photos.length; i++) await kset(`bcd:offerphoto:${id}:${i}`, photos[i]);
+    const list = await kget('bcd:offers', []);
+    list.unshift(offer); await kset('bcd:offers', list.slice(0, 500));
+    const host = (process.env.PUBLIC_URL || 'https://hq.billyscouches.com').replace(/\/$/, '');
+    textAlert(`🛋️ New couch offer\n${offer.brand} · asking ${offer.asking || '?'}\n${offer.issues.length ? 'Issues: ' + offer.issues.join(', ') + '\n' : ''}${first} ${last} · ${phone}\n${offer.city || offer.zip}\n${photos.length} photo${photos.length > 1 ? 's' : ''}: ${host}/offers/${id}`).catch(e => console.error('text failed', e.message));
+    res.json({ ok: true });
+  } catch (e) { console.error('offer failed', e); res.status(500).json({ error: 'Something went wrong. Please call (314) 899-7503.' }); }
+});
+const OFFER_STATUS = { new: 'New', contacted: 'Contacted', scheduled: 'Scheduled', bought: 'Bought', passed: 'Passed' };
+const offerPage = (title, body) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escH(title)}</title><style>*{box-sizing:border-box}body{margin:0;background:#f4eee8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#1a1716}
+.w{max-width:760px;margin:0 auto;padding:16px}a{color:#a5504a}h1{font-size:22px;margin:8px 0 14px}.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #e4dad1}
+.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #f0e8e0;font-size:15px}.row:first-child{border-top:0}.row span{color:#6b625c}.row b{text-align:right}
+.ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.ph img{width:100%;border-radius:10px;display:block}
+.btns{display:flex;gap:8px;flex-wrap:wrap}.b{flex:1;text-align:center;padding:13px;border-radius:12px;background:#a5504a;color:#fff!important;text-decoration:none;font-weight:700;border:0;font-size:15px;cursor:pointer}
+.b.g{background:#1a1716}.st{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da}.st.new{background:#a5504a;color:#fff}
+.li{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit}.li img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex:none}
+select{padding:12px;border-radius:12px;border:1px solid #d9d0c5;font-size:15px;flex:1}</style></head><body><div class="w">${body}</div></body></html>`;
+app.get(['/offers', '/offers/:id'], (req, res, next) => {
+  if (!authed(req)) return res.send(fs.readFileSync(path.join(__dirname, 'login.html'), 'utf8').replace('<form method="post" action="/login">', `<form method="post" action="/login"><input type="hidden" name="next" value="${escH(req.path)}">`));
+  next();
+});
+app.get('/offers', async (req, res) => {
+  const list = await kget('bcd:offers', []);
+  res.send(offerPage('Couch offers', `<p><a href="/">← Billy's HQ</a></p><h1>Couch offers <small style="font-weight:500;color:#6b625c">${list.filter(o => o.status === 'new').length} new</small></h1>` +
+    (list.length ? list.map(o => `<div class="card"><a class="li" href="/offers/${o.id}"><img src="/offers/${o.id}/photo/0" loading="lazy" alt=""><div style="flex:1"><b>${escH(o.brand)}</b> · ${escH(o.asking || '?')}<br><span style="color:#6b625c;font-size:14px">${escH(o.firstName)} ${escH(o.lastName)} · ${escH(o.city || o.zip)} · ${new Date(o.at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })}</span></div><span class="st ${o.status}">${OFFER_STATUS[o.status] || o.status}</span></a></div>`).join('') : '<p>No submissions yet.</p>')));
+});
+app.get('/offers/:id/photo/:n', async (req, res) => {
+  if (!authed(req)) return res.sendStatus(401);
+  const d = await kget(`bcd:offerphoto:${req.params.id}:${Number(req.params.n) || 0}`, null);
+  if (!d) return res.sendStatus(404);
+  const m = String(d).match(/^data:(image\/\w+);base64,(.+)$/);
+  res.set('Cache-Control', 'private, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
+});
+app.get('/offers/:id', async (req, res) => {
+  const o = (await kget('bcd:offers', [])).find(x => x.id === req.params.id);
+  if (!o) return res.status(404).send(offerPage('Not found', '<p><a href="/offers">← All offers</a></p><h1>Offer not found</h1>'));
+  const tel = o.phone.replace(/[^\d+]/g, ''), addr = [o.street, o.street2, o.city, o.state, o.zip].filter(Boolean).join(', ');
+  const R = (k, v) => v ? `<div class="row"><span>${k}</span><b>${escH(v)}</b></div>` : '';
+  res.send(offerPage('Offer · ' + o.firstName, `<p><a href="/offers">← All offers</a></p>
+  <h1>${escH(o.brand)} · ${escH(o.asking || 'no price')} <span class="st ${o.status}">${OFFER_STATUS[o.status] || o.status}</span></h1>
+  <div class="card ph">${Array.from({ length: o.photoCount }, (_, i) => `<a href="/offers/${o.id}/photo/${i}" target="_blank"><img src="/offers/${o.id}/photo/${i}" alt=""></a>`).join('')}</div>
+  <div class="card">${R('Issues', o.issues.length ? o.issues.join(', ') : 'None checked')}${R('Details', o.details)}${R('Can help load', o.helpLoad)}${R('Heard about us', o.heard)}${R('Submitted', new Date(o.at).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'medium', timeStyle: 'short' }))}</div>
+  <div class="card">${R('Name', o.firstName + ' ' + o.lastName)}${R('Phone', o.phone)}${R('Email', o.email)}${R('Address', addr)}</div>
+  <div class="card btns"><a class="b" href="sms:${tel}">Text</a><a class="b" href="tel:${tel}">Call</a><a class="b g" target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(addr)}">Map</a></div>
+  <form class="card btns" method="post" action="/offers/${o.id}/status"><select name="status">${Object.entries(OFFER_STATUS).map(([k, v]) => `<option value="${k}" ${o.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select><button class="b g">Save status</button></form>`));
+});
+app.post('/offers/:id/status', async (req, res) => {
+  if (!authed(req)) return res.sendStatus(401);
+  const list = await kget('bcd:offers', []), o = list.find(x => x.id === req.params.id);
+  if (o && OFFER_STATUS[req.body.status]) { o.status = req.body.status; await kset('bcd:offers', list); }
+  res.redirect('/offers/' + req.params.id);
+});
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
 function demoData() {
