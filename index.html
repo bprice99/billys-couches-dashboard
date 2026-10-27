@@ -256,6 +256,8 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
         <div class="card"><h2>Work Log entries this week</h2><div style="overflow-x:auto"><table id="payLog"></table></div></div>
         <div class="card"><h2 id="payTrendTitle">Last 8 weeks</h2><div style="overflow-x:auto"><table id="payTrend"></table></div></div>
       </div>
+      <div class="card"><h2>Team goals <small>each person sees theirs on the scorecard after entering their PIN</small></h2><div id="goalEditor"></div>
+        <p class="empty" style="margin-top:10px;font-size:12.5px">Number goals (hours, deep cleans, showings) track themselves from the Work Log each week. Custom goals are a checkbox you tick when they hit it.</p></div>
     </section>
 
     <!-- SALES & SOURCING -->
@@ -981,6 +983,7 @@ function venmoBtn(l, W){
 }
 function renderPayroll(){
   if (!PAY) return loadPayroll();
+  setTimeout(renderGoalEditor, 0);
   const R = getR('payroll'), W = payRange(R), P = payRange(prevRange(R)), vs = vsLabel(R);
   const paidAt = W.single ? weekPaid(W.wkey) : '';
   $('payWarn').hidden = !PAY.error; $('payWarn').textContent = PAY.error || '';
@@ -1591,6 +1594,28 @@ document.addEventListener('change', async e => {
   try { await post('/api/offers/status', { id, status }); const o = OFFERS.find(x => x.id === id); if (o) o.status = status;
     const n = OFFERS.filter(x => x.status === 'new').length; $('offerBadge').hidden = !n; $('offerBadge').textContent = n;
     toast('Marked ' + OSTATUS[status]); renderOffers(); } catch (err) { toast(err.message); }
+});
+
+// ---------- team goals (shown on the scorecard "My pay") ----------
+const GMET = { custom: 'Custom (checkbox)', hours: 'Hours this week', deep: 'Deep cleans this week', sold: 'Showings sold this week', shows: 'Showings hosted this week', days: 'Days worked this week' };
+function renderGoalEditor(){
+  if (!PAY || !$('goalEditor') || $('goalEditor').contains(document.activeElement)) return;
+  const names = Object.keys(PAY.rates || {}), G = PAY.goals || {};
+  const gRow = (g, i) => `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0" data-grow>
+      <select data-g="metric" style="flex:1;min-width:150px">${Object.entries(GMET).map(([k, v]) => `<option value="${k}" ${g.metric === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <input data-g="target" type="number" min="0" step="0.5" placeholder="Target" value="${g.target || ''}" style="width:90px">
+      <input data-g="text" placeholder="Goal (e.g. Run 3 showings solo)" value="${esc(g.text || '')}" style="flex:2;min-width:180px">
+      <label class="chk" style="margin:0"><input type="checkbox" data-g="done" ${g.done ? 'checked' : ''}> Hit</label></div>`;
+  $('goalEditor').innerHTML = names.map(k => { const list = (G[k] || []).slice(0, 3); while (list.length < 3) list.push({ metric: 'custom' });
+    return `<div style="border-top:1px solid var(--line);padding:10px 0" data-gp="${k}"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(k[0].toUpperCase() + k.slice(1))}</b><button class="btn sm p" data-gsave="${k}">Save</button></div>${list.map(gRow).join('')}</div>`; }).join('');
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-gsave]'); if (!b) return;
+  const k = b.dataset.gsave, box = document.querySelector(`[data-gp="${k}"]`);
+  const goals = [...box.querySelectorAll('[data-grow]')].map(r => ({ metric: r.querySelector('[data-g=metric]').value, target: r.querySelector('[data-g=target]').value,
+    text: r.querySelector('[data-g=text]').value.trim(), done: r.querySelector('[data-g=done]').checked }));
+  try { await post('/api/payroll/goals', { name: k, goals }); PAY.goals = PAY.goals || {}; PAY.goals[k] = goals.filter(g => g.text || (g.metric !== 'custom' && Number(g.target))); toast('Goals saved for ' + k[0].toUpperCase() + k.slice(1)); }
+  catch (err) { toast(err.message); }
 });
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
