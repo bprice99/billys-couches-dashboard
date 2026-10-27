@@ -13,6 +13,7 @@
 //   PLAID_CLIENT_ID / PLAID_SECRET / PLAID_ENV   Daily Cash bank balances (PLAID_ENV = production or sandbox)
 //   TEXTMAGIC_USERNAME / TEXTMAGIC_API_KEY   texts you each Cash for Your Couch submission
 //   OFFER_ALERT_PHONES          optional: who gets the text, comma separated (default 13148997503)
+//   TEAM_PAY_KEY                shared secret the team scorecard uses to read each person's weekly pay
 //   STRIPE_SECRET_KEY           restricted key with Balance: Read (Cash tab pulls the Stripe balance)
 // Without SHEETS_API_URL it runs on demo data.
 
@@ -409,8 +410,20 @@ app.get('/api/payroll', async (req, res) => {
   try {
     let log;
     try { log = await workLog(req.query.fresh === '1'); } catch (e) { log = { entries: [], fieldsSeen: {}, error: e.message }; }
-    const [rates, adj, paid] = await Promise.all([kget(KEYS.rates, {}), kget(KEYS.adj, {}), kget(KEYS.paid, {})]);
-    res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid });
+    const [rates, adj, paid, goals] = await Promise.all([kget(KEYS.rates, {}), kget(KEYS.adj, {}), kget(KEYS.paid, {}), kget('bcd:teamGoals', {})]);
+    res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid, goals });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Personal goals each team member sees on the scorecard after entering their PIN.
+const GOAL_METRICS = ['custom', 'hours', 'deep', 'sold', 'shows', 'days'];
+app.post('/api/payroll/goals', async (req, res) => {
+  try {
+    const key = lc(clean(req.body.name, 40)).split(' ')[0]; if (!key) return res.status(400).json({ error: 'Name required' });
+    const list = (Array.isArray(req.body.goals) ? req.body.goals : []).map(g => ({
+      text: clean(g.text, 120), metric: GOAL_METRICS.includes(g.metric) ? g.metric : 'custom', target: Math.max(0, Number(g.target) || 0), done: !!g.done,
+    })).filter(g => g.text || (g.metric !== 'custom' && g.target)).slice(0, 3);
+    const all = await kget('bcd:teamGoals', {}); all[key] = list; await kset('bcd:teamGoals', all);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/payroll/rate', async (req, res) => {
@@ -892,6 +905,49 @@ app.get('/public/sale-photo/:t', async (req, res) => {
     const m = String(await kget(photoKey(key), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
     res.set('Cache-Control', 'public, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
   } catch (e) { res.sendStatus(404); }
+});
+
+
+// ---------- weekly pay for the team scorecard ("My pay") ----------
+// Same math as the Payroll tab: hours x rate + $20 per showing sold + $20 once deep cleans hit 4 + adjustments.
+// Tips are shown but not added (customers tip the team directly). Protected by TEAM_PAY_KEY.
+const ctDate = d => d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+function weekBounds(offset) {
+  const t = new Date(ctDate(new Date()) + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7) + 7 * offset);
+  const sun = new Date(t); sun.setUTCDate(sun.getUTCDate() + 6);
+  return { mon: t.toISOString().slice(0, 10), sun: sun.toISOString().slice(0, 10) };
+}
+app.get('/public/team-pay', async (req, res) => {
+  const key = (process.env.TEAM_PAY_KEY || '').trim();
+  if (!key || req.query.key !== key) return res.status(401).json({ error: 'bad key' });
+  try {
+    const log = await workLog(false);
+    const [rates0, adj, paid, goals] = await Promise.all([kget(KEYS.rates, {}), kget(KEYS.adj, {}), kget(KEYS.paid, {}), kget('bcd:teamGoals', {})]);
+    const rates = { ...DEFAULT_RATES, ...rates0 };
+    const fname = n => String(n || '').trim().split(/\s+/)[0] || 'Unknown';
+    const pk = n => fname(n).toLowerCase().replace(/^gunarr$/, 'gunnarr');
+    const week = offset => {
+      const W = weekBounds(offset), people = {};
+      (log.entries || []).filter(e => e.date >= W.mon && e.date <= W.sun).forEach(e => {
+        const k = pk(e.name), p = people[k] = people[k] || { key: k, name: fname(e.name), hours: 0, deep: 0, spot: 0, sold: 0, shows: 0, tip: 0, days: 0 };
+        p.hours += e.hours; p.deep += e.deep; p.spot += e.spot; p.sold += e.sold; p.shows += e.shows; p.tip += e.tip || 0; p.days++;
+      });
+      const A = adj[W.mon] || {};
+      Object.values(people).forEach(p => {
+        p.rate = rates[p.key] ?? 0; p.hourly = Math.round(p.hours * p.rate * 100) / 100;
+        p.showBonus = p.sold * 20; p.cleanBonus = p.deep >= 4 ? 20 : 0; p.deepToGo = Math.max(0, 4 - p.deep);
+        p.adj = (A[p.key] && A[p.key].amount) || 0; p.adjNote = (A[p.key] && A[p.key].note) || '';
+        p.total = Math.round((p.hourly + p.showBonus + p.cleanBonus + p.adj) * 100) / 100;
+      });
+      return { ...W, paid: paid[W.mon] || '', people };
+    };
+    const tw = week(0), lw = week(-1), G = {};
+    Object.entries(goals).forEach(([k, list]) => { G[k] = (list || []).map(g => {
+      const have = g.metric === 'custom' ? null : Math.round((((tw.people[k] || {})[g.metric]) || 0) * 100) / 100;
+      return { ...g, have, hit: g.metric === 'custom' ? g.done : have >= g.target };
+    }); });
+    res.json({ ok: true, thisWeek: tw, lastWeek: lw, goals: G });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
