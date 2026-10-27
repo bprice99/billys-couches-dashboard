@@ -112,6 +112,15 @@ img.thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;cursor:zoom-
 .mlast.up{color:var(--green)}.mlast.dn{color:var(--bad)}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
+.obadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:99px;background:#b0524c;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
+.ofilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.ofilters button{padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;font-weight:600;cursor:pointer}.ofilters button.on{background:var(--text);color:#fff;border-color:var(--text)}
+.olist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ocard{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}.ocard:hover{border-color:#b0524c}
+.ocard img{width:72px;height:72px;object-fit:cover;border-radius:12px;flex:none;background:var(--cream)}.ocard .m{flex:1;min-width:0}.ocard .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ocard .m small{color:var(--muted);font-size:13px}
+.ost{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da;white-space:nowrap}.ost.new{background:#b0524c;color:#fff}.ost.bought{background:#2f7a4f;color:#fff}.ost.passed{background:#ddd;color:#555}
+.ophotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0}.ophotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.orow{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.orow span{color:var(--muted)}.orow b{text-align:right}
+.oacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.oacts a,.oacts select{flex:1;min-width:90px;text-align:center;padding:12px;border-radius:12px;font-weight:700;text-decoration:none}.oacts a{background:#b0524c;color:#fff}.oacts a.dk{background:var(--text)}.oacts select{border:1px solid var(--line);background:#fff;font-size:15px}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
 .mask.on{display:flex}
 .modal{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:420px}
@@ -164,7 +173,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <a class="nav" data-tab="bstock">B-Stock</a>
     <a class="nav" data-tab="payroll">Payroll</a>
     <a class="nav" data-tab="cash">Daily Cash</a>
-    <a class="nav" href="/offers">Couch Offers</a>
+    <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
 
@@ -310,6 +319,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 
     <!-- CASH POSITION -->
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
+    <section id="tab-offers" hidden><div id="offersBody"></div></section>
   </main>
 </div>
 
@@ -410,6 +420,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <h3 id="pvTitle" style="margin-bottom:12px"></h3><img id="pvImg" alt="">
   <div class="acts"><button type="button" class="btn" data-close>Close</button><button type="button" class="btn" id="pvRemove">Remove</button><button type="button" class="btn p" id="pvReplace">Replace</button></div>
 </div></div>
+<div class="mask" id="m-offer"><div class="modal" style="max-width:640px;max-height:92vh;overflow:auto"><div id="offerDetail"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1387,7 +1398,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', offers: 'Couch Offers' };
 DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1400,8 +1411,8 @@ function syncRangeBar(){
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers';
+  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, offers: renderOffers })[tab]();
 }
 function setTab(t){
   tab = t;
@@ -1425,7 +1436,7 @@ async function load(fresh){
     if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
     render();
     // Load the other tabs' data in the background so switching tabs is instant.
-    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); }, 400); }
+    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); }, 400); }
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
@@ -1437,7 +1448,7 @@ const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('
 $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
 $('goalEdit').onclick = () => openGoals();
-$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else { toast('Pulling the latest from Google...'); load(true); } };
+$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else { toast('Pulling the latest from Google...'); load(true); } };
 $('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
 $('payBtn').onclick = async () => {
   const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
@@ -1534,10 +1545,59 @@ $('photoIn').addEventListener('change', async () => {
 });
 $('pvReplace').onclick = () => { $('photoIn').value = ''; $('photoIn').click(); };
 $('pvRemove').onclick = async () => { try { await post('/api/photo/delete', { key: photoTarget }); delete RAW.photos[photoTarget]; $('m-photo').classList.remove('on'); toast('Photo removed'); render(); } catch (err) { toast(err.message); } };
+
+// ---------- couch offers (Cash for Your Couch form on the website) ----------
+let OFFERS = null, OFILTER = 'open';
+const OSTATUS = { new: 'New', contacted: 'Contacted', scheduled: 'Scheduled', bought: 'Bought', passed: 'Passed' };
+async function loadOffers(){
+  try { const r = await fetch('/api/offers', { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); OFFERS = d.offers; }
+  catch (e) { OFFERS = OFFERS || []; $('offersBody').innerHTML = `<div class="err" style="display:block">Couldn't load offers: ${esc(e.message)}</div>`; }
+  const n = OFFERS.filter(o => o.status === 'new').length; $('offerBadge').hidden = !n; $('offerBadge').textContent = n;
+  if (tab === 'offers') renderOffers();
+  return OFFERS;
+}
+const oWhen = at => new Date(at).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+function renderOffers(){
+  if (!OFFERS) { $('offersBody').innerHTML = '<p class="empty">Loading offers…</p>'; loadOffers(); return; }
+  const groups = { open: o => ['new', 'contacted', 'scheduled'].includes(o.status), new: o => o.status === 'new', bought: o => o.status === 'bought', passed: o => o.status === 'passed', all: () => true };
+  const labels = { open: 'Open', new: 'New', bought: 'Bought', passed: 'Passed', all: 'All' };
+  const list = OFFERS.filter(groups[OFILTER]);
+  $('offersBody').innerHTML = `<div class="ofilters">${Object.keys(labels).map(k => `<button data-ofilter="${k}" class="${OFILTER === k ? 'on' : ''}">${labels[k]} (${OFFERS.filter(groups[k]).length})</button>`).join('')}</div>` +
+    (list.length ? `<div class="olist">${list.map(o => `<button class="ocard" data-offer="${esc(o.id)}"><img src="/offers/${esc(o.id)}/photo/0" loading="lazy" alt="">
+      <div class="m"><b>${esc(o.brand)} · ${esc(o.asking || 'no price')}</b><small>${esc(o.firstName)} ${esc(o.lastName)} · ${esc(o.city || o.zip || '')}<br>${oWhen(o.at)}${o.issues && o.issues.length ? ' · ' + esc(o.issues.join(', ')) : ''}</small></div>
+      <span class="ost ${o.status}">${OSTATUS[o.status] || o.status}</span></button>`).join('')}</div>`
+      : `<div class="card"><p class="empty">${OFFERS.length ? 'Nothing here.' : 'No offers yet. Submissions from billyscouches.com/cashforyourcouch show up here and get texted to you.'}</p></div>`);
+}
+function openOffer(id){
+  const o = (OFFERS || []).find(x => x.id === id); if (!o) return toast('Offer not found');
+  const tel = (o.phone || '').replace(/[^\d+]/g, ''), addr = [o.street, o.street2, o.city, o.state, o.zip].filter(Boolean).join(', ');
+  const R = (k, v) => v ? `<div class="orow"><span>${k}</span><b>${esc(v)}</b></div>` : '';
+  $('offerDetail').innerHTML = `<h3 style="margin:0 40px 4px 0">${esc(o.brand)} · ${esc(o.asking || 'no price')}</h3><div style="color:var(--muted);font-size:13px">${oWhen(o.at)}</div>
+    <div class="ophotos">${Array.from({ length: o.photoCount || 0 }, (_, i) => `<a href="/offers/${esc(o.id)}/photo/${i}" target="_blank"><img src="/offers/${esc(o.id)}/photo/${i}" alt=""></a>`).join('')}</div>
+    ${R('Issues', o.issues && o.issues.length ? o.issues.join(', ') : 'None checked')}${R('Details', o.details)}${R('Can help load', o.helpLoad)}${R('Heard about us', o.heard)}
+    ${R('Name', (o.firstName + ' ' + (o.lastName || '')).trim())}${R('Phone', o.phone)}${R('Email', o.email)}${R('Address', addr)}
+    <div class="oacts"><a href="sms:${tel}">Text</a><a href="tel:${tel}">Call</a><a class="dk" target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(addr)}">Map</a></div>
+    <div class="oacts" style="align-items:center"><b style="flex:none;font-size:14px">Status</b><select id="oStatus" data-id="${esc(o.id)}">${Object.entries(OSTATUS).map(([k, v]) => `<option value="${k}" ${o.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
+  $('m-offer').classList.add('on');
+}
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-ofilter]'); if (f) { OFILTER = f.dataset.ofilter; renderOffers(); return; }
+  const c = e.target.closest('[data-offer]'); if (c) openOffer(c.dataset.offer);
+});
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'oStatus') return;
+  const id = e.target.dataset.id, status = e.target.value;
+  try { await post('/api/offers/status', { id, status }); const o = OFFERS.find(x => x.id === id); if (o) o.status = status;
+    const n = OFFERS.filter(x => x.status === 'new').length; $('offerBadge').hidden = !n; $('offerBadge').textContent = n;
+    toast('Marked ' + OSTATUS[status]); renderOffers(); } catch (err) { toast(err.message); }
+});
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
 let saved = 'sales'; try { saved = localStorage.getItem('bcdTab') || 'sales'; } catch {}
+const QS = new URLSearchParams(location.search), openId = QS.get('offer');
+if (openId || QS.get('tab') === 'offers') { saved = 'offers'; history.replaceState(null, '', '/'); }
 setTab(TITLES[saved] ? saved : 'sales');
+if (openId) loadOffers().then(() => openOffer(openId));
 load();
 setInterval(() => load(), 5 * 60 * 1000);
 </script>
