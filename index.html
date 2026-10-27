@@ -164,6 +164,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <a class="nav" data-tab="bstock">B-Stock</a>
     <a class="nav" data-tab="payroll">Payroll</a>
     <a class="nav" data-tab="cash">Daily Cash</a>
+    <a class="nav" href="/offers">Couch Offers</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
 
@@ -1443,7 +1444,7 @@ $('payBtn').onclick = async () => {
   try { await post('/api/payroll/paid', { week: W.wkey, undo: paid, lines: W.lines.map(l => ({ name: l.name, total: l.total })) });
     toast(paid ? 'Marked unpaid' : 'Marked paid and added to Expenses'); await loadPayroll(true); load(true); } catch (e) { toast(e.message); }
 };
-document.querySelectorAll('.nav').forEach(n => n.onclick = () => setTab(n.dataset.tab));
+document.querySelectorAll('.nav[data-tab]').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
 document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open); m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
