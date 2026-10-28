@@ -280,15 +280,13 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <!-- CONTENT PLAN -->
     <section id="tab-content" hidden>
       <div class="kpis" id="ctKpis"></div>
-      <div class="grid2" style="margin-top:0;grid-template-columns:1.5fr 1fr">
+      <div style="margin-top:0">
         <div class="card"><h2>Content this week <small>tap a status to move it along</small></h2>
           <div class="ctadd">
-            <input type="date" id="ctDate"><select id="ctPlat"><option>Facebook</option><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Meta Ad</option><option>Marketplace</option><option>Email/Text</option></select>
-            <select id="ctType"><option>Reel / video</option><option>Photo post</option><option>Story</option><option>Ad creative</option><option>Listing</option><option>Live</option></select>
+            <input type="date" id="ctDate"><select id="ctType"><option>Reel / video</option><option>Photo post</option><option>Story</option><option>Ad creative</option><option>Listing</option><option>Live</option></select>
             <input id="ctIdea" placeholder="Idea / hook (e.g. 'Why this $2,500 couch is $1,100 here')"><button class="btn p" id="ctAdd">Add</button>
           </div>
           <div id="ctBoard"></div></div>
-        <div class="card"><h2 id="adChkTitle">Meta ads checklist</h2><div class="bar" style="height:8px;margin:2px 0 10px"><i id="adChkBar" style="width:0"></i></div><div id="adChecks"></div></div>
       </div>
     </section>
 
@@ -334,7 +332,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
           <div id="gpMoves"></div><button class="btn sm" id="gpAdd" style="margin-top:8px">+ Add a move</button></div>
       </div>
       <div class="card"><h2>Road to $100K a month</h2><div class="chartwrap"><canvas id="goalChart"></canvas></div><p style="font-size:14px;margin:12px 0 0" id="roadNote"></p></div>
-      <div class="card" style="margin-top:16px"><h2>Team</h2><p style="font-size:14px;margin:0 0 10px" id="teamNote"></p><div style="overflow-x:auto"><table id="teamTbl"></table></div>
+      <div class="card" style="margin-top:16px"><h2>Team</h2><div style="overflow-x:auto"><table id="teamTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">From the Work Log: showings each person hosted and how many bought.</p></div>
     </section>
 
@@ -469,7 +467,6 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
   <div class="two"><label>Sales<input type="number" name="sales" min="0"></label><label>Revenue ($)<input type="number" name="revenue" min="0"></label></div>
   <div class="two"><label>Net profit ($)<input type="number" name="net" min="0"></label><label>Average sale ($)<input type="number" name="avg" min="0"></label></div>
-  <label>Labor % of sales (target)<input type="number" name="labor" min="0" step="0.5" placeholder="e.g. 10"></label>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-oh"><form class="modal" data-kind="oh">
@@ -733,11 +730,10 @@ function renderGoals(){
     (Object.keys(ppl).length ? Object.entries(ppl).sort((a, b) => b[1].sold - a[1].sold).map(([k, p]) => `<tr><td><b>${esc(k)}</b></td><td class="n">${p.hours.toFixed(1)}</td><td class="n">${p.shows}</td><td class="n"><b>${p.sold}</b></td><td class="n">${p.shows ? pct(p.sold / p.shows) : '–'}</td></tr>`).join('')
       : `<tr><td colspan="5" class="empty">${PAY ? 'No Work Log entries this month.' : 'Loading the Work Log...'}</td></tr>`);
   renderGamePlan();
-  $('teamNote').innerHTML = `Labor is <b>${A.gross ? pct(pay / A.gross) : '–'}</b> of sales this month${G.labor ? ` (target ${G.labor}%)` : ''}.`;
 }
 function openGoals(){
   const R = getR('goals'), mk = R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0'), G = (RAW.goals || {})[mk] || {}, f = $('m-goals').querySelector('form').elements;
-  f.month.value = mk; ['sales', 'revenue', 'net', 'avg', 'labor'].forEach(k => f[k].value = G[k] || '');
+  f.month.value = mk; ['sales', 'revenue', 'net', 'avg'].forEach(k => f[k].value = G[k] || '');
   $('goalsTitle').textContent = 'Goals for ' + rangeLabel(R); $('m-goals').classList.add('on');
 }
 
@@ -1717,11 +1713,14 @@ function renderThanks(){
       <small>${c.type ? esc(c.type) + ' · ' : ''}${tyD(c.date)}${W[c.id] ? ' · written ' + tyD(W[c.id]) : ''}</small></div>
       ${addr ? `<button class="btn tycopy" data-tycopy="${esc(c.name + '\n' + addr)}">Copy</button>` : ''}</div>`; };
   $('tyBody').innerHTML = (TY.error ? `<div class="err" style="display:block">${esc(TY.error)}</div>` : '') +
-    `<div class="ofilters"><button data-tyshow="todo" class="${TYSHOW === 'todo' ? 'on' : ''}">To write (${todo.length})</button><button data-tyshow="done" class="${TYSHOW === 'done' ? 'on' : ''}">Written (${done.length})</button></div>` +
+    `<div class="ofilters"><button data-tyshow="todo" class="${TYSHOW === 'todo' ? 'on' : ''}">To write (${todo.length})</button><button data-tyshow="done" class="${TYSHOW === 'done' ? 'on' : ''}">Written (${done.length})</button>${TYSHOW === 'todo' && todo.length ? `<button data-tyall style="margin-left:auto">✓ Mark all written</button>` : ''}</div>` +
     (list.length ? `<div class="tylist">${list.map(card).join('')}</div>` : `<div class="card"><p class="empty">${TYSHOW === 'todo' ? 'All caught up — no cards to write.' : 'No cards written yet.'}</p></div>`);
 }
 document.addEventListener('click', e => {
   const s = e.target.closest('[data-tyshow]'); if (s) { TYSHOW = s.dataset.tyshow; renderThanks(); return; }
+  if (e.target.closest('[data-tyall]')) { const ids = TY.cards.filter(c => !TY.written[c.id]).map(c => c.id);
+    if (!confirm(`Mark all ${ids.length} cards as written?`)) return;
+    post('/api/thankyou/mark', { ids, done: true }).then(j => { TY.written = j.written; tyBadge(); renderThanks(); toast(ids.length + ' cards marked written'); }, err => toast(err.message)); return; }
   const c = e.target.closest('[data-tycopy]'); if (c) { navigator.clipboard.writeText(c.dataset.tycopy).then(() => toast('Address copied'), () => toast('Copy failed')); }
 });
 document.addEventListener('change', async e => {
@@ -1783,38 +1782,23 @@ document.addEventListener('click', e => {
   f.category.value = x.cat; $('expTitle').textContent = 'Edit expense'; m.classList.add('on');
 });
 
-// ---------- content plan + meta ads checklist ----------
+// ---------- content plan ----------
 const CT_STATUS = ['Idea', 'Filmed', 'Edited', 'Posted'];
-const AD_CHECKS = [
-  ['Mon', 'Check last 7 days: spend, cost per lead, cost per sale'],
-  ['Mon', 'Turn off ads that spent 2x your target cost per lead with no results'],
-  ['Mon', 'Raise budget ~20% on the best ad set (no bigger jumps)'],
-  ['Tue', 'Launch 2–3 new creatives from this week’s content'],
-  ['Tue', 'Swap the hook / first 3 seconds on any ad with frequency over 3'],
-  ['Wed', 'Remove sold couches from ads and the catalog'],
-  ['Daily', 'Reply to every ad comment and DM within the hour'],
-  ['Fri', 'Log this week’s ad spend in Expenses'],
-  ['Fri', 'Note the winning hook and plan next week’s content around it'],
-];
 function renderContent(){
   const R = getR('content'), wk = ymd(mondayOf(R.from)), list = (RAW.store.content || []).filter(x => x.date >= ymd(R.from) && x.date <= ymd(R.to)).sort((a, b) => a.date.localeCompare(b.date));
   if (!$('ctDate').value || $('ctDate').value < ymd(R.from) || $('ctDate').value > ymd(R.to)) $('ctDate').value = ymd(R.from) > todayStr() ? ymd(R.from) : (todayStr() > ymd(R.to) ? ymd(R.from) : todayStr());
-  const n = st => list.filter(x => x.status === st).length, ads = list.filter(x => x.plat === 'Meta Ad' || x.type === 'Ad creative').length;
-  const checks = (RAW.store.adChecks || {})[wk] || {}, done = AD_CHECKS.filter((_, i) => checks[i]).length;
-  $('ctKpis').innerHTML = kpiHtml([['Planned', list.length], ['Posted', n('Posted') + ' / ' + list.length], ['Ready to post', n('Edited')], ['Still ideas', n('Idea')], ['New ad creatives', ads], ['Ads checklist', done + ' / ' + AD_CHECKS.length]]);
+  const n = st => list.filter(x => x.status === st).length, ads = list.filter(x => x.type === 'Ad creative').length;
+  $('ctKpis').innerHTML = kpiHtml([['Planned', list.length], ['Posted', n('Posted') + ' / ' + list.length], ['Ready to post', n('Edited')], ['Still ideas', n('Idea')], ['New ad creatives', ads]]);
   const days = []; for (let d = R.from; d <= R.to; d = addDays(d, 1)) days.push(d);
   $('ctBoard').innerHTML = days.map(d => { const items = list.filter(x => x.date === ymd(d));
     return `<div class="ctday"><h4>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h4>` +
-      (items.length ? items.map(x => `<div class="ctit"><button class="stat ${x.status}" data-ctstat="${x.id}">${x.status}</button><span class="idea">${esc(x.idea || '(no idea yet)')}<br><small>${esc(x.plat)} · ${esc(x.type)}</small></span><button class="xs" data-ctdel="${x.id}" title="Delete">&times;</button></div>`).join('')
+      (items.length ? items.map(x => `<div class="ctit"><button class="stat ${x.status}" data-ctstat="${x.id}">${x.status}</button><span class="idea">${esc(x.idea || '(no idea yet)')}<br><small>${esc(x.type)}</small></span><button class="xs" data-ctdel="${x.id}" title="Delete">&times;</button></div>`).join('')
         : '<div class="ctit"><small>Nothing planned</small></div>') + '</div>'; }).join('');
-  $('adChkTitle').innerHTML = `Meta ads checklist <small>week of ${fmtD(mondayOf(R.from))}</small>`;
-  $('adChkBar').style.width = (done / AD_CHECKS.length * 100) + '%';
-  $('adChecks').innerHTML = AD_CHECKS.map(([d, t], i) => `<label class="chk"><input type="checkbox" data-adchk="${i}" ${checks[i] ? 'checked' : ''}> <span><b style="font-size:12px;color:var(--muted)">${d}</b> · ${esc(t)}</span></label>`).join('');
 }
 document.addEventListener('click', e => {
   if (e.target.id === 'ctAdd') {
     const idea = $('ctIdea').value.trim(), date = $('ctDate').value; if (!date) return toast('Pick a date');
-    const list = (RAW.store.content || []).concat({ id: uid6(), date, plat: $('ctPlat').value, type: $('ctType').value, idea, status: 'Idea' });
+    const list = (RAW.store.content || []).concat({ id: uid6(), date, type: $('ctType').value, idea, status: 'Idea' });
     $('ctIdea').value = ''; saveStore('content', list); renderContent(); return;
   }
   const st = e.target.closest('[data-ctstat]');
@@ -1823,11 +1807,6 @@ document.addEventListener('click', e => {
   if (del) { saveStore('content', (RAW.store.content || []).filter(y => y.id !== del.dataset.ctdel)); renderContent(); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'ctIdea') $('ctAdd').click(); });
-document.addEventListener('change', e => {
-  if (!e.target.dataset || e.target.dataset.adchk == null) return;
-  const wk = ymd(mondayOf(getR('content').from)), all = { ...(RAW.store.adChecks || {}) }; all[wk] = { ...(all[wk] || {}), [e.target.dataset.adchk]: e.target.checked };
-  saveStore('adChecks', all); renderContent();
-});
 
 // ---------- open house calendar ----------
 let ohCalM = null;
@@ -1920,7 +1899,7 @@ function renderGamePlan(){
   const mk = gMonth(), R = getR('goals'), G = (RAW.goals || {})[mk] || {}, A = period(R), today = day0(new Date());
   $('gtMonth').textContent = 'for ' + rangeLabel(R) + ' · saves as you type';
   if (!$('goalInputs').contains(document.activeElement))
-    $('goalInputs').innerHTML = [['sales', 'Sales'], ['revenue', 'Revenue ($)'], ['net', 'Net profit ($)'], ['avg', 'Average sale ($)'], ['labor', 'Labor % of sales']]
+    $('goalInputs').innerHTML = [['sales', 'Sales'], ['revenue', 'Revenue ($)'], ['net', 'Net profit ($)'], ['avg', 'Average sale ($)']]
       .map(([k, l]) => `<label>${l}<input type="number" min="0" data-goal="${k}" value="${G[k] || ''}" placeholder="–"></label>`).join('');
   // pathway math
   const days = spanDays(R), left = R.to < today ? 0 : Math.max(0, dayDiff(today, R.to) + (R.from <= today ? 1 : 0)), weeks = Math.max(1, left / 7);
