@@ -518,9 +518,10 @@ app.get('/api/thankyou', async (req, res) => {
 });
 app.post('/api/thankyou/mark', async (req, res) => {
   try {
-    const id = clean(req.body.id, 40); if (!id) return res.status(400).json({ error: 'id required' });
-    const w = await kget('bcd:thankyou', {});
-    if (req.body.done) w[id] = new Date().toISOString().slice(0, 10); else delete w[id];
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : [req.body.id]).map(x => clean(x, 40)).filter(Boolean).slice(0, 5000);
+    if (!ids.length) return res.status(400).json({ error: 'id required' });
+    const w = await kget('bcd:thankyou', {}), today = new Date().toISOString().slice(0, 10);
+    ids.forEach(id => { if (req.body.done) w[id] = w[id] || today; else delete w[id]; });
     await kset('bcd:thankyou', w); res.json({ ok: true, written: w });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
