@@ -107,6 +107,7 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .adchip.on{background:var(--dark);color:#fff;border-color:var(--dark)}
 .adstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:8px 0 18px}
 .adstat{cursor:pointer;padding:14px 16px}.adstat b{display:block;font-size:15px}.adstat span{font-size:13px;color:var(--muted)}
+.adbrands{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.adbrands summary{cursor:pointer;font-weight:700;font-size:14px}.adbrands table{margin-top:8px}.adbrands tr[data-adbrand]:hover td{background:#faf6f4}
 .adgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .adc{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .adm{position:relative;background:#111;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center}
@@ -367,15 +368,14 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <section id="tab-ads" hidden>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-6px 0 12px"><span id="adMeta" style="font-size:13px;color:var(--muted)">Loading…</span>
         <button class="btn p" id="adPull" style="margin-left:auto">Pull new ads</button></div>
-      <div id="adChips"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select class="rk" id="adStatus"><option value="active">Active</option><option value="all">Active + ended</option><option value="ended">Ended</option></select>
+        <select class="rk" id="adBrand"></select>
+        <select class="rk" id="adStatus"><option value="active">Active</option><option value="new">New this week</option><option value="all">Active + ended</option><option value="ended">Ended</option></select>
         <select class="rk" id="adFormat"><option value="">All formats</option><option value="VIDEO">Video</option><option value="IMAGE">Image</option></select>
         <select class="rk" id="adSort"><option value="days">Longest running</option><option value="new">Newest</option></select>
         <select class="rk" id="adView"><option value="compare">Yours vs. competitors</option><option value="grid">One grid</option></select>
       </div>
       <div class="card" id="adCompare" style="margin-top:12px"></div>
-      <div class="adstats" id="adStats"></div>
       <div class="adgrid" id="adGrid"></div>
     </section>
 
@@ -1417,7 +1417,7 @@ document.addEventListener('click', async e => {
 });
 // ---------- competitor ads ----------
 let ADSD = null;
-const AST = { brand: '', status: 'active', format: '', sort: 'days', newOnly: false, view: 'compare' };
+const AST = { brand: '', status: 'active', format: '', sort: 'days', view: 'compare' };
 const agoTxt = t => { if (!t) return 'never'; const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' days ago'; };
 async function loadAds(){
   try {
@@ -1431,13 +1431,13 @@ function renderAds(){
   const d = ADSD, week = Date.now() - 7 * 864e5;
   let m = d.hasToken ? 'Last pulled ' + agoTxt(d.lastRun) + ' · pulls new ads every morning at 6am' : 'Add APIFY_TOKEN in Railway to pull ads.';
   if (d.running) m += ' · pulling now (takes a few minutes)…';
-  if (d.lastError && (!d.lastRun || d.lastError.at > d.lastRun)) m += ` · <span style="color:var(--bad)">Last pull failed: ${esc(d.lastError.message)}</span>`;
+  if (d.lastError && (!d.lastRun || d.lastError.at > d.lastRun)) { const em = String(d.lastError.message || ''); const short = /not-enough-usage|usage|credit/i.test(em) ? 'Apify is out of credits — upgrade or wait for the monthly reset' : em.slice(0, 120);
+    m += ` · <span style="color:var(--bad)">Last pull failed: ${esc(short)}</span>`; }
   $('adMeta').innerHTML = m;
   const mine = new Set(d.mine || []), others = d.brands.filter(b => !mine.has(b));
-  $('adChips').innerHTML = ['', ...(d.mine || []), ...others].map(b => `<span class="adchip${AST.brand === b ? ' on' : ''}${mine.has(b) && AST.brand !== b ? ' adyours' : ''}" data-adbrand="${esc(b)}">${b ? esc(b) + (mine.has(b) ? ' (you)' : '') : 'All brands'}</span>`).join('') +
-    `<span class="adchip${AST.newOnly ? ' on' : ''}" data-adnew="1">New this week</span>`;
-  let ads = d.ads.filter(a => (!AST.brand || a.brand === AST.brand) && (AST.status === 'all' || (AST.status === 'active' ? a.active : !a.active)) &&
-    (!AST.format || a.format === AST.format || (AST.format === 'IMAGE' && a.format !== 'VIDEO')) && (!AST.newOnly || (a.start && a.start > week)));
+  $('adBrand').innerHTML = ['', ...(d.mine || []), ...others.slice().sort()].map(b => `<option value="${esc(b)}" ${AST.brand === b ? 'selected' : ''}>${b ? esc(b) + (mine.has(b) ? ' (you)' : '') : 'All brands (' + d.brands.length + ')'}</option>`).join('');
+  let ads = d.ads.filter(a => (!AST.brand || a.brand === AST.brand) && (AST.status === 'all' || (AST.status === 'new' ? a.start && a.start > week : AST.status === 'active' ? a.active : !a.active)) &&
+    (!AST.format || a.format === AST.format || (AST.format === 'IMAGE' && a.format !== 'VIDEO')));
   ads.sort(AST.sort === 'days' ? (a, b) => (b.days || 0) - (a.days || 0) : (a, b) => (b.start || 0) - (a.start || 0));
   const statsOf = list => { const act = list.filter(a => a.active), ds = act.map(a => a.days || 0);
     return { act: act.length, fresh: list.filter(a => a.start && a.start > week).length, avg: ds.length ? ds.reduce((x, y) => x + y, 0) / ds.length : 0,
@@ -1453,10 +1453,13 @@ function renderAds(){
     <tr><td>Longest running</td><td class="n"><b>${Y.max}d</b></td><td class="n" colspan="2">${C.max}d</td></tr>
     <tr><td>Video share</td><td class="n"><b>${pct(Y.video)}</b></td><td class="n" colspan="2">${pct(C.video)}</td></tr>
   </table></div>${!(d.mine || []).length || !d.ads.some(a => mine.has(a.brand)) ? '<p class="empty" style="font-size:12.5px;margin-top:10px">Your ads show up after the next pull.</p>' : ''}`;
-  $('adStats').innerHTML = [...(d.mine || []), ...others].filter(b => !AST.brand || b === AST.brand).map(b => {
-    const mineList = d.ads.filter(a => a.brand === b), act = mineList.filter(a => a.active), top = act.slice().sort((x, y) => (y.days || 0) - (x.days || 0))[0];
-    return `<div class="card adstat" data-adbrand="${esc(b)}" style="${mine.has(b) ? 'border-color:var(--red)' : ''}"><b>${esc(b)}${mine.has(b) ? ' (you)' : ''}</b><span>${act.length} active · ${mineList.filter(a => a.start && a.start > week).length} new this week${top ? ` · longest ${top.days}d` : ''}</span></div>`;
-  }).join('');
+  const rows = d.brands.map(b => { const L = d.ads.filter(a => a.brand === b), act = L.filter(a => a.active);
+    return { b, act: act.length, fresh: L.filter(a => a.start && a.start > week).length, max: act.length ? Math.max(...act.map(a => a.days || 0)) : 0 }; })
+    .sort((x, y) => (mine.has(y.b) - mine.has(x.b)) || y.act - x.act || y.fresh - x.fresh);
+  $('adCompare').innerHTML += `<details class="adbrands"${AST.brand ? '' : ''}><summary>By brand (${rows.length}) — tap a brand to see only its ads</summary><div style="overflow-x:auto"><table>
+    <tr><th>Brand</th><th class="n">Active</th><th class="n">New this week</th><th class="n">Longest</th></tr>
+    ${rows.map(r => `<tr data-adbrand="${esc(r.b)}" style="cursor:pointer${mine.has(r.b) ? ';color:var(--red);font-weight:700' : ''}"><td>${esc(r.b)}${mine.has(r.b) ? ' (you)' : ''}</td><td class="n">${r.act}</td><td class="n">${r.fresh}</td><td class="n">${r.max ? r.max + 'd' : '–'}</td></tr>`).join('')}
+  </table></div></details>`;
   const card = a => {
     const cls = a.days >= 60 ? 'proven' : a.days >= 30 ? 'strong' : '', isNew = a.start && a.start > week, yours = mine.has(a.brand);
     const fd = t => t ? fmtD(new Date(t), true) : '—';
@@ -1486,11 +1489,10 @@ function renderAds(){
 }
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-adbrand]');
-  if (c) { AST.brand = c.dataset.adbrand; renderAds(); return; }
-  if (e.target.closest('[data-adnew]')) { AST.newOnly = !AST.newOnly; renderAds(); return; }
+  if (c) { AST.brand = c.dataset.adbrand; renderAds(); $('adBrand').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   if (e.target.classList.contains('admore')) { const cp = e.target.previousElementSibling; cp.classList.toggle('open'); e.target.textContent = cp.classList.contains('open') ? 'Show less' : 'Show more'; }
 });
-['Status', 'Format', 'Sort', 'View'].forEach(k => document.getElementById('ad' + k).addEventListener('change', e => { AST[k.toLowerCase()] = e.target.value; renderAds(); }));
+['Brand', 'Status', 'Format', 'Sort', 'View'].forEach(k => document.getElementById('ad' + k).addEventListener('change', e => { AST[k.toLowerCase()] = e.target.value; renderAds(); }));
 document.getElementById('adPull').addEventListener('click', async () => {
   try { await post('/api/ads/refresh', {}); toast('Pulling new ads. Takes a few minutes; this page updates on its own.'); $('adPull').disabled = true;
     const iv = setInterval(async () => { await loadAds(); if (!ADSD.running) { clearInterval(iv); $('adPull').disabled = false; } }, 20000);
