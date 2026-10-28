@@ -63,7 +63,8 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'inde
 app.get('/healthz', (req, res) => res.send('ok'));
 const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
 app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
-['icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
+['favicon.png', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
+app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png'), longCache));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
 
 
