@@ -489,7 +489,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <p class="empty" style="font-size:13px;margin:-6px 0 12px">For Scotchgard (or anything else) a customer added after checking out online or in the order app.</p>
   <div class="two"><label>Date<input type="date" name="date" required></label><label>Customer<input name="customer" list="upNames" placeholder="Name on the order" autocomplete="off" required></label></div>
   <datalist id="upNames"></datalist>
-  <div class="two"><label>Upsell<select name="item"></select></label><label>Amount ($)<input type="number" step="0.01" name="amount" required></label></div>
+  <div class="two"><label>Upsell<select name="upsell"></select></label><label>Amount ($)<input type="number" step="0.01" name="amount" required></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="toast" id="toast"></div>
@@ -1869,17 +1869,17 @@ function upsellOrders(){
 }
 function openUpAdd(){
   const m = $('m-upadd'), f = m.querySelector('form').elements; f.reset && m.querySelector('form').reset();
-  f.date.value = todayStr(); f.item.innerHTML = UPSELLS.map(u => `<option data-p="${u.price}">${u.label}</option>`).join('') + '<option data-p="">Other</option>';
+  f.date.value = todayStr(); f.upsell.innerHTML = UPSELLS.map(u => `<option data-p="${u.price}">${u.label}</option>`).join('') + '<option data-p="">Other</option>';
   f.amount.value = UPSELLS[0].price;
   const names = [...new Set(RAW.sales.filter(x => (day0(new Date()) - x.date) / 864e5 <= 90).sort((a, b) => b.date - a.date).map(x => x.name).filter(Boolean))];
   $('upNames').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
-  f.item.onchange = () => { const p = f.item.selectedOptions[0].dataset.p; if (p) f.amount.value = p; };
+  f.upsell.onchange = () => { const p = f.upsell.selectedOptions[0].dataset.p; if (p) f.amount.value = p; };
   m.classList.add('on');
 }
 document.addEventListener('submit', e => {
   if (e.target.id !== 'upAddForm') return; e.preventDefault(); e.stopPropagation();
   const f = e.target.elements, amt = Number(f.amount.value); if (!(amt > 0) || !f.customer.value.trim()) return toast('Add the customer and amount');
-  const list = (RAW.store.upsellAdds || []).concat({ id: uid6(), date: f.date.value, customer: f.customer.value.trim(), item: f.item.value, amount: amt });
+  const list = (RAW.store.upsellAdds || []).concat({ id: uid6(), date: f.date.value, customer: f.customer.value.trim(), item: f.upsell.value, amount: amt });
   saveStore('upsellAdds', list); $('m-upadd').classList.remove('on'); toast('Upsell added'); renderUpsells();
 }, true);
 document.addEventListener('click', e => {
