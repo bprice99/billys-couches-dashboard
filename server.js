@@ -513,7 +513,14 @@ async function thankYouList(force) {
 app.get('/api/thankyou', async (req, res) => {
   try {
     let d; try { d = await thankYouList(req.query.fresh === '1'); } catch (e) { d = { cards: [], error: e.message }; }
-    res.json({ ok: true, ...d, written: await kget('bcd:thankyou', {}) });
+    let written = await kget('bcd:thankyou', {});
+    // One-time start: everything submitted before the tab went live counts as already written.
+    if (d.cards.length && !(await kget('bcd:thankyouInit', null))) {
+      const today = new Date().toISOString().slice(0, 10);
+      d.cards.forEach(c => { if (!written[c.id]) written[c.id] = today; });
+      await kset('bcd:thankyou', written); await kset('bcd:thankyouInit', today);
+    }
+    res.json({ ok: true, ...d, written });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/thankyou/mark', async (req, res) => {
