@@ -8,6 +8,7 @@
 //   JOTFORM_API_KEY             Jotform API key (Payroll tab reads the Work Log form)
 //   WORKLOG_FORM_ID             optional: defaults to 260845178882066
 //   JOTFORM_API_BASE            optional: defaults to https://api.jotform.com
+//   THANKYOU_FORM_ID            optional: scheduling form ID(s) for the Thank You Cards tab (auto-found by title if blank)
 //   APIFY_TOKEN                 Competitor Ads tab (same token the old Ad Tracker used)
 //   ADS_REDIS_URL / ADS_REDIS_TOKEN  optional: the old Ad Tracker's Upstash, to keep its ad history
 //   PLAID_CLIENT_ID / PLAID_SECRET / PLAID_ENV   Daily Cash bank balances (PLAID_ENV = production or sandbox)
@@ -182,6 +183,27 @@ app.post('/api/openhouse/check', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Small saved lists edited in the dashboard: content plan, ad checklist, goal game plan, after-sale upsells, open house plans.
+const STORE_KEYS = ['content', 'adChecks', 'gamePlan', 'upsellAdds'];
+app.post('/api/store/:k', async (req, res) => {
+  try {
+    if (!STORE_KEYS.includes(req.params.k)) return res.status(400).json({ error: 'bad key' });
+    const v = (req.body || {}).value; if (JSON.stringify(v ?? null).length > 200000) return res.status(400).json({ error: 'too big' });
+    await kset('bcd:store:' + req.params.k, v ?? null); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Edit an expense you logged (or an imported one).
+app.post('/api/expense/update', async (req, res) => {
+  try {
+    const d = req.body || {}, amount = Number(d.amount);
+    if (!(amount > 0)) return res.status(400).json({ error: 'Amount is required' });
+    const list = await getExpenses(), x = list.find(e => e.id === d.id);
+    if (!x) return res.status(404).json({ error: 'Expense not found' });
+    Object.assign(x, { date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : x.date, category: clean(d.category, 40) || x.category,
+      amount: Math.round(amount * 100) / 100, vendor: clean(d.vendor, 80), notes: clean(d.notes) });
+    await kset(KEYS.expenses, list); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/data', async (req, res) => {
   try {
     const [g, purchases, expenses, loads, openhouses] = await Promise.all([
@@ -189,7 +211,8 @@ app.get('/api/data', async (req, res) => {
     ]);
     const photos = await kget('bcd:photos', {}).catch(() => ({}));
     const goals = await getGoals().catch(() => ({}));
-    res.json({ ...g, purchases, expenses, loads, openhouses, photos, goals, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
+    const extra = {}; await Promise.all(STORE_KEYS.map(async k => { extra[k] = await kget('bcd:store:' + k, null).catch(() => null); }));
+    res.json({ ...g, purchases, expenses, loads, openhouses, photos, goals, store: extra, history: HISTORY, storage: CFG.REDIS_URL ? 'redis' : 'file' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -430,6 +453,78 @@ app.get('/api/payroll', async (req, res) => {
     res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid, goals });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ---------- thank-you cards (every scheduling / order-confirmation form submission) ----------
+// Uses THANKYOU_FORM_ID (comma-separated OK) if set; otherwise finds your Jotform forms
+// whose title mentions "schedul" or "order confirmation".
+let ty = { at: 0, data: null, forms: null };
+async function thankYouForms() {
+  const env = String(process.env.THANKYOU_FORM_ID || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (env.length) return env;
+  if (ty.forms) return ty.forms;
+  const r = await fetch(`${CFG.JOTFORM_BASE}/user/forms?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=500`);
+  const j = await r.json();
+  const ids = (j.content || []).filter(f => f.status !== 'DELETED' && /schedul|order confirm|delivery confirm|pickup confirm/i.test(f.title || '')).map(f => f.id);
+  ty.forms = ids; return ids;
+}
+function parseAddress(q) {
+  const a = q && q.answer; if (!a) return null;
+  if (typeof a === 'object') {
+    const line1 = [a.addr_line1, a.addr_line2].filter(Boolean).join(', ');
+    const line2 = [a.city, [a.state, a.postal].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return { line1, line2 };
+  }
+  const t = String(a).trim(); if (!t) return null;
+  return { line1: t, line2: '' };
+}
+function parseThankYou(subs, formId) {
+  return subs.filter(s => s.status !== 'DELETED').map(s => {
+    const qs = Object.values(s.answers || {}).filter(q => q && q.text && q.answer !== undefined && q.answer !== '');
+    const find = (re, not) => qs.find(q => re.test(q.text) && !(not && not.test(q.text)));
+    const qName = qs.find(q => q.type === 'control_fullname') || find(/name/i, /couch|item|product|employee|driver/i);
+    const qAddr = qs.find(q => q.type === 'control_address') || find(/address|street/i, /email/i);
+    const qCity = !qAddr || qAddr.type !== 'control_address' ? find(/city/i) : null;
+    const qType = find(/delivery or|pick.?up or|delivery\/pick|pickup\/deliv|how.*(get|receiv)|method/i);
+    const qDate = find(/date|day/i, /birth/i) || qs.find(q => q.type === 'control_datetime');
+    const addr = parseAddress(qAddr) || { line1: '', line2: '' };
+    if (qCity && !addr.line2) addr.line2 = ansText(qCity.answer);
+    return {
+      id: s.id, form: formId, name: qName ? ansText(qName.answer).trim() : 'Unknown',
+      line1: addr.line1, line2: addr.line2,
+      type: qType ? ansText(qType.answer).trim() : '',
+      date: (qDate && ansDate(qDate)) || String(s.created_at || '').slice(0, 10),
+      submitted: String(s.created_at || '').slice(0, 10),
+    };
+  });
+}
+async function thankYouList(force) {
+  if (!CFG.JOTFORM_KEY) return { cards: [], error: 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
+  if (!force && ty.data && Date.now() - ty.at < 2 * 60 * 1000) return ty.data;
+  const forms = await thankYouForms();
+  if (!forms.length) return { cards: [], error: 'No scheduling form found. Add THANKYOU_FORM_ID in Railway (the form ID from its Jotform URL).' };
+  const lists = await Promise.all(forms.map(async id => {
+    const r = await fetch(`${CFG.JOTFORM_BASE}/form/${id}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=1000&orderby=created_at`);
+    const j = await r.json();
+    if (j.responseCode && j.responseCode !== 200) throw new Error('Jotform: ' + (j.message || j.responseCode));
+    return parseThankYou(j.content || [], id);
+  }));
+  ty.at = Date.now(); ty.data = { cards: lists.flat(), forms };
+  return ty.data;
+}
+app.get('/api/thankyou', async (req, res) => {
+  try {
+    let d; try { d = await thankYouList(req.query.fresh === '1'); } catch (e) { d = { cards: [], error: e.message }; }
+    res.json({ ok: true, ...d, written: await kget('bcd:thankyou', {}) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/thankyou/mark', async (req, res) => {
+  try {
+    const id = clean(req.body.id, 40); if (!id) return res.status(400).json({ error: 'id required' });
+    const w = await kget('bcd:thankyou', {});
+    if (req.body.done) w[id] = new Date().toISOString().slice(0, 10); else delete w[id];
+    await kset('bcd:thankyou', w); res.json({ ok: true, written: w });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Personal goals each team member sees on the scorecard after entering their PIN.
 const GOAL_METRICS = ['custom', 'hours', 'deep', 'sold', 'shows', 'days'];
 app.post('/api/payroll/goals', async (req, res) => {
