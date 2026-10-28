@@ -70,6 +70,34 @@ td.n,th.n{text-align:right}
 .pill.ns{background:#2b1d16;color:#fff}
 .pill.u{background:#e6eef8;color:#2a5a8a}
 select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:600;font-family:inherit;color:var(--text)}
+.ctadd{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:12px}.ctadd #ctIdea{grid-column:1/-1;order:-1}
+.ctadd input,.ctadd select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px;background:#fff;min-width:0}
+@media(max-width:600px){.ctadd{grid-template-columns:1fr 1fr}.ctadd button{grid-column:1/-1}}
+.ctday{border-top:1px solid var(--line);padding:8px 0}.ctday h4{margin:0 0 4px;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ctit{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:14px}.ctit .idea{flex:1;min-width:0}.ctit small{color:var(--muted)}
+.stat{border:0;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.stat.Idea{background:#eee;color:#555}.stat.Filmed{background:#fde9c7;color:#8a5a00}.stat.Edited{background:#dfe8fb;color:#2c4d8f}.stat.Posted{background:#d8efe0;color:#1f6b3d}
+.xs{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px}
+.ohcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.ohcal .dh{font-size:11px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0;text-transform:uppercase}
+.ohcal .d{min-height:74px;border:1px solid var(--line);border-radius:10px;padding:5px;font-size:12px;cursor:pointer;background:#fff;overflow:hidden}
+.ohcal .d:hover{border-color:#b0524c}.ohcal .d.o{opacity:.35}.ohcal .d.t{border:2px solid var(--text)}.ohcal .d .n{font-weight:700}
+.ohcal .ev{display:block;margin-top:4px;padding:3px 5px;border-radius:6px;background:#b0524c;color:#fff;font-weight:700;font-size:11px;line-height:1.2}
+.ohcal .ev.past{background:#2b1d16}.ohcal .sh{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
+@media(max-width:640px){.ohcal .d{min-height:54px;padding:3px}.ohcal .sh{display:none}}
+.gt{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.gt label{font-size:12.5px;color:var(--muted);font-weight:600}
+.gt input{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;font-weight:700}
+@media(max-width:700px){.gt{grid-template-columns:1fr 1fr}}
+.path{position:relative;padding-left:4px}.step{display:flex;gap:12px;padding:0 0 14px;position:relative}
+.step:not(:last-child):before{content:"";position:absolute;left:15px;top:32px;bottom:2px;width:2px;background:var(--line)}
+.step .dot{flex:none;width:32px;height:32px;border-radius:50%;background:#b0524c;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:1}
+.step.ok .dot{background:var(--green)}.step b.big{font-size:18px}.step p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.gpfocus{width:100%;padding:12px;border:2px dashed #b0524c;border-radius:12px;font:inherit;font-weight:700;font-size:15px;margin-bottom:8px;background:#fff8f6}
+.mv{display:grid;grid-template-columns:auto 1fr 1fr auto;grid-template-areas:'c t t x' '. o d .';gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.mv>[data-mvk=done]{grid-area:c}.mv>[data-mvk=text]{grid-area:t}.mv .ow{grid-area:o}.mv .du{grid-area:d}.mv .xs{grid-area:x}
+.mv input[type=text],.mv input[type=date]{padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;min-width:0}
+.mv.done input[type=text]{text-decoration:line-through;color:var(--muted)}
+
+@media(max-width:800px){.grid2{grid-template-columns:1fr!important}}
 .chk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
 .chk input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--red);flex:none}
 .pies{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -115,6 +143,11 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .obadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:99px;background:#b0524c;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
 .ofilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.ofilters button{padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;font-weight:600;cursor:pointer}.ofilters button.on{background:var(--text);color:#fff;border-color:var(--text)}
 .olist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.tylist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.tycard{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.tycard.done{opacity:.6}
+.tychk{flex:none;cursor:pointer;position:relative;width:30px;height:30px;margin-top:2px}.tychk input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.tychk span{display:block;width:30px;height:30px;border:2px solid var(--text);border-radius:8px}.tychk input:checked+span{background:#2e7d4f;border-color:#2e7d4f}.tychk input:checked+span::after{content:'✓';color:#fff;font-weight:800;font-size:19px;display:flex;justify-content:center;line-height:26px}
+.tym{flex:1;min-width:0}.tym b{font-size:17px;display:block}.tyaddr{font-size:15px;line-height:1.4;margin:4px 0;user-select:all}.tym small{color:var(--muted);font-size:12px}.tycopy{flex:none;padding:6px 10px!important;font-size:12px!important}
 .ocard{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}.ocard:hover{border-color:#b0524c}
 .ocard img{width:72px;height:72px;object-fit:cover;border-radius:12px;flex:none;background:var(--cream)}.ocard .m{flex:1;min-width:0}.ocard .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ocard .m small{color:var(--muted);font-size:13px}
 .ost{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da;white-space:nowrap}.ost.new{background:#b0524c;color:#fff}.ost.bought{background:#2f7a4f;color:#fff}.ost.passed{background:#ddd;color:#555}
@@ -169,10 +202,12 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <a class="nav" data-tab="showings">Showing Tracker</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" data-tab="meta">Ad Performance</a>
+    <a class="nav" data-tab="content">Content Plan</a>
     <a class="nav" data-tab="ads">Ad Library</a>
     <a class="nav" data-tab="bstock">B-Stock</a>
     <a class="nav" data-tab="payroll">Payroll</a>
     <a class="nav" data-tab="cash">Daily Cash</a>
+    <a class="nav" data-tab="thanks">Thank You Cards<span class="obadge" id="tyBadge" hidden></span></a>
     <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
@@ -189,7 +224,8 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
       <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
-      <button class="btn p" id="goalEdit" data-only="goals">Set goals</button>
+      <button class="btn p" id="upAddBtn" data-only="upsells">+ Upsell after sale</button>
+      <button class="btn p" id="goalEdit" data-only="never" hidden>Set goals</button>
     </div>
     <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
     <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
@@ -217,7 +253,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
         </div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
-      <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses you entered</h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
+      <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses <small>tap Edit to fix an expense</small></h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
       <div class="card" style="margin-top:16px"><h2>Order-app sales</h2><div style="overflow:auto;max-height:440px"><table id="salesTbl"></table></div></div>
     </section>
 
@@ -236,9 +272,24 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <!-- META ADS -->
     <section id="tab-meta" hidden>
       <div class="kpis" id="mKpis"></div>
-      <div class="card"><h2>Ad spend vs. Meta revenue <small>last 6 months</small></h2><div class="chartwrap"><canvas id="mChart"></canvas></div></div>
-      <div class="card" style="margin-top:16px"><h2>Month by month</h2><div style="overflow-x:auto"><table id="mTbl"></table></div>
+      <div class="card"><h2>Ad spend vs. Meta revenue <small>last 8 weeks</small></h2><div class="chartwrap"><canvas id="mChart"></canvas></div></div>
+      <div class="card" style="margin-top:16px"><h2>Week by week</h2><div style="overflow-x:auto"><table id="mTbl"></table></div>
         <p class="empty" style="margin-top:12px;font-size:12.5px">Spend = Advertising expenses for Meta/Facebook/Instagram (not Google or yard signs). Meta sales = Sales Log rows whose source is a Meta, Facebook or Instagram ad. Lead source tracking starts June 2026.</p></div>
+    </section>
+
+    <!-- CONTENT PLAN -->
+    <section id="tab-content" hidden>
+      <div class="kpis" id="ctKpis"></div>
+      <div class="grid2" style="margin-top:0;grid-template-columns:1.5fr 1fr">
+        <div class="card"><h2>Content this week <small>tap a status to move it along</small></h2>
+          <div class="ctadd">
+            <input type="date" id="ctDate"><select id="ctPlat"><option>Facebook</option><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Meta Ad</option><option>Marketplace</option><option>Email/Text</option></select>
+            <select id="ctType"><option>Reel / video</option><option>Photo post</option><option>Story</option><option>Ad creative</option><option>Listing</option><option>Live</option></select>
+            <input id="ctIdea" placeholder="Idea / hook (e.g. 'Why this $2,500 couch is $1,100 here')"><button class="btn p" id="ctAdd">Add</button>
+          </div>
+          <div id="ctBoard"></div></div>
+        <div class="card"><h2 id="adChkTitle">Meta ads checklist</h2><div class="bar" style="height:8px;margin:2px 0 10px"><i id="adChkBar" style="width:0"></i></div><div id="adChecks"></div></div>
+      </div>
     </section>
 
     <!-- B-STOCK -->
@@ -275,6 +326,13 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <section id="tab-goals" hidden>
       <p class="empty" id="goalNote" style="margin:-6px 0 12px;font-size:13px"></p>
       <div class="kpis k4" id="goalCards"></div>
+      <div class="card" style="margin-bottom:16px"><h2>Targets <small id="gtMonth"></small></h2><div class="gt" id="goalInputs"></div></div>
+      <div class="grid2" style="margin-top:0;margin-bottom:16px;grid-template-columns:1fr 1fr">
+        <div class="card"><h2>The pathway <small>what it takes from here</small></h2><div class="path" id="gpPath"></div></div>
+        <div class="card"><h2>Game plan <small>our moves this month</small></h2>
+          <input class="gpfocus" id="gpFocus" placeholder="This month's one big focus (e.g. 50 sales: more couches on the floor + faster follow-up)">
+          <div id="gpMoves"></div><button class="btn sm" id="gpAdd" style="margin-top:8px">+ Add a move</button></div>
+      </div>
       <div class="card"><h2>Road to $100K a month</h2><div class="chartwrap"><canvas id="goalChart"></canvas></div><p style="font-size:14px;margin:12px 0 0" id="roadNote"></p></div>
       <div class="card" style="margin-top:16px"><h2>Team</h2><p style="font-size:14px;margin:0 0 10px" id="teamNote"></p><div style="overflow-x:auto"><table id="teamTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">From the Work Log: showings each person hosted and how many bought.</p></div>
@@ -288,12 +346,16 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
         <div class="card"><h2>By upsell</h2><div class="piewrap"><canvas id="upPie"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="upItems"></table></div></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Orders with upsells</h2><div style="overflow:auto;max-height:440px"><table id="upOrders"></table></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">From the Add-Ons columns in your Sales Log (order-app sales, June 2026 on). Attach rate = orders with any upsell ÷ all orders.</p></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Combines the Add-Ons in your Sales Log, upsells checked when you mark a couch Sold, and upsells added after the sale with <b>+ Upsell after sale</b> (matched to the customer's order by last name). Attach rate = orders with any upsell ÷ all orders.</p></div>
     </section>
 
     <!-- OPEN HOUSES -->
     <section id="tab-openhouse" hidden>
       <div class="kpis" id="ohKpis"></div>
+      <div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn sm" id="ohCalPrev">&larr;</button><h2 id="ohCalTitle" style="margin:0;flex:1;text-align:center"></h2><button class="btn sm" id="ohCalNext">&rarr;</button></div>
+        <div class="ohcal" id="ohCal"></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Tap a day to plan an open house. Tap an event to edit it or add it to Google Calendar.</p></div>
       <div class="grid2" style="margin-top:0">
         <div class="card"><h2>Couches on floor vs. sales</h2><div class="chartwrap" style="height:240px"><canvas id="ohFloor"></canvas></div></div>
         <div class="card"><h2>"Save my spot" leads vs. walk-ins</h2><div class="chartwrap" style="height:240px"><canvas id="ohLeads"></canvas></div></div>
@@ -322,6 +384,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <!-- CASH POSITION -->
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
+    <section id="tab-thanks" hidden><div id="tyBody"></div></section>
   </main>
 </div>
 
@@ -341,10 +404,10 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 </form></div>
 
 <div class="mask" id="m-expense"><form class="modal" data-action="addExpense">
-  <h3>Log an expense</h3>
+  <h3 id="expTitle">Log an expense</h3><input type="hidden" name="id">
   <div class="two">
     <label>Date<input type="date" name="date" required></label>
-    <label>Category<select name="category"><option>Advertising</option><option>Payroll</option><option>Rent</option><option>Fuel</option><option>Supplies</option><option>Software</option><option>Truck</option><option>Insurance</option><option>Utilities</option><option>Freight</option><option>Other</option></select></label>
+    <label>Category<select name="category"><option>Advertising</option><option>Payroll</option><option>Rent</option><option>Fuel</option><option>Supplies</option><option>Software</option><option>Truck</option><option>Insurance</option><option>Utilities</option><option>Freight</option><option>Equipment</option><option>Other</option></select></label>
   </div>
   <div class="two">
     <label>Amount ($)<input type="number" step="0.01" name="amount" required></label>
@@ -416,7 +479,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="two"><label>Walk-ins<input type="number" name="walkins" min="0"></label><label>Sales<input type="number" name="sales" min="0"></label></div>
   <div class="two"><label>Couches on floor<input type="number" name="floor" min="0"></label><label>Days promoted before<input type="number" name="promoDays" min="0"></label></div>
   <div class="two"><label>"Save my spot" leads<input type="number" name="leads" min="0"></label><label>Note<input name="note" placeholder="e.g. $50 off every couch"></label></div>
-  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
+  <div class="acts"><a class="btn" id="ohGcal" target="_blank" rel="noopener" style="margin-right:auto">+ Google Calendar</a><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <input type="file" accept="image/*" id="photoIn" hidden>
 <div class="mask" id="m-photo"><div class="modal lb" style="max-width:640px">
@@ -424,6 +487,14 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="acts"><button type="button" class="btn" data-close>Close</button><button type="button" class="btn" id="pvRemove">Remove</button><button type="button" class="btn p" id="pvReplace">Replace</button></div>
 </div></div>
 <div class="mask" id="m-offer"><div class="modal" style="max-width:640px;max-height:92vh;overflow:auto"><div id="offerDetail"></div></div></div>
+<div class="mask" id="m-upadd"><form class="modal" id="upAddForm">
+  <h3>Upsell added after the sale</h3>
+  <p class="empty" style="font-size:13px;margin:-6px 0 12px">For Scotchgard (or anything else) a customer added after checking out online or in the order app.</p>
+  <div class="two"><label>Date<input type="date" name="date" required></label><label>Customer<input name="customer" list="upNames" placeholder="Name on the order" autocomplete="off" required></label></div>
+  <datalist id="upNames"></datalist>
+  <div class="two"><label>Upsell<select name="item"></select></label><label>Amount ($)<input type="number" step="0.01" name="amount" required></label></div>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
+</form></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -533,7 +604,7 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, showingsError: d.showingsError };
+  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, store: d.store || {}, showingsError: d.showingsError };
 }
 
 // ---------- date ranges (one per tab) ----------
@@ -571,7 +642,7 @@ function rangeLabel(R){
 }
 const vsLabel = R => ({ month: 'last month', week: 'last week', d30: 'prior 30 days', d90: 'prior 90 days', ytd: 'last year' })[R.kind] || 'prior period';
 const inR = (d, R) => !!d && d >= R.from && d <= R.to;
-const DEFAULT_KIND = { sales: 'month', showings: 'month', meta: 'month', bstock: 'all', payroll: 'week', cash: 'd30' };
+const DEFAULT_KIND = { sales: 'month', showings: 'month', meta: 'week', bstock: 'all', payroll: 'week', cash: 'd30' };
 const RANGES = {};
 const getR = t => RANGES[t] || (RANGES[t] = makeRange(DEFAULT_KIND[t]));
 const isHistDay = d => RAW.hMonths.has(mkey(d.getFullYear(), d.getMonth()));
@@ -599,7 +670,8 @@ const upItem = t => /scotch/i.test(t) ? 'Scotchgard' : /wrap/i.test(t) ? 'Plasti
 function upItems(s){ return String(s || '').split(/[,;+|]| and /i).map(x => x.replace(/\(.*?\)|\$[\d.,]+/g, '').trim()).filter(Boolean).map(upItem); }
 function renderUpsells(){
   const R = getR('upsells'), vs = vsLabel(R);
-  const calc = R2 => { const L = RAW.sales.filter(x => inR(x.date, R2)), withUp = L.filter(x => x.addons || x.addonAmt > 0);
+  const ALL = upsellOrders();
+  const calc = R2 => { const L = ALL.filter(x => inR(x.date, R2)), withUp = L.filter(x => x.addons || x.addonAmt > 0);
     const rev = L.reduce((a, x) => a + (x.addonAmt || 0), 0);
     return { L, withUp, rev, n: L.length, rate: L.length ? withUp.length / L.length : NaN, per: L.length ? rev / L.length : 0, perUp: withUp.length ? rev / withUp.length : 0 }; };
   const A = calc(R), B = calc(prevRange(R));
@@ -626,7 +698,7 @@ function renderUpsells(){
     { type: 'line', label: 'Attach rate', data: rows.map(r => isFinite(r.rate) ? Math.round(r.rate * 100) : null), borderColor: '#2b1d16', backgroundColor: '#2b1d16', yAxisID: 'y2', tension: .3, pointRadius: 2 } ] }, options: o });
   const recent = A.withUp.slice().sort((a, b) => b.date - a.date).slice(0, 40);
   $('upOrders').innerHTML = `<tr><th>Date</th><th>Customer</th><th>Upsells</th><th class="n">Upsell $</th><th class="n hide-m">Order</th></tr>` +
-    (recent.length ? recent.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td>${esc(x.addons || '–')}</td><td class="n"><b>${money(x.addonAmt)}</b></td><td class="n hide-m">${money(x.rev)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">None in this range.</td></tr>');
+    (recent.length ? recent.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td>${esc(x.addons || '–')}</td><td class="n"><b>${money(x.addonAmt)}</b></td><td class="n hide-m">${money(x.rev)}${x.adds ? ` <button class="xs" data-updel="${x.adds.join(',')}" title="Remove the after-sale upsell">&times;</button>` : ''}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">None in this range.</td></tr>');
 }
 
 // ---------- goals ----------
@@ -660,6 +732,7 @@ function renderGoals(){
   $('teamTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Showings hosted</th><th class="n">Sold</th><th class="n">Close rate</th></tr>` +
     (Object.keys(ppl).length ? Object.entries(ppl).sort((a, b) => b[1].sold - a[1].sold).map(([k, p]) => `<tr><td><b>${esc(k)}</b></td><td class="n">${p.hours.toFixed(1)}</td><td class="n">${p.shows}</td><td class="n"><b>${p.sold}</b></td><td class="n">${p.shows ? pct(p.sold / p.shows) : '–'}</td></tr>`).join('')
       : `<tr><td colspan="5" class="empty">${PAY ? 'No Work Log entries this month.' : 'Loading the Work Log...'}</td></tr>`);
+  renderGamePlan();
   $('teamNote').innerHTML = `Labor is <b>${A.gross ? pct(pay / A.gross) : '–'}</b> of sales this month${G.labor ? ` (target ${G.labor}%)` : ''}.`;
 }
 function openGoals(){
@@ -691,13 +764,13 @@ function shrinkPhoto(file){
 // ---------- sales tracker ----------
 function trackerSold(){
   if (RAW._ts) return RAW._ts;
-  const out = [], add = (sold, price, del, up, name) => { if (!sold) return;
-    out.push({ date: sold, price: Number(price) || 0, del: Number(del) || 0, up: Number(up) || 0, name, source: 'Sales Tracker', live: true }); };
-  RAW.loads.forEach(l => l.units.forEach(u => { if (u.status === 'sold') add(u.sold, u.soldPrice, u.soldDelivery, u.soldUpsellTotal, u.name); }));
-  RAW.purchases.forEach(p => { if (p.status === 'sold') add(p.sold, p.soldPrice, p.soldDelivery, p.soldUpsellTotal, p.item); });
+  const out = [], add = (sold, price, del, up, name, ups, cust) => { if (!sold) return;
+    out.push({ date: sold, price: Number(price) || 0, del: Number(del) || 0, up: Number(up) || 0, ups: ups || [], cust: cust || '', name, source: 'Sales Tracker', live: true }); };
+  RAW.loads.forEach(l => l.units.forEach(u => { if (u.status === 'sold') add(u.sold, u.soldPrice, u.soldDelivery, u.soldUpsellTotal, u.name, u.soldUpsells, u.soldCustomer); }));
+  RAW.purchases.forEach(p => { if (p.status === 'sold') add(p.sold, p.soldPrice, p.soldDelivery, p.soldUpsellTotal, p.item, p.soldUpsells, p.soldCustomer); });
   // Match each sold couch to its Sales Log order (same price, logged up to 10 days before it was marked sold)
   // so older couches pick up the delivery fee, and leftover orders show as "missing from the tracker".
-  const log = RAW.sales.filter(x => !isHistDay(x.date)).map(x => ({ ...x, used: false }));
+  const log = RAW.sales.filter(x => !isHistDay(x.date)).map(x => ({ ...x, src: x, used: false }));
   const near = (a, b) => Math.abs(a - b) < 1;
   out.sort((a, b) => a.date - b.date).forEach(t => {
     const pool = log.filter(l => !l.used && (t.date - l.date) / 864e5 >= -1 && (t.date - l.date) / 864e5 <= 10);
@@ -812,7 +885,7 @@ function renderSales(){
     .sort((a, b2) => b2.date - a.date);
   $('logCard').hidden = A.allHist;
   $('logTbl').innerHTML = `<tr><th>Date</th><th>Type</th><th>Category</th><th class="hide-m">Details</th><th class="n">Amount</th><th></th></tr>` +
-    (L.length ? L.map(x => `<tr><td>${fmtD(x.date)}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n"><button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
+    (L.length ? L.map(x => `<tr><td>${fmtD(x.date)}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n" style="white-space:nowrap">${x.kind === 'expenses' ? `<button class="btn sm" data-expedit="${esc(x.id)}">Edit</button> ` : ''}<button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
       : `<tr><td colspan="6" class="empty">Nothing logged in this range.</td></tr>`);
 
   const rows = A.s.slice().sort((a,b2)=>b2.date-a.date);
@@ -895,14 +968,13 @@ function renderMeta(){
     ['Return on ad spend', t(isFinite(A.roas) ? A.roas.toFixed(1) + 'x' : '–'), A.tracked ? chg(A.roas || 0, B.roas || 0, false, vs) : ''],
     ['Share of sales', t(pct(A.share)), A.tracked ? chg(A.share || 0, B.share || 0, false, vs) : ''],
   ]);
-  const bk = buckets(R).filter(b => !b.future), rows = bk.map(b => ({ label: b.label, ...metaRange({ from: b.from, to: b.to }) }));
-  chartIn('mChart', { type: 'bar', data: { labels: rows.map(r => r.label), datasets: [
-    { label: 'Ad spend', data: rows.map(r => r.spend), backgroundColor: '#2b1d16', borderRadius: 4 },
-    { label: 'Meta revenue', data: rows.map(r => r.tracked ? r.rev : null), backgroundColor: '#b0524c', borderRadius: 4 } ] }, options: baseOpts(true) });
-  const endD = R.to > day0(new Date()) ? day0(new Date()) : R.to, endY = endD.getFullYear(), endM = endD.getMonth();
-  const mrows = [0,1,2,3,4,5].map(k => { const b = back(endY, endM, k); return { ...b, ...metaRange({ from: new Date(b.y, b.m, 1), to: new Date(b.y, b.m + 1, 0) }) }; });
-  $('mTbl').innerHTML = `<tr><th>Month</th><th class="n">Spend</th><th class="n">Meta sales</th><th class="n">Revenue</th><th class="n">Cost / sale</th><th class="n">ROAS</th></tr>` +
-    mrows.map(r => `<tr><td>${MON[r.m]} ${r.y}</td><td class="n">${money(r.spend)}</td><td class="n">${r.tracked ? r.sales : '–'}</td><td class="n">${r.tracked ? money(r.rev) : '–'}</td><td class="n">${r.tracked && isFinite(r.cps) ? money(r.cps) : '–'}</td><td class="n"><b>${r.tracked && isFinite(r.roas) ? r.roas.toFixed(1) + 'x' : '–'}</b></td></tr>`).join('');
+  const endD = R.to > day0(new Date()) ? day0(new Date()) : R.to, wk = [];
+  for (let k = 7; k >= 0; k--) { const m = addDays(mondayOf(endD), -7 * k); wk.push({ m, label: fmtD(m), ...metaRange({ from: m, to: addDays(m, 6) }) }); }
+  chartIn('mChart', { type: 'bar', data: { labels: wk.map(r => 'Wk ' + r.label), datasets: [
+    { label: 'Ad spend', data: wk.map(r => r.spend), backgroundColor: '#2b1d16', borderRadius: 4 },
+    { label: 'Meta revenue', data: wk.map(r => r.tracked ? r.rev : null), backgroundColor: '#b0524c', borderRadius: 4 } ] }, options: baseOpts(true) });
+  $('mTbl').innerHTML = `<tr><th>Week of</th><th class="n">Spend</th><th class="n">Meta sales</th><th class="n">Revenue</th><th class="n">Cost / sale</th><th class="n">ROAS</th></tr>` +
+    wk.slice().reverse().map(r => `<tr><td>${r.label} – ${fmtD(addDays(r.m, 6))}</td><td class="n">${money(r.spend)}</td><td class="n">${r.tracked ? r.sales : '–'}</td><td class="n">${r.tracked ? money(r.rev) : '–'}</td><td class="n">${r.tracked && isFinite(r.cps) ? money(r.cps) : '–'}</td><td class="n"><b>${r.tracked && isFinite(r.roas) ? r.roas.toFixed(1) + 'x' : '–'}</b></td></tr>`).join('');
 }
 
 // ---------- b-stock ----------
@@ -1137,6 +1209,7 @@ function ohStats(o){
   return { d, conv: o.walkins ? o.sales / o.walkins : NaN, salesLog: salesLog.length, salesLogRev: salesLog.reduce((a, s) => a + s.rev, 0), done };
 }
 function renderOpenHouse(){
+  renderOHCal();
   const R = getR('openhouse'), list = (RAW.openhouses || []).filter(o => inR(toDate(o.date), R)).sort((a, b) => a.date.localeCompare(b.date));
   const past = list.filter(o => toDate(o.date) <= day0(new Date()));
   const T = k => past.reduce((a, o) => a + (Number(o[k]) || 0), 0);
@@ -1161,7 +1234,7 @@ function renderOpenHouse(){
         <td class="n">${o.walkins ?? '–'}</td><td class="n">${o.sales ?? '–'}</td><td class="n"><b>${pct(st.conv)}</b></td>
         <td class="n hide-m">${o.floor || '–'}</td><td class="n hide-m">${o.promoDays || '–'}</td><td class="n hide-m">${o.leads || '–'}</td>
         <td class="n hide-m">${st.done ? st.done + '/' + PROMO_ALL.length : '–'}</td><td class="n hide-m">${st.salesLog ? st.salesLog + ' · ' + money(st.salesLogRev) : '–'}</td>
-        <td class="n" style="white-space:nowrap"><button class="btn sm" data-ohedit="${esc(o.id)}">Edit</button> <button class="btn sm" data-del="openhouses:${esc(o.id)}">Delete</button></td></tr>`; }).join('')
+        <td class="n" style="white-space:nowrap">${o.date >= todayStr() ? `<a class="btn sm" target="_blank" rel="noopener" href="${gcalLink(o)}">+ GCal</a> ` : ''}<button class="btn sm" data-ohedit="${esc(o.id)}">Edit</button> <button class="btn sm" data-del="openhouses:${esc(o.id)}">Delete</button></td></tr>`; }).join('')
       : `<tr><td colspan="11" class="empty">No open houses in this range.</td></tr>`);
   // does more inventory on the floor mean more sales?
   const pts = past.filter(o => o.floor && o.sales != null).map(o => ({ x: Number(o.floor), y: Number(o.sales) }));
@@ -1176,7 +1249,9 @@ function openOH(o){
   o = o || {};
   f.id.value = o.id || ''; f.date.value = o.date || todayStr(); f.time.value = o.time || ''; f.note.value = o.note || '';
   ['walkins', 'sales', 'floor', 'promoDays', 'leads'].forEach(k => f[k].value = o[k] ?? '');
-  $('ohModalTitle').textContent = o.id ? 'Edit open house' : 'Add an open house';
+  $('ohModalTitle').textContent = o.id ? 'Edit open house' : 'Plan an open house';
+  const upd = () => { $('ohGcal').href = gcalLink({ date: f.date.value || todayStr(), time: f.time.value, note: f.note.value }); };
+  upd(); f.date.oninput = f.time.oninput = f.note.oninput = upd;
   m.classList.add('on');
 }
 
@@ -1427,8 +1502,8 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', offers: 'Couch Offers' };
-DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards' };
+DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
   $('monLabel').textContent = rangeLabel(R);
@@ -1440,8 +1515,8 @@ function syncRangeBar(){
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, offers: renderOffers })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks';
+  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, offers: renderOffers, content: renderContent, thanks: renderThanks })[tab]();
 }
 function setTab(t){
   tab = t;
@@ -1465,7 +1540,7 @@ async function load(fresh){
     if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
     render();
     // Load the other tabs' data in the background so switching tabs is instant.
-    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); }, 400); }
+    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); if (!TY) loadThanks(); }, 400); }
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
@@ -1477,7 +1552,7 @@ const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('
 $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
 $('goalEdit').onclick = () => openGoals();
-$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else { toast('Pulling the latest from Google...'); load(true); } };
+$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else if (tab === 'thanks') loadThanks(true); else { toast('Pulling the latest from Google...'); load(true); } };
 $('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
 $('payBtn').onclick = async () => {
   const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
@@ -1487,7 +1562,7 @@ $('payBtn').onclick = async () => {
 document.querySelectorAll('.nav[data-tab]').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
-document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open); m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
+document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open), f = m.querySelector('form'); f.reset(); if (f.elements.id) f.elements.id.value = ''; if ($('expTitle')) $('expTitle').textContent = 'Log an expense'; m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
 document.querySelectorAll('.mask').forEach(m => {
   const box = m.querySelector('.modal');
   if (box && !box.querySelector('.xbtn')) box.insertAdjacentHTML('afterbegin', '<button type="button" class="xbtn" data-close aria-label="Close">&times;</button>');
@@ -1499,6 +1574,7 @@ document.querySelectorAll('.mask').forEach(m => {
     const data = Object.fromEntries(new FormData(f).entries());
     f.querySelectorAll('input[data-money]').forEach(i => { const v = parseMoney(i.value); data[i.name] = v == null ? '' : String(v); });
     let url = '/api/add', body = { action: f.dataset.action, data };
+    if (f.dataset.action === 'addExpense' && data.id) { url = '/api/expense/update'; body = data; }
     if (f.dataset.kind === 'load') {
       url = '/api/loads';
       body = { ...data, units: data.units.split(/\n/).map(line => {
@@ -1621,6 +1697,40 @@ document.addEventListener('change', async e => {
     toast('Marked ' + OSTATUS[status]); renderOffers(); } catch (err) { toast(err.message); }
 });
 
+// ---------- thank-you cards (one per scheduling form submission) ----------
+let TY = null, TYSHOW = 'todo';
+const tyD = s => { const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; };
+async function loadThanks(fresh){
+  try { const r = await fetch('/api/thankyou' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' }); const d = await r.json(); if (d.error && !d.cards) throw new Error(d.error); TY = d; }
+  catch (e) { TY = { cards: [], written: {}, error: e.message }; }
+  tyBadge(); if (tab === 'thanks') renderThanks();
+}
+function tyBadge(){ const n = TY ? TY.cards.filter(c => !TY.written[c.id]).length : 0; $('tyBadge').hidden = !n; $('tyBadge').textContent = n; }
+function renderThanks(){
+  if (!TY) { $('tyBody').innerHTML = '<p class="empty">Loading thank-you cards…</p>'; loadThanks(); return; }
+  const W = TY.written || {}, all = TY.cards.slice().sort((a, b) => (b.submitted || b.date).localeCompare(a.submitted || a.date));
+  const todo = all.filter(c => !W[c.id]), done = all.filter(c => W[c.id]).sort((a, b) => W[b.id].localeCompare(W[a.id]));
+  const list = TYSHOW === 'todo' ? todo : done;
+  const card = c => { const addr = [c.line1, c.line2].filter(Boolean).join('\n');
+    return `<div class="tycard ${W[c.id] ? 'done' : ''}"><label class="tychk"><input type="checkbox" data-ty="${esc(c.id)}" ${W[c.id] ? 'checked' : ''}><span></span></label>
+      <div class="tym"><b>${esc(c.name)}</b><div class="tyaddr">${esc(c.line1) || '<i>No address</i>'}${c.line2 ? '<br>' + esc(c.line2) : ''}</div>
+      <small>${c.type ? esc(c.type) + ' · ' : ''}${tyD(c.date)}${W[c.id] ? ' · written ' + tyD(W[c.id]) : ''}</small></div>
+      ${addr ? `<button class="btn tycopy" data-tycopy="${esc(c.name + '\n' + addr)}">Copy</button>` : ''}</div>`; };
+  $('tyBody').innerHTML = (TY.error ? `<div class="err" style="display:block">${esc(TY.error)}</div>` : '') +
+    `<div class="ofilters"><button data-tyshow="todo" class="${TYSHOW === 'todo' ? 'on' : ''}">To write (${todo.length})</button><button data-tyshow="done" class="${TYSHOW === 'done' ? 'on' : ''}">Written (${done.length})</button></div>` +
+    (list.length ? `<div class="tylist">${list.map(card).join('')}</div>` : `<div class="card"><p class="empty">${TYSHOW === 'todo' ? 'All caught up — no cards to write.' : 'No cards written yet.'}</p></div>`);
+}
+document.addEventListener('click', e => {
+  const s = e.target.closest('[data-tyshow]'); if (s) { TYSHOW = s.dataset.tyshow; renderThanks(); return; }
+  const c = e.target.closest('[data-tycopy]'); if (c) { navigator.clipboard.writeText(c.dataset.tycopy).then(() => toast('Address copied'), () => toast('Copy failed')); }
+});
+document.addEventListener('change', async e => {
+  const id = e.target.dataset && e.target.dataset.ty; if (!id) return;
+  const done = e.target.checked;
+  try { const j = await post('/api/thankyou/mark', { id, done }); TY.written = j.written; tyBadge(); toast(done ? 'Card written ✓' : 'Moved back to To write'); setTimeout(renderThanks, 350); }
+  catch (err) { e.target.checked = !done; toast(err.message); }
+});
+
 // ---------- team goals (shown on the scorecard "My pay") ----------
 const GMET = { custom: 'Custom (checkbox)', hours: 'Hours this week', deep: 'Deep cleans this week', sold: 'Showings sold this week', shows: 'Showings hosted this week', days: 'Days worked this week' };
 function renderGoalEditor(){
@@ -1662,9 +1772,208 @@ document.addEventListener('click', e => {
   inp.addEventListener('blur', save);
 });
 document.addEventListener('click', e => { if (e.target.id === 'missLink') { e.preventDefault(); $('missBox').hidden = !$('missBox').hidden; } });
+async function saveStore(k, v){ RAW.store[k] = v; try { await post('/api/store/' + k, { value: v }); } catch (e) { toast(e.message); } }
+const uid6 = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-expedit]'); if (!b) return;
+  const x = RAW.expenses.find(y => y.id === b.dataset.expedit); if (!x) return toast('Expense not found');
+  const m = $('m-expense'), f = m.querySelector('form').elements;
+  f.id.value = x.id; f.date.value = ymd(x.date); f.amount.value = x.amt; f.vendor.value = x.vendor || ''; f.notes.value = x.notes || '';
+  if (![...f.category.options].some(o => o.value === x.cat)) f.category.add(new Option(x.cat, x.cat));
+  f.category.value = x.cat; $('expTitle').textContent = 'Edit expense'; m.classList.add('on');
+});
+
+// ---------- content plan + meta ads checklist ----------
+const CT_STATUS = ['Idea', 'Filmed', 'Edited', 'Posted'];
+const AD_CHECKS = [
+  ['Mon', 'Check last 7 days: spend, cost per lead, cost per sale'],
+  ['Mon', 'Turn off ads that spent 2x your target cost per lead with no results'],
+  ['Mon', 'Raise budget ~20% on the best ad set (no bigger jumps)'],
+  ['Tue', 'Launch 2–3 new creatives from this week’s content'],
+  ['Tue', 'Swap the hook / first 3 seconds on any ad with frequency over 3'],
+  ['Wed', 'Remove sold couches from ads and the catalog'],
+  ['Daily', 'Reply to every ad comment and DM within the hour'],
+  ['Fri', 'Log this week’s ad spend in Expenses'],
+  ['Fri', 'Note the winning hook and plan next week’s content around it'],
+];
+function renderContent(){
+  const R = getR('content'), wk = ymd(mondayOf(R.from)), list = (RAW.store.content || []).filter(x => x.date >= ymd(R.from) && x.date <= ymd(R.to)).sort((a, b) => a.date.localeCompare(b.date));
+  if (!$('ctDate').value || $('ctDate').value < ymd(R.from) || $('ctDate').value > ymd(R.to)) $('ctDate').value = ymd(R.from) > todayStr() ? ymd(R.from) : (todayStr() > ymd(R.to) ? ymd(R.from) : todayStr());
+  const n = st => list.filter(x => x.status === st).length, ads = list.filter(x => x.plat === 'Meta Ad' || x.type === 'Ad creative').length;
+  const checks = (RAW.store.adChecks || {})[wk] || {}, done = AD_CHECKS.filter((_, i) => checks[i]).length;
+  $('ctKpis').innerHTML = kpiHtml([['Planned', list.length], ['Posted', n('Posted') + ' / ' + list.length], ['Ready to post', n('Edited')], ['Still ideas', n('Idea')], ['New ad creatives', ads], ['Ads checklist', done + ' / ' + AD_CHECKS.length]]);
+  const days = []; for (let d = R.from; d <= R.to; d = addDays(d, 1)) days.push(d);
+  $('ctBoard').innerHTML = days.map(d => { const items = list.filter(x => x.date === ymd(d));
+    return `<div class="ctday"><h4>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h4>` +
+      (items.length ? items.map(x => `<div class="ctit"><button class="stat ${x.status}" data-ctstat="${x.id}">${x.status}</button><span class="idea">${esc(x.idea || '(no idea yet)')}<br><small>${esc(x.plat)} · ${esc(x.type)}</small></span><button class="xs" data-ctdel="${x.id}" title="Delete">&times;</button></div>`).join('')
+        : '<div class="ctit"><small>Nothing planned</small></div>') + '</div>'; }).join('');
+  $('adChkTitle').innerHTML = `Meta ads checklist <small>week of ${fmtD(mondayOf(R.from))}</small>`;
+  $('adChkBar').style.width = (done / AD_CHECKS.length * 100) + '%';
+  $('adChecks').innerHTML = AD_CHECKS.map(([d, t], i) => `<label class="chk"><input type="checkbox" data-adchk="${i}" ${checks[i] ? 'checked' : ''}> <span><b style="font-size:12px;color:var(--muted)">${d}</b> · ${esc(t)}</span></label>`).join('');
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'ctAdd') {
+    const idea = $('ctIdea').value.trim(), date = $('ctDate').value; if (!date) return toast('Pick a date');
+    const list = (RAW.store.content || []).concat({ id: uid6(), date, plat: $('ctPlat').value, type: $('ctType').value, idea, status: 'Idea' });
+    $('ctIdea').value = ''; saveStore('content', list); renderContent(); return;
+  }
+  const st = e.target.closest('[data-ctstat]');
+  if (st) { const list = RAW.store.content || [], x = list.find(y => y.id === st.dataset.ctstat); if (x) { x.status = CT_STATUS[(CT_STATUS.indexOf(x.status) + 1) % CT_STATUS.length]; saveStore('content', list); renderContent(); } return; }
+  const del = e.target.closest('[data-ctdel]');
+  if (del) { saveStore('content', (RAW.store.content || []).filter(y => y.id !== del.dataset.ctdel)); renderContent(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'ctIdea') $('ctAdd').click(); });
+document.addEventListener('change', e => {
+  if (!e.target.dataset || e.target.dataset.adchk == null) return;
+  const wk = ymd(mondayOf(getR('content').from)), all = { ...(RAW.store.adChecks || {}) }; all[wk] = { ...(all[wk] || {}), [e.target.dataset.adchk]: e.target.checked };
+  saveStore('adChecks', all); renderContent();
+});
+
+// ---------- open house calendar ----------
+let ohCalM = null;
+function ohTimes(o){
+  const m = String(o.time || '').toLowerCase().replace(/\s/g, '').match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?-(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+  const h24 = (h, ap, fb) => { h = +h; ap = ap || fb; if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h; };
+  if (!m) return [10, 0, 14, 0];
+  const endAp = m[6] || (m[3] || 'pm'), startAp = m[3] || endAp;
+  return [h24(m[1], startAp), +(m[2] || 0), h24(m[4], endAp), +(m[5] || 0)];
+}
+function gcalLink(o){
+  const [sh, sm, eh, em] = ohTimes(o), d = o.date.replace(/-/g, ''), p = n => String(n).padStart(2, '0');
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: "Billy's Couches Open House", dates: `${d}T${p(sh)}${p(sm)}00/${d}T${p(eh)}${p(em)}00`, ctz: 'America/Chicago',
+    location: "Billy's Couches, 126 E Orleans St, Pacific, MO 63069", details: (o.note ? o.note + '\n\n' : '') + 'Planned in Billy\'s HQ. Promo checklist is on the Open Houses tab.' });
+  return 'https://calendar.google.com/calendar/render?' + q.toString();
+}
+function renderOHCal(){
+  if (!ohCalM) { const t = day0(new Date()); ohCalM = new Date(t.getFullYear(), t.getMonth(), 1); }
+  $('ohCalTitle').textContent = ohCalM.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const start = mondayOf(ohCalM), today = todayStr(), ohs = RAW.openhouses || [];
+  let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="dh">${d}</div>`).join('');
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i), k = ymd(d); if (i >= 35 && d.getMonth() !== ohCalM.getMonth()) break;
+    const evs = ohs.filter(o => o.date === k), shows = (RAW.showings || []).filter(x => ymd(x.date) === k && x.status !== 'Canceled').length;
+    html += `<div class="d ${d.getMonth() !== ohCalM.getMonth() ? 'o' : ''} ${k === today ? 't' : ''}" data-ohday="${k}"><span class="n">${d.getDate()}</span>` +
+      evs.map(o => `<span class="ev ${k < today ? 'past' : ''}" data-ohev="${esc(o.id)}">Open house${o.time ? '<br>' + esc(o.time) : ''}</span>`).join('') +
+      (shows ? `<span class="sh">${shows} showing${shows > 1 ? 's' : ''}</span>` : '') + '</div>';
+  }
+  $('ohCal').innerHTML = html;
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'ohCalPrev' || e.target.id === 'ohCalNext') { ohCalM = new Date(ohCalM.getFullYear(), ohCalM.getMonth() + (e.target.id === 'ohCalNext' ? 1 : -1), 1); renderOHCal(); return; }
+  const ev = e.target.closest('[data-ohev]');
+  if (ev) { const o = (RAW.openhouses || []).find(x => x.id === ev.dataset.ohev); if (o) { openOH(o); } return; }
+  const day = e.target.closest('[data-ohday]'); if (day) openOH({ date: day.dataset.ohday });
+});
+
+// Every order with its upsells: Sales Log add-ons + upsells marked on the Sales Tracker + upsells added after the sale.
+function upsellOrders(){
+  trackerSold();
+  const orders = RAW.sales.map(x => ({ date: x.date, name: x.name, rev: x.rev, addonAmt: x.addonAmt || 0, base: x.addons || '', extra: [], src: x }));
+  const bySrc = new Map(orders.map(o => [o.src, o]));
+  (RAW._ts || []).forEach(t => { if (!(t.up > 0)) return;
+    const labels = (t.ups || []).map(u => u.label).filter(Boolean), o = t.order && bySrc.get(t.order.src);
+    if (o) { if (!o.addonAmt) { o.addonAmt += t.up; o.extra.push(...(labels.length ? labels : ['Upsell'])); } }
+    else orders.push({ date: t.date, name: t.cust || t.name, rev: t.rev, addonAmt: t.up, base: '', extra: labels.length ? labels : ['Upsell'], tracker: true });
+  });
+  (RAW.store.upsellAdds || []).forEach(a => {
+    const d = toDate(a.date); if (!d) return;
+    const last = String(a.customer || '').toLowerCase().trim().split(/\s+/).pop();
+    const o = last ? orders.filter(x => x.date <= d && (d - x.date) / 864e5 <= 120 && String(x.name).toLowerCase().includes(last)).sort((x, y) => y.date - x.date)[0] : null;
+    const lbl = a.item + ' (added after sale)';
+    if (o) { o.addonAmt += Number(a.amount) || 0; o.extra.push(lbl); (o.adds = o.adds || []).push(a.id); }
+    else orders.push({ date: d, name: a.customer || '—', rev: Number(a.amount) || 0, addonAmt: Number(a.amount) || 0, base: '', extra: [lbl], adds: [a.id], standalone: true });
+  });
+  orders.forEach(o => { o.addons = [o.base, ...o.extra].filter(Boolean).join(', '); });
+  return orders;
+}
+function openUpAdd(){
+  const m = $('m-upadd'), f = m.querySelector('form').elements; f.reset && m.querySelector('form').reset();
+  f.date.value = todayStr(); f.item.innerHTML = UPSELLS.map(u => `<option data-p="${u.price}">${u.label}</option>`).join('') + '<option data-p="">Other</option>';
+  f.amount.value = UPSELLS[0].price;
+  const names = [...new Set(RAW.sales.filter(x => (day0(new Date()) - x.date) / 864e5 <= 90).sort((a, b) => b.date - a.date).map(x => x.name).filter(Boolean))];
+  $('upNames').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
+  f.item.onchange = () => { const p = f.item.selectedOptions[0].dataset.p; if (p) f.amount.value = p; };
+  m.classList.add('on');
+}
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'upAddForm') return; e.preventDefault(); e.stopPropagation();
+  const f = e.target.elements, amt = Number(f.amount.value); if (!(amt > 0) || !f.customer.value.trim()) return toast('Add the customer and amount');
+  const list = (RAW.store.upsellAdds || []).concat({ id: uid6(), date: f.date.value, customer: f.customer.value.trim(), item: f.item.value, amount: amt });
+  saveStore('upsellAdds', list); $('m-upadd').classList.remove('on'); toast('Upsell added'); renderUpsells();
+}, true);
+document.addEventListener('click', e => {
+  if (e.target.id === 'upAddBtn') return openUpAdd();
+  const d = e.target.closest('[data-updel]'); if (!d) return;
+  const ids = d.dataset.updel.split(','); saveStore('upsellAdds', (RAW.store.upsellAdds || []).filter(a => !ids.includes(a.id))); renderUpsells();
+});
+
+// ---------- goals: targets on the page + pathway + game plan ----------
+const GP_DEFAULT = [
+  { text: 'Keep 25+ couches on the floor every weekend', owner: 'Billy' },
+  { text: 'Call every lead within 5 minutes; confirm every showing the day before', owner: 'Team' },
+  { text: 'Offer Scotchgard + delivery on every sale', owner: 'Team' },
+  { text: 'Launch 3 new ad creatives every week (Content Plan tab)', owner: 'Billy' },
+  { text: 'Run 2 open houses this month', owner: 'Billy' },
+];
+const gMonth = () => { const R = getR('goals'); return R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0'); };
+function renderGamePlan(){
+  const mk = gMonth(), R = getR('goals'), G = (RAW.goals || {})[mk] || {}, A = period(R), today = day0(new Date());
+  $('gtMonth').textContent = 'for ' + rangeLabel(R) + ' · saves as you type';
+  if (!$('goalInputs').contains(document.activeElement))
+    $('goalInputs').innerHTML = [['sales', 'Sales'], ['revenue', 'Revenue ($)'], ['net', 'Net profit ($)'], ['avg', 'Average sale ($)'], ['labor', 'Labor % of sales']]
+      .map(([k, l]) => `<label>${l}<input type="number" min="0" data-goal="${k}" value="${G[k] || ''}" placeholder="–"></label>`).join('');
+  // pathway math
+  const days = spanDays(R), left = R.to < today ? 0 : Math.max(0, dayDiff(today, R.to) + (R.from <= today ? 1 : 0)), weeks = Math.max(1, left / 7);
+  const target = G.sales || (G.revenue && A.avgSale ? Math.ceil(G.revenue / A.avgSale) : 0), toGo = Math.max(0, target - A.count);
+  const past = (RAW.showings || []).filter(x => x.date < today && (today - x.date) / 864e5 <= 60);
+  const bought = past.filter(x => x.status === 'Bought').length, showed = past.filter(x => x.status === 'Showed').length + bought, noshow = past.filter(x => x.status === 'No-show').length;
+  const close = showed ? bought / showed : 0, showRate = showed + noshow ? showed / (showed + noshow) : 0;
+  const needShows = close ? Math.ceil(toGo / close) : null, needBook = needShows && showRate ? Math.ceil(needShows / showRate) : null;
+  const stock = RAW.loads.reduce((a, l) => a + l.units.filter(u => u.status === 'in').length, 0) + RAW.purchases.filter(p => p.status !== 'sold').length;
+  const m30 = metaRange({ from: addDays(today, -29), to: today }), metaShare = isFinite(m30.share) ? m30.share : 0;
+  const adMore = isFinite(m30.cps) ? toGo * metaShare * m30.cps : null;
+  const revGo = G.revenue ? Math.max(0, G.revenue - A.gross) : null;
+  const step = (ok, big, txt) => `<div class="step ${ok ? 'ok' : ''}"><div class="dot">${ok ? '✓' : ''}</div><div><b class="big">${big}</b><p>${txt}</p></div></div>`;
+  let i = 0; const n = () => ++i;
+  $('gpPath').innerHTML = !target ? '<p class="empty">Set a sales or revenue target above and the pathway fills in.</p>' : [
+    step(!toGo, toGo ? `${toGo} more sales` : 'Sales goal hit', toGo ? `${A.count} of ${target} so far · ${left} days left → <b>${(toGo / weeks).toFixed(1)} a week</b> (${(toGo / Math.max(1, left)).toFixed(1)} a day)` : `${A.count} sales against a goal of ${target}.`),
+    revGo != null ? step(!revGo, revGo ? money(revGo) + ' more revenue' : 'Revenue goal hit', revGo ? `${money(A.gross)} of ${money(G.revenue)} · at your ${money(A.avgSale || 0)} average sale` : '') : '',
+    step(false, needShows != null ? `${needShows} showings` : 'Showings', needShows != null ? `You close <b>${pct(close)}</b> of showings that show up (last 60 days) → ~${Math.ceil(needShows / weeks)} a week` : 'Not enough calendar data yet to know your close rate.'),
+    step(false, needBook != null ? `Book ${needBook}` : 'Bookings', needBook != null ? `<b>${pct(showRate)}</b> of booked showings show up → book ~${Math.ceil(needBook / weeks)} a week. Confirm the day before to raise this.` : 'Track no-shows on the calendar to see this.'),
+    step(stock >= toGo, `${stock} couches in stock`, stock >= toGo ? 'Enough inventory to hit the goal if it sells.' : `Source at least <b>${toGo - stock} more</b> couches (aim for more, so customers have choices).`),
+    adMore != null && toGo ? step(false, `~${money(adMore)} ad spend`, `About ${pct(metaShare)} of sales come from Meta at ${money(m30.cps)} each (last 30 days).`) : '',
+  ].join('');
+  // moves
+  RAW.store.gamePlan = RAW.store.gamePlan || {};
+  const plan = RAW.store.gamePlan[mk] || (RAW.store.gamePlan[mk] = { focus: '', moves: GP_DEFAULT.map(m => ({ ...m, id: uid6(), due: '', done: false })) });
+  if (document.activeElement !== $('gpFocus')) $('gpFocus').value = plan.focus || '';
+  if (!$('gpMoves').contains(document.activeElement))
+    $('gpMoves').innerHTML = plan.moves.map(m => `<div class="mv ${m.done ? 'done' : ''}" data-mv="${m.id}"><input type="checkbox" data-mvk="done" ${m.done ? 'checked' : ''}>
+      <input type="text" data-mvk="text" value="${esc(m.text)}" placeholder="What we'll do"><input type="text" class="ow" data-mvk="owner" value="${esc(m.owner || '')}" placeholder="Who">
+      <input type="date" class="du" data-mvk="due" value="${esc(m.due || '')}"><button class="xs" data-mvdel="${m.id}">&times;</button></div>`).join('');
+}
+function gpPlan(){ const mk = gMonth(), all = { ...(RAW.store.gamePlan || {}) };
+  all[mk] = all[mk] ? JSON.parse(JSON.stringify(all[mk])) : { focus: '', moves: GP_DEFAULT.map(m => ({ ...m, id: uid6(), due: '', done: false })) }; return { all, p: all[mk] }; }
+let gpT = null; const gpSave = all => { RAW.store.gamePlan = all; clearTimeout(gpT); gpT = setTimeout(() => saveStore('gamePlan', all), 600); };
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'gpFocus') { const { all, p } = gpPlan(); p.focus = t.value; gpSave(all); }
+  const row = t.closest && t.closest('[data-mv]');
+  if (row && t.dataset.mvk && t.type !== 'checkbox') { const { all, p } = gpPlan(), m = p.moves.find(x => x.id === row.dataset.mv); if (m) { m[t.dataset.mvk] = t.value; gpSave(all); } }
+  if (t.dataset && t.dataset.goal) { const mk = gMonth(), G = { ...((RAW.goals || {})[mk] || {}) }; G[t.dataset.goal] = Number(t.value) || 0;
+    RAW.goals[mk] = G; clearTimeout(window.__gt); window.__gt = setTimeout(async () => { try { await post('/api/goals', { month: mk, goals: G }); renderGoals(); } catch (err) { toast(err.message); } }, 700); }
+});
+document.addEventListener('change', e => {
+  const t = e.target, row = t.closest && t.closest('[data-mv]');
+  if (row && t.dataset.mvk === 'done') { const { all, p } = gpPlan(), m = p.moves.find(x => x.id === row.dataset.mv); if (m) { m.done = t.checked; row.classList.toggle('done', t.checked); gpSave(all); } }
+});
+document.addEventListener('click', e => {
+  if (e.target.id === 'gpAdd') { const { all, p } = gpPlan(); p.moves.push({ id: uid6(), text: '', owner: '', due: '', done: false }); gpSave(all); renderGamePlan(); const ins = $('gpMoves').querySelectorAll('[data-mvk=text]'); ins[ins.length - 1].focus(); return; }
+  const d = e.target.closest('[data-mvdel]'); if (d) { const { all, p } = gpPlan(); p.moves = p.moves.filter(x => x.id !== d.dataset.mvdel); gpSave(all); renderGamePlan(); }
+});
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
-let saved = 'sales'; try { saved = localStorage.getItem('bcdTab') || 'sales'; } catch {}
+let saved = 'sales';
 const QS = new URLSearchParams(location.search), openId = QS.get('offer');
 if (openId || QS.get('tab') === 'offers') { saved = 'offers'; history.replaceState(null, '', '/'); }
 setTab(TITLES[saved] ? saved : 'sales');
