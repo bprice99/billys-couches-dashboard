@@ -809,6 +809,21 @@ app.get('/api/photo/:key', async (req, res) => {
 
 // ---------- bank balances (Plaid) ----------
 // Railway variables: PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV (sandbox | production).
+// Bank access tokens are encrypted at rest (AES-256-GCM). Key: PLAID_ENC_KEY, or derived from APP_PASSWORD.
+const PLAID_KEY = require('crypto').createHash('sha256').update('bcd-plaid:' + (process.env.PLAID_ENC_KEY || process.env.APP_PASSWORD || '')).digest();
+function plaidSeal(obj) {
+  const c = require('crypto'), iv = c.randomBytes(12), ci = c.createCipheriv('aes-256-gcm', PLAID_KEY, iv);
+  const data = Buffer.concat([ci.update(JSON.stringify(obj), 'utf8'), ci.final()]);
+  return { enc: 1, iv: iv.toString('base64'), tag: ci.getAuthTag().toString('base64'), data: data.toString('base64') };
+}
+function plaidOpen(v) {
+  if (Array.isArray(v)) return v;                       // older unencrypted value
+  if (!v || !v.enc) return [];
+  try { const d = require('crypto').createDecipheriv('aes-256-gcm', PLAID_KEY, Buffer.from(v.iv, 'base64')); d.setAuthTag(Buffer.from(v.tag, 'base64'));
+    return JSON.parse(Buffer.concat([d.update(Buffer.from(v.data, 'base64')), d.final()]).toString('utf8')); } catch { return []; }
+}
+async function getPlaidItems() { const v = await kget('bcd:plaidItems', []); const items = plaidOpen(v); if (Array.isArray(v) && v.length) await setPlaidItems(items); return items; }
+async function setPlaidItems(items) { await kset('bcd:plaidItems', plaidSeal(items || [])); }
 // Each bank login is one "Item". Access tokens are kept in Upstash, never sent to the browser.
 const PLAID = {
   ID: (process.env.PLAID_CLIENT_ID || '').trim(),
@@ -832,7 +847,7 @@ app.post('/api/plaid/link-token', async (req, res) => {
   try {
     const body = { user: { client_user_id: 'billys-couches-owner' }, client_name: "Billy's HQ", country_codes: ['US'], language: 'en' };
     if (req.body && req.body.itemId) {   // re-connect a bank that needs a fresh login
-      const items = await kget('bcd:plaidItems', []), it = items.find(x => x.item_id === req.body.itemId);
+      const items = await getPlaidItems(), it = items.find(x => x.item_id === req.body.itemId);
       if (!it) return res.status(404).json({ error: 'Bank not found' });
       body.access_token = it.access_token;
     } else body.products = ['transactions'];
@@ -844,18 +859,18 @@ app.post('/api/plaid/exchange', async (req, res) => {
   try {
     const { public_token, institution } = req.body || {};
     const j = await plaid('/item/public_token/exchange', { public_token });
-    const items = (await kget('bcd:plaidItems', [])).filter(x => x.item_id !== j.item_id);
+    const items = (await getPlaidItems()).filter(x => x.item_id !== j.item_id);
     items.push({ item_id: j.item_id, access_token: j.access_token, institution: clean(institution, 60) || 'Bank', added: new Date().toISOString() });
-    await kset('bcd:plaidItems', items);
+    await setPlaidItems( items);
     plaidCache = { at: 0, data: null };
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/plaid/remove', async (req, res) => {
   try {
-    const items = await kget('bcd:plaidItems', []), it = items.find(x => x.item_id === req.body.itemId);
+    const items = await getPlaidItems(), it = items.find(x => x.item_id === req.body.itemId);
     if (it) { try { await plaid('/item/remove', { access_token: it.access_token }); } catch {} }
-    await kset('bcd:plaidItems', items.filter(x => x.item_id !== req.body.itemId));
+    await setPlaidItems( items.filter(x => x.item_id !== req.body.itemId));
     plaidCache = { at: 0, data: null };
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -863,7 +878,7 @@ app.post('/api/plaid/remove', async (req, res) => {
 let plaidCache = { at: 0, data: null };
 async function plaidBalances(force) {
   if (!force && plaidCache.data && Date.now() - plaidCache.at < 10 * 60 * 1000) return plaidCache.data;
-  const items = await kget('bcd:plaidItems', []), banks = [], fields = {};
+  const items = await getPlaidItems(), banks = [], fields = {};
   for (const it of items) {
     try {
       const j = await plaid('/accounts/get', { access_token: it.access_token });
@@ -887,7 +902,7 @@ app.get('/api/plaid/balances', async (req, res) => {
 // Every morning at 7am Central: if no entry exists for today, save one from the banks
 // (safe, Venmo, stocks and rent carry over from your last entry; Stripe is pulled live).
 async function autoCashSnapshot() {
-  const items = await kget('bcd:plaidItems', []);
+  const items = await getPlaidItems();
   if (!items.length) return;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
   const snaps = await getCash();
