@@ -1071,7 +1071,7 @@ async function salesLogRows() {
 // Every Sales Log order in the last 5 days becomes a pop-up. The couch comes from (1) what you picked in HQ,
 // (2) the couch marked Sold on the Sales Tracker for that order, else it says "a couch".
 async function recentOrders(days) {
-  const [loads, purchases, picks, site, pidx] = await Promise.all([getLoads(), getPurchases(), kget('bcd:soldPicks', {}).catch(() => ({})), siteCouches(false), kget('bcd:photos', {}).catch(() => ({}))]);
+  const [loads, purchases, picks, site, pidx, drops] = await Promise.all([getLoads(), getPurchases(), kget('bcd:soldPicks', {}).catch(() => ({})), siteCouches(false), kget('bcd:photos', {}).catch(() => ({})), getDrops().catch(() => [])]);
   let log = []; try { log = await salesLogRows(); } catch (e) { console.log('Just sold: Sales Log unavailable', e.message); }
   const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
   const sold = [];
@@ -1087,12 +1087,24 @@ async function recentOrders(days) {
     if (hit) hit.couch = c;
   });
   const cutoff = Date.now() - days * 864e5;
+  // Couches marked Sold in the Drops tab: match each to its Sales Log order (same price, logged within a few days).
+  const soldDrops = drops.filter(d => d.status === 'sold' && d.soldAt && d.soldAt > cutoff - 3 * 864e5).sort((a, b) => b.soldAt - a.soldAt);
+  const ctDay = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const extra = [];
+  soldDrops.forEach(d => {
+    const sd = ctDay(d.soldAt);
+    const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= -2 && dayDiff(sd, l.day) <= 4 && (Math.abs(l.price - d.price) < 1 || Math.abs(l.net - d.price) < 1));
+    const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
+    if (hit) hit.drop = d;
+    else if (d.soldAt > cutoff && d.soldAt <= Date.now()) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
+  });
   return log.map(l => {
     const at = l.ts || Math.min(Date.now(), Date.parse(l.day + 'T12:00:00-05:00'));
     if (!(at > cutoff && at <= Date.now())) return null;
     const pick = picks[l.key], c = l.couch;
     let title = '', photo = '', from = '';
     if (pick && pick.title) { title = pick.title; photo = pick.img || ''; from = 'picked'; }
+    else if (l.drop) { title = l.drop.title; photo = (l.drop.photos || [])[0] ? dropPhotoUrl(l.drop.photos[0]) : ''; from = 'drops'; }
     if (pick && pick.photo) { photo = `/public/justsold-photo/${pick.photo}?v=${pick.at}`; if (!title && c) { title = cleanCouchName(c.name); from = 'tracker'; } }
     else if (c && !photo) {
       title = cleanCouchName(c.name); from = 'tracker';
@@ -1100,7 +1112,7 @@ async function recentOrders(days) {
       else { const m = bestSiteMatch(c.name, site); if (m && m.img) photo = m.img; }
     }
     return { key: l.key, at: new Date(at).toISOString(), exact: !!l.ts, customer: l.name, price: l.price, title, photo, from };
-  }).filter(Boolean).sort((a, b) => b.at.localeCompare(a.at));
+  }).filter(Boolean).concat(extra).sort((a, b) => b.at.localeCompare(a.at));
 }
 async function buildRecent() {
   if (recentCache.data && Date.now() - recentCache.at < 5 * 60 * 1000) return;
