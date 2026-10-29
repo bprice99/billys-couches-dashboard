@@ -28,6 +28,7 @@ const app = express();
 app.use(compression());
 app.use('/api/photo', express.json({ limit: '4mb' }));
 app.use('/api/justsold/pick', express.json({ limit: '4mb' }));
+app.use('/api/drops/photo', express.json({ limit: '6mb' }));
 app.use('/public/couch-offer', express.json({ limit: '15mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -1114,7 +1115,11 @@ async function buildRecent() {
 }
 // HQ: pick which website couch each recent order bought (for the pop-up title + photo).
 app.get('/api/justsold', async (req, res) => {
-  try { const [orders, site] = await Promise.all([recentOrders(7), siteCouches(req.query.fresh === '1')]); res.json({ ok: true, orders, site: site.map(c => ({ title: c.title, img: c.img, live: c.live })) }); }
+  try { const [orders, site, drops] = await Promise.all([recentOrders(7), siteCouches(req.query.fresh === '1'), getDrops()]);
+    const seen = new Set(), all = [];
+    drops.filter(d => (d.photos || []).length).forEach(d => { const k = d.title.toLowerCase(); if (seen.has(k)) return; seen.add(k); all.push({ title: d.title, img: dropPhotoUrl(d.photos[0]), live: d.status === 'live' || d.status === 'emailed' }); });
+    site.forEach(c => { const k = c.title.toLowerCase(); if (seen.has(k)) return; seen.add(k); all.push({ title: c.title, img: c.img, live: c.live }); });
+    res.json({ ok: true, orders, site: all }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/justsold/pick', async (req, res) => {
@@ -1122,7 +1127,7 @@ app.post('/api/justsold/pick', async (req, res) => {
     const key = clean(req.body.key, 80); if (!key) return res.status(400).json({ error: 'key required' });
     const picks = await kget('bcd:soldPicks', {}), cur = picks[key] || {};
     const next = { ...cur, at: Date.now() };
-    if (req.body.title !== undefined) { next.title = clean(req.body.title, 90); next.img = /^https:\/\/images\.squarespace-cdn\.com\//.test(req.body.img || '') ? String(req.body.img).slice(0, 300) : ''; }
+    if (req.body.title !== undefined) { next.title = clean(req.body.title, 90); next.img = (/^https:\/\/images\.squarespace-cdn\.com\//.test(req.body.img || '') || String(req.body.img || '').startsWith(PUBLIC_BASE + '/public/dphoto/')) ? String(req.body.img).slice(0, 300) : ''; }
     if (req.body.photo !== undefined) {
       const id = crypto.createHash('sha1').update(key).digest('hex').slice(0, 16);
       if (req.body.photo && /^data:image\/(jpeg|png|webp);base64,/.test(req.body.photo)) { await kset('bcd:soldPhoto:' + id, String(req.body.photo)); next.photo = id; }
@@ -1148,6 +1153,145 @@ app.get('/public/sale-photo/:t', async (req, res) => {
   } catch (e) { res.sendStatus(404); }
 });
 
+
+// ---------- Drops: one place to list couches (First Dibs email, website, Marketplace/Craigslist) ----------
+// Couches live in bcd:drops. Status: draft -> emailed (First Dibs only) -> live (on the website) -> sold / hidden.
+// Photos uploaded in HQ are stored as bcd:dphoto:<id> and served publicly so emails and the website can show them.
+const DROP_STATUS = ['draft', 'emailed', 'live', 'sold', 'hidden'];
+const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || 'https://hq.billyscouches.com').trim().replace(/\/$/, '');
+const dropPhotoUrl = ph => /^https?:/.test(ph) ? ph : `${PUBLIC_BASE}/public/dphoto/${ph}.jpg`;
+const getDrops = () => kget('bcd:drops', []);
+const setDrops = list => kset('bcd:drops', list);
+let dropsAt = 0;
+function cleanDrop(b, old) {
+  const arr = (v, n) => (Array.isArray(v) ? v : String(v || '').split('\n')).map(x => clean(x, 160)).filter(Boolean).slice(0, n);
+  const d = { ...(old || {}) };
+  if (b.title !== undefined) d.title = clean(b.title, 120);
+  if (b.price !== undefined) d.price = Math.max(0, Math.round(Number(String(b.price).replace(/[^\d.]/g, '')) || 0));
+  if (b.retail !== undefined) d.retail = Math.max(0, Math.round(Number(String(b.retail).replace(/[^\d.]/g, '')) || 0));
+  if (b.grade !== undefined) d.grade = /^[ABC]$/.test(b.grade) ? b.grade : '';
+  if (b.details !== undefined) d.details = arr(b.details, 12);
+  if (b.imperfections !== undefined) d.imperfections = arr(b.imperfections, 8);
+  if (b.dimensions !== undefined) d.dimensions = clean(b.dimensions, 200);
+  if (b.notes !== undefined) d.notes = clean(b.notes, 300);
+  if (b.photos !== undefined) d.photos = (Array.isArray(b.photos) ? b.photos : []).map(x => String(x)).filter(x => /^[a-f0-9]{16}$/.test(x) || /^https:\/\/images\.squarespace-cdn\.com\//.test(x)).slice(0, 12);
+  return d;
+}
+app.get('/api/drops', async (req, res) => {
+  try { res.json({ ok: true, drops: await getDrops(), base: PUBLIC_BASE }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/drops/save', async (req, res) => {
+  try {
+    const list = await getDrops(), b = req.body || {};
+    let d = b.id ? list.find(x => x.id === b.id) : null;
+    if (b.id && !d) return res.status(404).json({ error: 'Couch not found' });
+    const next = cleanDrop(b, d);
+    if (!next.title) return res.status(400).json({ error: 'Add a title' });
+    if (d) Object.assign(d, next, { updatedAt: Date.now() });
+    else { d = { id: crypto.randomBytes(6).toString('hex'), status: 'draft', createdAt: Date.now(), updatedAt: Date.now(), photos: [], details: [], imperfections: [], ...next }; list.unshift(d); }
+    await setDrops(list); dropsAt = Date.now(); res.json({ ok: true, drop: d });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/drops/status', async (req, res) => {
+  try {
+    const st = String(req.body.status || ''); if (!DROP_STATUS.includes(st)) return res.status(400).json({ error: 'bad status' });
+    const ids = new Set((req.body.ids || []).map(String)), list = await getDrops(), now = Date.now();
+    list.forEach(d => { if (!ids.has(d.id)) return; d.status = st; d.updatedAt = now;
+      if (st === 'emailed' && !d.emailedAt) d.emailedAt = now; if (st === 'live' && !d.liveAt) d.liveAt = now; if (st === 'sold') d.soldAt = now; if (st !== 'sold') delete d.soldAt; });
+    await setDrops(list); dropsAt = now; recentCache.at = 0; res.json({ ok: true, drops: list });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/drops/delete', async (req, res) => {
+  try {
+    const list = await getDrops(), d = list.find(x => x.id === req.body.id); if (!d) return res.status(404).json({ error: 'not found' });
+    await Promise.all((d.photos || []).filter(p => /^[a-f0-9]{16}$/.test(p)).map(p => kset('bcd:dphoto:' + p, '')));
+    await setDrops(list.filter(x => x.id !== d.id)); dropsAt = Date.now(); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/drops/reorder', async (req, res) => {
+  try {
+    const order = (req.body.ids || []).map(String), list = await getDrops();
+    list.sort((a, b) => { const i = order.indexOf(a.id), j = order.indexOf(b.id); return (i < 0 ? 1e9 : i) - (j < 0 ? 1e9 : j); });
+    await setDrops(list); dropsAt = Date.now(); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/drops/photo', async (req, res) => {
+  try {
+    const m = String(req.body.data || '').match(/^data:image\/(jpeg|png|webp);base64,/); if (!m) return res.status(400).json({ error: 'Not an image' });
+    if (req.body.data.length > 5.5e6) return res.status(400).json({ error: 'Photo too big' });
+    const id = crypto.randomBytes(8).toString('hex'); await kset('bcd:dphoto:' + id, String(req.body.data)); res.json({ ok: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Pull every couch off the current Squarespace page into HQ (one time, when switching over).
+app.post('/api/drops/import', async (req, res) => {
+  try {
+    const { parse } = require('node-html-parser');
+    const html = await (await fetch(SITE_URL, { headers: { 'User-Agent': 'BillysHQ/1.0' } })).text();
+    const root = parse(html), scripts = root.querySelectorAll('script').map(x => x.textContent).join('\n');
+    const items = parseSiteInventory(root, scripts);
+    const list = await getDrops(), have = new Set(list.map(d => d.title.toLowerCase())), now = Date.now(); let added = 0;
+    items.forEach((it, i) => { if (have.has(it.title.toLowerCase())) return; added++;
+      list.push({ id: crypto.randomBytes(6).toString('hex'), status: 'live', createdAt: now - i, updatedAt: now, liveAt: now, title: it.title.slice(0, 120), price: it.price, retail: it.retail,
+        grade: it.grade, details: it.details.slice(0, 12), imperfections: it.imperfections.slice(0, 8), dimensions: it.dimensions.slice(0, 200), photos: it.photos.slice(0, 12), imported: true }); });
+    await setDrops(list); dropsAt = now; res.json({ ok: true, found: items.length, added });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+function parseSiteInventory(root, scriptsText) {
+  const txt = el => (el ? (el.textContent || '') : '').replace(/\s+/g, ' ').trim();
+  const NAMED = { nbsp: ' ', amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', times: 'x', ndash: '-', mdash: '-', rsquo: "'", lsquo: "'", rdquo: '"', ldquo: '"', bull: '•', middot: '·', frac12: '1/2', deg: '°', prime: "'", Prime: '"' };
+  const decode = s => String(s).replace(/&#x([0-9a-f]+);/gi, (m, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (m, d) => String.fromCodePoint(+d)).replace(/&([a-z]+\d*);/gi, (m, n) => NAMED[n] ?? m).replace(/\u00a0/g, ' ');
+  const lines = el => el ? decode(el.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|li|div|h\d)>/gi, '\n').replace(/<[^>]+>/g, '')).split('\n').map(x => x.trim()).filter(Boolean) : [];
+  const G = {}; const gi = scriptsText.indexOf('var GRADES');
+  if (gi > -1) scriptsText.slice(scriptsText.indexOf('{', gi) + 1, scriptsText.indexOf('}', gi)).replace(/'([^']+)'\s*:\s*'([ABC])'/g, (m, k, v) => { G[k] = v; });
+  const items = []; let pend = [];
+  root.querySelectorAll('section').forEach(s => {
+    if (!/page-section/.test(s.getAttribute('class') || '')) return;
+    const title = decode(txt(s.querySelector('p.sqsrte-large')));
+    if (title && !/last updated/i.test(title)) {
+      const pr = Array.from(s.querySelectorAll('.sqs-block-html p')).map(txt).find(x => /^\$/.test(x)) || '';
+      const nums = (pr.match(/\$[\d,.]+/g) || []).map(x => Number(x.replace(/[$,]/g, '')));
+      const A = {}; Array.from(s.querySelectorAll('.accordion-item')).forEach(a => { A[txt(a.querySelector('.accordion-item__title')).slice(0, 4).toLowerCase()] = lines(a.querySelector('.accordion-item__description')); });
+      const det = (A.deta || []).filter(l => !/delivery|further out|^•/i.test(l));
+      const gm = (det.find(l => /^condition:/i.test(l)) || '').match(/grade\s*([ABC])/i), key = Object.keys(G).find(k => title.toLowerCase().includes(k.toLowerCase()));
+      items.push({ title, price: Math.round(nums[0] || 0), retail: Math.round(nums[1] || 0), grade: (gm && gm[1].toUpperCase()) || (key ? G[key] : ''),
+        details: det.filter(l => !/^condition:/i.test(l)).map(l => l.replace(/^\d+\.\s*/, '')),
+        imperfections: (A.impe || []).map(l => l.replace(/^\d+\.\s*/, '')).filter(l => !/^none\.?$/i.test(l)), dimensions: (A.dime || []).join(' '), photos: pend });
+      pend = [];
+    } else {
+      const im = []; Array.from(s.querySelectorAll('img')).forEach(i => { const u = (i.getAttribute('data-src') || i.getAttribute('src') || '').split('?')[0]; if (/^https:\/\/images\.squarespace-cdn\.com\//.test(u) && !im.includes(u)) im.push(u); });
+      if (im.length) pend = im;
+    }
+  });
+  return items;
+}
+// Photos for a post kit (phone): same-origin copies of website photos so the phone can save them.
+app.get('/api/drops/img', async (req, res) => {
+  try {
+    const u = String(req.query.u || ''); if (!/^https:\/\/images\.squarespace-cdn\.com\//.test(u)) return res.sendStatus(400);
+    const r = await fetch(u + '?format=1500w'); if (!r.ok) return res.sendStatus(404);
+    res.set('Cache-Control', 'private, max-age=86400').type(r.headers.get('content-type') || 'image/jpeg').send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) { res.sendStatus(404); }
+});
+// Flat delivery fee shown on listings: $199 from Nov 1, 2026 (DELIVERY_FEE overrides).
+const deliveryFee = () => Number(process.env.DELIVERY_FEE) || (Date.now() >= Date.parse('2026-11-01T00:00:00-05:00') ? 199 : 150);
+function dropCors(res) { res.setHeader('Access-Control-Allow-Origin', '*'); }
+app.get('/public/dphoto/:id', async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/\.jpg$/, '').replace(/[^a-f0-9]/g, '');
+    const m = String(await kget('bcd:dphoto:' + id, '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
+    dropCors(res); res.set('Cache-Control', 'public, max-age=604800, immutable').type(m[1]).send(Buffer.from(m[2], 'base64'));
+  } catch (e) { res.sendStatus(404); }
+});
+// The website's Current Inventory page reads this (see /public/inventory.js).
+app.get('/public/inventory', async (req, res) => {
+  dropCors(res);
+  try {
+    const list = (await getDrops()).filter(d => d.status === 'live');
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, retail: d.retail || 0, grade: d.grade || '',
+      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', photos: (d.photos || []).map(dropPhotoUrl) })) });
+  } catch (e) { res.status(500).json({ error: 'unavailable' }); }
+});
+app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
 // ---------- weekly pay for the team scorecard ("My pay") ----------
 // Same math as the Payroll tab: hours x rate + $20 per showing sold + $20 once deep cleans hit 4 + adjustments.
