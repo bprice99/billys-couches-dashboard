@@ -1009,63 +1009,127 @@ app.get('/public/recent-sales', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=300').json({ ok: true, sales: recentCache.data });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
-async function buildRecent() {
-    if (!recentCache.data || Date.now() - recentCache.at > 10 * 60 * 1000) {
-      const [loads, purchases] = await Promise.all([getLoads(), getPurchases()]);
-      const cutoff = Date.now() - 5 * 864e5, out = [], pidx = await kget('bcd:photos', {}).catch(() => ({}));
-      const shortName = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
-        const f = w[0][0].toUpperCase() + w[0].slice(1).toLowerCase(); return w.length > 1 ? f + ' ' + w[w.length - 1][0].toUpperCase() + '.' : f; };
-      // Sales Log rows: when the customer actually paid (receipt link carries the exact time) and who bought.
-      const log = [];
-      try {
-        const g = await google(false), sh = (g.sales && g.sales.headers) || [], rows = (g.sales && g.sales.rows) || [];
-        const H = sh.map(x => String(x).toLowerCase().trim());
-        const col = (keys, not) => { for (const k of keys) { const i = H.indexOf(k); if (i > -1) return i; }
-          for (const k of keys) { const i = H.findIndex(x => x.includes(k) && !(not || []).some(n => x.includes(n))); if (i > -1) return i; } return -1; };
-        const C = { date: col(['date']), name: col(['customer', 'name'], ['first']), price: col(['couch price', 'price'], ['total', 'sale']), disc: col(['discount']), receipt: col(['receipt']) };
-        const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
-        rows.forEach((r, i) => {
-          const m = String(C.receipt > -1 ? r[C.receipt] : '').match(/receipt\/(\d{13})/), ts = m ? Number(m[1]) : null;
-          const d = ts ? new Date(ts) : new Date(String(r[C.date] || '')); if (isNaN(d)) return;
-          const price = num(r[C.price]), net = price - Math.abs(num(r[C.disc]));
-          log.push({ i, day: d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), ts, name: String(r[C.name] || '').trim(), price, net, used: false });
-        });
-      } catch (e) { console.log('Just sold: Sales Log unavailable', e.message); }
-      const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
-      const findSale = (soldDate, soldPrice, cust) => {
-        const c = String(cust || '').toLowerCase().trim(), last = c.split(/\s+/).pop();
-        const pool = log.filter(l => !l.used && dayDiff(soldDate, l.day) >= -1 && dayDiff(soldDate, l.day) <= 10);
-        const byName = c ? pool.filter(l => l.name.toLowerCase().includes(last)) : [];
-        const byPrice = pool.filter(l => Math.abs(l.price - soldPrice) < 1 || Math.abs(l.net - soldPrice) < 1);
-        const hit = (byName.length ? byName : byPrice).sort((a, b) => Math.abs(dayDiff(soldDate, a.day)) - Math.abs(dayDiff(soldDate, b.day)))[0];
-        if (hit) hit.used = true; return hit || null;
-      };
-      const add = (name, soldDate, soldPrice, pkey, cust) => {
-        const hit = findSale(soldDate, soldPrice, cust);
-        const exact = !!(hit && hit.ts), at = exact ? hit.ts : Math.min(Date.now(), Date.parse((hit ? hit.day : soldDate) + 'T12:00:00-05:00'));
-        const title = cleanCouchName(name);
-        if (!(title.length >= 4 && at > cutoff && at <= Date.now())) return;
-        const row = { title, at: new Date(at).toISOString(), exact };
-        const who = shortName(cust || (hit && hit.name)); if (who) row.who = who;
-        if (pidx[pkey]) { const t = crypto.createHash('sha1').update(pkey).digest('hex').slice(0, 16); row.photo = `/public/sale-photo/${t}?v=${pidx[pkey]}`; recentPhotos[t] = pkey; }
-        out.push(row);
-      };
-      const sold = [];
-      loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) sold.push([u.name, u.soldDate, u.soldPrice, 'u:' + l.id + ':' + u.uid, u.soldCustomer]); }));
-      purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) sold.push([p.item, p.soldDate, p.soldPrice, 'p:' + p.id, p.soldCustomer]); });
-      sold.sort((a, b) => (b[4] ? 1 : 0) - (a[4] ? 1 : 0));   // couches with a customer name claim their sale first
-      sold.forEach(x => add(...x));
-      out.sort((a, b) => b.at.localeCompare(a.at));
-      recentCache = { at: Date.now(), data: out.slice(0, 20) };
-      const keep = new Set(recentCache.data.filter(r => r.photo).map(r => r.photo.split('/').pop().split('?')[0]));
-      Object.keys(recentPhotos).forEach(t => { if (!keep.has(t)) delete recentPhotos[t]; });
-    }
+// Couches on billyscouches.com/currentinventory (title + first photo). Remembered for 90 days so sold
+// couches that come off the site can still be picked for the pop-up.
+const SITE_URL = (process.env.SITE_INVENTORY_URL || 'https://www.billyscouches.com/currentinventory').trim();
+let siteCache = { at: 0 };
+const decodeHtml = t => String(t || '').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+function siteCouches(force) {
+  if (force || !siteCache.p || Date.now() - siteCache.at > 30 * 60 * 1000) { siteCache.at = Date.now(); siteCache.p = refreshSite(); }
+  return siteCache.p;
 }
+async function refreshSite() {
+  const saved = await kget('bcd:siteCouches', {}).catch(() => ({}));
+  {
+    try {
+      const html = await (await fetch(SITE_URL, { headers: { 'User-Agent': 'BillysHQ/1.0' } })).text();
+      let img = null; const now = Date.now();
+      html.split(/<section\b/i).slice(1).forEach(sec => {
+        const tm = sec.match(/<p[^>]*class="[^"]*sqsrte-large[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
+        const title = tm ? decodeHtml(tm[1]) : '';
+        if (title && title.length > 3 && title.length < 90 && !/^last updated/i.test(title)) {
+          const k = title.toLowerCase(); saved[k] = { title, img: img || (saved[k] && saved[k].img) || '', seen: now, live: true }; img = null; return;
+        }
+        const im = sec.match(/(?:data-src|src)="(https:\/\/images\.squarespace-cdn\.com\/[^"?]+)/i);
+        if (im) img = im[1];
+      });
+      const liveNow = new Set(Object.keys(saved).filter(k => saved[k].seen === now));
+      Object.keys(saved).forEach(k => { if (!liveNow.has(k)) saved[k].live = false; if (now - (saved[k].seen || 0) > 90 * 864e5) delete saved[k]; });
+      await kset('bcd:siteCouches', saved);
+    } catch (e) { console.log('Site inventory unavailable', e.message); }
+  }
+  return Object.values(saved).sort((a, b) => (b.live - a.live) || (b.seen - a.seen));
+}
+const GENERIC = new Set('the a and with of in pc piece pieces sectional sofa couch set leather fabric power reclining recliner modular sleeper gray grey cream white black brown beige blue tan loveseat chaise 2pc 3pc 4pc 5pc 6pc 2 3 4 5 6 one two three four five six'.split(' '));
+const words = n => String(n || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+function bestSiteMatch(name, list) {
+  const a = new Set(words(name)); let best = null, bestS = 0;
+  list.forEach(c => { let s = 0, key = 0; words(c.title).forEach(w => { if (a.has(w)) { if (GENERIC.has(w)) s += 1; else { s += 3; key++; } } }); if (key && s > bestS) { bestS = s; best = c; } });
+  return best;
+}
+const saleKey = l => l.ts ? 't' + l.ts : 'r' + l.day + '|' + l.name.toLowerCase().replace(/\s+/g, ' ') + '|' + l.price;
+// Sales Log rows (with exact receipt time when there is one).
+async function salesLogRows() {
+  const log = [];
+  const g = await google(false), sh = (g.sales && g.sales.headers) || [], rows = (g.sales && g.sales.rows) || [];
+  const H = sh.map(x => String(x).toLowerCase().trim());
+  const col = (keys, not) => { for (const k of keys) { const i = H.indexOf(k); if (i > -1) return i; }
+    for (const k of keys) { const i = H.findIndex(x => x.includes(k) && !(not || []).some(n => x.includes(n))); if (i > -1) return i; } return -1; };
+  const C = { date: col(['date']), name: col(['customer', 'name'], ['first']), price: col(['couch price', 'price'], ['total', 'sale']), disc: col(['discount']), receipt: col(['receipt']) };
+  const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
+  rows.forEach((r, i) => {
+    const m = String(C.receipt > -1 ? r[C.receipt] : '').match(/receipt\/(\d{13})/), ts = m ? Number(m[1]) : null;
+    const d = ts ? new Date(ts) : new Date(String(r[C.date] || '')); if (isNaN(d)) return;
+    const price = num(r[C.price]), net = price - Math.abs(num(r[C.disc]));
+    const l = { i, day: d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), ts, name: String(r[C.name] || '').trim(), price, net, used: false };
+    l.key = saleKey(l); log.push(l);
+  });
+  return log;
+}
+// Every Sales Log order in the last 5 days becomes a pop-up. The couch comes from (1) what you picked in HQ,
+// (2) the couch marked Sold on the Sales Tracker for that order, else it says "a couch".
+async function recentOrders(days) {
+  const [loads, purchases, picks, site, pidx] = await Promise.all([getLoads(), getPurchases(), kget('bcd:soldPicks', {}).catch(() => ({})), siteCouches(false), kget('bcd:photos', {}).catch(() => ({}))]);
+  let log = []; try { log = await salesLogRows(); } catch (e) { console.log('Just sold: Sales Log unavailable', e.message); }
+  const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
+  const sold = [];
+  loads.forEach(l => (l.units || []).forEach(u => { if (u.status === 'sold' && u.soldDate) sold.push({ name: u.name, date: u.soldDate, price: u.soldPrice, pkey: 'u:' + l.id + ':' + u.uid, cust: u.soldCustomer }); }));
+  purchases.forEach(p => { if (p.status === 'sold' && p.soldDate) sold.push({ name: p.item, date: p.soldDate, price: p.soldPrice, pkey: 'p:' + p.id, cust: p.soldCustomer }); });
+  sold.sort((a, b) => (b.cust ? 1 : 0) - (a.cust ? 1 : 0));
+  sold.forEach(c => {   // match tracker couches to Sales Log orders
+    const cu = String(c.cust || '').toLowerCase().trim(), last = cu.split(/\s+/).pop();
+    const pool = log.filter(l => !l.couch && dayDiff(c.date, l.day) >= -1 && dayDiff(c.date, l.day) <= 10);
+    const byName = cu ? pool.filter(l => l.name.toLowerCase().includes(last)) : [];
+    const byPrice = pool.filter(l => Math.abs(l.price - c.price) < 1 || Math.abs(l.net - c.price) < 1);
+    const hit = (byName.length ? byName : byPrice).sort((a, b) => Math.abs(dayDiff(c.date, a.day)) - Math.abs(dayDiff(c.date, b.day)))[0];
+    if (hit) hit.couch = c;
+  });
+  const cutoff = Date.now() - days * 864e5;
+  return log.map(l => {
+    const at = l.ts || Math.min(Date.now(), Date.parse(l.day + 'T12:00:00-05:00'));
+    if (!(at > cutoff && at <= Date.now())) return null;
+    const pick = picks[l.key], c = l.couch;
+    let title = '', photo = '', from = '';
+    if (pick && pick.title) { title = pick.title; photo = pick.img || ''; from = 'picked'; }
+    else if (c) {
+      title = cleanCouchName(c.name); from = 'tracker';
+      if (pidx[c.pkey]) { const t = crypto.createHash('sha1').update(c.pkey).digest('hex').slice(0, 16); photo = `/public/sale-photo/${t}?v=${pidx[c.pkey]}`; recentPhotos[t] = c.pkey; }
+      else { const m = bestSiteMatch(c.name, site); if (m && m.img) photo = m.img; }
+    }
+    return { key: l.key, at: new Date(at).toISOString(), exact: !!l.ts, customer: l.name, price: l.price, title, photo, from };
+  }).filter(Boolean).sort((a, b) => b.at.localeCompare(a.at));
+}
+async function buildRecent() {
+  if (recentCache.data && Date.now() - recentCache.at < 5 * 60 * 1000) return;
+  const shortName = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
+    const f = w[0][0].toUpperCase() + w[0].slice(1).toLowerCase(); return w.length > 1 ? f + ' ' + w[w.length - 1][0].toUpperCase() + '.' : f; };
+  const list = await recentOrders(5);
+  recentCache = { at: Date.now(), data: list.slice(0, 20).map(o => {
+    const row = { title: o.title || 'A couch from our showroom', at: o.at, exact: o.exact };
+    const who = shortName(o.customer); if (who) row.who = who;
+    if (o.photo) row.photo = /^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo;
+    return row; }) };
+}
+// HQ: pick which website couch each recent order bought (for the pop-up title + photo).
+app.get('/api/justsold', async (req, res) => {
+  try { const [orders, site] = await Promise.all([recentOrders(7), siteCouches(req.query.fresh === '1')]); res.json({ ok: true, orders, site: site.map(c => ({ title: c.title, img: c.img, live: c.live })) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/justsold/pick', async (req, res) => {
+  try {
+    const key = clean(req.body.key, 80); if (!key) return res.status(400).json({ error: 'key required' });
+    const picks = await kget('bcd:soldPicks', {});
+    if (req.body.title) picks[key] = { title: clean(req.body.title, 90), img: /^https:\/\/images\.squarespace-cdn\.com\//.test(req.body.img || '') ? String(req.body.img).slice(0, 300) : '', at: Date.now() };
+    else delete picks[key];
+    Object.keys(picks).forEach(k => { if (Date.now() - (picks[k].at || 0) > 60 * 864e5) delete picks[k]; });
+    await kset('bcd:soldPicks', picks); recentCache.at = 0; res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // Photo for a couch in the "Just sold" feed (only couches currently in that feed are reachable).
 app.get('/public/sale-photo/:t', async (req, res) => {
   try {
-    if (!recentPhotos[req.params.t]) await buildRecent();
+    if (!recentPhotos[req.params.t]) { recentCache.at = 0; await buildRecent(); }
     const key = recentPhotos[req.params.t]; if (!key) return res.sendStatus(404);
     const m = String(await kget(photoKey(key), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
     res.set('Cache-Control', 'public, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
