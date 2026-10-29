@@ -22,12 +22,12 @@
     var today = new Date(); today.setHours(0,0,0,0); var day = new Date(s.at); day.setHours(0,0,0,0);
     var n = Math.round((today - day) / 864e5); return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago';
   }
-  fetch(FEED).then(function(r){ return r.json(); }).then(function(d){
+  fetch(FEED, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
     var list = (d && d.sales) || []; if (!list.length) return;
     var BASE = FEED.replace(/\/public\/recent-sales.*$/, '');
-    list = list.filter(function(s){ return s.photo; }).concat(list.filter(function(s){ return !s.photo; }));   // couches with photos first
-    var i = 0, shown = 0, timer;
-    try { i = +sessionStorage.getItem('bcSoldIdx') || 0; } catch (e) {}   // keep going where the last page left off
+    // newest sale first; keep going where the last page left off, but start over when a new sale comes in
+    var i = 0, shown = 0, timer, sig = list[0].at;
+    try { if (sessionStorage.getItem('bcSoldSig') === sig) i = +sessionStorage.getItem('bcSoldIdx') || 0; else { sessionStorage.setItem('bcSoldSig', sig); sessionStorage.setItem('bcSoldIdx', 0); } } catch (e) {}
     // Sit above any sticky bottom bar (like the mobile Shop Now / Visit Showroom buttons).
     // Sit above any bar pinned to the bottom (like the mobile Shop Now / Visit Showroom bar),
     // even one that's still hidden and slides in when you scroll.
