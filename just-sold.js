@@ -58,3 +58,27 @@
     setTimeout(show, FIRST_DELAY);
   }).catch(function(){});
 })();
+// Floor previews on /firstdibs (#fdGrid) and /visitshowroom (#bcLiveGrid): filled from Billy's HQ inventory
+// (the Current Inventory page is now built by HQ, so the old page-scraping code finds nothing).
+(function(){
+  var grids = [['fdGrid', 4], ['bcLiveGrid', 12]].map(function(g){ return [document.getElementById(g[0]), g[1], g[0]]; }).filter(function(g){ return g[0]; });
+  if (!grids.length) return;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function money(n){ return '$' + Math.round(n).toLocaleString('en-US'); }
+  function img(u, w){ return /images\.squarespace-cdn\.com/.test(u) ? u + '?format=' + w + 'w' : u; }
+  fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    var list = (d && d.couches) || []; if (!list.length) return;
+    grids.forEach(function(g){
+      var el = g[0], fd = g[2] === 'fdGrid', items = list.slice(0, g[1]);
+      var html = items.map(function(c){
+        var t = esc(c.title), ph = (c.photos || [])[0], pr = money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '');
+        return fd
+          ? '<a class="fd-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="im">' + (ph ? '<img loading="lazy" src="' + esc(img(ph, 500)) + '" alt="' + t + '">' : '') + '</div><div class="bd"><p class="t">' + t + '</p><div class="pr">' + pr + '</div></div></a>'
+          : '<a class="bc-live-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="bc-live-img">' + (ph ? '<img loading="lazy" src="' + esc(img(ph, 750)) + '" alt="' + t + '">' : '') + '</div><div class="bc-live-body"><p class="bc-live-t">' + t + '</p><div class="bc-live-p">' + pr + '</div><span class="bc-live-cta">Book a time to sit on it &rarr;</span></div></a>';
+      }).join('');
+      var card = fd ? '.fd-card' : '.bc-live-card';
+      function fill(){ if (!el.querySelector(card)) el.innerHTML = html; }
+      fill(); setTimeout(fill, 1500); setTimeout(fill, 4000);   // the page's old script may overwrite it with "See everything..."
+    });
+  }).catch(function(){});
+})();
