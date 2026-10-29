@@ -49,7 +49,7 @@
       document.getElementById('bc-sold-h').textContent = daysAgo(s) <= 1 ? 'Just sold' : 'Sold';
       document.getElementById('bc-sold-t').textContent = s.title;
       var ic = document.getElementById('bc-sold-i');
-      if (s.photo) { ic.innerHTML = ''; var im = new Image(); im.alt = ''; im.src = BASE + s.photo; ic.appendChild(im); } else ic.innerHTML = '&#128715;';
+      if (s.photo) { ic.innerHTML = ''; var im = new Image(); im.alt = ''; im.src = /^https?:/.test(s.photo) ? s.photo : BASE + s.photo; ic.appendChild(im); } else ic.innerHTML = '&#128715;';
       document.getElementById('bc-sold-s').innerHTML = (s.who ? s.who.replace(/[<>&]/g, '') + ' bought it ' : 'Sold ') + ago(s) + ' &middot; <a href="/currentinventory">See what&rsquo;s left</a>';
       lift(); box.classList.add('on');
       timer = setTimeout(function(){ box.classList.remove('on'); timer = setTimeout(show, GAP); }, SHOW_FOR);
