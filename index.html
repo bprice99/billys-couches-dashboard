@@ -153,6 +153,19 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .jsrow .th{flex:none;width:52px;height:52px;border-radius:10px;background:#efe7e2 center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:20px}
 .jsrow .m{flex:1;min-width:0}.jsrow .m b{display:block}.jsrow .m small{color:var(--muted)}.jsact{flex:0 1 330px;display:flex;flex-direction:column;gap:6px;min-width:0}.jsact input:not([type=file]){flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;font:inherit}.jsrow select{width:100%;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;font:inherit}
 .jsrow.need .th{outline:2px dashed var(--bad)}@media(max-width:640px){.jsrow{flex-wrap:wrap}.jsact{flex:1 1 100%}}
+.drl{display:block;font-size:13px;font-weight:600;margin-bottom:10px}.drl small{font-weight:400;color:var(--muted)}
+.drl input,.drl select,.drl textarea{display:block;width:100%;margin-top:5px;padding:10px 12px;border:1px solid #d9d0c5;border-radius:10px;font:inherit;font-size:15px}
+.drph{display:flex;flex-wrap:wrap;gap:8px}.drph .ph{position:relative;width:96px;height:72px;border-radius:8px;background:#eee center/cover no-repeat;border:2px solid transparent}.drph .ph.main{border-color:var(--red)}
+.drph .ph button{position:absolute;top:2px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:22px;padding:0;cursor:pointer}.drph .ph .x{right:2px}.drph .ph .lf{left:2px}
+.drsteps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.drstep{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}.drstep b{display:block;font-size:13px;color:var(--red)}.drstep span{font-size:12.5px;color:var(--muted)}
+.drbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}.drbar .sp{flex:1}
+.drlist{display:grid;gap:10px}.drc{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.drc .im{flex:none;width:84px;height:64px;border-radius:10px;background:#eee center/cover no-repeat}.drc .mm{flex:1;min-width:0}.drc .mm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.drc .mm small{color:var(--muted)}
+.drc .ac{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.drc input[type=checkbox]{width:20px;height:20px;flex:none}
+.dst{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:4px;vertical-align:1px}.dst.draft{background:#eee;color:#555}.dst.emailed{background:#fff3d6;color:#8a5a00}.dst.live{background:#dff2e5;color:#1f6b3d}.dst.sold{background:#fbe4e0;color:var(--red2)}.dst.hidden{background:#e9e9e9;color:#777}
+.gb{display:inline-block;font-size:11px;font-weight:700;color:#fff;border-radius:99px;padding:1px 7px;margin-right:4px}.gb.A{background:#2e7d4f}.gb.B{background:#2f5d8a}.gb.C{background:#b7791f}
+.kitgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kitb{text-align:center;text-decoration:none;padding:13px 10px!important}
+@media(max-width:800px){.drsteps{display:none}.drc{flex-wrap:wrap}.drc .mm b{white-space:normal}.drc .ac{width:100%;justify-content:flex-start}}
 .ocard{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}.ocard:hover{border-color:#b0524c}
 .ocard img{width:72px;height:72px;object-fit:cover;border-radius:12px;flex:none;background:var(--cream)}.ocard .m{flex:1;min-width:0}.ocard .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ocard .m small{color:var(--muted);font-size:13px}
 .ost{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da;white-space:nowrap}.ost.new{background:#b0524c;color:#fff}.ost.bought{background:#2f7a4f;color:#fff}.ost.passed{background:#ddd;color:#555}
@@ -212,6 +225,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <a class="nav" data-tab="bstock">B-Stock</a>
     <a class="nav" data-tab="payroll">Payroll</a>
     <a class="nav" data-tab="cash">Daily Cash</a>
+    <a class="nav" data-tab="drops">Drops</a>
     <a class="nav" data-tab="thanks">Thank You Cards<span class="obadge" id="tyBadge" hidden></span></a>
     <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
@@ -230,6 +244,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
       <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
       <button class="btn p" id="upAddBtn" data-only="upsells">+ Upsell after sale</button>
+      <button class="btn p" id="dropNew" data-only="drops">+ New couch</button>
       <button class="btn p" id="goalEdit" data-only="never" hidden>Set goals</button>
     </div>
     <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
@@ -388,6 +403,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
     <section id="tab-thanks" hidden><div id="tyBody"></div></section>
+    <section id="tab-drops" hidden><div id="drBody"></div></section>
   </main>
 </div>
 
@@ -497,6 +513,42 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
   <div class="two"><label>Upsell<select name="upsell"></select></label><label>Amount ($)<input type="number" step="0.01" name="amount" required></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
+<div class="mask" id="m-drop"><div class="modal" style="max-width:640px;max-height:92vh;overflow:auto">
+  <h3 id="drTitle" style="margin:0 40px 12px 0">New couch</h3>
+  <input type="hidden" id="drId">
+  <label class="drl">Title<input id="drName" placeholder="e.g. Karson Power Reclining Sectional, Gray" maxlength="120"></label>
+  <div class="two"><label class="drl">Price ($)<input id="drPrice" type="number" inputmode="numeric" min="0"></label><label class="drl">Retail ($) <small>optional, shows crossed out</small><input id="drRetail" type="number" inputmode="numeric" min="0"></label></div>
+  <label class="drl">Grade<select id="drGrade"><option value="">No grade</option><option value="A">A - Like New</option><option value="B">B - Excellent</option><option value="C">C - Good</option></select></label>
+  <label class="drl">Details <small>one per line (color, power recline, pieces, smoke/pet free...)</small><textarea id="drDetails" rows="4"></textarea></label>
+  <label class="drl">Imperfections <small>one per line, leave blank for none</small><textarea id="drImp" rows="2"></textarea></label>
+  <label class="drl">Dimensions<input id="drDims" placeholder="L: 128 x 115 in. | H: 42 in." maxlength="200"></label>
+  <div class="drl">Photos <small>first photo is the main one</small></div>
+  <div id="drPhotos" class="drph"></div>
+  <label class="btn" style="display:inline-block;cursor:pointer;margin:8px 0 14px">+ Add photos<input type="file" id="drFiles" accept="image/*" multiple hidden></label>
+  <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn p" id="drSave">Save</button></div>
+</div></div>
+<div class="mask" id="m-dropmail"><div class="modal" style="max-width:760px;max-height:94vh;overflow:auto">
+  <h3 style="margin:0 40px 6px 0">First Dibs email</h3>
+  <p class="empty" style="font-size:13px;margin:0 0 10px">Copy the HTML into TextMagic. Photos are hosted by HQ, no image converter needed.</p>
+  <label class="drl">Subject<input id="dmSubject"></label>
+  <label class="drl">Preview text<input id="dmPreview"></label>
+  <label class="drl">Headline<input id="dmHead"></label>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px"><button type="button" class="btn p" id="dmCopy">Copy email HTML</button><button type="button" class="btn" id="dmCopySub">Copy subject</button><button type="button" class="btn" id="dmSheet">Copy for order sheet</button><button type="button" class="btn" id="dmSent">I sent it - mark First Dibs</button></div>
+  <iframe id="dmFrame" style="width:100%;height:60vh;border:1px solid var(--line);border-radius:12px;background:#f6f2ed"></iframe>
+</div></div>
+<div class="mask" id="m-kit"><div class="modal" style="max-width:520px;max-height:92vh;overflow:auto">
+  <h3 id="kitTitle" style="margin:0 40px 4px 0">Post kit</h3>
+  <p class="empty" style="font-size:13px;margin:0 0 12px">On your phone: 1) save the photos, 2) copy the text, 3) open the app and paste.</p>
+  <div class="kitgrid">
+    <button type="button" class="btn p kitb" id="kitPhotos">1. Save photos</button>
+    <button type="button" class="btn p kitb" id="kitCopy">2. Copy listing text</button>
+    <a class="btn kitb" id="kitFb" href="https://www.facebook.com/marketplace/create/item" target="_blank" rel="noopener">Open Marketplace</a>
+    <a class="btn kitb" href="https://post.craigslist.org/c/stl" target="_blank" rel="noopener">Open Craigslist</a>
+  </div>
+  <label class="drl" style="margin-top:12px">Listing title<input id="kitHead"></label>
+  <label class="drl">Description<textarea id="kitText" rows="11"></textarea></label>
+  <div id="kitImgs" class="drph"></div>
+</div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -750,10 +802,10 @@ function photoCell(x){
     : `<button class="pbtn" data-padd="${esc(k)}" title="Add a photo">+ Photo</button>`;
 }
 let photoTarget = null;
-function shrinkPhoto(file){
+function shrinkPhoto(file, maxSide){
   return new Promise((resolve, reject) => {
     const img = new Image(), url = URL.createObjectURL(file);
-    img.onload = () => { const max = 1100, sc = Math.min(1, max / Math.max(img.width, img.height));
+    img.onload = () => { const max = maxSide || 1100, sc = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
       let q = 0.8, out = c.toDataURL('image/jpeg', q); while (out.length > 900000 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
@@ -1506,7 +1558,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards', drops: 'Drops' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1519,8 +1571,8 @@ function syncRangeBar(){
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, offers: renderOffers, content: renderContent, thanks: renderThanks })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops';
+  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops })[tab]();
 }
 function setTab(t){
   tab = t;
@@ -1556,7 +1608,7 @@ const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('
 $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
 $('goalEdit').onclick = () => openGoals();
-$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else if (tab === 'thanks') loadThanks(true); else { toast('Pulling the latest from Google...'); load(true); } };
+$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else if (tab === 'thanks') loadThanks(true); else if (tab === 'drops') loadDrops(); else { toast('Pulling the latest from Google...'); load(true); } };
 $('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
 $('payBtn').onclick = async () => {
   const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
@@ -1700,6 +1752,202 @@ document.addEventListener('change', async e => {
     const n = OFFERS.filter(x => x.status === 'new').length; $('offerBadge').hidden = !n; $('offerBadge').textContent = n;
     toast('Marked ' + OSTATUS[status]); renderOffers(); } catch (err) { toast(err.message); }
 });
+
+// ---------- Drops: list couches once -> First Dibs email, website, Marketplace/Craigslist ----------
+let DR = null, DRF = 'active', DRSEL = new Set(), DRPH = [];
+const DRST = { draft: 'Draft', emailed: 'First Dibs', live: 'On website', sold: 'Sold', hidden: 'Hidden' };
+const dPhoto = (ph, w) => /^https?:/.test(ph) ? ph + (w ? '?format=' + w + 'w' : '') : (DR && DR.base || location.origin) + '/public/dphoto/' + ph + '.jpg';
+const dLocalPhoto = ph => /^https?:/.test(ph) ? ph + '?format=300w' : '/public/dphoto/' + ph + '.jpg';
+async function loadDrops(){
+  try { const r = await fetch('/api/drops', { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); DR = d; }
+  catch (e) { DR = { drops: [], error: e.message }; }
+  if (tab === 'drops') renderDrops();
+}
+function renderDrops(){
+  const el = $('drBody'); if (!el) return;
+  if (!DR) { el.innerHTML = '<p class="empty">Loading couches…</p>'; loadDrops(); return; }
+  const all = DR.drops, cnt = k => all.filter(d => d.status === k).length;
+  const groups = { active: d => ['draft', 'emailed', 'live'].includes(d.status), draft: d => d.status === 'draft', emailed: d => d.status === 'emailed', live: d => d.status === 'live', sold: d => d.status === 'sold', hidden: d => d.status === 'hidden' };
+  const labels = { active: 'Active', draft: 'Drafts', emailed: 'First Dibs', live: 'On website', sold: 'Sold', hidden: 'Hidden' };
+  const list = all.filter(groups[DRF]);
+  [...DRSEL].forEach(id => { if (!list.some(d => d.id === id)) DRSEL.delete(id); });
+  const nSel = DRSEL.size;
+  el.innerHTML = (DR.error ? `<div class="err" style="display:block">${esc(DR.error)}</div>` : '') +
+    `<div class="drsteps"><div class="drstep"><b>1. Add couches</b><span>+ New couch, photos straight from your phone. Saves as a draft.</span></div>
+      <div class="drstep"><b>2. First Dibs email</b><span>Check the drafts, tap Build email, copy into TextMagic.</span></div>
+      <div class="drstep"><b>3. Go live</b><span>3 hrs later, check them and tap Go live. They show on /currentinventory.</span></div>
+      <div class="drstep"><b>4. Post kits</b><span>On your phone, tap Post kit on each couch for Marketplace and Craigslist.</span></div></div>` +
+    `<div class="ofilters">${Object.keys(labels).map(k => `<button data-drf="${k}" class="${DRF === k ? 'on' : ''}">${labels[k]} (${all.filter(groups[k]).length})</button>`).join('')}</div>` +
+    `<div class="drbar"><label style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600"><input type="checkbox" id="drAll" ${nSel && nSel === list.length ? 'checked' : ''}> Select all</label><span class="sp"></span>
+      <button class="btn sm p" data-drbulk="email" ${nSel ? '' : 'disabled'}>Build email${nSel ? ' (' + nSel + ')' : ''}</button>
+      <button class="btn sm p" data-drbulk="live" ${nSel ? '' : 'disabled'}>Go live</button>
+      <button class="btn sm" data-drbulk="hidden" ${nSel ? '' : 'disabled'}>Hide</button>
+      <button class="btn sm" data-drbulk="sheet">Copy for order sheet</button></div>` +
+    (list.length ? `<div class="drlist">${list.map(d => {
+      const ph = (d.photos || [])[0];
+      const btns = (d.status === 'draft' || d.status === 'emailed' ? `<button class="btn sm p" data-drst="live" data-id="${d.id}">Go live</button>` : '') +
+        (d.status === 'live' || d.status === 'emailed' ? `<button class="btn sm" data-drst="sold" data-id="${d.id}">Sold</button>` : '') +
+        (d.status === 'sold' || d.status === 'hidden' ? `<button class="btn sm" data-drst="live" data-id="${d.id}">Back on website</button>` : '') +
+        (d.status === 'live' ? `<button class="btn sm" data-drst="hidden" data-id="${d.id}">Take down</button>` : '') +
+        `<button class="btn sm" data-drkit="${d.id}">Post kit</button><button class="btn sm" data-dredit="${d.id}">Edit</button>`;
+      return `<div class="drc"><input type="checkbox" data-drsel="${d.id}" ${DRSEL.has(d.id) ? 'checked' : ''}>
+        <div class="im" style="${ph ? `background-image:url('${esc(dLocalPhoto(ph))}')` : ''}"></div>
+        <div class="mm"><b>${esc(d.title)}</b><small>${d.grade ? `<span class="gb ${d.grade}">${d.grade}</span>` : ''}${money(d.price || 0)}${d.retail > d.price ? ' <s>' + money(d.retail) + '</s>' : ''} · ${(d.photos || []).length} photo${(d.photos || []).length === 1 ? '' : 's'}<span class="dst ${d.status}">${DRST[d.status]}</span>${d.status === 'sold' && d.soldAt ? ' ' + fmtD(new Date(d.soldAt), true) : ''}</small></div>
+        <div class="ac">${btns}</div></div>`; }).join('')}</div>`
+      : `<div class="card"><p class="empty">${all.length ? 'Nothing here.' : 'No couches yet. Tap <b>+ New couch</b>, or pull in everything that is on your website now:'}</p>${all.length ? '' : '<button class="btn p" id="drImport" style="margin-top:8px">Import couches from billyscouches.com</button>'}</div>`) +
+    (all.length ? `<p class="empty" style="font-size:12px;margin-top:14px">Website: couches marked <b>On website</b> show on billyscouches.com/currentinventory within a minute. <a href="#" id="drImport2">Re-import from website</a> (adds any couch not already here).</p>` : '');
+}
+function openDrop(id){
+  const d = id ? DR.drops.find(x => x.id === id) : null;
+  $('drTitle').textContent = d ? 'Edit couch' : 'New couch'; $('drId').value = d ? d.id : '';
+  $('drName').value = d ? d.title : ''; $('drPrice').value = d ? d.price || '' : ''; $('drRetail').value = d && d.retail ? d.retail : '';
+  $('drGrade').value = d ? d.grade || '' : ''; $('drDetails').value = d ? (d.details || []).join('\n') : ''; $('drImp').value = d ? (d.imperfections || []).join('\n') : '';
+  $('drDims').value = d ? d.dimensions || '' : ''; DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
+  $('m-drop').classList.add('on');
+}
+function drawDropPhotos(){
+  $('drPhotos').innerHTML = DRPH.map((p, i) => `<div class="ph ${i ? '' : 'main'}" style="background-image:url('${esc(dLocalPhoto(p))}')">${i ? `<button class="lf" data-phl="${i}" title="Make earlier">&#8592;</button>` : ''}<button class="x" data-phx="${i}" title="Remove">&times;</button></div>`).join('') || '<p class="empty" style="font-size:13px;margin:0">No photos yet.</p>';
+}
+async function saveDrop(){
+  const body = { id: $('drId').value || undefined, title: $('drName').value, price: $('drPrice').value, retail: $('drRetail').value, grade: $('drGrade').value,
+    details: $('drDetails').value, imperfections: $('drImp').value, dimensions: $('drDims').value, photos: DRPH };
+  if (!body.title.trim()) return toast('Add a title'); if (!(Number(body.price) > 0)) return toast('Add a price');
+  try { await post('/api/drops/save', body); $('m-drop').classList.remove('on'); toast('Saved'); if (!body.id) DRF = DRF === 'active' ? 'active' : 'draft'; loadDrops(); } catch (e) { toast(e.message); }
+}
+async function setDropStatus(ids, status){
+  try { const j = await post('/api/drops/status', { ids, status }); DR.drops = j.drops; DRSEL.clear();
+    toast(status === 'live' ? 'On the website now' : status === 'sold' ? 'Marked sold, off the website' : status === 'hidden' ? 'Taken down' : 'Updated'); renderDrops(); } catch (e) { toast(e.message); }
+}
+// ---- First Dibs email (TextMagic needs plain ASCII) ----
+const asc = s => String(s ?? '').replace(/[‘’′]/g, "'").replace(/[“”″]/g, '"').replace(/[–—]/g, '-').replace(/[•·]/g, '|')
+  .replace(/×/g, 'x').replace(/…/g, '...').replace(/½/g, '1/2').replace(/[^\x20-\x7E\n]/g, '');
+const ah = s => asc(s).replace(/&/g, 'and').replace(/</g, '(').replace(/>/g, ')').replace(/"/g, "'");
+function dropEmailHtml(couches, o){
+  const RED = '#b0524c', DARK = '#2b1d16', TXT = '#5a524b', CREAM = '#efe9e2', BG = '#f6f2ed';
+  const GR = { A: ['Like New', '#2e7d4f'], B: ['Excellent', '#2f5d8a'], C: ['Good', '#b7791f'] };
+  const m = n => '$' + Math.round(n).toLocaleString('en-US');
+  const card = c => { const img = (c.photos || [])[0], g = GR[c.grade];
+    return `<tr><td style="padding:0 0 26px 0;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:14px;">
+${img ? `<tr><td><a href="https://order.billyscouches.com/"><img src="${dPhoto(img, 1000)}" width="560" alt="${ah(c.title)}" style="display:block;width:100%;max-width:560px;height:auto;border-radius:14px 14px 0 0;border:0;"></a></td></tr>` : ''}
+<tr><td style="padding:18px 20px 20px 20px;font-family:Helvetica,Arial,sans-serif;">
+${g ? `<span style="display:inline-block;background-color:${g[1]};color:#ffffff;font-size:12px;font-weight:bold;padding:4px 10px;border-radius:99px;">Grade ${c.grade} - ${g[0]}</span>` : ''}
+<p style="margin:10px 0 4px 0;font-size:19px;line-height:25px;font-weight:bold;color:${DARK};">${ah(c.title)}</p>
+${(c.details || []).length ? `<p style="margin:0 0 6px 0;font-size:14px;line-height:21px;color:${TXT};">${(c.details || []).slice(0, 5).map(ah).join(' | ')}</p>` : ''}
+${(c.imperfections || []).length ? `<p style="margin:0 0 6px 0;font-size:13px;line-height:19px;color:${TXT};">Flaws: ${(c.imperfections || []).map(ah).join('; ')}</p>` : ''}
+<p style="margin:8px 0 14px 0;font-size:24px;line-height:28px;font-weight:bold;color:${DARK};">${m(c.price)}${c.retail > c.price ? ` <span style="font-size:16px;font-weight:normal;color:${RED};text-decoration:line-through;">${m(c.retail)} retail</span>` : ''}</p>
+<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+<td width="50%" style="padding-right:5px;"><a href="https://order.billyscouches.com/" style="display:block;background-color:${RED};color:#ffffff;text-decoration:none;text-align:center;font-size:15px;font-weight:bold;padding:13px 6px;border-radius:99px;">Buy This Couch</a></td>
+<td width="50%" style="padding-left:5px;"><a href="https://www.billyscouches.com/warehouseshowing" style="display:block;border:2px solid ${RED};color:${RED};text-decoration:none;text-align:center;font-size:15px;font-weight:bold;padding:11px 6px;border-radius:99px;">See It In Person</a></td>
+</tr></table></td></tr></table></td></tr>`; };
+  const sold = o.sold || [];
+  const soldHtml = sold.length ? `<tr><td style="padding:6px 20px 24px 20px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${CREAM};border-radius:14px;"><tr><td style="padding:20px 14px 6px 14px;font-family:Helvetica,Arial,sans-serif;text-align:center;">
+<p style="margin:0 0 4px 0;font-size:20px;font-weight:bold;color:${DARK};">Recently sold</p><p style="margin:0 0 14px 0;font-size:14px;color:${TXT};">These went fast. Don't wait on the one you like.</p></td></tr>
+<tr><td style="padding:0 8px 12px 8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0">${[0, 2].filter(i => sold[i]).map(i => `<tr>${[sold[i], sold[i + 1]].map(s => s ? `<td width="50%" valign="top" style="padding:0 6px 14px 6px;font-family:Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:${RED};color:#ffffff;text-align:center;font-size:13px;font-weight:bold;letter-spacing:2px;padding:5px 0;border-radius:10px 10px 0 0;">SOLD</td></tr>
+<tr><td><img src="${dPhoto(s.photos[0], 600)}" width="250" alt="${ah(s.title)}" style="display:block;width:100%;height:auto;border-radius:0 0 10px 10px;border:0;"></td></tr></table>
+<p style="margin:8px 0 0 0;font-size:13px;line-height:17px;font-weight:bold;color:${DARK};">${ah(s.title)}</p>${s.days != null ? `<p style="margin:2px 0 0 0;font-size:12px;color:${RED};font-weight:bold;">Sold in ${s.days <= 1 ? '1 day' : s.days + ' days'}</p>` : ''}</td>` : '<td width="50%"></td>').join('')}</tr>`).join('')}</table></td></tr></table></td></tr>` : '';
+  return asc(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${ah(o.subject)}</title></head>
+<body style="margin:0;padding:0;background-color:${BG};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${ah(o.preview)}</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BG};"><tr><td align="center" style="padding:20px 10px;">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:${BG};">
+<tr><td align="center" style="background-color:${DARK};padding:16px 20px;border-radius:14px 14px 0 0;font-family:Helvetica,Arial,sans-serif;"><span style="color:#ffffff;font-size:13px;font-weight:bold;letter-spacing:3px;">FIRST DIBS | BILLY'S COUCHES</span></td></tr>
+<tr><td style="padding:26px 20px 8px 20px;font-family:Helvetica,Arial,sans-serif;text-align:center;">
+<p style="margin:0 0 8px 0;font-size:26px;line-height:32px;font-weight:bold;color:${DARK};">${ah(o.headline)}</p>
+<p style="margin:0 0 20px 0;font-size:15px;line-height:23px;color:${TXT};">You're seeing ${couches.length === 1 ? 'this one' : 'these'} before the website does. ${couches.length === 1 ? "It goes public in 3 hours, so if it's yours, grab it now." : 'They go public in 3 hours, so if one is yours, grab it now.'}</p></td></tr>
+<tr><td style="padding:0 20px;"><table width="100%" cellpadding="0" cellspacing="0" border="0">${couches.map(card).join('')}</table></td></tr>
+${soldHtml}
+<tr><td style="padding:4px 24px 24px 24px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:23px;color:${TXT};">
+<p style="margin:0 0 10px 0;">Questions, more photos or a video? Text me: <a href="sms:3148997503" style="color:${RED};">(314) 899-7503</a></p>
+<p style="margin:0 0 10px 0;">Delivery within 40 miles is $${o.fee} flat, or pick up at 126 E Orleans St, Pacific, MO. Card, Klarna, Venmo, Zelle or cash.</p>
+<p style="margin:14px 0 0 0;color:${DARK};">- Billy</p></td></tr>
+<tr><td align="center" style="background-color:${CREAM};padding:18px 24px;color:${TXT};font-size:12px;line-height:18px;font-family:Helvetica,Arial,sans-serif;border-radius:0 0 14px 14px;">
+<p style="margin:0;">You're getting this because you signed up for First Dibs at billyscouches.com.</p>
+<p style="margin:6px 0 0 0;">Reply "unsubscribe" to be removed.</p>
+<p style="margin:6px 0 0 0;">Billy's Couches LLC | 126 E Orleans St, Pacific, MO 63069</p></td></tr>
+</table></td></tr></table></body></html>`);
+}
+let DMSEL = [];
+function openDropMail(ids){
+  DMSEL = DR.drops.filter(d => ids.includes(d.id)).slice(0, 10);
+  if (!DMSEL.length) return toast('Select couches first');
+  const n = DMSEL.length;
+  $('dmSubject').value = n === 1 ? `First dibs: ${DMSEL[0].title}` : `First dibs: ${n} new couches just landed`;
+  $('dmPreview').value = n === 1 ? 'Cleaned, inspected and graded. You see it before the website does.' : 'Name brands, cleaned and inspected. You see them before the website does.';
+  $('dmHead').value = n === 1 ? 'A new couch just landed' : `${n} new couches just landed`;
+  drawDropMail(); $('m-dropmail').classList.add('on');
+}
+function dropMailOpts(){
+  const sold = DR.drops.filter(d => d.status === 'sold' && (d.photos || []).length).sort((a, b) => (b.soldAt || 0) - (a.soldAt || 0)).slice(0, 4)
+    .map(d => ({ ...d, days: d.soldAt && (d.liveAt || d.emailedAt) ? Math.max(1, Math.round((d.soldAt - (d.emailedAt || d.liveAt)) / 864e5)) : null }));
+  return { subject: $('dmSubject').value, preview: $('dmPreview').value, headline: $('dmHead').value, sold, fee: Date.now() >= Date.parse('2026-11-01T00:00:00-05:00') ? 199 : 150 };
+}
+function drawDropMail(){ $('dmFrame').srcdoc = dropEmailHtml(DMSEL, dropMailOpts()); }
+function orderSheetText(){
+  return DR.drops.filter(d => d.status === 'live' || d.status === 'emailed').map(d => d.title.replace(/\s+/g, ' ').trim() + '\t' + Math.round(d.price || 0)).join('\n');
+}
+async function copyText(t, msg){ try { await navigator.clipboard.writeText(t); toast(msg || 'Copied'); } catch (e) { toast("Couldn't copy, select it manually"); } }
+// ---- Post kit (Marketplace / Craigslist) ----
+let KIT = null;
+function kitText(d){
+  const fee = Date.now() >= Date.parse('2026-11-01T00:00:00-05:00') ? 199 : 150, g = { A: 'Grade A - Like New', B: 'Grade B - Excellent', C: 'Grade C - Good' }[d.grade];
+  return [d.retail > d.price ? `$${Math.round(d.price).toLocaleString()} (retail $${Math.round(d.retail).toLocaleString()})` : `$${Math.round(d.price).toLocaleString()}`,
+    '', ...(d.details || []).map(x => '- ' + x), g ? '- Condition: ' + g : '', (d.imperfections || []).length ? '- Flaws: ' + d.imperfections.join('; ') : '- No flaws to note',
+    d.dimensions ? '- Size: ' + d.dimensions : '', '', 'Inspected and cleaned. Come sit on it at our Pacific showroom (126 E Orleans St) - by appointment, open daily.',
+    `Delivery within 40 miles of St. Louis: $${fee}. Pickup available.`, 'Card, Klarna (pay in 4), Venmo, Zelle or cash.', '', 'Text Billy: (314) 899-7503', 'More couches: billyscouches.com/currentinventory']
+    .filter((x, i, a) => x !== '' || (a[i - 1] !== '' && i)).join('\n');
+}
+function openKit(id){
+  const d = DR.drops.find(x => x.id === id); if (!d) return; KIT = d;
+  $('kitTitle').textContent = 'Post kit'; $('kitHead').value = d.title.slice(0, 100); $('kitText').value = kitText(d);
+  $('kitImgs').innerHTML = (d.photos || []).map(p => `<div class="ph" style="background-image:url('${esc(dLocalPhoto(p))}')"></div>`).join('');
+  $('m-kit').classList.add('on');
+}
+async function kitPhotos(){
+  if (!KIT) return; toast('Getting photos…');
+  try {
+    const files = await Promise.all((KIT.photos || []).map(async (p, i) => {
+      const r = await fetch(/^https?:/.test(p) ? '/api/drops/img?u=' + encodeURIComponent(p) : '/public/dphoto/' + p + '.jpg'); const b = await r.blob();
+      return new File([b], (KIT.title.replace(/[^a-z0-9]+/gi, '-').slice(0, 40) || 'couch') + '-' + (i + 1) + '.jpg', { type: b.type || 'image/jpeg' }); }));
+    if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; }
+    files.forEach(f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); });
+    toast(files.length + ' photos downloaded');
+  } catch (e) { if (e.name !== 'AbortError') toast("Couldn't get the photos: " + e.message); }
+}
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.id === 'dropNew') return openDrop(null);
+  const f = t.closest('[data-drf]'); if (f) { DRF = f.dataset.drf; DRSEL.clear(); renderDrops(); return; }
+  const ed = t.closest('[data-dredit]'); if (ed) return openDrop(ed.dataset.dredit);
+  const kt = t.closest('[data-drkit]'); if (kt) return openKit(kt.dataset.drkit);
+  const st = t.closest('[data-drst]'); if (st) return setDropStatus([st.dataset.id], st.dataset.drst);
+  const bk = t.closest('[data-drbulk]');
+  if (bk) { const ids = [...DRSEL], k = bk.dataset.drbulk;
+    if (k === 'sheet') return copyText(orderSheetText(), 'Copied ' + DR.drops.filter(d => d.status === 'live' || d.status === 'emailed').length + ' couches - paste into A2 of the Current Inventory sheet');
+    if (!ids.length) return; if (k === 'email') return openDropMail(ids); return setDropStatus(ids, k); }
+  if (t.id === 'drImport' || t.id === 'drImport2') { e.preventDefault(); toast('Pulling couches from billyscouches.com…');
+    try { const j = await post('/api/drops/import', {}); toast(`Found ${j.found}, added ${j.added}`); DRF = 'active'; loadDrops(); } catch (err) { toast(err.message); } return; }
+  if (t.id === 'drSave') return saveDrop();
+  const px = t.closest('[data-phx]'); if (px) { DRPH.splice(+px.dataset.phx, 1); drawDropPhotos(); return; }
+  const pl = t.closest('[data-phl]'); if (pl) { const i = +pl.dataset.phl; [DRPH[i - 1], DRPH[i]] = [DRPH[i], DRPH[i - 1]]; drawDropPhotos(); return; }
+  if (t.id === 'dmCopy') return copyText(dropEmailHtml(DMSEL, dropMailOpts()), 'Email HTML copied - paste into TextMagic');
+  if (t.id === 'dmCopySub') return copyText(asc($('dmSubject').value), 'Subject copied');
+  if (t.id === 'dmSheet') return copyText(orderSheetText(), 'Copied - paste into A2 of the Current Inventory sheet');
+  if (t.id === 'dmSent') { await setDropStatus(DMSEL.filter(d => d.status === 'draft').map(d => d.id), 'emailed'); $('m-dropmail').classList.remove('on'); return; }
+  if (t.id === 'kitCopy') return copyText($('kitHead').value + '\n\n' + $('kitText').value, 'Listing text copied');
+  if (t.id === 'kitPhotos') return kitPhotos();
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.drsel) { t.checked ? DRSEL.add(t.dataset.drsel) : DRSEL.delete(t.dataset.drsel); renderDrops(); return; }
+  if (t.id === 'drAll') { const ids = [...document.querySelectorAll('[data-drsel]')].map(x => x.dataset.drsel); if (t.checked) ids.forEach(i => DRSEL.add(i)); else DRSEL.clear(); renderDrops(); return; }
+  if (t.id === 'drFiles') { const files = [...t.files]; t.value = ''; if (!files.length) return;
+    for (const [i, f] of files.entries()) { toast(`Uploading photo ${i + 1} of ${files.length}…`);
+      try { const data = await shrinkPhoto(f, 1600); const j = await post('/api/drops/photo', { data }); DRPH.push(j.id); drawDropPhotos(); } catch (err) { toast(err.message); } }
+    toast('Photos added - tap Save'); }
+});
+document.addEventListener('input', e => { if (['dmSubject', 'dmPreview', 'dmHead'].includes(e.target.id)) drawDropMail(); });
 
 // ---------- website "Just sold" pop-ups: pick the couch per Sales Log order ----------
 let JS = null;
