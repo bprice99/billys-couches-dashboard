@@ -151,8 +151,8 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .tym{flex:1;min-width:0}.tym b{font-size:17px;display:block}.tyaddr{font-size:15px;line-height:1.4;margin:4px 0;user-select:all}.tym small{color:var(--muted);font-size:12px}.tycopy{flex:none;padding:6px 10px!important;font-size:12px!important}
 .jsrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.jsrow:first-child{border-top:0}
 .jsrow .th{flex:none;width:52px;height:52px;border-radius:10px;background:#efe7e2 center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:20px}
-.jsrow .m{flex:1;min-width:0}.jsrow .m b{display:block}.jsrow .m small{color:var(--muted)}.jsrow select{flex:0 1 330px;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;font:inherit}
-.jsrow.need .th{outline:2px dashed var(--bad)}@media(max-width:640px){.jsrow{flex-wrap:wrap}.jsrow select{flex:1 1 100%}}
+.jsrow .m{flex:1;min-width:0}.jsrow .m b{display:block}.jsrow .m small{color:var(--muted)}.jsact{flex:0 1 330px;display:flex;flex-direction:column;gap:6px;min-width:0}.jsact input:not([type=file]){flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;font:inherit}.jsrow select{width:100%;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.jsrow.need .th{outline:2px dashed var(--bad)}@media(max-width:640px){.jsrow{flex-wrap:wrap}.jsact{flex:1 1 100%}}
 .ocard{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}.ocard:hover{border-color:#b0524c}
 .ocard img{width:72px;height:72px;object-fit:cover;border-radius:12px;flex:none;background:var(--cream)}.ocard .m{flex:1;min-width:0}.ocard .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ocard .m small{color:var(--muted);font-size:13px}
 .ost{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da;white-space:nowrap}.ost.new{background:#b0524c;color:#fff}.ost.bought{background:#2f7a4f;color:#fff}.ost.passed{background:#ddd;color:#555}
@@ -1722,10 +1722,17 @@ function renderJustSold(){
   el.innerHTML = (need ? `<p style="font-size:13px;margin:0 0 6px;color:var(--bad)"><b>${need}</b> order${need > 1 ? 's' : ''} still need a couch picked (pop-up says “a couch” with no photo until you do).</p>` : '') +
     JS.orders.map(o => `<div class="jsrow ${o.title ? '' : 'need'}"><div class="th" style="${o.photo ? `background-image:url('${esc(/^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo)}')` : ''}">${o.photo ? '' : '🛋'}</div>
       <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : '') : ''}</small></div>
-      <select data-jspick="${esc(o.key)}">${opts(o.from === 'picked' ? o.title : '')}</select></div>`).join('') +
-    `<p class="empty" style="font-size:12px;margin-top:8px">Photos come from billyscouches.com/currentinventory. Couches stay pickable for 90 days after they come off the site.</p>`;
+      <div class="jsact"><select data-jspick="${esc(o.key)}">${opts(o.from === 'picked' && JS.site.some(c => c.title === o.title) ? o.title : '')}</select>
+        <div style="display:flex;gap:6px"><input data-jsname="${esc(o.key)}" placeholder="or type the couch name" value="${o.from === 'picked' && !JS.site.some(c => c.title === o.title) ? esc(o.title) : ''}">
+        <label class="btn sm" style="white-space:nowrap;cursor:pointer">📷 ${/justsold-photo/.test(o.photo) ? 'Change' : 'Upload'}<input type="file" accept="image/*" data-jsphoto="${esc(o.key)}" hidden></label></div></div></div>`).join('') +
+    `<p class="empty" style="font-size:12px;margin-top:8px">Pick a couch from billyscouches.com/currentinventory (pulls its photo), or type the name and upload a photo for couches already taken down. Pop-ups show orders from the last 5 days.</p>`;
 }
 document.addEventListener('change', async e => {
+  const nk = e.target.dataset && e.target.dataset.jsname;
+  if (nk != null) { const title = e.target.value.trim(); try { await post('/api/justsold/pick', { key: nk, title }); toast(title ? 'Pop-up set: ' + title : 'Name cleared'); loadJustSold(); } catch (err) { toast(err.message); } return; }
+  const pk = e.target.dataset && e.target.dataset.jsphoto;
+  if (pk != null) { const f = e.target.files[0]; if (!f) return; toast('Uploading photo…');
+    try { const photo = await shrinkPhoto(f); await post('/api/justsold/pick', { key: pk, photo }); toast('Photo saved'); loadJustSold(); } catch (err) { toast(err.message); } return; }
   const k = e.target.dataset && e.target.dataset.jspick; if (k == null) return;
   const title = e.target.value, c = JS.site.find(x => x.title === title);
   try { await post('/api/justsold/pick', { key: k, title, img: c ? c.img : '' }); toast(title ? 'Pop-up set: ' + title : 'Pick cleared'); loadJustSold(); } catch (err) { toast(err.message); }
