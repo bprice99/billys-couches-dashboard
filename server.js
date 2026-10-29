@@ -27,6 +27,7 @@ const compression = require('compression');
 const app = express();
 app.use(compression());
 app.use('/api/photo', express.json({ limit: '4mb' }));
+app.use('/api/justsold/pick', express.json({ limit: '4mb' }));
 app.use('/public/couch-offer', express.json({ limit: '15mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -1091,7 +1092,8 @@ async function recentOrders(days) {
     const pick = picks[l.key], c = l.couch;
     let title = '', photo = '', from = '';
     if (pick && pick.title) { title = pick.title; photo = pick.img || ''; from = 'picked'; }
-    else if (c) {
+    if (pick && pick.photo) { photo = `/public/justsold-photo/${pick.photo}?v=${pick.at}`; if (!title && c) { title = cleanCouchName(c.name); from = 'tracker'; } }
+    else if (c && !photo) {
       title = cleanCouchName(c.name); from = 'tracker';
       if (pidx[c.pkey]) { const t = crypto.createHash('sha1').update(c.pkey).digest('hex').slice(0, 16); photo = `/public/sale-photo/${t}?v=${pidx[c.pkey]}`; recentPhotos[t] = c.pkey; }
       else { const m = bestSiteMatch(c.name, site); if (m && m.img) photo = m.img; }
@@ -1118,14 +1120,24 @@ app.get('/api/justsold', async (req, res) => {
 app.post('/api/justsold/pick', async (req, res) => {
   try {
     const key = clean(req.body.key, 80); if (!key) return res.status(400).json({ error: 'key required' });
-    const picks = await kget('bcd:soldPicks', {});
-    if (req.body.title) picks[key] = { title: clean(req.body.title, 90), img: /^https:\/\/images\.squarespace-cdn\.com\//.test(req.body.img || '') ? String(req.body.img).slice(0, 300) : '', at: Date.now() };
-    else delete picks[key];
+    const picks = await kget('bcd:soldPicks', {}), cur = picks[key] || {};
+    const next = { ...cur, at: Date.now() };
+    if (req.body.title !== undefined) { next.title = clean(req.body.title, 90); next.img = /^https:\/\/images\.squarespace-cdn\.com\//.test(req.body.img || '') ? String(req.body.img).slice(0, 300) : ''; }
+    if (req.body.photo !== undefined) {
+      const id = crypto.createHash('sha1').update(key).digest('hex').slice(0, 16);
+      if (req.body.photo && /^data:image\/(jpeg|png|webp);base64,/.test(req.body.photo)) { await kset('bcd:soldPhoto:' + id, String(req.body.photo)); next.photo = id; }
+      else { await kset('bcd:soldPhoto:' + id, ''); delete next.photo; }
+    }
+    if (next.title || next.photo) picks[key] = next; else delete picks[key];
     Object.keys(picks).forEach(k => { if (Date.now() - (picks[k].at || 0) > 60 * 864e5) delete picks[k]; });
     await kset('bcd:soldPicks', picks); recentCache.at = 0; res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/public/justsold-photo/:id', async (req, res) => {
+  try { const m = String(await kget('bcd:soldPhoto:' + String(req.params.id).replace(/[^a-f0-9]/g, ''), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
+    res.set('Cache-Control', 'public, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64')); } catch (e) { res.sendStatus(404); }
+});
 // Photo for a couch in the "Just sold" feed (only couches currently in that feed are reachable).
 app.get('/public/sale-photo/:t', async (req, res) => {
   try {
