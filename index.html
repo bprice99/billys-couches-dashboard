@@ -149,6 +149,10 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .tychk{flex:none;cursor:pointer;position:relative;width:30px;height:30px;margin-top:2px}.tychk input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
 .tychk span{display:block;width:30px;height:30px;border:2px solid var(--text);border-radius:8px}.tychk input:checked+span{background:#2e7d4f;border-color:#2e7d4f}.tychk input:checked+span::after{content:'✓';color:#fff;font-weight:800;font-size:19px;display:flex;justify-content:center;line-height:26px}
 .tym{flex:1;min-width:0}.tym b{font-size:17px;display:block}.tyaddr{font-size:15px;line-height:1.4;margin:4px 0;user-select:all}.tym small{color:var(--muted);font-size:12px}.tycopy{flex:none;padding:6px 10px!important;font-size:12px!important}
+.jsrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.jsrow:first-child{border-top:0}
+.jsrow .th{flex:none;width:52px;height:52px;border-radius:10px;background:#efe7e2 center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:20px}
+.jsrow .m{flex:1;min-width:0}.jsrow .m b{display:block}.jsrow .m small{color:var(--muted)}.jsrow select{flex:0 1 330px;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.jsrow.need .th{outline:2px dashed var(--bad)}@media(max-width:640px){.jsrow{flex-wrap:wrap}.jsrow select{flex:1 1 100%}}
 .ocard{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}.ocard:hover{border-color:#b0524c}
 .ocard img{width:72px;height:72px;object-fit:cover;border-radius:12px;flex:none;background:var(--cream)}.ocard .m{flex:1;min-width:0}.ocard .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ocard .m small{color:var(--muted);font-size:13px}
 .ost{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da;white-space:nowrap}.ost.new{background:#b0524c;color:#fff}.ost.bought{background:#2f7a4f;color:#fff}.ost.passed{background:#ddd;color:#555}
@@ -237,6 +241,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
+      <div class="card" style="margin-top:16px" id="jsCard"><h2>Website “Just sold” pop-ups <small>pick the couch each customer bought · last 7 days of the Sales Log</small></h2><div id="jsBody"><p class="empty">Loading…</p></div></div>
       <div class="card" style="margin-top:16px"><h2 style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">Couches in stock <small id="stockNote"></small>
         <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
         <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
@@ -796,6 +801,7 @@ function period(R){
 }
 
 function renderSales(){
+  renderJustSold();
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
@@ -1693,6 +1699,36 @@ document.addEventListener('change', async e => {
   try { await post('/api/offers/status', { id, status }); const o = OFFERS.find(x => x.id === id); if (o) o.status = status;
     const n = OFFERS.filter(x => x.status === 'new').length; $('offerBadge').hidden = !n; $('offerBadge').textContent = n;
     toast('Marked ' + OSTATUS[status]); renderOffers(); } catch (err) { toast(err.message); }
+});
+
+// ---------- website "Just sold" pop-ups: pick the couch per Sales Log order ----------
+let JS = null;
+async function loadJustSold(fresh){
+  try { const r = await fetch('/api/justsold' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); JS = d; }
+  catch (e) { JS = { orders: [], site: [], error: e.message }; }
+  renderJustSold();
+}
+function renderJustSold(){
+  const el = $('jsBody'); if (!el) return;
+  if (!JS) { el.innerHTML = '<p class="empty">Loading…</p>'; loadJustSold(); return; }
+  if (JS.error) { el.innerHTML = `<div class="err" style="display:block">${esc(JS.error)}</div>`; return; }
+  if (!JS.orders.length) { el.innerHTML = '<p class="empty">No Sales Log orders in the last 7 days.</p>'; return; }
+  const live = JS.site.filter(c => c.live), gone = JS.site.filter(c => !c.live);
+  const opts = sel => `<option value="">${sel ? '— Clear pick —' : '— Pick the couch they bought —'}</option>` +
+    (live.length ? `<optgroup label="On the website now">${live.map(c => `<option ${sel === c.title ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}</optgroup>` : '') +
+    (gone.length ? `<optgroup label="Recently taken down">${gone.map(c => `<option ${sel === c.title ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}</optgroup>` : '');
+  const when = iso => new Date(iso).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const need = JS.orders.filter(o => !o.title).length;
+  el.innerHTML = (need ? `<p style="font-size:13px;margin:0 0 6px;color:var(--bad)"><b>${need}</b> order${need > 1 ? 's' : ''} still need a couch picked (pop-up says “a couch” with no photo until you do).</p>` : '') +
+    JS.orders.map(o => `<div class="jsrow ${o.title ? '' : 'need'}"><div class="th" style="${o.photo ? `background-image:url('${esc(/^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo)}')` : ''}">${o.photo ? '' : '🛋'}</div>
+      <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : '') : ''}</small></div>
+      <select data-jspick="${esc(o.key)}">${opts(o.from === 'picked' ? o.title : '')}</select></div>`).join('') +
+    `<p class="empty" style="font-size:12px;margin-top:8px">Photos come from billyscouches.com/currentinventory. Couches stay pickable for 90 days after they come off the site.</p>`;
+}
+document.addEventListener('change', async e => {
+  const k = e.target.dataset && e.target.dataset.jspick; if (k == null) return;
+  const title = e.target.value, c = JS.site.find(x => x.title === title);
+  try { await post('/api/justsold/pick', { key: k, title, img: c ? c.img : '' }); toast(title ? 'Pop-up set: ' + title : 'Pick cleared'); loadJustSold(); } catch (err) { toast(err.message); }
 });
 
 // ---------- thank-you cards (one per scheduling form submission) ----------
