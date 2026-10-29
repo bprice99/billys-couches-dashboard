@@ -1007,7 +1007,7 @@ app.get('/public/recent-sales', async (req, res) => {
   offerCors(req, res);
   try {
     await buildRecent();
-    res.set('Cache-Control', 'public, max-age=300').json({ ok: true, sales: recentCache.data });
+    res.set('Cache-Control', 'public, max-age=60').json({ ok: true, sales: recentCache.data });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Couches on billyscouches.com/currentinventory (title + first photo). Remembered for 90 days so sold
