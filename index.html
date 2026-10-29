@@ -1969,7 +1969,7 @@ function renderJustSold(){
   const need = JS.orders.filter(o => !o.title).length;
   el.innerHTML = (need ? `<p style="font-size:13px;margin:0 0 6px;color:var(--bad)"><b>${need}</b> order${need > 1 ? 's' : ''} still need a couch picked (pop-up says “a couch” with no photo until you do).</p>` : '') +
     JS.orders.map(o => `<div class="jsrow ${o.title ? '' : 'need'}"><div class="th" style="${o.photo ? `background-image:url('${esc(/^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo)}')` : ''}">${o.photo ? '' : '🛋'}</div>
-      <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : '') : ''}</small></div>
+      <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : o.from === 'drops' ? ' (marked Sold in Drops)' : '') : ''}</small></div>
       <div class="jsact"><select data-jspick="${esc(o.key)}">${opts(o.from === 'picked' && JS.site.some(c => c.title === o.title) ? o.title : '')}</select>
         <div style="display:flex;gap:6px"><input data-jsname="${esc(o.key)}" placeholder="or type the couch name" value="${o.from === 'picked' && !JS.site.some(c => c.title === o.title) ? esc(o.title) : ''}">
         <label class="btn sm" style="white-space:nowrap;cursor:pointer">📷 ${/justsold-photo/.test(o.photo) ? 'Change' : 'Upload'}<input type="file" accept="image/*" data-jsphoto="${esc(o.key)}" hidden></label></div></div></div>`).join('') +
