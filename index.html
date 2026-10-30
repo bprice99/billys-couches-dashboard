@@ -1734,9 +1734,9 @@ const BC_CAL = '38e6127b0c4262b1a594056d689680c77138e0f81b8131c42746d4ff712114aa
 // Google Calendar event (you pick the day/time): "Pick up for NAME" with every offer detail in the description.
 function offerGcal(o, addr){
   const name = ((o.firstName || '') + ' ' + (o.lastName || '')).trim() || 'seller';
-  const lines = [`Couch: ${o.brand || ''}`, `Asking: ${o.asking || 'no price'}`, `Issues: ${o.issues && o.issues.length ? o.issues.join(', ') : 'None checked'}`,
+  const lines = [`Asking: ${o.asking || 'no price'}`, `Issues: ${o.issues && o.issues.length ? o.issues.join(', ') : 'None checked'}`,
     o.details ? `Details: ${o.details}` : '', `Can help load: ${o.helpLoad || '-'}`, '', `Name: ${name}`, `Phone: ${o.phone || ''}`, `Email: ${o.email || ''}`, `Address: ${addr}`,
-    o.heard ? `Heard about us: ${o.heard}` : '', '', `Offer in HQ: ${location.origin}/?offer=${o.id}`].filter((x, i, a) => x !== '' || a[i - 1] !== '');
+    o.heard ? `Heard about us: ${o.heard}` : '', ''].filter((x, i, a) => x !== '' || a[i - 1] !== '');
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('Pick up for ' + name) + '&details=' + encodeURIComponent(lines.join('\n')) + '&location=' + encodeURIComponent(addr) + '&src=' + encodeURIComponent(BC_CAL);
 }
 function openOffer(id){
