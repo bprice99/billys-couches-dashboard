@@ -1305,6 +1305,122 @@ app.get('/public/inventory', async (req, res) => {
 });
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
+// ---------- Coaching (Billy Price Coaching): admin at /coach, client portal at /client ----------
+const COACH = { clients: 'bcd:coach:clients', leads: 'bcd:coach:leads', videos: 'bcd:coach:videos' };
+const cid = () => crypto.randomBytes(6).toString('hex');
+const weekKey = (d = new Date()) => { const t = new Date(d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+async function getClients() {
+  let list = await kget(COACH.clients, null);
+  if (!list) { list = [seedEthan()]; await kset(COACH.clients, list); }
+  return list;
+}
+function seedEthan() {
+  const t = (text, month, done) => ({ id: cid(), text, month, done: !!done });
+  const r = (text) => ({ id: cid(), text, recurring: true, doneWeek: '' });
+  return { id: cid(), name: 'Ethan Virin', active: true, pin: '', phone: '+1 530 270 6431', email: 'ethanvirin9@gmail.com', market: 'Folsom, CA', business: 'Super Couch Show Room',
+    links: { ig: 'https://www.instagram.com/supercouchshowroom/', fb: 'https://www.facebook.com/profile.php?id=61593250757881', tiktok: 'https://www.tiktok.com/@supercouchshowroom' },
+    calendly: 'https://calendly.com/billyprice/billy-price-1-1-call',
+    program: { length: '3-month', start: '2026-09-26', end: '2026-12-26', plan: 'Payment plan - $1k/month',
+      payments: [{ label: 'Month 1', amount: 1000, paid: true, paidAt: '2026-09-26' }, { label: 'Month 2', amount: 1000, paid: false }, { label: 'Month 3', amount: 1000, paid: false }] },
+    start: { experience: 'Intermediate', truck: 'Pickup Truck', flips: 14, profit: 5000, revenue: '8,500-11k', employees: 'No', inventory: '100% Local Pickups', social: 'Just started posting', bottleneck: 'Sales' },
+    goals: { flips: 25, revenue: 13000, profit: '8-10k/month', other: 'Hire first employee and build out a team for more freedom' },
+    calls: [
+      { id: cid(), title: 'Onboarding Call', date: '2026-09-26', link: '', notes: '' },
+      { id: cid(), title: 'Call #1', date: '2026-09-30', link: '', notes: '' },
+      { id: cid(), title: 'Call #2', date: '2026-10-05', link: '', notes: '' },
+      { id: cid(), title: 'Call #3', date: '2026-10-13', link: 'https://fathom.video/share/5fxUtgbpdJ95xDWDZLxCCBFJBEswRJyV', notes: '' },
+      { id: cid(), title: 'Bonus Call - Profile Visits Set up', date: '2026-10-14', link: '', notes: '' },
+      { id: cid(), title: 'Call #4', date: '2026-10-20', link: '', notes: '' },
+      { id: cid(), title: 'Call #5', date: '2026-10-27', link: 'https://fathom.video/share/iQkMx5qR4V75sFkyCWfsvWxzT5yu92Kx', notes: '' }],
+    tasks: [
+      t('Create Bstock account.', 2, false), t('Improve showing page with HTMLs.', 2, true), t('Improve tracking: showing tracker, Meta Ads tracker, Sales Tracker.', 2, true),
+      t('Fix couch images and details section.', 2, true), t('Re-create 3 concepts of the garage opening video.', 2, false), t('Turn off ad with 0 leads and replace it with fresh creative.', 2, true),
+      r('Post 2-4 times a day'), r('Post 4-5 Stories daily'), r('Post story posts and vulnerable posts in local FB groups (2x / week)'), r('Post bait posts weekly'), r('Create 4 new ad creatives weekly')],
+    checkins: [], notes: '', createdAt: Date.now() };
+}
+const coachList = k => kget(COACH[k], []);
+app.get('/coach', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'coach.html' : 'login.html')));
+app.get('/api/coach', async (req, res) => {
+  try { const [clients, leads, videos] = await Promise.all([getClients(), coachList('leads'), coachList('videos')]); res.json({ ok: true, clients, leads, videos, week: weekKey() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/coach/client/save', async (req, res) => {
+  try {
+    const c = req.body.client || {}; if (!clean(c.name, 80)) return res.status(400).json({ error: 'Add a name' });
+    if (JSON.stringify(c).length > 150000) return res.status(400).json({ error: 'Too big' });
+    const list = await getClients();
+    if (c.pin) { c.pin = String(c.pin).replace(/\D/g, '').slice(0, 6); if (c.pin.length < 4) return res.status(400).json({ error: 'PIN must be 4-6 digits' });
+      if (list.some(x => x.id !== c.id && x.pin === c.pin)) return res.status(400).json({ error: 'Another client already has that PIN' }); }
+    const i = list.findIndex(x => x.id === c.id);
+    if (i < 0) { c.id = cid(); c.createdAt = Date.now(); list.unshift(c); } else list[i] = { ...list[i], ...c };
+    await kset(COACH.clients, list); res.json({ ok: true, client: list.find(x => x.id === c.id) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/coach/client/delete', async (req, res) => {
+  try { await kset(COACH.clients, (await getClients()).filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/coach/:kind/save', async (req, res) => {
+  try {
+    const k = req.params.kind; if (!['leads', 'videos'].includes(k)) return res.status(400).json({ error: 'bad kind' });
+    const it = req.body.item || {}; if (JSON.stringify(it).length > 20000) return res.status(400).json({ error: 'Too big' });
+    const list = await coachList(k), i = list.findIndex(x => x.id === it.id);
+    if (i < 0) { it.id = cid(); it.createdAt = Date.now(); list.unshift(it); } else list[i] = { ...list[i], ...it, updatedAt: Date.now() };
+    await kset(COACH[k], list); res.json({ ok: true, item: list.find(x => x.id === it.id) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/coach/:kind/delete', async (req, res) => {
+  try { const k = req.params.kind; if (!['leads', 'videos'].includes(k)) return res.status(400).json({ error: 'bad kind' });
+    await kset(COACH[k], (await coachList(k)).filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Client portal: each client logs in with their own PIN and only ever sees their own page.
+const portalSig = c => crypto.createHmac('sha256', SECRET).update('client:' + c.id + ':' + c.pin).digest('hex').slice(0, 32);
+const portalTries = {};
+async function portalClient(req) {
+  const m = String(req.headers.cookie || '').match(/(?:^|;\s*)bcc=([a-f0-9]+)\.([a-f0-9]{32})/); if (!m) return null;
+  const c = (await getClients()).find(x => x.id === m[1] && x.active !== false && x.pin);
+  return c && portalSig(c) === m[2] ? c : null;
+}
+function portalView(c) {
+  const wk = weekKey();
+  return { name: c.name, business: c.business || '', calendly: c.calendly || '', program: { length: c.program?.length, start: c.program?.start, end: c.program?.end },
+    start: c.start || {}, goals: c.goals || {}, calls: (c.calls || []).map(x => ({ id: x.id, title: x.title, date: x.date, link: x.link, notes: x.notes })),
+    tasks: (c.tasks || []).map(t => ({ id: t.id, text: t.text, month: t.month, recurring: !!t.recurring, done: t.recurring ? t.doneWeek === wk : !!t.done })),
+    checkins: (c.checkins || []).slice().sort((a, b) => a.week.localeCompare(b.week)), week: wk };
+}
+app.get('/client', (req, res) => res.set('X-Robots-Tag', 'noindex').sendFile(path.join(__dirname, 'portal.html')));
+app.post('/client/api/login', async (req, res) => {
+  const ip = req.headers['x-forwarded-for'] || req.ip, now = Date.now(), t = portalTries[ip] = (portalTries[ip] || []).filter(x => now - x < 10 * 60 * 1000);
+  if (t.length >= 10) return res.status(429).json({ error: 'Too many tries. Wait 10 minutes.' });
+  const pin = String((req.body || {}).pin || '').replace(/\D/g, '');
+  const c = pin.length >= 4 && (await getClients()).find(x => x.pin === pin && x.active !== false);
+  if (!c) { t.push(now); return res.status(401).json({ error: 'That PIN didn\'t work.' }); }
+  res.setHeader('Set-Cookie', `bcc=${c.id}.${portalSig(c)}; Path=/client; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 120}; Secure`);
+  res.json({ ok: true });
+});
+app.get('/client/api/logout', (req, res) => { res.setHeader('Set-Cookie', 'bcc=; Path=/client; Max-Age=0'); res.redirect('/client'); });
+app.get('/client/api/me', async (req, res) => {
+  const c = await portalClient(req); if (!c) return res.status(401).json({ error: 'login' });
+  res.set('Cache-Control', 'no-store').json({ ok: true, me: portalView(c) });
+});
+app.post('/client/api/task', async (req, res) => {
+  try {
+    const me = await portalClient(req); if (!me) return res.status(401).json({ error: 'login' });
+    const list = await getClients(), c = list.find(x => x.id === me.id), t = (c.tasks || []).find(x => x.id === req.body.id); if (!t) return res.status(404).json({ error: 'not found' });
+    if (t.recurring) t.doneWeek = req.body.done ? weekKey() : ''; else { t.done = !!req.body.done; t.doneAt = t.done ? Date.now() : null; }
+    await kset(COACH.clients, list); res.json({ ok: true, me: portalView(c) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/client/api/checkin', async (req, res) => {
+  try {
+    const me = await portalClient(req); if (!me) return res.status(401).json({ error: 'login' });
+    const b = req.body || {}, n = v => Math.max(0, Math.round(Number(String(v ?? '').replace(/[^\d.]/g, '')) || 0));
+    const week = /^\d{4}-\d{2}-\d{2}$/.test(b.week || '') ? weekKey(new Date(b.week + 'T12:00:00Z')) : weekKey();
+    const list = await getClients(), c = list.find(x => x.id === me.id); c.checkins = (c.checkins || []).filter(x => x.week !== week);
+    c.checkins.push({ week, flips: n(b.flips), revenue: n(b.revenue), profit: n(b.profit), leads: n(b.leads), win: clean(b.win, 500), stuck: clean(b.stuck, 500), at: Date.now() });
+    await kset(COACH.clients, list); res.json({ ok: true, me: portalView(c) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ---------- weekly pay for the team scorecard ("My pay") ----------
 // Same math as the Payroll tab: hours x rate + $20 per showing sold + $20 once deep cleans hit 4 + adjustments.
 // Tips are shown but not added (customers tip the team directly). Protected by TEAM_PAY_KEY.
