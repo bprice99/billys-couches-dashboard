@@ -50,7 +50,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .funwhy{font-size:12.5px;line-height:1.45;color:#5b4e45;background:#faf6f1;border-radius:10px;padding:9px 11px;margin:0 0 10px}.fhint{display:block;font-weight:400;font-size:11.5px;color:#9a8f86;margin-top:1px}
 .agenda{display:none}.bank .vc{cursor:grab}
 @media(max-width:900px){.ytwrap{grid-template-columns:1fr}.cal{display:none}.agenda{display:block}}
-.mask{position:fixed;inset:0;background:rgba(15,20,25,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.mask.on{display:flex}
+.mask{position:fixed;inset:0;background:rgba(15,20,25,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.mask.on{display:flex}html:has(.mask.on),body:has(.mask.on){overflow:hidden}.modal{overscroll-behavior:contain}
 .modal{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow:auto;position:relative}.modal h3{margin:0 40px 14px 0}
 .xb{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px;cursor:pointer}
 .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.acts .sp{flex:1}
@@ -265,28 +265,22 @@ function renderYouTube(){
   </div>
   <div class="card bank" data-day=""><h2>Idea bank</h2>${ideas.map(v => `<div class="vc" data-video="${v.id}" draggable="true"><b>${esc(v.title || 'Untitled')}</b><small>${ftag(v)}${esc((v.hook || '').slice(0, 80)) || 'No hook yet'}</small></div>`).join('') || '<p class="empty" style="font-size:13px">Ideas with no post date land here.</p>'}</div></div>`;
 }
-// Each funnel stage gets its own planning template. Every video starts with a foreshadow hook and re-hooks ~4 min in.
+// Each funnel stage gets its own planning template. Every video starts with a foreshadow hook.
 const HOOK = ['hook', 'Hook - foreshadow (first 15-30 sec)', 'Flash the best clips or a glimpse of what\'s coming. Open a loop only the end of the video closes.', 3];
-const REHOOK = ['rehook', 'Re-hook (~4 min in)', 'Open a second loop so they keep watching.', 2];
 const FUN = {
-  top: { tag: 'TOFU', name: 'Top', sub: 'Reach', why: 'Top of funnel: get new people to follow the journey. Vlogs and behind-the-scenes, so they come for the story and stay for you.',
-    formats: ['Vlog', 'Day in the life', 'Behind the scenes (buying a load, warehouse move)', 'Challenge (e.g. flip a couch in 24 hrs)', 'Big risk / big purchase', 'Couch flip start to finish'],
-    fields: [HOOK, ['story', 'Storyline', 'What happens - beginning, middle, end. What\'s at stake?', 4], ['shots', 'Shot list', 'Clips you need to capture on film day.', 3], REHOOK,
-      ['payoff', 'Payoff', 'How the loops close at the end.', 2], ['attack', 'Call to action', 'Soft: subscribe, watch the next video.', 2]] },
-  mid: { tag: 'MOFU', name: 'Middle', sub: 'Belief shift', why: 'Middle of funnel: shift a belief through storytelling. Not random - every story ties back to couch flipping.',
-    formats: ['Story / mindset shift'],
-    fields: [HOOK, ['show', 'Show', 'What you show them - the story.', 3], ['relate', 'Relate', 'Connect it to their life and the belief you\'re shifting.', 3], REHOOK, ['attack', 'Attack', 'The call to action.', 3]] },
-  bot: { tag: 'BOFU', name: 'Bottom', sub: 'Program', why: 'Bottom of funnel: show the program working so viewers are ready to buy.',
-    formats: ['1-on-1 client call', 'Miro board client breakdown', 'Program walkthrough', 'Client results / testimonial'],
-    fields: [HOOK, ['client', 'Client / subject', 'Who it is and where they started.', 2], ['result', 'The result', 'Before → after, with numbers.', 2],
-      ['show', 'What you show', 'Inside the call, the Miro breakdown, or the program module.', 4], REHOOK, ['attack', 'Offer / call to action', 'Apply or book a call.', 2]] }
+  top: { tag: 'TOFU', name: 'Top', sub: 'Reach', why: 'Top of funnel: get new people to follow the journey. Vlogs and behind-the-scenes.',
+    fields: [HOOK, ['story', 'Storyline', 'What happens - beginning, middle, end. What\'s at stake?', 5]] },
+  mid: { tag: 'MOFU', name: 'Middle', sub: 'Belief shift', why: 'Middle of funnel: shift a belief through storytelling tied to couch flipping.',
+    fields: [HOOK, ['show', 'Show', 'What you show them - the story.', 3], ['relate', 'Relate', 'Connect it to their life and the belief you\'re shifting.', 3], ['attack', 'Attack', 'The call to action.', 3]] },
+  bot: { tag: 'BOFU', name: 'Bottom', sub: 'Program', why: 'Bottom of funnel: show the program working - client calls, Miro breakdowns, the program itself. CTA is always book a call.',
+    fields: [HOOK, ['subject', 'Subject of the video', 'What the video is - the call, the breakdown, the client, the module.', 5]] }
 };
-const VFIELDS = ['hook', 'show', 'relate', 'attack', 'story', 'shots', 'payoff', 'client', 'result', 'rehook'];
+const VFIELDS = ['hook', 'show', 'relate', 'attack', 'story', 'subject'];
 const ftag = v => `<span class="ftag">${FUN[v.funnel || 'mid'].tag}</span>`;
 const fmtT = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm'); };
 function readVideoForm(){
   const v = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), date: $('vDate').value, posted: $('vPosted').checked, filmDate: $('vFilm').value, filmTime: $('vFilmT').value,
-    funnel: document.querySelector('.funsel .on').dataset.fun, format: $('vFormat') ? $('vFormat').value : '' };
+    funnel: document.querySelector('.funsel .on').dataset.fun };
   VFIELDS.forEach(k => { const el = $('vf_' + k); v[k] = el ? el.value : (VDRAFT[k] || ''); }); return v;
 }
 let VDRAFT = {};
@@ -297,7 +291,6 @@ function openVideo(id, date, draft){
     <div class="funsel">${Object.entries(FUN).map(([k, f]) => `<button type="button" data-fun="${k}" class="${k === fun ? 'on' : ''}">${f.name} of funnel<small>${f.tag} &middot; ${f.sub}</small></button>`).join('')}</div>
     <p class="funwhy">${F.why}</p>
     <label class="f">Title<input id="vTitle" value="${esc(v.title)}" placeholder="e.g. I flipped 30 couches in 30 days"></label>
-    ${F.formats.length > 1 ? `<label class="f">Format<select id="vFormat">${F.formats.map(x => `<option${x === v.format ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}
     <div class="two"><label class="f">Film date<input type="date" id="vFilm" value="${esc(v.filmDate || '')}"></label><label class="f">Film time<input type="time" id="vFilmT" value="${esc(v.filmTime || '')}"></label></div>
     <div class="two"><label class="f">Post date <span style="font-weight:400">(blank = idea bank)</span><input type="date" id="vDate" value="${esc(v.date || '')}"></label>
       <label style="display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-size:14px;font-weight:600;cursor:pointer"><input type="checkbox" class="chk" id="vPosted" ${isPosted(v) ? 'checked' : ''}> Posted</label></div>
@@ -349,7 +342,6 @@ document.addEventListener('click', async e => {
   const t = e.target, c = curClient();
   const nv = t.closest('.nav'); if (nv) return setTab(nv.dataset.tab);
   if (t.closest('[data-close]')) return $('m-item').classList.remove('on');
-  if (t === $('m-item')) return $('m-item').classList.remove('on');
   const op = t.closest('[data-open]'); if (op) return setTab('clients', op.dataset.open);
   if (t.closest('[data-back]')) return setTab('clients');
   if (t.closest('[data-newclient]')) {
@@ -376,7 +368,7 @@ document.addEventListener('click', async e => {
   }
   if (t.closest('[data-newvideo]')) return openVideo(null);
   const vc = t.closest('[data-video]'); if (vc) return openVideo(vc.dataset.video);
-  const fb = t.closest('.funsel [data-fun]'); if (fb) { const cur = readVideoForm(); cur.funnel = fb.dataset.fun; if (!FUN[cur.funnel].formats.includes(cur.format)) cur.format = ''; return openVideo(cur.id, null, cur); }
+  const fb = t.closest('.funsel [data-fun]'); if (fb) { const cur = readVideoForm(); cur.funnel = fb.dataset.fun; return openVideo(cur.id, null, cur); }
   if (t.id === 'vSave') { const item = readVideoForm();
     if (!item.title) return toast('Add a title'); try { await saveVideo(item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
   const ym = t.closest('[data-ym]'); if (ym) { const [yy, mm] = YM.split('-').map(Number), d = new Date(yy, mm - 1 + Number(ym.dataset.ym), 1); YM = d.toLocaleDateString('en-CA').slice(0, 7); return render(); }
@@ -401,7 +393,7 @@ document.addEventListener('change', e => {
   if (t.dataset.paid != null) { const p = c.program.payments[+t.dataset.paid]; p.paid = t.checked; if (t.checked && !p.paidAt) p.paidAt = todayISO(); queueSave(c); return renderClient(); }
   if (t.hasAttribute('data-active')) { c.active = t.checked; queueSave(c); }
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('m-item').classList.remove('on'); if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tasktext) { e.preventDefault(); e.target.blur(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tasktext) { e.preventDefault(); e.target.blur(); } });
 
 const q = new URLSearchParams(location.search); TAB = ['home', 'clients', 'youtube', 'pipeline'].includes(q.get('tab')) ? q.get('tab') : 'home'; CUR = q.get('id');
 document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === TAB));
