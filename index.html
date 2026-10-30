@@ -1730,6 +1730,15 @@ function renderOffers(){
       <span class="ost ${o.status}">${OSTATUS[o.status] || o.status}</span></button>`).join('')}</div>`
       : `<div class="card"><p class="empty">${OFFERS.length ? 'Nothing here.' : 'No offers yet. Submissions from billyscouches.com/cashforyourcouch show up here and get texted to you.'}</p></div>`);
 }
+const BC_CAL = '38e6127b0c4262b1a594056d689680c77138e0f81b8131c42746d4ff712114aa@group.calendar.google.com';   // Billy's Couches calendar
+// Google Calendar event (you pick the day/time): "Pick up for NAME" with every offer detail in the description.
+function offerGcal(o, addr){
+  const name = ((o.firstName || '') + ' ' + (o.lastName || '')).trim() || 'seller';
+  const lines = [`Couch: ${o.brand || ''}`, `Asking: ${o.asking || 'no price'}`, `Issues: ${o.issues && o.issues.length ? o.issues.join(', ') : 'None checked'}`,
+    o.details ? `Details: ${o.details}` : '', `Can help load: ${o.helpLoad || '-'}`, '', `Name: ${name}`, `Phone: ${o.phone || ''}`, `Email: ${o.email || ''}`, `Address: ${addr}`,
+    o.heard ? `Heard about us: ${o.heard}` : '', '', `Offer in HQ: ${location.origin}/?offer=${o.id}`].filter((x, i, a) => x !== '' || a[i - 1] !== '');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('Pick up for ' + name) + '&details=' + encodeURIComponent(lines.join('\n')) + '&location=' + encodeURIComponent(addr) + '&src=' + encodeURIComponent(BC_CAL);
+}
 function openOffer(id){
   const o = (OFFERS || []).find(x => x.id === id); if (!o) return toast('Offer not found');
   const tel = (o.phone || '').replace(/[^\d+]/g, ''), addr = [o.street, o.street2, o.city, o.state, o.zip].filter(Boolean).join(', ');
@@ -1738,7 +1747,7 @@ function openOffer(id){
     <div class="ophotos">${Array.from({ length: o.photoCount || 0 }, (_, i) => `<a href="/offers/${esc(o.id)}/photo/${i}" target="_blank"><img src="/offers/${esc(o.id)}/photo/${i}" alt=""></a>`).join('')}</div>
     ${R('Issues', o.issues && o.issues.length ? o.issues.join(', ') : 'None checked')}${R('Details', o.details)}${R('Can help load', o.helpLoad)}${R('Heard about us', o.heard)}
     ${R('Name', (o.firstName + ' ' + (o.lastName || '')).trim())}${R('Phone', o.phone)}${R('Email', o.email)}${R('Address', addr)}
-    <div class="oacts"><a href="sms:${tel}">Text</a><a href="tel:${tel}">Call</a><a class="dk" target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(addr)}">Map</a></div>
+    <div class="oacts"><a href="sms:${tel}">Text</a><a target="_blank" rel="noopener" href="${offerGcal(o, addr)}">Schedule</a><a class="dk" target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(addr)}">Map</a></div>
     <div class="oacts" style="align-items:center"><b style="flex:none;font-size:14px">Status</b><select id="oStatus" data-id="${esc(o.id)}">${Object.entries(OSTATUS).map(([k, v]) => `<option value="${k}" ${o.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
   $('m-offer').classList.add('on');
 }
