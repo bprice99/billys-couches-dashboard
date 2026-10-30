@@ -273,7 +273,8 @@ function openVideo(id, date){
   $('m-item').classList.add('on');
 }
 async function saveVideo(item){
-  const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item); return j.item;
+  const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item);
+  if (j.item.calError) setTimeout(() => toast("Saved, but Google Calendar didn't update: " + j.item.calError), 300); return j.item;
 }
 let dragId = null;
 document.addEventListener('dragstart', e => { const v = e.target.closest && e.target.closest('[data-video]'); if (v) { dragId = v.dataset.video; e.dataTransfer.effectAllowed = 'move'; } });
