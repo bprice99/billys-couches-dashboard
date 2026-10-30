@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex"><meta name="theme-color" content="#1f2a33"><link rel="icon" type="image/png" href="/favicon.png">
+<title>My Coaching</title>
+<script src="/chart.js"></script>
+<style>
+:root{--red:#b0524c;--red2:#963f3a;--dark:#1f2a33;--bg:#f6f4f1;--line:#e6e0d8;--muted:#776d65;--text:#222;--green:#2e7d4f}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
+header{background:var(--dark);color:#fff;padding:22px 0 26px;margin-bottom:-12px}header .wrap{padding-bottom:0;display:flex;align-items:center;gap:12px}
+header h1{margin:0;font-size:22px;flex:1}header small{display:block;opacity:.7;font-size:13px;font-weight:400;margin-top:2px}header a{color:#e8e2dc;font-size:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-top:16px}.card h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px}.card h2 .sp{flex:1}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;position:relative}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.kpi small{color:var(--muted);font-size:12.5px}.kpi b{display:block;font-size:24px;margin-top:3px}.kpi i{font-style:normal;font-size:12px;color:var(--muted)}
+.bar{height:8px;background:#eee7df;border-radius:99px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--red)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);text-decoration:none;display:inline-block}.btn.p{background:var(--red);border-color:var(--red);color:#fff}
+.row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.row:first-of-type{border-top:0}
+.chk{width:22px;height:22px;flex:none;accent-color:var(--red);margin-top:1px}.done{text-decoration:line-through;color:var(--muted)}
+.lbl{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 2px;letter-spacing:.04em}
+.f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:10px}.f input,.f textarea{display:block;width:100%;margin-top:4px;padding:11px 12px;border:1px solid #dcd4ca;border-radius:10px;font:inherit;font-size:16px;color:var(--text)}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
+.call{padding:10px 0;border-top:1px solid var(--line)}.call:first-of-type{border-top:0}.call b{display:block}.call small{color:var(--muted)}.call p{margin:6px 0 0;font-size:14px}
+.empty{color:var(--muted);font-size:14px}
+.login{max-width:360px;margin:12vh auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px 24px;text-align:center}
+.login input{width:100%;font-size:28px;letter-spacing:.4em;text-align:center;padding:12px;border:1px solid #dcd4ca;border-radius:12px;margin:14px 0}
+.err{color:#c0392b;font-size:14px;min-height:20px}
+.chartwrap{position:relative;height:230px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 5px;border-bottom:1px solid var(--line)}th{font-size:12px;color:var(--muted)}td.n,th.n{text-align:right}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;display:none;z-index:99}
+@media(max-width:640px){.kpis{grid-template-columns:1fr 1fr}.kpis .kpi:last-child{grid-column:1/-1}.three{grid-template-columns:1fr 1fr}}
+</style></head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
+const fmtD = s => { if (!s) return ''; const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 2600); }
+async function api(url, body){ const r = await fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' }); const j = await r.json().catch(() => ({})); if (r.status === 401 && !body?.pin) { ME = null; showLogin(); throw new Error('login'); } if (!j.ok) throw new Error(j.error || 'Something went wrong'); return j; }
+let ME = null, chart = null;
+
+function showLogin(){
+  $('app').innerHTML = `<div class="login"><div style="font-size:13px;letter-spacing:.12em;color:var(--red);font-weight:700">BILLY PRICE COACHING</div><h2 style="margin:8px 0 2px">Your coaching page</h2><p class="empty" style="margin:0">Enter the PIN Billy sent you.</p>
+    <form id="lf"><input id="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••" autofocus><div class="err" id="lerr"></div><button class="btn p" style="width:100%;padding:13px">Open my page</button></form></div>`;
+  $('lf').onsubmit = async e => { e.preventDefault(); $('lerr').textContent = '';
+    try { await api('/client/api/login', { pin: $('pin').value }); load(); } catch (err) { $('lerr').textContent = err.message; } };
+}
+async function load(){ try { const j = await api('/client/api/me'); ME = j.me; render(); } catch (e) { if (e.message !== 'login') showLogin(); } }
+
+function monthTotals(mk){ const t = { flips: 0, revenue: 0, profit: 0 }; ME.checkins.filter(x => x.week.slice(0, 7) === mk).forEach(x => { t.flips += x.flips; t.revenue += x.revenue; t.profit += x.profit; }); return t; }
+function render(){
+  const m = ME, mk = new Date().toLocaleDateString('en-CA').slice(0, 7), mt = monthTotals(mk), g = m.goals || {}, s = m.start || {};
+  const st = Date.parse(m.program.start), en = Date.parse(m.program.end), pc = st && en && en > st ? Math.max(0, Math.min(1, (Date.now() - st) / (en - st))) : 0;
+  const weekNo = st ? Math.max(1, Math.ceil((Date.now() - st) / (7 * 864e5))) : null;
+  const oneTime = m.tasks.filter(t => !t.recurring), months = [...new Set(oneTime.map(t => +t.month || 1))].sort((a, b) => a - b), rec = m.tasks.filter(t => t.recurring);
+  const thisWeek = m.checkins.find(x => x.week === m.week);
+  const task = t => `<div class="row"><input type="checkbox" class="chk" data-task="${t.id}" ${t.done ? 'checked' : ''}><span class="${t.done ? 'done' : ''}">${esc(t.text)}</span></div>`;
+  const pct = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 0;
+  $('app').innerHTML = `<header><div class="wrap"><h1>Hey ${esc(m.name.split(' ')[0])} 👋<small>${esc(m.program.length || '')} program${weekNo ? ' &middot; week ' + weekNo : ''}${m.business ? ' &middot; ' + esc(m.business) : ''}</small></h1>${m.calendly ? `<a class="btn p" href="${esc(m.calendly)}" target="_blank" rel="noopener" style="color:#fff">Book a call</a>` : ''}</div></header>
+  <div class="wrap">
+    <div class="kpis">
+      <div class="kpi"><small>Flips this month</small><b>${mt.flips}${g.flips ? ' <i>/ ' + esc(g.flips) + '</i>' : ''}</b><div class="bar"><i style="width:${pct(mt.flips, num(g.flips))}%"></i></div><i>Started at ${esc(s.flips || '?')}/month</i></div>
+      <div class="kpi"><small>Revenue this month</small><b>${money(mt.revenue)}</b><div class="bar"><i style="width:${pct(mt.revenue, num(g.revenue))}%"></i></div><i>Goal ${g.revenue ? money(g.revenue) : '-'}</i></div>
+      <div class="kpi"><small>Profit this month</small><b>${money(mt.profit)}</b><div class="bar"><i style="width:${Math.min(100, Math.round(pc * 100))}%;background:var(--green)"></i></div><i>Goal ${esc(g.profit || '-')} &middot; program ${Math.round(pc * 100)}% done</i></div>
+    </div>
+
+    <div class="card"><h2>${thisWeek ? 'This week logged ✅' : 'Log this week'}<span class="sp"></span><small class="empty" style="font-weight:400">week of ${fmtD(m.week)}</small></h2>
+      <form id="cf"><div class="three"><label class="f">Couches flipped<input name="flips" inputmode="numeric" value="${thisWeek ? thisWeek.flips : ''}" placeholder="0"></label><label class="f">Revenue ($)<input name="revenue" inputmode="numeric" value="${thisWeek ? thisWeek.revenue : ''}" placeholder="0"></label>
+        <label class="f">Profit ($)<input name="profit" inputmode="numeric" value="${thisWeek ? thisWeek.profit : ''}" placeholder="0"></label><label class="f">Leads / messages<input name="leads" inputmode="numeric" value="${thisWeek ? thisWeek.leads || '' : ''}" placeholder="0"></label></div>
+        <label class="f">Biggest win this week<input name="win" value="${esc(thisWeek ? thisWeek.win : '')}"></label><label class="f">Where you're stuck<input name="stuck" value="${esc(thisWeek ? thisWeek.stuck : '')}"></label>
+        <button class="btn p">${thisWeek ? 'Update my week' : 'Save my week'}</button></form></div>
+
+    <div class="card"><h2>My tasks</h2>
+      ${months.map(mo => `<div class="lbl">MONTH ${mo}</div>${oneTime.filter(t => (+t.month || 1) === mo).map(task).join('')}`).join('') || ''}
+      ${rec.length ? `<div class="lbl">EVERY WEEK <span style="font-weight:400">(resets Monday)</span></div>${rec.map(task).join('')}` : ''}
+      ${m.tasks.length ? '' : '<p class="empty">Billy will add your tasks after your next call.</p>'}</div>
+
+    <div class="card"><h2>My progress</h2>${m.checkins.length ? `<div class="chartwrap"><canvas id="pc"></canvas></div>
+      <table style="margin-top:10px"><tr><th>Week of</th><th class="n">Flips</th><th class="n">Revenue</th><th class="n">Profit</th></tr>${m.checkins.slice().reverse().slice(0, 12).map(x => `<tr><td>${fmtD(x.week)}</td><td class="n">${x.flips}</td><td class="n">${money(x.revenue)}</td><td class="n">${money(x.profit)}</td></tr>`).join('')}</table>`
+      : '<p class="empty">Log your first week above and your progress chart starts here.</p>'}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;font-size:14px"><div><div class="lbl" style="margin-top:0">WHERE YOU STARTED</div>${s.flips != null && s.flips !== '' ? esc(s.flips) + ' flips/month' : ''}${s.profit ? '<br>' + money(s.profit) + ' profit/month' : ''}${s.bottleneck ? '<br>Bottleneck: ' + esc(s.bottleneck) : ''}</div>
+        <div><div class="lbl" style="margin-top:0">YOUR GOALS</div>${g.flips ? esc(g.flips) + ' flips/month' : ''}${g.revenue ? '<br>' + money(g.revenue) + ' revenue/month' : ''}${g.profit ? '<br>' + esc(g.profit) + ' profit' : ''}${g.other ? '<br>' + esc(g.other) : ''}</div></div></div>
+
+    <div class="card"><h2>My calls</h2>${m.calls.length ? m.calls.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(c => `<div class="call"><b>${esc(c.title)}</b><small>${fmtD(c.date)}</small>${c.notes ? `<p>${esc(c.notes)}</p>` : ''}${c.link ? `<p><a href="${esc(c.link)}" target="_blank" rel="noopener" style="color:var(--red);font-weight:600">Watch the recording &rarr;</a></p>` : ''}</div>`).join('') : '<p class="empty">No calls yet.</p>'}</div>
+    <p class="empty" style="text-align:center;margin-top:24px">Questions? Text Billy at <a href="sms:3148997503" style="color:var(--red)">(314) 899-7503</a> &middot; <a href="/client/api/logout" style="color:var(--muted)">Log out</a></p>
+  </div>`;
+  if (m.checkins.length && window.Chart) {
+    const wk = m.checkins.slice(-12), gw = num(g.flips) ? +(num(g.flips) / 4.33).toFixed(1) : null;
+    if (chart) chart.destroy();
+    chart = new Chart($('pc'), { data: { labels: wk.map(x => fmtD(x.week)), datasets: [
+      { type: 'bar', label: 'Revenue', data: wk.map(x => x.revenue), backgroundColor: '#d9a39f', yAxisID: 'y1', borderRadius: 4 },
+      { type: 'line', label: 'Flips', data: wk.map(x => x.flips), borderColor: '#b0524c', backgroundColor: '#b0524c', yAxisID: 'y', tension: .3 },
+      ...(gw ? [{ type: 'line', label: 'Weekly flip goal', data: wk.map(() => gw), borderColor: '#2e7d4f', borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' }] : [])] },
+      options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => '$' + v / 1000 + 'k' } } } } });
+  }
+  $('cf').onsubmit = async e => { e.preventDefault(); const f = e.target.elements;
+    try { const j = await api('/client/api/checkin', { week: ME.week, flips: f.flips.value, revenue: f.revenue.value, profit: f.profit.value, leads: f.leads.value, win: f.win.value, stuck: f.stuck.value }); ME = j.me; render(); toast('Week saved 💪'); } catch (err) { if (err.message !== 'login') toast(err.message); } };
+}
+document.addEventListener('change', async e => {
+  const id = e.target.dataset && e.target.dataset.task; if (!id) return;
+  try { const j = await api('/client/api/task', { id, done: e.target.checked }); ME = j.me; render(); if (e.target.checked) toast('Nice. Checked off ✅'); } catch (err) { if (err.message !== 'login') { e.target.checked = !e.target.checked; toast(err.message); } }
+});
+load();
+</script>
+</body></html>
