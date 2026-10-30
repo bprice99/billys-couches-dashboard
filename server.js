@@ -1359,18 +1359,33 @@ app.post('/api/coach/client/save', async (req, res) => {
 app.post('/api/coach/client/delete', async (req, res) => {
   try { await kset(COACH.clients, (await getClients()).filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// YouTube videos with a post date get an all-day Google Calendar event (via the Apps Script).
+async function ytCalSync(it, old) {
+  if (!CFG.API) return;
+  const call = async q => { const u = new URL(CFG.API); Object.entries({ key: CFG.KEY, action: 'yt', ...q }).forEach(([k, v]) => u.searchParams.set(k, v));
+    const j = await (await fetch(u)).json(); if (j.error) throw new Error(j.error); return j; };
+  try {
+    if (it.date && it.title) {
+      if (!old || old.date !== it.date || old.title !== it.title || !it.eventId) { const j = await call({ op: 'upsert', eventId: it.eventId || '', title: it.title, date: it.date }); it.eventId = j.eventId; }
+    } else if (it.eventId) { await call({ op: 'delete', eventId: it.eventId }); it.eventId = ''; }
+    it.calError = '';
+  } catch (e) { it.calError = e.message; console.log('YouTube calendar sync failed:', e.message); }
+}
 app.post('/api/coach/:kind/save', async (req, res) => {
   try {
     const k = req.params.kind; if (!['leads', 'videos'].includes(k)) return res.status(400).json({ error: 'bad kind' });
     const it = req.body.item || {}; if (JSON.stringify(it).length > 20000) return res.status(400).json({ error: 'Too big' });
-    const list = await coachList(k), i = list.findIndex(x => x.id === it.id);
+    const list = await coachList(k), i = list.findIndex(x => x.id === it.id), old = i > -1 ? { ...list[i] } : null;
     if (i < 0) { it.id = cid(); it.createdAt = Date.now(); list.unshift(it); } else list[i] = { ...list[i], ...it, updatedAt: Date.now() };
+    if (k === 'videos') await ytCalSync(list.find(x => x.id === it.id), old);
     await kset(COACH[k], list); res.json({ ok: true, item: list.find(x => x.id === it.id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/coach/:kind/delete', async (req, res) => {
   try { const k = req.params.kind; if (!['leads', 'videos'].includes(k)) return res.status(400).json({ error: 'bad kind' });
-    await kset(COACH[k], (await coachList(k)).filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+    const all = await coachList(k), gone = all.find(x => x.id === req.body.id);
+    if (k === 'videos' && gone && gone.eventId) { gone.date = ''; await ytCalSync(gone, null); }
+    await kset(COACH[k], all.filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Client portal: each client logs in with their own PIN and only ever sees their own page.
 const portalSig = c => crypto.createHmac('sha256', SECRET).update('client:' + c.id + ':' + c.pin).digest('hex').slice(0, 32);
