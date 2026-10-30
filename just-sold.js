@@ -101,7 +101,7 @@
     if (!list || !list.length) return;
     var els = document.querySelectorAll('div,p,span');
     for (var i = 0; i < els.length; i++) {
-      var el = els[i]; if (el.children.length > 2 || el.querySelector('div,p,span') || !RX.test((el.textContent || '').trim())) continue;
+      var el = els[i]; if (el.children.length > 2 || el.querySelector('div,p,span') || !RX.test((el.textContent || '').replace(/\s+/g, ' ').trim())) continue;
       var box = el.parentElement; if (!box || box.querySelector('.bcf-card, .fd-card, .bc-live-card')) continue;
       addCss();
       box.innerHTML = '<div class="bcf-grid">' + list.slice(0, 8).map(function(c){ var ph = (c.photos || [])[0];
@@ -111,5 +111,8 @@
   }
   fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
     list = (d && d.couches) || []; scan(); setTimeout(scan, 1500); setTimeout(scan, 4000); setTimeout(scan, 8000);
+    // also catch the message whenever the page's own script writes it
+    var t, mo = new MutationObserver(function(){ clearTimeout(t); t = setTimeout(scan, 200); });
+    mo.observe(document.body, { childList: true, subtree: true }); setTimeout(function(){ mo.disconnect(); }, 20000);
   }).catch(function(){});
 })();
