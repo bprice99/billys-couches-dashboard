@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f2a33"><link rel="icon" type="image/png" href="/favicon.png">
+<title>Coaching HQ</title>
+<script src="/chart.js"></script>
+<style>
+:root{--red:#b0524c;--red2:#963f3a;--dark:#1f2a33;--cream:#efe9e2;--bg:#f6f4f1;--line:#e6e0d8;--muted:#776d65;--text:#222;--green:#2e7d4f;--blue:#2f5d8a;--gold:#b7791f;--bad:#c0392b}
+*{box-sizing:border-box}html,body{margin:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+.app{display:flex;min-height:100vh}
+nav.side{width:220px;flex:none;background:var(--dark);color:#fff;padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand b{display:block;font-size:17px}.brand span{font-size:12px;opacity:.65}.brand{padding:0 10px 18px}
+.nav{display:block;padding:11px 12px;border-radius:10px;color:#e8e2dc;text-decoration:none;cursor:pointer;font-size:14.5px;margin-bottom:2px}.nav:hover{background:rgba(255,255,255,.07)}.nav.on{background:var(--red);color:#fff;font-weight:700}
+.side .foot{margin-top:auto;padding:10px;font-size:13px}.side .foot a{color:#e8e2dc}
+main{flex:1;min-width:0;padding:26px 30px 60px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}.top h1{margin:0;font-size:26px;flex:1}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);text-decoration:none;display:inline-block}
+.btn.p{background:var(--red);border-color:var(--red);color:#fff}.btn.p:hover{background:var(--red2)}.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}.btn.x{color:var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px}.kpi small{color:var(--muted);font-size:12.5px}.kpi b{display:block;font-size:24px;margin-top:4px}.kpi i{font-style:normal;font-size:12px;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:16px}.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}.card h2 .sp{flex:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid2>.card{margin-bottom:0}
+.empty{color:var(--muted);font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}th{font-size:12px;color:var(--muted);font-weight:600}td.n,th.n{text-align:right}
+.ccard{display:flex;gap:14px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;margin-bottom:10px}.ccard:hover{border-color:var(--red)}
+.av{flex:none;width:44px;height:44px;border-radius:50%;background:var(--dark);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.ccard .m{flex:1;min-width:0}.ccard .m b{display:block}.ccard .m small{color:var(--muted)}
+.bar{height:7px;background:#eee7df;border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--red);border-radius:99px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:#eee;color:#555}.pill.g{background:#dff2e5;color:#1f6b3d}.pill.r{background:#fbe4e0;color:var(--red2)}.pill.y{background:#fff3d6;color:#8a5a00}.pill.b{background:#e3ecf6;color:var(--blue)}
+.f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:10px}.f input,.f select,.f textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid #dcd4ca;border-radius:9px;font:inherit;font-size:14.5px;color:var(--text);background:#fff}
+.f textarea{resize:vertical}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
+.row{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}.row input[type=text],.row input[type=date],.row input[type=url],.row input[type=number]{padding:7px 9px;border:1px solid #dcd4ca;border-radius:8px;font:inherit;font-size:14px;min-width:0}
+.row .grow{flex:1}.chk{width:20px;height:20px;flex:none;accent-color:var(--red)}
+.done{text-decoration:line-through;color:var(--muted)}
+.save{font-size:12.5px;color:var(--muted)}
+.chartwrap{position:relative;height:240px}
+.cols{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:#efebe6;border-radius:14px;padding:10px;min-height:120px}.col h3{font-size:13px;margin:2px 4px 10px;display:flex;justify-content:space-between}
+.vc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-size:14px}.vc small{display:block;color:var(--muted);margin-top:3px;font-size:12px}.vc:hover{border-color:var(--red)}
+.mask{position:fixed;inset:0;background:rgba(15,20,25,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.mask.on{display:flex}
+.modal{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow:auto;position:relative}.modal h3{margin:0 40px 14px 0}
+.xb{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px;cursor:pointer}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.acts .sp{flex:1}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;display:none;z-index:99}
+.portal{background:#f3efe9;border:1px dashed #d8cfc4;border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.portal .f{margin:0;min-width:120px}
+.ci td{vertical-align:top}.ci small{color:var(--muted)}
+@media(max-width:900px){.app{display:block}nav.side{position:sticky;z-index:10;width:auto;height:auto;flex-direction:row;align-items:center;overflow-x:auto;padding:10px;gap:4px;top:0}
+  .brand{display:none}.nav{white-space:nowrap;margin:0}.side .foot{margin:0 0 0 auto;white-space:nowrap}main{padding:18px 14px 60px}
+  .grid2,.two,.three{grid-template-columns:1fr}.cols{grid-template-columns:repeat(5,82%)}.kpis{grid-template-columns:1fr 1fr}
+  .f input,.f select,.f textarea,.row input{font-size:16px!important}}
+</style></head>
+<body>
+<div class="app">
+  <nav class="side">
+    <div class="brand"><b>Billy Price Coaching</b><span>Coaching HQ</span></div>
+    <a class="nav" data-tab="home">Home</a>
+    <a class="nav" data-tab="clients">Clients</a>
+    <a class="nav" data-tab="youtube">YouTube</a>
+    <a class="nav" data-tab="pipeline">Pipeline</a>
+    <div class="foot"><a href="/">&larr; Billy's Couches HQ</a></div>
+  </nav>
+  <main><div id="view"><p class="empty">Loading…</p></div></main>
+</div>
+
+<div class="mask" id="m-item"><div class="modal"><button class="xb" data-close>&times;</button><div id="itemBody"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
+const fmtD = s => { if (!s) return ''; const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 2600); }
+async function post(url, body){ const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.status === 401) { location.reload(); return; } const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Failed'); return j; }
+
+let D = null, TAB = 'home', CUR = null, charts = {};
+async function load(){
+  const r = await fetch('/api/coach', { cache: 'no-store' }); if (r.status === 401) return location.reload();
+  D = await r.json(); render();
+}
+function setTab(t, id){
+  TAB = t; CUR = id || null;
+  document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === t));
+  history.replaceState(null, '', '/coach' + (t !== 'home' ? '?tab=' + t + (id ? '&id=' + id : '') : ''));
+  render(); window.scrollTo(0, 0);
+}
+function render(){
+  if (!D) return;
+  Object.values(charts).forEach(c => c.destroy()); charts = {};
+  ({ home: renderHome, clients: CUR ? renderClient : renderClients, youtube: renderYouTube, pipeline: renderPipeline })[TAB]();
+}
+
+// ---------- helpers on clients ----------
+const monthKey = (d = new Date()) => d.toLocaleDateString('en-CA').slice(0, 7);
+function progressPct(c){ const s = Date.parse(c.program?.start), e = Date.parse(c.program?.end); if (!s || !e || e <= s) return 0; return Math.max(0, Math.min(1, (Date.now() - s) / (e - s))); }
+function lastCheckin(c){ return (c.checkins || []).slice().sort((a, b) => b.week.localeCompare(a.week))[0]; }
+function monthTotals(c, mk = monthKey()){ const t = { flips: 0, revenue: 0, profit: 0, weeks: 0 }; (c.checkins || []).filter(x => x.week.slice(0, 7) === mk).forEach(x => { t.flips += x.flips; t.revenue += x.revenue; t.profit += x.profit; t.weeks++; }); return t; }
+const paidCount = c => (c.program?.payments || []).filter(p => p.paid).length;
+const initials = n => String(n || '?').split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase();
+function daysSince(ts){ return ts ? Math.floor((Date.now() - ts) / 864e5) : null; }
+
+// ---------- Home ----------
+function renderHome(){
+  const act = D.clients.filter(c => c.active !== false), mk = monthKey();
+  const pays = act.flatMap(c => (c.program?.payments || []).map(p => ({ ...p, who: c.name })));
+  const collected = D.clients.flatMap(c => c.program?.payments || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === mk).reduce((a, p) => a + num(p.amount), 0);
+  const owed = pays.filter(p => !p.paid).reduce((a, p) => a + num(p.amount), 0);
+  const leadsM = D.leads.filter(l => String(l.date || new Date(l.createdAt).toISOString()).slice(0, 7) === mk).length;
+  const booked = D.leads.filter(l => l.stage === 'Call booked').length;
+  const posted = D.videos.filter(v => v.status === 'Posted' && String(v.date || '').slice(0, 7) === mk).length;
+  const quiet = act.filter(c => { const l = lastCheckin(c); return !l || daysSince(l.at) > 8; });
+  const upcoming = act.flatMap(c => (c.calls || []).filter(x => x.date >= todayISO()).map(x => ({ ...x, who: c.name, cid: c.id }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
+  const recent = act.flatMap(c => (c.checkins || []).map(x => ({ ...x, who: c.name, cid: c.id }))).sort((a, b) => b.at - a.at).slice(0, 8);
+  $('view').innerHTML = `<div class="top"><h1>Coaching</h1><button class="btn p" data-newclient>+ New client</button></div>
+  <div class="kpis">
+    <div class="kpi"><small>Active clients</small><b>${act.length}</b></div>
+    <div class="kpi"><small>Collected this month</small><b>${money(collected)}</b></div>
+    <div class="kpi"><small>Still owed (payment plans)</small><b>${money(owed)}</b></div>
+    <div class="kpi"><small>Leads this month</small><b>${leadsM}</b><i>${booked} calls booked</i></div>
+    <div class="kpi"><small>Videos posted this month</small><b>${posted}</b></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Needs attention</h2>${quiet.length ? quiet.map(c => `<div class="row" style="cursor:pointer" data-open="${c.id}"><span class="grow"><b>${esc(c.name)}</b></span><span class="pill r">${lastCheckin(c) ? 'No check-in in ' + daysSince(lastCheckin(c).at) + ' days' : 'No check-ins yet'}</span></div>`).join('') : '<p class="empty">Everyone checked in this week.</p>'}
+      ${act.filter(c => (c.program?.payments || []).some(p => !p.paid)).map(c => { const p = c.program.payments.find(x => !x.paid); return `<div class="row" style="cursor:pointer" data-open="${c.id}"><span class="grow">${esc(c.name)} &middot; next payment</span><span class="pill y">${esc(p.label)} ${money(p.amount)}</span></div>`; }).join('')}</div>
+    <div class="card"><h2>Upcoming calls</h2>${upcoming.length ? upcoming.map(x => `<div class="row" style="cursor:pointer" data-open="${x.cid}"><span class="grow"><b>${esc(x.who)}</b> &middot; ${esc(x.title)}</span><span class="pill b">${fmtD(x.date)}</span></div>`).join('') : '<p class="empty">No upcoming calls on the books. Add the date to a client\'s Calls list.</p>'}</div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Latest client check-ins</h2>${recent.length ? `<table class="ci"><tr><th>Client</th><th>Week of</th><th class="n">Flips</th><th class="n">Revenue</th><th class="n">Profit</th><th>Win / stuck on</th></tr>${recent.map(x => `<tr style="cursor:pointer" data-open="${x.cid}"><td><b>${esc(x.who)}</b></td><td>${fmtD(x.week)}</td><td class="n">${x.flips}</td><td class="n">${money(x.revenue)}</td><td class="n">${money(x.profit)}</td><td><small>${esc(x.win || '')}${x.stuck ? '<br>Stuck: ' + esc(x.stuck) : ''}</small></td></tr>`).join('')}</table>` : '<p class="empty">Check-ins show up here when clients log their week on their page.</p>'}</div>`;
+}
+
+// ---------- Clients list ----------
+function renderClients(){
+  const list = D.clients.slice().sort((a, b) => (b.active !== false) - (a.active !== false));
+  $('view').innerHTML = `<div class="top"><h1>Clients</h1><button class="btn p" data-newclient>+ New client</button></div>` +
+    (list.length ? list.map(c => { const pc = progressPct(c), mt = monthTotals(c), l = lastCheckin(c), pays = c.program?.payments || [];
+      return `<div class="ccard" data-open="${c.id}"><div class="av">${esc(initials(c.name))}</div><div class="m"><b>${esc(c.name)} ${c.active === false ? '<span class="pill">Finished</span>' : ''}</b>
+        <small>${esc(c.business || c.market || '')} &middot; ${esc(c.program?.length || '')} &middot; ${pays.length ? paidCount(c) + '/' + pays.length + ' paid' : ''} &middot; ${l ? 'last check-in ' + fmtD(l.week) : 'no check-ins yet'}</small>
+        <div class="bar"><i style="width:${Math.round(pc * 100)}%"></i></div></div>
+        <div style="text-align:right;min-width:110px"><b>${mt.flips}${c.goals?.flips ? ' / ' + c.goals.flips : ''}</b><br><small class="empty">flips this month</small></div></div>`; }).join('')
+      : '<div class="card"><p class="empty">No clients yet.</p></div>');
+}
+
+// ---------- Client detail ----------
+let saveT = null;
+function curClient(){ return D.clients.find(c => c.id === CUR); }
+function getPath(o, p){ return p.split('.').reduce((a, k) => a == null ? a : a[k], o); }
+function setPath(o, p, v){ const ks = p.split('.'); let t = o; ks.slice(0, -1).forEach(k => { if (t[k] == null || typeof t[k] !== 'object') t[k] = {}; t = t[k]; }); t[ks[ks.length - 1]] = v; }
+function queueSave(c){ $('saveSt') && ($('saveSt').textContent = 'Saving…'); clearTimeout(saveT); saveT = setTimeout(() => saveClient(c), 700); }
+async function saveClient(c){
+  try { await post('/api/coach/client/save', { client: c }); $('saveSt') && ($('saveSt').textContent = 'Saved'); }
+  catch (e) { $('saveSt') && ($('saveSt').textContent = 'Not saved'); toast(e.message); }
+}
+const F = (label, path, type = 'text', extra = '') => { const c = curClient(), v = getPath(c, path) ?? '';
+  return `<label class="f">${label}${type === 'textarea' ? `<textarea data-f="${path}" rows="3" ${extra}>${esc(v)}</textarea>` : `<input type="${type}" data-f="${path}" value="${esc(v)}" ${extra}>`}</label>`; };
+function renderClient(){
+  const c = curClient(); if (!c) { CUR = null; return renderClients(); }
+  c.links = c.links || {}; c.program = c.program || {}; c.start = c.start || {}; c.goals = c.goals || {}; c.calls = c.calls || []; c.tasks = c.tasks || []; c.checkins = c.checkins || [];
+  c.program.payments = c.program.payments || [];
+  const portal = location.origin + '/client';
+  const oneTime = c.tasks.filter(t => !t.recurring), months = [...new Set(oneTime.map(t => +t.month || 1))].sort((a, b) => a - b), rec = c.tasks.filter(t => t.recurring);
+  const ck = c.checkins.slice().sort((a, b) => b.week.localeCompare(a.week)), mt = monthTotals(c);
+  const taskRow = t => `<div class="row"><input type="checkbox" class="chk" data-task="${t.id}" ${(t.recurring ? t.doneWeek === D.week : t.done) ? 'checked' : ''}><span class="grow ${(t.recurring ? t.doneWeek === D.week : t.done) ? 'done' : ''}" contenteditable="true" data-tasktext="${t.id}">${esc(t.text)}</span><button class="btn sm x" data-deltask="${t.id}">&times;</button></div>`;
+  $('view').innerHTML = `<div class="top"><button class="btn" data-back>&larr; Clients</button><h1>${esc(c.name || 'New client')}</h1><span class="save" id="saveSt">Saved</span></div>
+  <div class="portal"><b style="flex:none">Client page</b>
+    <label class="f">PIN (4-6 digits)<input data-f="pin" value="${esc(c.pin || '')}" inputmode="numeric" maxlength="6" placeholder="e.g. 4821"></label>
+    <button class="btn sm" data-copy="${esc(portal)}">Copy link</button>
+    <button class="btn sm" data-copymsg="1">Copy text to send</button>
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600"><input type="checkbox" class="chk" data-active ${c.active !== false ? 'checked' : ''}> Active</label>
+    <span class="empty" style="font-size:12.5px;flex-basis:100%">${c.pin ? esc(c.name.split(' ')[0]) + ' logs in at ' + esc(portal) + ' with PIN ' + esc(c.pin) + ' and sees calls, tasks and progress. Private notes stay hidden.' : 'Set a PIN to give them their own page.'}</span></div>
+  <div class="kpis">
+    <div class="kpi"><small>Flips this month</small><b>${mt.flips}${c.goals.flips ? ' <i>/ ' + esc(c.goals.flips) + ' goal</i>' : ''}</b><i>Started at ${esc(c.start.flips || '?')}/mo</i></div>
+    <div class="kpi"><small>Revenue this month</small><b>${money(mt.revenue)}</b><i>Goal ${esc(c.goals.revenue ? money(c.goals.revenue) : '-')}</i></div>
+    <div class="kpi"><small>Profit this month</small><b>${money(mt.profit)}</b><i>Goal ${esc(c.goals.profit || '-')}</i></div>
+    <div class="kpi"><small>Program</small><b>${Math.round(progressPct(c) * 100)}%</b><i>${fmtD(c.program.start)} to ${fmtD(c.program.end)}</i></div>
+    <div class="kpi"><small>Paid</small><b>${paidCount(c)}/${c.program.payments.length}</b><i>${money(c.program.payments.filter(p => p.paid).reduce((a, p) => a + num(p.amount), 0))} collected</i></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Calls<span class="sp"></span><button class="btn sm" data-addcall>+ Call</button></h2>
+      ${c.calls.length ? c.calls.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(x => `<div class="row" style="flex-wrap:wrap"><input type="text" class="grow" data-list="calls" data-id="${x.id}" data-k="title" value="${esc(x.title)}" placeholder="Call #"><input type="date" data-list="calls" data-id="${x.id}" data-k="date" value="${esc(x.date)}">
+        <input type="url" style="flex:1 1 100%" data-list="calls" data-id="${x.id}" data-k="link" value="${esc(x.link)}" placeholder="Fathom link">
+        <input type="text" style="flex:1 1 100%" data-list="calls" data-id="${x.id}" data-k="notes" value="${esc(x.notes)}" placeholder="Takeaways (client sees these)">
+        ${x.link ? `<a class="btn sm" href="${esc(x.link)}" target="_blank" rel="noopener">Recording</a>` : ''}<button class="btn sm x" data-delcall="${x.id}">Remove</button></div>`).join('') : '<p class="empty">No calls yet.</p>'}
+    </div>
+    <div class="card"><h2>Tasks<span class="sp"></span><button class="btn sm" data-addtask="once">+ Task</button><button class="btn sm" data-addtask="rec">+ Recurring</button></h2>
+      ${months.map(m => `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 2px">MONTH ${m}</div>${oneTime.filter(t => (+t.month || 1) === m).map(taskRow).join('')}`).join('') || '<p class="empty">No one-time tasks.</p>'}
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 2px">EVERY WEEK <span style="font-weight:400">(resets Monday)</span></div>${rec.map(taskRow).join('') || '<p class="empty">No recurring tasks.</p>'}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Progress<span class="sp"></span><button class="btn sm" data-addci>+ Log a week</button></h2>
+    <div class="chartwrap"><canvas id="ciChart"></canvas></div>
+    ${ck.length ? `<table class="ci" style="margin-top:12px"><tr><th>Week of</th><th class="n">Flips</th><th class="n">Revenue</th><th class="n">Profit</th><th class="n">Leads</th><th>Win / stuck on</th><th></th></tr>${ck.map(x => `<tr><td>${fmtD(x.week)}</td><td class="n">${x.flips}</td><td class="n">${money(x.revenue)}</td><td class="n">${money(x.profit)}</td><td class="n">${x.leads || 0}</td><td><small>${esc(x.win || '')}${x.stuck ? '<br>Stuck: ' + esc(x.stuck) : ''}</small></td><td><button class="btn sm x" data-delci="${x.week}">&times;</button></td></tr>`).join('')}</table>` : '<p class="empty" style="margin-top:10px">No check-ins yet. Clients log their week on their page every Sunday/Monday.</p>'}
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><h2>Starting point</h2><div class="two">${F('Experience', 'start.experience')}${F('Truck / moving', 'start.truck')}${F('Flips / month', 'start.flips', 'number')}${F('Net profit / month ($)', 'start.profit', 'number')}${F('Revenue / month', 'start.revenue')}${F('Employees', 'start.employees')}${F('Inventory source', 'start.inventory')}${F('Social media', 'start.social')}</div>${F('Biggest bottleneck', 'start.bottleneck')}</div>
+    <div class="card"><h2>Goals</h2><div class="two">${F('Flips / month goal', 'goals.flips', 'number')}${F('Revenue / month goal ($)', 'goals.revenue', 'number')}</div>${F('Net-profit goal', 'goals.profit')}${F('Other goals', 'goals.other', 'textarea')}</div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><h2>Program &amp; payments<span class="sp"></span><button class="btn sm" data-addpay>+ Payment</button></h2>
+      <div class="three">${F('Program', 'program.length')}${F('Start', 'program.start', 'date')}${F('End', 'program.end', 'date')}</div>${F('Payment plan', 'program.plan')}
+      ${c.program.payments.map((p, i) => `<div class="row"><input type="checkbox" class="chk" data-paid="${i}" ${p.paid ? 'checked' : ''}><input type="text" class="grow" data-pay="${i}" data-k="label" value="${esc(p.label)}"><input type="number" style="width:100px" data-pay="${i}" data-k="amount" value="${esc(p.amount)}"><input type="date" data-pay="${i}" data-k="paidAt" value="${esc(p.paidAt || '')}" title="Date paid"><button class="btn sm x" data-delpay="${i}">&times;</button></div>`).join('')}
+    </div>
+    <div class="card"><h2>Profile</h2><div class="two">${F('Name', 'name')}${F('Business', 'business')}${F('Phone', 'phone', 'tel')}${F('Email', 'email', 'email')}${F('Market', 'market')}${F('Booking link (Calendly)', 'calendly', 'url')}${F('Instagram', 'links.ig', 'url')}${F('Facebook', 'links.fb', 'url')}</div>${F('TikTok', 'links.tiktok', 'url')}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${['ig', 'fb', 'tiktok'].filter(k => c.links[k]).map(k => `<a class="btn sm" target="_blank" rel="noopener" href="${esc(c.links[k])}">${{ ig: 'Instagram', fb: 'Facebook', tiktok: 'TikTok' }[k]}</a>`).join('')}${c.phone ? `<a class="btn sm" href="sms:${esc(c.phone.replace(/[^\d+]/g, ''))}">Text</a>` : ''}</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Private notes <span class="empty" style="font-weight:400;font-size:12.5px">only you see these</span></h2>${F('', 'notes', 'textarea', 'rows="5"')}
+    <div class="acts"><button class="btn x" data-delclient>Delete client</button></div></div>`;
+  // weekly chart
+  const wk = c.checkins.slice().sort((a, b) => a.week.localeCompare(b.week)).slice(-16);
+  if (wk.length && window.Chart) {
+    const goalWeekly = num(c.goals.flips) ? num(c.goals.flips) / 4.33 : null;
+    charts.ci = new Chart($('ciChart'), { data: { labels: wk.map(x => fmtD(x.week)), datasets: [
+      { type: 'bar', label: 'Revenue', data: wk.map(x => x.revenue), backgroundColor: '#d9a39f', yAxisID: 'y1', borderRadius: 4 },
+      { type: 'line', label: 'Flips', data: wk.map(x => x.flips), borderColor: '#b0524c', backgroundColor: '#b0524c', yAxisID: 'y', tension: .3 },
+      ...(goalWeekly ? [{ type: 'line', label: 'Flip goal / week', data: wk.map(() => +goalWeekly.toFixed(1)), borderColor: '#2e7d4f', borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' }] : [])] },
+      options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Flips' } }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => '$' + v / 1000 + 'k' } } } } });
+  } else $('ciChart').parentElement.style.display = 'none';
+}
+
+// ---------- YouTube ----------
+const VST = ['Idea', 'Scripted', 'Filmed', 'Edited', 'Posted'];
+function renderYouTube(){
+  const mk = monthKey();
+  $('view').innerHTML = `<div class="top"><h1>YouTube</h1><button class="btn p" data-newvideo>+ Video idea</button></div>
+  <div class="kpis"><div class="kpi"><small>Ideas</small><b>${D.videos.filter(v => v.status === 'Idea').length}</b></div><div class="kpi"><small>In production</small><b>${D.videos.filter(v => ['Scripted', 'Filmed', 'Edited'].includes(v.status)).length}</b></div>
+    <div class="kpi"><small>Posted this month</small><b>${D.videos.filter(v => v.status === 'Posted' && String(v.date || '').slice(0, 7) === mk).length}</b></div><div class="kpi"><small>Next publish</small><b style="font-size:18px">${(() => { const n = D.videos.filter(v => v.status !== 'Posted' && v.date >= todayISO()).sort((a, b) => a.date.localeCompare(b.date))[0]; return n ? fmtD(n.date) : '-'; })()}</b></div></div>
+  <div class="cols">${VST.map(s => { const vs = D.videos.filter(v => (v.status || 'Idea') === s).sort((a, b) => String(a.date || '9').localeCompare(String(b.date || '9')));
+    return `<div class="col"><h3>${s}<span>${vs.length}</span></h3>${vs.map(v => `<div class="vc" data-video="${v.id}"><b>${esc(v.title || 'Untitled')}</b><small>${v.date ? fmtD(v.date) + ' &middot; ' : ''}${esc((v.hook || '').slice(0, 70))}</small></div>`).join('') || '<p class="empty" style="font-size:12.5px;margin:4px">Nothing here.</p>'}</div>`; }).join('')}</div>`;
+}
+function openVideo(id){
+  const v = D.videos.find(x => x.id === id) || { status: 'Idea' };
+  $('itemBody').innerHTML = `<h3>${id ? 'Edit video' : 'New video idea'}</h3><input type="hidden" id="vId" value="${esc(v.id || '')}">
+    <label class="f">Title<input id="vTitle" value="${esc(v.title)}" placeholder="e.g. I flipped 30 couches in 30 days"></label>
+    <div class="two"><label class="f">Status<select id="vStatus">${VST.map(s => `<option ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label class="f">Publish date<input type="date" id="vDate" value="${esc(v.date || '')}"></label></div>
+    <label class="f">Hook (first 5 seconds)<textarea id="vHook" rows="2">${esc(v.hook)}</textarea></label>
+    <label class="f">Thumbnail idea<textarea id="vThumb" rows="2">${esc(v.thumb)}</textarea></label>
+    <label class="f">Outline / script notes<textarea id="vNotes" rows="5">${esc(v.notes)}</textarea></label>
+    <label class="f">Description &amp; tags<textarea id="vDesc" rows="3">${esc(v.desc)}</textarea></label>
+    <label class="f">Video link (after posting)<input type="url" id="vLink" value="${esc(v.link)}"></label>
+    <div class="acts">${id ? '<button class="btn x" data-delvideo="' + id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="vSave">Save</button></div>`;
+  $('m-item').classList.add('on');
+}
+
+// ---------- Pipeline ----------
+const LST = ['New lead', 'Contacted', 'Call booked', 'Won', 'Lost'];
+function renderPipeline(){
+  const won = D.leads.filter(l => l.stage === 'Won'), lost = D.leads.filter(l => l.stage === 'Lost');
+  const rate = won.length + lost.length ? won.length / (won.length + lost.length) : null;
+  $('view').innerHTML = `<div class="top"><h1>Pipeline</h1><button class="btn p" data-newlead>+ Lead</button></div>
+  <div class="kpis"><div class="kpi"><small>Open leads</small><b>${D.leads.filter(l => !['Won', 'Lost'].includes(l.stage)).length}</b></div><div class="kpi"><small>Calls booked</small><b>${D.leads.filter(l => l.stage === 'Call booked').length}</b></div>
+    <div class="kpi"><small>Close rate</small><b>${rate == null ? '-' : Math.round(rate * 100) + '%'}</b><i>${won.length} won / ${lost.length} lost</i></div><div class="kpi"><small>Won revenue</small><b>${money(won.reduce((a, l) => a + num(l.value), 0))}</b></div></div>
+  <div class="cols">${LST.map(s => { const ls = D.leads.filter(l => (l.stage || 'New lead') === s);
+    return `<div class="col"><h3>${s}<span>${ls.length}</span></h3>${ls.map(l => `<div class="vc" data-lead="${l.id}"><b>${esc(l.name || 'Lead')}</b><small>${esc(l.source || '')}${l.callDate ? ' &middot; call ' + fmtD(l.callDate) : ''}${l.value ? ' &middot; ' + money(l.value) : ''}</small></div>`).join('') || '<p class="empty" style="font-size:12.5px;margin:4px">Nothing here.</p>'}</div>`; }).join('')}</div>`;
+}
+function openLead(id){
+  const l = D.leads.find(x => x.id === id) || { stage: 'New lead', date: todayISO() };
+  $('itemBody').innerHTML = `<h3>${id ? 'Edit lead' : 'New lead'}</h3><input type="hidden" id="lId" value="${esc(l.id || '')}">
+    <div class="two"><label class="f">Name<input id="lName" value="${esc(l.name)}"></label><label class="f">Stage<select id="lStage">${LST.map(s => `<option ${l.stage === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+    <label class="f">Contact (IG / phone / email)<input id="lContact" value="${esc(l.contact)}"></label><label class="f">Source<select id="lSource">${['', 'Instagram DM', 'TikTok', 'YouTube', 'Skool / Telegram', 'Referral', 'Calendly', 'Other'].map(s => `<option ${l.source === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+    <label class="f">Date added<input type="date" id="lDate" value="${esc(l.date || '')}"></label><label class="f">Call date<input type="date" id="lCall" value="${esc(l.callDate || '')}"></label></div>
+    <label class="f">Deal value ($)<input type="number" id="lValue" value="${esc(l.value || '')}" placeholder="3000"></label>
+    <label class="f">Notes<textarea id="lNotes" rows="4">${esc(l.notes)}</textarea></label>
+    <div class="acts">${id ? '<button class="btn x" data-dellead="' + id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="lSave">Save</button></div>`;
+  $('m-item').classList.add('on');
+}
+
+// ---------- events ----------
+document.addEventListener('click', async e => {
+  const t = e.target, c = curClient();
+  const nv = t.closest('.nav'); if (nv) return setTab(nv.dataset.tab);
+  if (t.closest('[data-close]')) return $('m-item').classList.remove('on');
+  if (t === $('m-item')) return $('m-item').classList.remove('on');
+  const op = t.closest('[data-open]'); if (op) return setTab('clients', op.dataset.open);
+  if (t.closest('[data-back]')) return setTab('clients');
+  if (t.closest('[data-newclient]')) {
+    const name = prompt('Client name'); if (!name) return;
+    const st = todayISO(), end = new Date(Date.now() + 91 * 864e5).toLocaleDateString('en-CA');
+    try { const j = await post('/api/coach/client/save', { client: { name, active: true, program: { length: '3-month', start: st, end, plan: '', payments: [] }, start: {}, goals: {}, links: {}, calls: [{ id: uid(), title: 'Onboarding Call', date: st, link: '', notes: '' }], tasks: [], checkins: [], notes: '' } });
+      D.clients.unshift(j.client); setTab('clients', j.client.id); } catch (err) { toast(err.message); } return; }
+  if (c) {
+    if (t.closest('[data-addcall]')) { c.calls.push({ id: uid(), title: 'Call #' + (c.calls.filter(x => /^call #/i.test(x.title)).length + 1), date: todayISO(), link: '', notes: '' }); queueSave(c); return renderClient(); }
+    const dc = t.closest('[data-delcall]'); if (dc) { c.calls = c.calls.filter(x => x.id !== dc.dataset.delcall); queueSave(c); return renderClient(); }
+    const at = t.closest('[data-addtask]'); if (at) { const rec = at.dataset.addtask === 'rec'; const text = prompt(rec ? 'Weekly task' : 'Task'); if (!text) return;
+      const month = rec ? null : +(prompt('Which month of the program? (1, 2, 3...)', String(Math.min(12, Math.max(1, Math.ceil(progressPct(c) * 3) || 1)))) || 1);
+      c.tasks.push(rec ? { id: uid(), text, recurring: true, doneWeek: '' } : { id: uid(), text, month, done: false }); queueSave(c); return renderClient(); }
+    const dt = t.closest('[data-deltask]'); if (dt) { c.tasks = c.tasks.filter(x => x.id !== dt.dataset.deltask); queueSave(c); return renderClient(); }
+    if (t.closest('[data-addpay]')) { c.program.payments.push({ label: 'Month ' + (c.program.payments.length + 1), amount: c.program.payments[0]?.amount || 1000, paid: false }); queueSave(c); return renderClient(); }
+    const dp = t.closest('[data-delpay]'); if (dp) { c.program.payments.splice(+dp.dataset.delpay, 1); queueSave(c); return renderClient(); }
+    if (t.closest('[data-addci]')) { const wk = prompt('Week starting (YYYY-MM-DD, a Monday)', D.week); if (!wk) return; const fl = prompt('Flips that week', '0'); if (fl == null) return; const rv = prompt('Revenue that week ($)', '0'); const pf = prompt('Profit that week ($)', '0');
+      c.checkins = c.checkins.filter(x => x.week !== wk); c.checkins.push({ week: wk, flips: num(fl), revenue: num(rv), profit: num(pf), leads: 0, win: '', stuck: '', at: Date.now() }); queueSave(c); return renderClient(); }
+    const dci = t.closest('[data-delci]'); if (dci) { if (!confirm('Delete this check-in?')) return; c.checkins = c.checkins.filter(x => x.week !== dci.dataset.delci); queueSave(c); return renderClient(); }
+    if (t.closest('[data-delclient]')) { if (!confirm('Delete ' + c.name + ' and everything on their page?')) return; await post('/api/coach/client/delete', { id: c.id }); D.clients = D.clients.filter(x => x.id !== c.id); return setTab('clients'); }
+    const cp = t.closest('[data-copy]'); if (cp) { navigator.clipboard.writeText(cp.dataset.copy).then(() => toast('Link copied')); return; }
+    if (t.closest('[data-copymsg]')) { if (!c.pin) return toast('Set a PIN first');
+      navigator.clipboard.writeText(`Hey ${c.name.split(' ')[0]}! Here's your coaching page: ${location.origin}/client\nYour PIN: ${c.pin}\nIt has your calls and recordings, your tasks to check off, and your progress. Log your numbers there every Monday so we can track the wins.`).then(() => toast('Message copied')); return; }
+  }
+  if (t.closest('[data-newvideo]')) return openVideo(null);
+  const vc = t.closest('[data-video]'); if (vc) return openVideo(vc.dataset.video);
+  if (t.id === 'vSave') { const item = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), status: $('vStatus').value, date: $('vDate').value, hook: $('vHook').value, thumb: $('vThumb').value, notes: $('vNotes').value, desc: $('vDesc').value, link: $('vLink').value };
+    if (!item.title) return toast('Add a title'); try { const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
+  const dv = t.closest('[data-delvideo]'); if (dv) { if (!confirm('Delete this video?')) return; await post('/api/coach/videos/delete', { id: dv.dataset.delvideo }); D.videos = D.videos.filter(x => x.id !== dv.dataset.delvideo); $('m-item').classList.remove('on'); return render(); }
+  if (t.closest('[data-newlead]')) return openLead(null);
+  const lc = t.closest('[data-lead]'); if (lc) return openLead(lc.dataset.lead);
+  if (t.id === 'lSave') { const item = { id: $('lId').value || undefined, name: $('lName').value.trim(), stage: $('lStage').value, contact: $('lContact').value, source: $('lSource').value, date: $('lDate').value, callDate: $('lCall').value, value: num($('lValue').value), notes: $('lNotes').value };
+    if (!item.name) return toast('Add a name'); try { const j = await post('/api/coach/leads/save', { item }); const i = D.leads.findIndex(x => x.id === j.item.id); i > -1 ? D.leads[i] = j.item : D.leads.unshift(j.item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
+  const dl = t.closest('[data-dellead]'); if (dl) { if (!confirm('Delete this lead?')) return; await post('/api/coach/leads/delete', { id: dl.dataset.dellead }); D.leads = D.leads.filter(x => x.id !== dl.dataset.dellead); $('m-item').classList.remove('on'); return render(); }
+});
+document.addEventListener('input', e => {
+  const c = curClient(); if (!c) return; const t = e.target;
+  if (t.dataset.f) { let v = t.value; if (t.type === 'number') v = t.value === '' ? '' : num(t.value); setPath(c, t.dataset.f, v); return queueSave(c); }
+  if (t.dataset.list) { const it = c[t.dataset.list].find(x => x.id === t.dataset.id); if (it) { it[t.dataset.k] = t.value; queueSave(c); } return; }
+  if (t.dataset.pay != null) { const p = c.program.payments[+t.dataset.pay]; p[t.dataset.k] = t.dataset.k === 'amount' ? num(t.value) : t.value; return queueSave(c); }
+  if (t.dataset.tasktext) { const tk = c.tasks.find(x => x.id === t.dataset.tasktext); if (tk) { tk.text = t.textContent.trim(); queueSave(c); } }
+});
+document.addEventListener('change', e => {
+  const c = curClient(); if (!c) return; const t = e.target;
+  if (t.dataset.task) { const tk = c.tasks.find(x => x.id === t.dataset.task); if (tk.recurring) tk.doneWeek = t.checked ? D.week : ''; else tk.done = t.checked; queueSave(c); return renderClient(); }
+  if (t.dataset.paid != null) { const p = c.program.payments[+t.dataset.paid]; p.paid = t.checked; if (t.checked && !p.paidAt) p.paidAt = todayISO(); queueSave(c); return renderClient(); }
+  if (t.hasAttribute('data-active')) { c.active = t.checked; queueSave(c); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('m-item').classList.remove('on'); if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tasktext) { e.preventDefault(); e.target.blur(); } });
+
+const q = new URLSearchParams(location.search); TAB = ['home', 'clients', 'youtube', 'pipeline'].includes(q.get('tab')) ? q.get('tab') : 'home'; CUR = q.get('id');
+document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === TAB));
+load();
+</script>
+</body></html>
