@@ -44,7 +44,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .cal .d{min-height:104px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 7px;font-size:12px;cursor:pointer}.cal .d:nth-child(7n){border-right:0}.cal .d:hover{background:#fcfaf8}
 .cal .d .n{font-weight:700;color:#555;margin-bottom:4px}.cal .d.o .n{color:#c9c2ba}.cal .d.t{background:#fff7f5}.cal .d.t .n{color:var(--red)}
 .ev{border-radius:7px;padding:4px 6px;margin-bottom:4px;font-size:11.5px;line-height:1.25;color:#fff;font-weight:600;cursor:grab}.ev small{display:block;font-weight:400;opacity:.85}
-.ev.sched{background:var(--red)}.ev.posted{background:var(--green)}.ev.late{background:#b7791f}
+.ev.sched{background:var(--red)}.ev.posted{background:var(--green)}.ev.late{background:#b7791f}.ev.film{background:#2f3e4e}.ev.film.done{opacity:.55}
+.ftag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:1px 5px;border-radius:5px;margin-right:4px;background:rgba(255,255,255,.25);vertical-align:1px}.vc .ftag{background:#f1e6e3;color:var(--red)}
+.funsel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 8px}.funsel button{border:1.5px solid #dcd4ca;background:#fff;border-radius:10px;padding:9px 6px;font:inherit;font-size:13px;font-weight:700;color:#555;cursor:pointer;line-height:1.2}.funsel button small{display:block;font-weight:500;font-size:11px;color:var(--muted)}.funsel button.on{border-color:var(--red);background:#fff4f2;color:var(--red)}
+.funwhy{font-size:12.5px;line-height:1.45;color:#5b4e45;background:#faf6f1;border-radius:10px;padding:9px 11px;margin:0 0 10px}.fhint{display:block;font-weight:400;font-size:11.5px;color:#9a8f86;margin-top:1px}
 .agenda{display:none}.bank .vc{cursor:grab}
 @media(max-width:900px){.ytwrap{grid-template-columns:1fr}.cal{display:none}.agenda{display:block}}
 .mask{position:fixed;inset:0;background:rgba(15,20,25,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.mask.on{display:flex}
@@ -239,49 +242,82 @@ function renderYouTube(){
   const lead = (first.getDay() + 6) % 7, cells = Math.ceil((lead + days) / 7) * 7;
   const dated = D.videos.filter(v => v.date), ideas = D.videos.filter(v => !v.date).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const next = dated.filter(v => !isPosted(v) && v.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
-  const ev = v => `<div class="ev ${isPosted(v) ? 'posted' : v.date < today ? 'late' : 'sched'}" data-video="${v.id}" draggable="true">${esc(v.title || 'Untitled')}<small>${isPosted(v) ? 'Posted' : v.date < today ? 'Not marked posted' : 'Scheduled'}</small></div>`;
+  const ev = v => `<div class="ev ${isPosted(v) ? 'posted' : v.date < today ? 'late' : 'sched'}" data-video="${v.id}" draggable="true">${ftag(v)}${esc(v.title || 'Untitled')}<small>${isPosted(v) ? 'Posted' : v.date < today ? 'Not marked posted' : 'Post day'}</small></div>`;
+  const fev = v => `<div class="ev film${isPosted(v) || v.filmDate < today ? ' done' : ''}" data-video="${v.id}" data-film="1" draggable="true">${ftag(v)}${esc(v.title || 'Untitled')}<small>Film${v.filmTime ? ' ' + fmtT(v.filmTime) : ''}</small></div>`;
+  const filmed = D.videos.filter(v => v.filmDate), nextFilm = filmed.filter(v => !isPosted(v) && v.filmDate >= today).sort((a, b) => (a.filmDate + (a.filmTime || '')).localeCompare(b.filmDate + (b.filmTime || '')))[0];
   let grid = '';
   for (let k = 0; k < cells; k++) {
     const d = new Date(y, m - 1, 1 - lead + k), iso = d.toLocaleDateString('en-CA'), inM = d.getMonth() === m - 1;
-    grid += `<div class="d${inM ? '' : ' o'}${iso === today ? ' t' : ''}" data-day="${iso}"><div class="n">${d.getDate()}</div>${dated.filter(v => v.date === iso).map(ev).join('')}</div>`;
+    grid += `<div class="d${inM ? '' : ' o'}${iso === today ? ' t' : ''}" data-day="${iso}"><div class="n">${d.getDate()}</div>${filmed.filter(v => v.filmDate === iso).map(fev).join('')}${dated.filter(v => v.date === iso).map(ev).join('')}</div>`;
   }
-  const monthList = dated.filter(v => v.date.slice(0, 7) === YM).sort((a, b) => a.date.localeCompare(b.date));
+  const monthList = [...dated.filter(v => v.date.slice(0, 7) === YM).map(v => ({ v, d: v.date, k: 'Post' })), ...filmed.filter(v => v.filmDate.slice(0, 7) === YM).map(v => ({ v, d: v.filmDate + (v.filmTime || ''), k: 'Film' + (v.filmTime ? ' ' + fmtT(v.filmTime) : '') }))].sort((a, b) => a.d.localeCompare(b.d));
   $('view').innerHTML = `<div class="top"><h1>YouTube</h1><button class="btn p" data-newvideo>+ Video</button></div>
   <div class="kpis"><div class="kpi"><small>Posted this month</small><b>${D.videos.filter(v => isPosted(v) && String(v.date || '').slice(0, 7) === mk).length}</b></div>
     <div class="kpi"><small>Scheduled</small><b>${dated.filter(v => !isPosted(v) && v.date >= today).length}</b></div>
     <div class="kpi"><small>Ideas in the bank</small><b>${ideas.length}</b></div>
-    <div class="kpi"><small>Next upload</small><b style="font-size:18px">${next ? new Date(next.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '-'}</b></div></div>
+    <div class="kpi"><small>Next upload</small><b style="font-size:18px">${next ? new Date(next.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '-'}</b></div>
+    <div class="kpi"><small>Next film day</small><b style="font-size:18px">${nextFilm ? new Date(nextFilm.filmDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + (nextFilm.filmTime ? ' &middot; ' + fmtT(nextFilm.filmTime) : '') : '-'}</b></div></div>
   <div class="ytwrap"><div>
     <div class="calbar"><button class="btn" data-ym="-1">&larr;</button><h2>${first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2><button class="btn" data-ym="1">&rarr;</button></div>
     <div class="cal">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(x => `<div class="dow">${x}</div>`).join('')}${grid}</div>
-    <div class="agenda">${monthList.length ? monthList.map(v => `<div class="vc" data-video="${v.id}"><b>${new Date(v.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${esc(v.title || 'Untitled')}</b><small>${isPosted(v) ? 'Posted' : 'Scheduled'}</small></div>`).join('') : '<p class="empty">No uploads scheduled this month.</p>'}</div>
-    <p class="empty" style="font-size:12.5px;margin-top:8px">Tap a day to plan a video for it. Drag videos between days, or drag an idea from the bank onto a day.</p>
+    <div class="agenda">${monthList.length ? monthList.map(({ v, d, k }) => `<div class="vc" data-video="${v.id}"><b>${new Date(d.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${esc(v.title || 'Untitled')}</b><small>${ftag(v)}${k}${k === 'Post' && isPosted(v) ? ' &middot; Posted' : ''}</small></div>`).join('') : '<p class="empty">Nothing planned this month.</p>'}</div>
+    <p class="empty" style="font-size:12.5px;margin-top:8px">Tap a day to plan a video for it. Red = post day, dark = film day. Drag either between days, or drag an idea from the bank onto a day.</p>
   </div>
-  <div class="card bank" data-day=""><h2>Idea bank</h2>${ideas.map(v => `<div class="vc" data-video="${v.id}" draggable="true"><b>${esc(v.title || 'Untitled')}</b><small>${esc((v.hook || '').slice(0, 80)) || 'No hook yet'}</small></div>`).join('') || '<p class="empty" style="font-size:13px">Ideas with no post date land here.</p>'}</div></div>`;
+  <div class="card bank" data-day=""><h2>Idea bank</h2>${ideas.map(v => `<div class="vc" data-video="${v.id}" draggable="true"><b>${esc(v.title || 'Untitled')}</b><small>${ftag(v)}${esc((v.hook || '').slice(0, 80)) || 'No hook yet'}</small></div>`).join('') || '<p class="empty" style="font-size:13px">Ideas with no post date land here.</p>'}</div></div>`;
 }
-function openVideo(id, date){
-  const v = D.videos.find(x => x.id === id) || { date: date || '' };
-  $('itemBody').innerHTML = `<h3>${id ? 'Edit video' : 'New video'}</h3><input type="hidden" id="vId" value="${esc(v.id || '')}">
+// Each funnel stage gets its own planning template. Every video starts with a foreshadow hook and re-hooks ~4 min in.
+const HOOK = ['hook', 'Hook - foreshadow (first 15-30 sec)', 'Flash the best clips or a glimpse of what\'s coming. Open a loop only the end of the video closes.', 3];
+const REHOOK = ['rehook', 'Re-hook (~4 min in)', 'Open a second loop so they keep watching.', 2];
+const FUN = {
+  top: { tag: 'TOFU', name: 'Top', sub: 'Reach', why: 'Top of funnel: get new people to follow the journey. Vlogs and behind-the-scenes, so they come for the story and stay for you.',
+    formats: ['Vlog', 'Day in the life', 'Behind the scenes (buying a load, warehouse move)', 'Challenge (e.g. flip a couch in 24 hrs)', 'Big risk / big purchase', 'Couch flip start to finish'],
+    fields: [HOOK, ['story', 'Storyline', 'What happens - beginning, middle, end. What\'s at stake?', 4], ['shots', 'Shot list', 'Clips you need to capture on film day.', 3], REHOOK,
+      ['payoff', 'Payoff', 'How the loops close at the end.', 2], ['attack', 'Call to action', 'Soft: subscribe, watch the next video.', 2]] },
+  mid: { tag: 'MOFU', name: 'Middle', sub: 'Belief shift', why: 'Middle of funnel: shift a belief through storytelling. Not random - every story ties back to couch flipping.',
+    formats: ['Story / mindset shift'],
+    fields: [HOOK, ['show', 'Show', 'What you show them - the story.', 3], ['relate', 'Relate', 'Connect it to their life and the belief you\'re shifting.', 3], REHOOK, ['attack', 'Attack', 'The call to action.', 3]] },
+  bot: { tag: 'BOFU', name: 'Bottom', sub: 'Program', why: 'Bottom of funnel: show the program working so viewers are ready to buy.',
+    formats: ['1-on-1 client call', 'Miro board client breakdown', 'Program walkthrough', 'Client results / testimonial'],
+    fields: [HOOK, ['client', 'Client / subject', 'Who it is and where they started.', 2], ['result', 'The result', 'Before → after, with numbers.', 2],
+      ['show', 'What you show', 'Inside the call, the Miro breakdown, or the program module.', 4], REHOOK, ['attack', 'Offer / call to action', 'Apply or book a call.', 2]] }
+};
+const VFIELDS = ['hook', 'show', 'relate', 'attack', 'story', 'shots', 'payoff', 'client', 'result', 'rehook'];
+const ftag = v => `<span class="ftag">${FUN[v.funnel || 'mid'].tag}</span>`;
+const fmtT = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm'); };
+function readVideoForm(){
+  const v = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), date: $('vDate').value, posted: $('vPosted').checked, filmDate: $('vFilm').value, filmTime: $('vFilmT').value,
+    funnel: document.querySelector('.funsel .on').dataset.fun, format: $('vFormat') ? $('vFormat').value : '' };
+  VFIELDS.forEach(k => { const el = $('vf_' + k); v[k] = el ? el.value : (VDRAFT[k] || ''); }); return v;
+}
+let VDRAFT = {};
+function openVideo(id, date, draft){
+  const v = draft || D.videos.find(x => x.id === id) || { date: date || '' }; VDRAFT = { ...v };
+  const fun = FUN[v.funnel] ? v.funnel : 'mid', F = FUN[fun];
+  $('itemBody').innerHTML = `<h3>${v.id ? 'Edit video' : 'New video'}</h3><input type="hidden" id="vId" value="${esc(v.id || '')}">
+    <div class="funsel">${Object.entries(FUN).map(([k, f]) => `<button type="button" data-fun="${k}" class="${k === fun ? 'on' : ''}">${f.name} of funnel<small>${f.tag} &middot; ${f.sub}</small></button>`).join('')}</div>
+    <p class="funwhy">${F.why}</p>
     <label class="f">Title<input id="vTitle" value="${esc(v.title)}" placeholder="e.g. I flipped 30 couches in 30 days"></label>
+    ${F.formats.length > 1 ? `<label class="f">Format<select id="vFormat">${F.formats.map(x => `<option${x === v.format ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}
+    <div class="two"><label class="f">Film date<input type="date" id="vFilm" value="${esc(v.filmDate || '')}"></label><label class="f">Film time<input type="time" id="vFilmT" value="${esc(v.filmTime || '')}"></label></div>
     <div class="two"><label class="f">Post date <span style="font-weight:400">(blank = idea bank)</span><input type="date" id="vDate" value="${esc(v.date || '')}"></label>
       <label style="display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-size:14px;font-weight:600;cursor:pointer"><input type="checkbox" class="chk" id="vPosted" ${isPosted(v) ? 'checked' : ''}> Posted</label></div>
-    <label class="f">Hook (first 5 seconds)<textarea id="vHook" rows="2">${esc(v.hook)}</textarea></label>
-    <label class="f">Show <span style="font-weight:400">- what you show them</span><textarea id="vShow" rows="3">${esc(v.show)}</textarea></label>
-    <label class="f">Relate <span style="font-weight:400">- connect it to their life</span><textarea id="vRelate" rows="3">${esc(v.relate)}</textarea></label>
-    <label class="f">Attack <span style="font-weight:400">- the call to action</span><textarea id="vAttack" rows="3">${esc(v.attack)}</textarea></label>
-    <div class="acts">${id ? '<button class="btn x" data-delvideo="' + id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="vSave">Save</button></div>`;
+    ${F.fields.map(([k, label, hint, rows]) => `<label class="f">${label}<span class="fhint">${hint}</span><textarea id="vf_${k}" rows="${rows}">${esc(v[k])}</textarea></label>`).join('')}
+    <div class="acts">${v.id ? '<button class="btn x" data-delvideo="' + v.id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="vSave">Save</button></div>`;
   $('m-item').classList.add('on');
 }
 async function saveVideo(item){
   const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item);
   if (j.item.calError) setTimeout(() => toast("Saved, but Google Calendar didn't update: " + j.item.calError), 300); return j.item;
 }
-let dragId = null;
-document.addEventListener('dragstart', e => { const v = e.target.closest && e.target.closest('[data-video]'); if (v) { dragId = v.dataset.video; e.dataTransfer.effectAllowed = 'move'; } });
+let dragId = null, dragFilm = false;
+document.addEventListener('dragstart', e => { const v = e.target.closest && e.target.closest('[data-video]'); if (v) { dragId = v.dataset.video; dragFilm = !!v.dataset.film; e.dataTransfer.effectAllowed = 'move'; } });
 document.addEventListener('dragover', e => { if (dragId && e.target.closest && e.target.closest('[data-day]')) { e.preventDefault(); } });
 document.addEventListener('drop', async e => {
   const d = e.target.closest && e.target.closest('[data-day]'); if (!dragId || !d) return; e.preventDefault();
-  const v = D.videos.find(x => x.id === dragId); dragId = null; if (!v || v.date === d.dataset.day) return;
+  const v = D.videos.find(x => x.id === dragId); dragId = null; if (!v) return;
+  if (dragFilm) { if (!d.dataset.day || v.filmDate === d.dataset.day) return;
+    try { await saveVideo({ id: v.id, filmDate: d.dataset.day }); render(); toast('Film day moved to ' + fmtD(d.dataset.day)); } catch (err) { toast(err.message); } return; }
+  if (v.date === d.dataset.day) return;
   try { await saveVideo({ id: v.id, date: d.dataset.day }); render(); toast(d.dataset.day ? 'Moved to ' + fmtD(d.dataset.day) : 'Back in the idea bank'); } catch (err) { toast(err.message); }
 });
 
@@ -340,7 +376,8 @@ document.addEventListener('click', async e => {
   }
   if (t.closest('[data-newvideo]')) return openVideo(null);
   const vc = t.closest('[data-video]'); if (vc) return openVideo(vc.dataset.video);
-  if (t.id === 'vSave') { const item = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), date: $('vDate').value, posted: $('vPosted').checked, hook: $('vHook').value, show: $('vShow').value, relate: $('vRelate').value, attack: $('vAttack').value };
+  const fb = t.closest('.funsel [data-fun]'); if (fb) { const cur = readVideoForm(); cur.funnel = fb.dataset.fun; if (!FUN[cur.funnel].formats.includes(cur.format)) cur.format = ''; return openVideo(cur.id, null, cur); }
+  if (t.id === 'vSave') { const item = readVideoForm();
     if (!item.title) return toast('Add a title'); try { await saveVideo(item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
   const ym = t.closest('[data-ym]'); if (ym) { const [yy, mm] = YM.split('-').map(Number), d = new Date(yy, mm - 1 + Number(ym.dataset.ym), 1); YM = d.toLocaleDateString('en-CA').slice(0, 7); return render(); }
   const day = t.closest('.cal [data-day]'); if (day && !t.closest('[data-video]')) return openVideo(null, day.dataset.day);
