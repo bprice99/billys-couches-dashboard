@@ -82,3 +82,34 @@
     });
   }).catch(function(){});
 })();
+// Any other page whose old "on the floor" preview gave up ("See everything on our Current Inventory page"):
+// swap that message for live couch cards from HQ. Works on pages we don't know the grid id for (e.g. the showing thank-you page).
+(function(){
+  var RX = /^see everything (on the floor )?on our current inventory page\.?$/i;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function money(n){ return '$' + Math.round(n).toLocaleString('en-US'); }
+  function img(u){ return /images\.squarespace-cdn\.com/.test(u) ? u + '?format=500w' : u; }
+  var list = null, css = false;
+  function addCss(){ if (css) return; css = true; var st = document.createElement('style');
+    st.textContent = '.bcf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;width:100%}'
+      + '.bcf-card{display:block;background:#fff;border:1px solid #e8e0d6;border-radius:14px;overflow:hidden;text-decoration:none!important;color:#1f1a17!important;transition:transform .15s}.bcf-card:hover{transform:translateY(-2px)}'
+      + '.bcf-card .im{aspect-ratio:4/3;background:#f2ede7}.bcf-card img{width:100%;height:100%;object-fit:cover;display:block}'
+      + '.bcf-card .bd{padding:10px 12px 12px}.bcf-card .t{margin:0 0 4px;font-size:14px;line-height:1.35;font-weight:600}.bcf-card .p{font-size:15px;font-weight:700}.bcf-card s{color:#b0524c;font-weight:400;margin-left:6px;font-size:13px}'
+      + '@media(max-width:640px){.bcf-grid{grid-template-columns:1fr 1fr;gap:10px}.bcf-card .t{font-size:13px}}';
+    document.head.appendChild(st); }
+  function scan(){
+    if (!list || !list.length) return;
+    var els = document.querySelectorAll('div,p,span');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i]; if (el.children.length > 2 || el.querySelector('div,p,span') || !RX.test((el.textContent || '').trim())) continue;
+      var box = el.parentElement; if (!box || box.querySelector('.bcf-card, .fd-card, .bc-live-card')) continue;
+      addCss();
+      box.innerHTML = '<div class="bcf-grid">' + list.slice(0, 8).map(function(c){ var ph = (c.photos || [])[0];
+        return '<a class="bcf-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="im">' + (ph ? '<img loading="lazy" src="' + esc(img(ph)) + '" alt="' + esc(c.title) + '">' : '') + '</div>'
+          + '<div class="bd"><p class="t">' + esc(c.title) + '</p><div class="p">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div></div></a>'; }).join('') + '</div>';
+    }
+  }
+  fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    list = (d && d.couches) || []; scan(); setTimeout(scan, 1500); setTimeout(scan, 4000); setTimeout(scan, 8000);
+  }).catch(function(){});
+})();
