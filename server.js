@@ -1002,7 +1002,7 @@ const cleanCouchName = n => String(n || '')
   .replace(/\bLthr\b/gi, 'Leather').replace(/\bPwr\b/gi, 'Power').replace(/\bRecl\b/gi, 'Reclining').replace(/\bFab\b/gi, 'Fabric')
   .replace(/\bMod\b/gi, 'Modular').replace(/\bSect?\b/gi, 'Sectional').replace(/\bTMV\b/g, 'Thomasville').replace(/\bLTG\b/g, 'Light Gray')
   .replace(/\b(\d+)\s*PC\b/gi, '$1-Piece').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
-app.get('/public/just-sold.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'just-sold.js')));
+app.get('/public/just-sold.js', (req, res) => res.set('Cache-Control', 'public, max-age=60').type('application/javascript').sendFile(path.join(__dirname, 'just-sold.js')));
 app.options('/public/recent-sales', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.get('/public/recent-sales', async (req, res) => {
   offerCors(req, res);
