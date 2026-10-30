@@ -37,6 +37,16 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .cols{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
 .col{background:#efebe6;border-radius:14px;padding:10px;min-height:120px}.col h3{font-size:13px;margin:2px 4px 10px;display:flex;justify-content:space-between}
 .vc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-size:14px}.vc small{display:block;color:var(--muted);margin-top:3px;font-size:12px}.vc:hover{border-color:var(--red)}
+.ytwrap{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}.ytwrap .bank{margin:0;min-height:200px}
+.calbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}.calbar h2{margin:0;font-size:18px;flex:1;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.dow{font-size:12px;font-weight:700;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);background:#faf8f5}
+.cal .d{min-height:104px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 7px;font-size:12px;cursor:pointer}.cal .d:nth-child(7n){border-right:0}.cal .d:hover{background:#fcfaf8}
+.cal .d .n{font-weight:700;color:#555;margin-bottom:4px}.cal .d.o .n{color:#c9c2ba}.cal .d.t{background:#fff7f5}.cal .d.t .n{color:var(--red)}
+.ev{border-radius:7px;padding:4px 6px;margin-bottom:4px;font-size:11.5px;line-height:1.25;color:#fff;font-weight:600;cursor:grab}.ev small{display:block;font-weight:400;opacity:.85}
+.ev.sched{background:var(--red)}.ev.posted{background:var(--green)}.ev.late{background:#b7791f}
+.agenda{display:none}.bank .vc{cursor:grab}
+@media(max-width:900px){.ytwrap{grid-template-columns:1fr}.cal{display:none}.agenda{display:block}}
 .mask{position:fixed;inset:0;background:rgba(15,20,25,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.mask.on{display:flex}
 .modal{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow:auto;position:relative}.modal h3{margin:0 40px 14px 0}
 .xb{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px;cursor:pointer}
@@ -111,7 +121,7 @@ function renderHome(){
   const owed = pays.filter(p => !p.paid).reduce((a, p) => a + num(p.amount), 0);
   const leadsM = D.leads.filter(l => String(l.date || new Date(l.createdAt).toISOString()).slice(0, 7) === mk).length;
   const booked = D.leads.filter(l => l.stage === 'Call booked').length;
-  const posted = D.videos.filter(v => v.status === 'Posted' && String(v.date || '').slice(0, 7) === mk).length;
+  const posted = D.videos.filter(v => (v.posted || v.status === 'Posted') && String(v.date || '').slice(0, 7) === mk).length;
   const quiet = act.filter(c => { const l = lastCheckin(c); return !l || daysSince(l.at) > 8; });
   const upcoming = act.flatMap(c => (c.calls || []).filter(x => x.date >= todayISO()).map(x => ({ ...x, who: c.name, cid: c.id }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
   const recent = act.flatMap(c => (c.checkins || []).map(x => ({ ...x, who: c.name, cid: c.id }))).sort((a, b) => b.at - a.at).slice(0, 8);
@@ -219,29 +229,60 @@ function renderClient(){
   } else $('ciChart').parentElement.style.display = 'none';
 }
 
-// ---------- YouTube ----------
-const VST = ['Idea', 'Scripted', 'Filmed', 'Edited', 'Posted'];
+// ---------- YouTube: posting calendar + idea bank ----------
+const isPosted = v => !!(v.posted || v.status === 'Posted');
+let YM = null;   // month shown on the calendar (YYYY-MM)
 function renderYouTube(){
-  const mk = monthKey();
-  $('view').innerHTML = `<div class="top"><h1>YouTube</h1><button class="btn p" data-newvideo>+ Video idea</button></div>
-  <div class="kpis"><div class="kpi"><small>Ideas</small><b>${D.videos.filter(v => v.status === 'Idea').length}</b></div><div class="kpi"><small>In production</small><b>${D.videos.filter(v => ['Scripted', 'Filmed', 'Edited'].includes(v.status)).length}</b></div>
-    <div class="kpi"><small>Posted this month</small><b>${D.videos.filter(v => v.status === 'Posted' && String(v.date || '').slice(0, 7) === mk).length}</b></div><div class="kpi"><small>Next publish</small><b style="font-size:18px">${(() => { const n = D.videos.filter(v => v.status !== 'Posted' && v.date >= todayISO()).sort((a, b) => a.date.localeCompare(b.date))[0]; return n ? fmtD(n.date) : '-'; })()}</b></div></div>
-  <div class="cols">${VST.map(s => { const vs = D.videos.filter(v => (v.status || 'Idea') === s).sort((a, b) => String(a.date || '9').localeCompare(String(b.date || '9')));
-    return `<div class="col"><h3>${s}<span>${vs.length}</span></h3>${vs.map(v => `<div class="vc" data-video="${v.id}"><b>${esc(v.title || 'Untitled')}</b><small>${v.date ? fmtD(v.date) + ' &middot; ' : ''}${esc((v.hook || '').slice(0, 70))}</small></div>`).join('') || '<p class="empty" style="font-size:12.5px;margin:4px">Nothing here.</p>'}</div>`; }).join('')}</div>`;
+  const mk = monthKey(), today = todayISO();
+  YM = YM || mk;
+  const [y, m] = YM.split('-').map(Number), first = new Date(y, m - 1, 1), days = new Date(y, m, 0).getDate();
+  const lead = (first.getDay() + 6) % 7, cells = Math.ceil((lead + days) / 7) * 7;
+  const dated = D.videos.filter(v => v.date), ideas = D.videos.filter(v => !v.date).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const next = dated.filter(v => !isPosted(v) && v.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const ev = v => `<div class="ev ${isPosted(v) ? 'posted' : v.date < today ? 'late' : 'sched'}" data-video="${v.id}" draggable="true">${esc(v.title || 'Untitled')}<small>${isPosted(v) ? 'Posted' : v.date < today ? 'Not marked posted' : 'Scheduled'}</small></div>`;
+  let grid = '';
+  for (let k = 0; k < cells; k++) {
+    const d = new Date(y, m - 1, 1 - lead + k), iso = d.toLocaleDateString('en-CA'), inM = d.getMonth() === m - 1;
+    grid += `<div class="d${inM ? '' : ' o'}${iso === today ? ' t' : ''}" data-day="${iso}"><div class="n">${d.getDate()}</div>${dated.filter(v => v.date === iso).map(ev).join('')}</div>`;
+  }
+  const monthList = dated.filter(v => v.date.slice(0, 7) === YM).sort((a, b) => a.date.localeCompare(b.date));
+  $('view').innerHTML = `<div class="top"><h1>YouTube</h1><button class="btn p" data-newvideo>+ Video</button></div>
+  <div class="kpis"><div class="kpi"><small>Posted this month</small><b>${D.videos.filter(v => isPosted(v) && String(v.date || '').slice(0, 7) === mk).length}</b></div>
+    <div class="kpi"><small>Scheduled</small><b>${dated.filter(v => !isPosted(v) && v.date >= today).length}</b></div>
+    <div class="kpi"><small>Ideas in the bank</small><b>${ideas.length}</b></div>
+    <div class="kpi"><small>Next upload</small><b style="font-size:18px">${next ? new Date(next.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '-'}</b></div></div>
+  <div class="ytwrap"><div>
+    <div class="calbar"><button class="btn" data-ym="-1">&larr;</button><h2>${first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2><button class="btn" data-ym="1">&rarr;</button></div>
+    <div class="cal">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(x => `<div class="dow">${x}</div>`).join('')}${grid}</div>
+    <div class="agenda">${monthList.length ? monthList.map(v => `<div class="vc" data-video="${v.id}"><b>${new Date(v.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${esc(v.title || 'Untitled')}</b><small>${isPosted(v) ? 'Posted' : 'Scheduled'}</small></div>`).join('') : '<p class="empty">No uploads scheduled this month.</p>'}</div>
+    <p class="empty" style="font-size:12.5px;margin-top:8px">Tap a day to plan a video for it. Drag videos between days, or drag an idea from the bank onto a day.</p>
+  </div>
+  <div class="card bank" data-day=""><h2>Idea bank</h2>${ideas.map(v => `<div class="vc" data-video="${v.id}" draggable="true"><b>${esc(v.title || 'Untitled')}</b><small>${esc((v.hook || '').slice(0, 80)) || 'No hook yet'}</small></div>`).join('') || '<p class="empty" style="font-size:13px">Ideas with no post date land here.</p>'}</div></div>`;
 }
-function openVideo(id){
-  const v = D.videos.find(x => x.id === id) || { status: 'Idea' };
-  $('itemBody').innerHTML = `<h3>${id ? 'Edit video' : 'New video idea'}</h3><input type="hidden" id="vId" value="${esc(v.id || '')}">
+function openVideo(id, date){
+  const v = D.videos.find(x => x.id === id) || { date: date || '' };
+  $('itemBody').innerHTML = `<h3>${id ? 'Edit video' : 'New video'}</h3><input type="hidden" id="vId" value="${esc(v.id || '')}">
     <label class="f">Title<input id="vTitle" value="${esc(v.title)}" placeholder="e.g. I flipped 30 couches in 30 days"></label>
-    <div class="two"><label class="f">Status<select id="vStatus">${VST.map(s => `<option ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label class="f">Publish date<input type="date" id="vDate" value="${esc(v.date || '')}"></label></div>
+    <div class="two"><label class="f">Post date <span style="font-weight:400">(blank = idea bank)</span><input type="date" id="vDate" value="${esc(v.date || '')}"></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-size:14px;font-weight:600;cursor:pointer"><input type="checkbox" class="chk" id="vPosted" ${isPosted(v) ? 'checked' : ''}> Posted</label></div>
     <label class="f">Hook (first 5 seconds)<textarea id="vHook" rows="2">${esc(v.hook)}</textarea></label>
-    <label class="f">Thumbnail idea<textarea id="vThumb" rows="2">${esc(v.thumb)}</textarea></label>
-    <label class="f">Outline / script notes<textarea id="vNotes" rows="5">${esc(v.notes)}</textarea></label>
-    <label class="f">Description &amp; tags<textarea id="vDesc" rows="3">${esc(v.desc)}</textarea></label>
-    <label class="f">Video link (after posting)<input type="url" id="vLink" value="${esc(v.link)}"></label>
+    <label class="f">Show <span style="font-weight:400">- what you show them</span><textarea id="vShow" rows="3">${esc(v.show)}</textarea></label>
+    <label class="f">Relate <span style="font-weight:400">- connect it to their life</span><textarea id="vRelate" rows="3">${esc(v.relate)}</textarea></label>
+    <label class="f">Attack <span style="font-weight:400">- the call to action</span><textarea id="vAttack" rows="3">${esc(v.attack)}</textarea></label>
     <div class="acts">${id ? '<button class="btn x" data-delvideo="' + id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="vSave">Save</button></div>`;
   $('m-item').classList.add('on');
 }
+async function saveVideo(item){
+  const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item); return j.item;
+}
+let dragId = null;
+document.addEventListener('dragstart', e => { const v = e.target.closest && e.target.closest('[data-video]'); if (v) { dragId = v.dataset.video; e.dataTransfer.effectAllowed = 'move'; } });
+document.addEventListener('dragover', e => { if (dragId && e.target.closest && e.target.closest('[data-day]')) { e.preventDefault(); } });
+document.addEventListener('drop', async e => {
+  const d = e.target.closest && e.target.closest('[data-day]'); if (!dragId || !d) return; e.preventDefault();
+  const v = D.videos.find(x => x.id === dragId); dragId = null; if (!v || v.date === d.dataset.day) return;
+  try { await saveVideo({ id: v.id, date: d.dataset.day }); render(); toast(d.dataset.day ? 'Moved to ' + fmtD(d.dataset.day) : 'Back in the idea bank'); } catch (err) { toast(err.message); }
+});
 
 // ---------- Pipeline ----------
 const LST = ['New lead', 'Contacted', 'Call booked', 'Won', 'Lost'];
@@ -298,8 +339,10 @@ document.addEventListener('click', async e => {
   }
   if (t.closest('[data-newvideo]')) return openVideo(null);
   const vc = t.closest('[data-video]'); if (vc) return openVideo(vc.dataset.video);
-  if (t.id === 'vSave') { const item = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), status: $('vStatus').value, date: $('vDate').value, hook: $('vHook').value, thumb: $('vThumb').value, notes: $('vNotes').value, desc: $('vDesc').value, link: $('vLink').value };
-    if (!item.title) return toast('Add a title'); try { const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
+  if (t.id === 'vSave') { const item = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), date: $('vDate').value, posted: $('vPosted').checked, hook: $('vHook').value, show: $('vShow').value, relate: $('vRelate').value, attack: $('vAttack').value };
+    if (!item.title) return toast('Add a title'); try { await saveVideo(item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
+  const ym = t.closest('[data-ym]'); if (ym) { const [yy, mm] = YM.split('-').map(Number), d = new Date(yy, mm - 1 + Number(ym.dataset.ym), 1); YM = d.toLocaleDateString('en-CA').slice(0, 7); return render(); }
+  const day = t.closest('.cal [data-day]'); if (day && !t.closest('[data-video]')) return openVideo(null, day.dataset.day);
   const dv = t.closest('[data-delvideo]'); if (dv) { if (!confirm('Delete this video?')) return; await post('/api/coach/videos/delete', { id: dv.dataset.delvideo }); D.videos = D.videos.filter(x => x.id !== dv.dataset.delvideo); $('m-item').classList.remove('on'); return render(); }
   if (t.closest('[data-newlead]')) return openLead(null);
   const lc = t.closest('[data-lead]'); if (lc) return openLead(lc.dataset.lead);
