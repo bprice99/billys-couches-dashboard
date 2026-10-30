@@ -91,11 +91,12 @@
   function img(u){ return /images\.squarespace-cdn\.com/.test(u) ? u + '?format=500w' : u; }
   var list = null, css = false;
   function addCss(){ if (css) return; css = true; var st = document.createElement('style');
-    st.textContent = '.bcf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;width:100%}'
+    st.textContent = '.bcf-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;width:100%;grid-column:1/-1;margin:0}'
       + '.bcf-card{display:block;background:#fff;border:1px solid #e8e0d6;border-radius:14px;overflow:hidden;text-decoration:none!important;color:#1f1a17!important;transition:transform .15s}.bcf-card:hover{transform:translateY(-2px)}'
       + '.bcf-card .im{aspect-ratio:4/3;background:#f2ede7}.bcf-card img{width:100%;height:100%;object-fit:cover;display:block}'
-      + '.bcf-card .bd{padding:10px 12px 12px}.bcf-card .t{margin:0 0 4px;font-size:14px;line-height:1.35;font-weight:600}.bcf-card .p{font-size:15px;font-weight:700}.bcf-card s{color:#b0524c;font-weight:400;margin-left:6px;font-size:13px}'
-      + '@media(max-width:640px){.bcf-grid{grid-template-columns:1fr 1fr;gap:10px}.bcf-card .t{font-size:13px}}';
+      + '.bcf-card .bd{padding:10px 12px 12px}.bcf-card .t{margin:0 0 4px!important;font-size:14px!important;line-height:1.35!important;font-weight:600;letter-spacing:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
+      + '.bcf-card .p{font-size:15px!important;font-weight:700;line-height:1.3}.bcf-card s{color:#b0524c;font-weight:400;margin-left:6px;font-size:13px}'
+      + '@media(max-width:640px){.bcf-grid{grid-template-columns:1fr 1fr;gap:10px}.bcf-card .t{font-size:13px!important}.bcf-card .bd{padding:8px 10px 10px}}';
     document.head.appendChild(st); }
   function scan(){
     if (!list || !list.length) return;
@@ -103,10 +104,10 @@
     for (var i = 0; i < els.length; i++) {
       var el = els[i]; if (el.children.length > 2 || el.querySelector('div,p,span') || !RX.test((el.textContent || '').replace(/\s+/g, ' ').trim())) continue;
       var box = el.parentElement; if (!box || box.querySelector('.bcf-card, .fd-card, .bc-live-card')) continue;
-      addCss();
+      addCss(); box.style.display = 'block'; box.style.width = '100%';
       box.innerHTML = '<div class="bcf-grid">' + list.slice(0, 8).map(function(c){ var ph = (c.photos || [])[0];
         return '<a class="bcf-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="im">' + (ph ? '<img loading="lazy" src="' + esc(img(ph)) + '" alt="' + esc(c.title) + '">' : '') + '</div>'
-          + '<div class="bd"><p class="t">' + esc(c.title) + '</p><div class="p">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div></div></a>'; }).join('') + '</div>';
+          + '<div class="bd"><div class="t">' + esc(c.title) + '</div><div class="p">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div></div></a>'; }).join('') + '</div>';
     }
   }
   fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
