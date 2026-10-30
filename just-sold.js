@@ -77,7 +77,7 @@
           : '<a class="bc-live-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="bc-live-img">' + (ph ? '<img loading="lazy" src="' + esc(img(ph, 750)) + '" alt="' + t + '">' : '') + '</div><div class="bc-live-body"><p class="bc-live-t">' + t + '</p><div class="bc-live-p">' + pr + '</div><span class="bc-live-cta">Book a time to sit on it &rarr;</span></div></a>';
       }).join('');
       var card = fd ? '.fd-card' : '.bc-live-card';
-      function fill(){ if (!el.querySelector(card)) el.innerHTML = html; }
+      function fill(){ if (!el.querySelector(card)) el.innerHTML = html; el.style.display = ''; el.style.width = ''; }
       fill(); setTimeout(fill, 1500); setTimeout(fill, 4000);   // the page's old script may overwrite it with "See everything..."
     });
   }).catch(function(){});
@@ -103,7 +103,7 @@
     var els = document.querySelectorAll('div,p,span');
     for (var i = 0; i < els.length; i++) {
       var el = els[i]; if (el.children.length > 2 || el.querySelector('div,p,span') || !RX.test((el.textContent || '').replace(/\s+/g, ' ').trim())) continue;
-      var box = el.parentElement; if (!box || box.querySelector('.bcf-card, .fd-card, .bc-live-card')) continue;
+      var box = el.parentElement; if (!box || box.id === 'fdGrid' || box.id === 'bcLiveGrid' || box.querySelector('.bcf-card, .fd-card, .bc-live-card')) continue;
       addCss(); box.style.display = 'block'; box.style.width = '100%';
       box.innerHTML = '<div class="bcf-grid">' + list.slice(0, 8).map(function(c){ var ph = (c.photos || [])[0];
         return '<a class="bcf-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="im">' + (ph ? '<img loading="lazy" src="' + esc(img(ph)) + '" alt="' + esc(c.title) + '">' : '') + '</div>'
