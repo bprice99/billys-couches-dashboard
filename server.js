@@ -1359,17 +1359,27 @@ app.post('/api/coach/client/save', async (req, res) => {
 app.post('/api/coach/client/delete', async (req, res) => {
   try { await kset(COACH.clients, (await getClients()).filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// YouTube videos with a post date get an all-day Google Calendar event (via the Apps Script).
+// YouTube videos get Google Calendar events (via the Apps Script): an all-day "Post:" event on the post date,
+// and a "Film:" event on the film date (timed if a film time is set, otherwise all-day).
 async function ytCalSync(it, old) {
   if (!CFG.API) return;
   const call = async q => { const u = new URL(CFG.API); Object.entries({ key: CFG.KEY, action: 'yt', ...q }).forEach(([k, v]) => u.searchParams.set(k, v));
     const j = await (await fetch(u)).json(); if (j.error) throw new Error(j.error); return j; };
-  try {
-    if (it.date && it.title) {
-      if (!old || old.date !== it.date || old.title !== it.title || !it.eventId) { const j = await call({ op: 'upsert', eventId: it.eventId || '', title: it.title, date: it.date }); it.eventId = j.eventId; }
-    } else if (it.eventId) { await call({ op: 'delete', eventId: it.eventId }); it.eventId = ''; }
-    it.calError = '';
-  } catch (e) { it.calError = e.message; console.log('YouTube calendar sync failed:', e.message); }
+  const slots = [
+    { id: 'eventId', date: 'date', time: null, title: 'Post: ' + it.title, oldTitle: old && 'Post: ' + old.title },
+    { id: 'filmEventId', date: 'filmDate', time: 'filmTime', title: 'Film: ' + it.title, oldTitle: old && 'Film: ' + old.title }];
+  const errs = [];
+  for (const sl of slots) {
+    try {
+      const d = it[sl.date], t = sl.time ? it[sl.time] || '' : '';
+      if (d && it.title) {
+        const same = old && old[sl.date] === d && (!sl.time || (old[sl.time] || '') === t) && old.title === it.title && it.calTitled;
+        if (!same || !it[sl.id]) { const j = await call({ op: 'upsert', eventId: it[sl.id] || '', title: sl.title, date: d, time: t }); it[sl.id] = j.eventId; }
+      } else if (it[sl.id]) { await call({ op: 'delete', eventId: it[sl.id] }); it[sl.id] = ''; }
+    } catch (e) { errs.push(e.message); }
+  }
+  it.calTitled = true; it.calError = errs.join('; ');
+  if (errs.length) console.log('YouTube calendar sync failed:', it.calError);
 }
 app.post('/api/coach/:kind/save', async (req, res) => {
   try {
@@ -1384,7 +1394,7 @@ app.post('/api/coach/:kind/save', async (req, res) => {
 app.post('/api/coach/:kind/delete', async (req, res) => {
   try { const k = req.params.kind; if (!['leads', 'videos'].includes(k)) return res.status(400).json({ error: 'bad kind' });
     const all = await coachList(k), gone = all.find(x => x.id === req.body.id);
-    if (k === 'videos' && gone && gone.eventId) { gone.date = ''; await ytCalSync(gone, null); }
+    if (k === 'videos' && gone && (gone.eventId || gone.filmEventId)) { gone.date = ''; gone.filmDate = ''; await ytCalSync(gone, null); }
     await kset(COACH[k], all.filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Client portal: each client logs in with their own PIN and only ever sees their own page.
