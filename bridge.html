@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sending photos…</title>
+<style>body{font-family:system-ui,sans-serif;background:#f6f2ed;color:#2b1d16;display:grid;place-items:center;height:100vh;margin:0;text-align:center}b{font-size:20px}</style></head>
+<body><div><b id="s">Getting couch photos…</b><p id="d" style="color:#777"></p></div>
+<script>
+// Marketplace posting helper: Claude opens this from a facebook.com tab, and it hands that tab
+// the newest live couches (title, price, description, photos) so they can be posted without downloading anything.
+(async () => {
+  const $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
+  const target = 'https://www.facebook.com';
+  if (!window.opener) { $('s').textContent = 'Open this from Facebook.'; return; }
+  try {
+    const d = (await fetch('/api/drops').then(r => r.json())).drops || [];
+    let list = d.filter(x => x.status === 'live').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    if (q.get('ids')) { const ids = q.get('ids').split(','); list = ids.map(i => d.find(x => x.id === i)).filter(Boolean); }
+    else list = list.slice(Number(q.get('skip') || 0), Number(q.get('skip') || 0) + Number(q.get('n') || 11));
+    const fee = Date.now() >= Date.parse('2026-11-01T00:00:00-05:00') ? 199 : 150;
+    const G = { A: 'Grade A - Like New', B: 'Grade B - Excellent', C: 'Grade C - Good' };
+    const text = x => [x.retail > x.price ? `$${Math.round(x.price).toLocaleString()} (retail $${Math.round(x.retail).toLocaleString()})` : `$${Math.round(x.price).toLocaleString()}`,
+      '', ...(x.details || []).map(t => '- ' + t), G[x.grade] ? '- Condition: ' + G[x.grade] : '', (x.imperfections || []).length ? '- Flaws: ' + x.imperfections.join('; ') : '- No flaws to note',
+      x.dimensions ? '- Size: ' + x.dimensions : '', '', 'Inspected and cleaned. Come sit on it at our Pacific showroom (126 E Orleans St) - by appointment, open daily.',
+      `Delivery within 40 miles of St. Louis: $${fee}. Pickup available.`, 'Card, Klarna (pay in 4), Venmo, Zelle or cash.', '', 'Text Billy: (314) 899-7503', 'More couches: billyscouches.com/currentinventory']
+      .filter((t, i, a) => t !== '' || (a[i - 1] !== '' && i)).join('\n');
+    const kits = [];
+    for (const x of list) {
+      $('d').textContent = x.title;
+      const files = [];
+      for (const [i, p] of (x.photos || []).entries()) {
+        const r = await fetch(/^https?:/.test(p) ? '/api/drops/img?u=' + encodeURIComponent(p) : '/public/dphoto/' + p + '.jpg');
+        if (r.ok) files.push({ name: (x.title.replace(/[^a-z0-9]+/gi, '-').slice(0, 40) || 'couch') + '-' + (i + 1) + '.jpg', blob: await r.blob() });
+      }
+      kits.push({ id: x.id, title: x.title.slice(0, 100), price: x.price, grade: x.grade || '', text: text(x), files });
+    }
+    window.opener.postMessage({ bcKits: kits }, target);
+    $('s').textContent = 'Sent ' + kits.length + ' couches to Facebook ✓'; $('d').textContent = 'You can close this window.';
+  } catch (e) { $('s').textContent = "Couldn't get the couches: " + e.message; }
+})();
+</script></body></html>
