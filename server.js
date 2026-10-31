@@ -187,7 +187,7 @@ app.post('/api/openhouse/check', async (req, res) => {
 });
 
 // Small saved lists edited in the dashboard: content plan, ad checklist, goal game plan, after-sale upsells, open house plans.
-const STORE_KEYS = ['content', 'adChecks', 'gamePlan', 'upsellAdds'];
+const STORE_KEYS = ['content', 'adChecks', 'gamePlan', 'upsellAdds', 'dream'];
 app.post('/api/store/:k', async (req, res) => {
   try {
     if (!STORE_KEYS.includes(req.params.k)) return res.status(400).json({ error: 'bad key' });
