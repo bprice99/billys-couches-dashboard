@@ -1348,6 +1348,8 @@ function seedEthan() {
     checkins: [], notes: '', createdAt: Date.now() };
 }
 const coachList = k => kget(COACH[k], []);
+// Marketplace posting helper (opened from a facebook.com tab; hands it the newest couches + photos).
+app.get('/bridge', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'bridge.html' : 'login.html')));
 app.get('/coach', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'coach.html' : 'login.html')));
 app.get('/api/coach', async (req, res) => {
   try { const [clients, leads, videos] = await Promise.all([getClients(), coachList('leads'), coachList('videos')]); res.json({ ok: true, clients, leads, videos, week: weekKey() }); }
