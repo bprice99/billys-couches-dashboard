@@ -869,34 +869,51 @@ function period(R){
     delivery: live.filter(x=>x.type==='Delivery').length, anyHist: hs.length > 0 || RAW.hExp.some(x => inR(x.date, R) && isHistDay(x.date)), allHist: live.length === 0 && hs.length > 0 };
 }
 
-// ---------- My goal (the dream purchase shown at the top of the Sales Tracker) ----------
-let DREAM_EDIT = false;
+// ---------- My goals (dream purchases shown at the top of the Sales Tracker) ----------
+// Saved as a list under the 'dream' store key. The first goal (made before lists existed) keeps photo key 'dream'.
+let DREAM_EDIT = null;   // id of the goal being edited, or 'new'
+function dreamList(){ const d = RAW.store.dream; if (Array.isArray(d)) return d; return d && d.title ? [{ id: 'dream', ...d }] : []; }
+function saveDreams(list){ return saveStore('dream', list); }
 function renderDream(){
   const el = $('dreamCard'); if (!el) return;
-  const d = RAW.store.dream || {}, ph = (RAW.store.dreamPhoto || d.photoV) ? `/api/photo/dream?v=${d.photoV || 1}` : '';
-  if (!d.title && !DREAM_EDIT) { el.innerHTML = `<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px"><b style="flex:1">Add a goal you'll see here every day</b><button class="btn p" data-dream="edit">+ My goal</button></div>`; return; }
-  const target = Number(d.target) || 0, saved = Number(d.saved) || 0, pct = target ? Math.min(100, Math.round(saved / target * 100)) : 0;
-  el.innerHTML = `<div class="card dream"><label class="dimg" style="${ph ? `background-image:url('${ph}')` : ''}">${ph ? '' : '+ Add a photo'}<input type="file" accept="image/*" id="dreamPhoto" hidden></label><div class="dbody">` + (DREAM_EDIT
-    ? `<div style="grid-column:1/-1;padding:4px 0"><label class="f">Goal<input id="drT" value="${esc(d.title || '')}" placeholder="Satin black C8 Corvette"></label>
-       <label class="f">I get it when…<input id="drW" value="${esc(d.why || '')}" placeholder="e.g. 3 straight $100K revenue months"></label>
-       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Price ($)<input id="drP" inputmode="numeric" value="${esc(d.target || '')}"></label><label class="f">Saved so far ($)<input id="drS" inputmode="numeric" value="${esc(d.saved || '')}"></label></div>
-       <div class="acts"><button class="btn p" data-dream="save">Save</button><button class="btn" data-dream="cancel">Cancel</button></div></div>`
-    : `<h3>${esc(d.title)}</h3><div class="acts" style="grid-row:span 2"><button class="btn sm" data-dream="edit">Edit</button></div><p class="why">${d.why ? 'I get it when ' + esc(d.why) : ''}</p>
-       ${target ? `<div class="bar"><i style="width:${pct}%"></i></div><div class="nums"><span><b>${money(saved)}</b> saved</span><span>${pct}% of ${money(target)}</span></div>` : ''}`) + `</div></div>`;
+  const list = dreamList();
+  const card = g => {
+    const ph = g.photoV ? `/api/photo/${encodeURIComponent(g.id === 'dream' ? 'dream' : 'dream-' + g.id)}?v=${g.photoV}` : '';
+    const img = `<label class="dimg" style="${ph ? `background-image:url('${ph}')` : ''}">${ph ? '' : '+ Add a photo'}<input type="file" accept="image/*" class="dreamPhoto" data-id="${esc(g.id)}" hidden></label>`;
+    if (DREAM_EDIT === g.id) return `<div class="card dream">${g.id === 'new' ? '<div class="dimg"></div>' : img}<div class="dbody"><div style="grid-column:1/-1;padding:4px 0">
+       <label class="f">Goal<input id="drT" value="${esc(g.title || '')}" placeholder="e.g. Satin black C8 Corvette"></label>
+       <label class="f">I get it when…<input id="drW" value="${esc(g.why || '')}" placeholder="e.g. 3 straight $100K revenue months"></label>
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Price ($)<input id="drP" inputmode="numeric" value="${esc(g.target || '')}"></label><label class="f">Saved so far ($)<input id="drS" inputmode="numeric" value="${esc(g.saved || '')}"></label></div>
+       <div class="acts"><button class="btn p" data-dream="save" data-id="${esc(g.id)}">Save</button><button class="btn" data-dream="cancel">Cancel</button>${g.id !== 'new' ? `<button class="btn" data-dream="del" data-id="${esc(g.id)}" style="margin-left:auto">Delete</button>` : ''}</div></div></div></div>`;
+    const target = Number(g.target) || 0, saved = Number(g.saved) || 0, pct = target ? Math.min(100, Math.round(saved / target * 100)) : 0;
+    return `<div class="card dream">${img}<div class="dbody"><h3>${esc(g.title)}</h3><div class="acts" style="grid-row:span 2"><button class="btn sm" data-dream="edit" data-id="${esc(g.id)}">Edit</button></div><p class="why">${g.why ? 'I get it when ' + esc(g.why) : ''}</p>
+       ${target ? `<div class="bar"><i style="width:${pct}%"></i></div><div class="nums"><span><b>${money(saved)}</b> saved</span><span>${pct}% of ${money(target)}</span></div>` : ''}</div></div>`;
+  };
+  const cards = list.map(card).join('') + (DREAM_EDIT === 'new' ? card({ id: 'new' }) : '');
+  el.innerHTML = cards + (DREAM_EDIT ? '' : list.length
+    ? `<div style="text-align:right;margin:-8px 0 14px"><button class="btn sm" data-dream="add">+ Add another goal</button></div>`
+    : `<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px"><b style="flex:1">Add a goal you'll see here every day</b><button class="btn p" data-dream="add">+ My goal</button></div>`);
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-dream]'); if (!b) return;
-  const k = b.dataset.dream;
-  if (k === 'edit') { DREAM_EDIT = true; return renderDream(); }
-  if (k === 'cancel') { DREAM_EDIT = false; return renderDream(); }
-  if (k === 'save') { const num = id => Number(String($(id).value).replace(/[^\d.]/g, '')) || 0;
-    const d = { ...(RAW.store.dream || {}), title: $('drT').value.trim(), why: $('drW').value.trim(), target: num('drP'), saved: num('drS') };
-    if (!d.title) return toast('Name your goal'); DREAM_EDIT = false; await saveStore('dream', d); renderDream(); }
+  const k = b.dataset.dream, id = b.dataset.id;
+  if (k === 'add') { DREAM_EDIT = 'new'; return renderDream(); }
+  if (k === 'edit') { DREAM_EDIT = id; return renderDream(); }
+  if (k === 'cancel') { DREAM_EDIT = null; return renderDream(); }
+  if (k === 'del') { if (!confirm('Delete this goal?')) return; DREAM_EDIT = null; await saveDreams(dreamList().filter(g => g.id !== id)); return renderDream(); }
+  if (k === 'save') { const num = x => Number(String($(x).value).replace(/[^\d.]/g, '')) || 0;
+    const vals = { title: $('drT').value.trim(), why: $('drW').value.trim(), target: num('drP'), saved: num('drS') };
+    if (!vals.title) return toast('Name your goal');
+    const list = dreamList().slice();
+    if (id === 'new') list.push({ id: uid6(), ...vals }); else { const i = list.findIndex(g => g.id === id); if (i > -1) list[i] = { ...list[i], ...vals }; }
+    DREAM_EDIT = null; await saveDreams(list); renderDream(); }
 });
 document.addEventListener('change', async e => {
-  if (e.target.id !== 'dreamPhoto' || !e.target.files[0]) return;
-  try { toast('Uploading…'); const data = await shrinkPhoto(e.target.files[0], 1400); const j = await post('/api/photo', { key: 'dream', data });
-    await saveStore('dream', { ...(RAW.store.dream || {}), photoV: j.v }); renderDream(); toast('Photo saved'); } catch (err) { toast(err.message); }
+  if (!e.target.classList.contains('dreamPhoto') || !e.target.files[0]) return;
+  const id = e.target.dataset.id;
+  try { toast('Uploading…'); const data = await shrinkPhoto(e.target.files[0], 1400);
+    const j = await post('/api/photo', { key: id === 'dream' ? 'dream' : 'dream-' + id, data });
+    const list = dreamList().map(g => g.id === id ? { ...g, photoV: j.v } : g); await saveDreams(list); renderDream(); toast('Photo saved'); } catch (err) { toast(err.message); }
 });
 
 function renderSales(){
