@@ -258,12 +258,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
-      <div class="card" style="margin-top:16px" id="jsCard"><h2>Website “Just sold” pop-ups <small>pick the couch each customer bought · last 7 days of the Sales Log</small></h2><div id="jsBody"><p class="empty">Loading…</p></div></div>
-      <div class="card" style="margin-top:16px"><h2 style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">Couches in stock <small id="stockNote"></small>
-        <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
-        <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">Click <b>Sold</b> when a couch sells. B-Stock couches show up here once their load is added on the B-Stock tab; used couches with + Used pickup.</p></div>
-      <div class="card" style="margin-top:16px"><h2>Couches sold in this range <small id="soldNote"></small></h2><div id="missBox" hidden style="margin:8px 0 14px;padding:12px;border:1px dashed var(--bad);border-radius:12px;overflow:auto"></div><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
+      <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
       <div class="card" style="margin-top:16px"><h2>Expenses</h2>
         <div class="kpis" id="expKpis" style="margin-bottom:14px"></div>
         <div class="grid2" style="margin-top:0;grid-template-columns:1fr 1.6fr">
@@ -275,9 +270,12 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
           <div><h2 style="font-size:14px">Biggest expenses</h2><div id="expBig"></div></div>
         </div>
       </div>
-      <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
+      <div class="card" style="margin-top:16px"><h2 style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">Couches in stock <small id="stockNote"></small>
+        <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
+        <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Click <b>Sold</b> when a couch sells. B-Stock couches show up here once their load is added on the B-Stock tab; used couches with + Used pickup.</p></div>
+      <div class="card" style="margin-top:16px"><h2>Sold couches &amp; profit <small id="soldNote"></small></h2><p class="empty" style="font-size:12.5px;margin:-6px 0 10px">Every couch you marked Sold: what it cost, what it sold for, and what you made on it. Use Undo if you marked one sold by mistake.</p><div id="missBox" hidden style="margin:8px 0 14px;padding:12px;border:1px dashed var(--bad);border-radius:12px;overflow:auto"></div><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
       <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses <small>tap Edit to fix an expense</small></h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
-      <div class="card" style="margin-top:16px"><h2>Order-app sales</h2><div style="overflow:auto;max-height:440px"><table id="salesTbl"></table></div></div>
     </section>
 
     <!-- SHOWINGS -->
@@ -464,7 +462,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <label>Delivery fee ($)<input type="number" step="0.01" name="delivery" placeholder="0 if pickup"></label>
     <label>Other upsell ($)<input type="number" step="0.01" name="upOther" placeholder="optional"></label>
   </div>
-  <label>Customer name <span style="font-weight:400;color:var(--muted)">(shows as "Sarah M." in the website's Just sold pop-up)</span><input name="customer" placeholder="First and last name" autocomplete="off"></label>
+  <input type="hidden" name="customer">
   <div style="font-size:13px;font-weight:600;margin:-2px 0 6px">Upsells</div>
   <div id="upBoxes" style="margin-bottom:10px"></div>
   <div class="row" style="border-top:1px solid var(--line);margin-bottom:10px"><span>Total</span><b id="soldTotal">$0</b></div>
@@ -943,11 +941,6 @@ function renderSales(){
   $('logTbl').innerHTML = `<tr><th>Date</th><th>Type</th><th>Category</th><th class="hide-m">Details</th><th class="n">Amount</th><th></th></tr>` +
     (L.length ? L.map(x => `<tr><td>${fmtD(x.date)}</td><td><span class="pill ${x.what==='Purchase'?'d':''}">${x.what}</span></td><td>${esc(x.cat)}</td><td class="hide-m">${esc(x.desc)}</td><td class="n"><b>${money(x.amt)}</b></td><td class="n" style="white-space:nowrap">${x.kind === 'expenses' ? `<button class="btn sm" data-expedit="${esc(x.id)}">Edit</button> ` : ''}<button class="btn sm" data-del="${x.kind}:${esc(x.id)}">Delete</button></td></tr>`).join('')
       : `<tr><td colspan="6" class="empty">Nothing logged in this range.</td></tr>`);
-
-  const rows = A.s.slice().sort((a,b2)=>b2.date-a.date);
-  $('salesTbl').innerHTML = `<tr><th>Date</th><th>Customer / couch</th><th class="hide-m">Source</th><th class="hide-m">Payment</th><th>Type</th><th class="n">Sale</th></tr>` +
-    (rows.length ? rows.map(x => `<tr><td>${fmtD(x.date)}</td><td>${esc(x.name)}</td><td class="hide-m">${esc(x.source)}</td><td class="hide-m">${esc(x.pay)}</td><td><span class="pill ${x.type==='Delivery'?'d':''}">${x.type==='Not tracked'?'&ndash;':x.type}</span></td><td class="n"><b>${money(x.rev)}</b></td></tr>`).join('')
-      : `<tr><td colspan="6" class="empty">No sales in this range.</td></tr>`);
 
   const bk = buckets(R), sa = [], co = [], ex = [], ne = []; let s = 0, c = 0, e = 0;
   bk.forEach(b => {
