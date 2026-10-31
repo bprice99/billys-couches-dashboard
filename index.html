@@ -24,6 +24,8 @@ a{color:inherit}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:10px;font-size:14px;color:#d8cabd;text-decoration:none;cursor:pointer}
 .nav:hover{background:rgba(255,255,255,.06)}
 .nav.on{background:var(--red);color:#fff;font-weight:700}
+.navh{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8f7f72;padding:14px 12px 4px}.side .navh:first-of-type{padding-top:6px}
+.side{overflow-y:auto}.side .nav{padding:8px 12px}
 .side .foot{margin-top:auto;padding:10px 12px;font-size:12px;color:#a8998d}
 .side .foot a{color:#d8cabd}
 .main{flex:1;min-width:0;padding:26px 30px 60px}
@@ -201,6 +203,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
   .top{gap:8px}.top h1{font-size:23px}
   .brand,.side .foot{display:none}
   .nav{white-space:nowrap;padding:9px 12px}
+  .navh{display:none}
   .main{padding:18px 14px 50px}
   .kpis,.kpis.k7,.kpis.k4{grid-template-columns:repeat(2,1fr)}
   .kpi .v{font-size:21px}
@@ -214,21 +217,25 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
 <div class="app">
   <nav class="side">
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
+    <div class="navh">Money</div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
+    <a class="nav" data-tab="cash">Daily Cash</a>
     <a class="nav" data-tab="goals">Goals</a>
-    <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
-    <a class="nav" data-tab="upsells">Upsells</a>
+    <a class="nav" data-tab="payroll">Payroll</a>
+    <div class="navh">Inventory</div>
+    <a class="nav" data-tab="drops">Drops</a>
+    <a class="nav" data-tab="bstock">B-Stock</a>
+    <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
+    <div class="navh">Customers</div>
     <a class="nav" data-tab="showings">Showing Tracker</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
-    <a class="nav" data-tab="meta">Ad Performance</a>
-    <a class="nav" data-tab="content">Content Plan</a>
-    <a class="nav" data-tab="ads">Ad Library</a>
-    <a class="nav" data-tab="bstock">B-Stock</a>
-    <a class="nav" data-tab="payroll">Payroll</a>
-    <a class="nav" data-tab="cash">Daily Cash</a>
-    <a class="nav" data-tab="drops">Drops</a>
+    <a class="nav" data-tab="upsells">Upsells</a>
+    <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
     <a class="nav" data-tab="thanks">Thank You Cards<span class="obadge" id="tyBadge" hidden></span></a>
-    <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
+    <div class="navh">Marketing</div>
+    <a class="nav" data-tab="meta">Ad Performance</a>
+    <a class="nav" data-tab="ads">Ad Library</a>
+    <a class="nav" data-tab="content">Content Plan</a>
     <a class="nav" href="/coach" style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);border-radius:0;padding-top:14px">Coaching &rarr;</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="/logout">Log out</a></div>
   </nav>
