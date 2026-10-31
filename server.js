@@ -1303,6 +1303,15 @@ app.get('/public/inventory', async (req, res) => {
       details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', photos: (d.photos || []).map(dropPhotoUrl) })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
+// Public order app (order.billyscouches.com) reads this: everything a customer can buy right now,
+// including First Dibs couches that were emailed but aren't on the website yet.
+app.get('/public/orderable', async (req, res) => {
+  dropCors(res);
+  try {
+    const list = (await getDrops()).filter(d => d.status === 'live' || d.status === 'emailed');
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '' })) });
+  } catch (e) { res.status(500).json({ error: 'unavailable' }); }
+});
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
 // ---------- Coaching (Billy Price Coaching): admin at /coach, client portal at /client ----------
