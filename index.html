@@ -24,6 +24,15 @@ a{color:inherit}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:10px;font-size:14px;color:#d8cabd;text-decoration:none;cursor:pointer}
 .nav:hover{background:rgba(255,255,255,.06)}
 .nav.on{background:var(--red);color:#fff;font-weight:700}
+.card.dream{display:grid;grid-template-columns:170px 1fr;gap:0;padding:0;overflow:hidden;margin-bottom:16px;background:#1d1714;color:#f3ece6;border:0}
+.dream .dimg{background:#2b231f center/cover no-repeat;min-height:86px;height:100%;align-self:stretch;display:flex;align-items:center;justify-content:center;color:#a8998d;font-size:13px;cursor:pointer}
+.dream .dbody{padding:10px 18px;display:grid;grid-template-columns:1fr auto;column-gap:16px;align-items:center}.dream .dbody>.bar,.dream .dbody>.nums{grid-column:1/-1}.dream .eye{display:none}
+.dream h3{margin:0;font-size:17px;color:#fff}.dream .why{margin:0 0 6px;font-size:12.5px;color:#cdbfb4;grid-column:1}
+.dream .bar{height:7px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}.dream .bar i{display:block;height:100%;background:linear-gradient(90deg,#b0524c,#e08a80);border-radius:99px}
+.dream .nums{display:flex;justify-content:space-between;font-size:12px;color:#cdbfb4;margin-top:4px}.dream .nums b{color:#fff}
+.dream .acts{display:flex;gap:8px}.dream .btn{background:transparent;color:#f3ece6;border-color:rgba(255,255,255,.25)}
+.dream .f{display:block;font-size:12px;color:#cdbfb4;margin-bottom:8px}.dream .f input{display:block;width:100%;margin-top:3px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#2b231f;color:#fff;font:inherit;font-size:14px}
+@media(max-width:700px){.card.dream{grid-template-columns:110px 1fr}.dream .dimg{min-height:80px}.dream .dbody{padding:8px 12px}.dream h3{font-size:15px}}
 .navh{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8f7f72;padding:14px 12px 4px}.side .navh:first-of-type{padding-top:6px}
 .side{overflow-y:auto}.side .nav{padding:8px 12px}
 .side .foot{margin-top:auto;padding:10px 12px;font-size:12px;color:#a8998d}
@@ -263,6 +272,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <!-- SALES -->
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
+      <div id="dreamCard"></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
@@ -859,8 +869,38 @@ function period(R){
     delivery: live.filter(x=>x.type==='Delivery').length, anyHist: hs.length > 0 || RAW.hExp.some(x => inR(x.date, R) && isHistDay(x.date)), allHist: live.length === 0 && hs.length > 0 };
 }
 
+// ---------- My goal (the dream purchase shown at the top of the Sales Tracker) ----------
+let DREAM_EDIT = false;
+function renderDream(){
+  const el = $('dreamCard'); if (!el) return;
+  const d = RAW.store.dream || {}, ph = (RAW.store.dreamPhoto || d.photoV) ? `/api/photo/dream?v=${d.photoV || 1}` : '';
+  if (!d.title && !DREAM_EDIT) { el.innerHTML = `<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px"><b style="flex:1">Add a goal you'll see here every day</b><button class="btn p" data-dream="edit">+ My goal</button></div>`; return; }
+  const target = Number(d.target) || 0, saved = Number(d.saved) || 0, pct = target ? Math.min(100, Math.round(saved / target * 100)) : 0;
+  el.innerHTML = `<div class="card dream"><label class="dimg" style="${ph ? `background-image:url('${ph}')` : ''}">${ph ? '' : '+ Add a photo'}<input type="file" accept="image/*" id="dreamPhoto" hidden></label><div class="dbody">` + (DREAM_EDIT
+    ? `<div style="grid-column:1/-1;padding:4px 0"><label class="f">Goal<input id="drT" value="${esc(d.title || '')}" placeholder="Satin black C8 Corvette"></label>
+       <label class="f">I get it when…<input id="drW" value="${esc(d.why || '')}" placeholder="e.g. 3 straight $100K revenue months"></label>
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Price ($)<input id="drP" inputmode="numeric" value="${esc(d.target || '')}"></label><label class="f">Saved so far ($)<input id="drS" inputmode="numeric" value="${esc(d.saved || '')}"></label></div>
+       <div class="acts"><button class="btn p" data-dream="save">Save</button><button class="btn" data-dream="cancel">Cancel</button></div></div>`
+    : `<h3>${esc(d.title)}</h3><div class="acts" style="grid-row:span 2"><button class="btn sm" data-dream="edit">Edit</button></div><p class="why">${d.why ? 'I get it when ' + esc(d.why) : ''}</p>
+       ${target ? `<div class="bar"><i style="width:${pct}%"></i></div><div class="nums"><span><b>${money(saved)}</b> saved</span><span>${pct}% of ${money(target)}</span></div>` : ''}`) + `</div></div>`;
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-dream]'); if (!b) return;
+  const k = b.dataset.dream;
+  if (k === 'edit') { DREAM_EDIT = true; return renderDream(); }
+  if (k === 'cancel') { DREAM_EDIT = false; return renderDream(); }
+  if (k === 'save') { const num = id => Number(String($(id).value).replace(/[^\d.]/g, '')) || 0;
+    const d = { ...(RAW.store.dream || {}), title: $('drT').value.trim(), why: $('drW').value.trim(), target: num('drP'), saved: num('drS') };
+    if (!d.title) return toast('Name your goal'); DREAM_EDIT = false; await saveStore('dream', d); renderDream(); }
+});
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'dreamPhoto' || !e.target.files[0]) return;
+  try { toast('Uploading…'); const data = await shrinkPhoto(e.target.files[0], 1400); const j = await post('/api/photo', { key: 'dream', data });
+    await saveStore('dream', { ...(RAW.store.dream || {}), photoV: j.v }); renderDream(); toast('Photo saved'); } catch (err) { toast(err.message); }
+});
+
 function renderSales(){
-  renderJustSold();
+  renderJustSold(); renderDream();
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
