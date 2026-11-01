@@ -1057,7 +1057,7 @@ function shText(x){
   const first = (x.name.split(/\s+/)[0] || '').replace(/^—$/, ''), hi = 'Hi' + (first ? ' ' + first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : '') + '! ';
   const dd = dayDiff(day0(new Date()), x.date), when = dd === 0 ? 'today' : dd === 1 ? 'tomorrow' : x.at.toLocaleDateString('en-US', { weekday: 'long' });
   const h = x.at.getHours(), m = x.at.getMinutes(), time = (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm');
-  if (x.status === 'Upcoming') return hi + (dd === 0 ? `I wanted to confirm your showing today at ${time}?` : `I wanted to touch base and confirm your showing ${when} at ${time}?`);
+  if (x.status === 'Upcoming') return hi + (dd === 0 ? `I wanted to confirm your showing today at ${time}?` : `This is Billy with Billy's Couches. I wanted to touch base and confirm your showing ${when} at ${time}?`);
   if (x.status === 'Canceled' || x.status === 'No-show') return hi + 'Sorry we missed you, are you still wanting to come take a look? I have some time today or tomorrow if that works!';
   if (x.status === 'Bought') return hi + 'Just wanted to check in and make sure you\'re loving the couch!';
   return hi + 'Thanks for coming by! Did you have any questions on the couch you looked at?';
