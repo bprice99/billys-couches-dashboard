@@ -310,12 +310,14 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <section id="tab-showings" hidden>
       <div class="kpis k7" id="shKpis"></div>
       <div class="card"><h2>Showings by day <small>from the Billy's Couches calendar</small></h2><div class="chartwrap"><canvas id="shChart"></canvas></div></div>
+      <div class="card" style="margin-top:16px"><h2>Why they canceled <small id="shWhySub"></small></h2><div id="shWhy"></div>
+        <p class="empty" style="margin-top:10px;font-size:12.5px">Add the reason in the title: (Canceled - Bought elsewhere), (Canceled - Couch sold), (Canceled - Schedule), (Canceled - Changed mind), (Canceled - No reason).</p></div>
       <div class="grid2">
         <div class="card"><h2>By day of week</h2><div id="shDow"></div></div>
         <div class="card"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="shTrend"></table></div></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Every showing this month</h2><div style="overflow-x:auto"><table id="shTbl"></table></div>
-        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled. Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
+        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled; add a reason like "(Canceled - Schedule)". Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
     </section>
 
     <!-- META ADS -->
@@ -685,12 +687,13 @@ function parse(d){
   const showings = (d.showings || []).map(([iso, title, color]) => {
     const at = new Date(iso), t = String(title || '');
     let status = 'Showed';
-    if (/cancel/i.test(t)) status = 'Canceled';
+    let reason = '';
+    if (/cancel/i.test(t)) { status = 'Canceled'; reason = cancelReason(t); }
     else if (/no.?show/i.test(t) || color === '8') status = 'No-show';
     else if (color === '2' || color === '10') status = 'Bought';
     else if (at > new Date()) status = 'Upcoming';
     const name = t.replace(/\(.*?\)/g, '').replace(/^\s*showing\s*(for)?\s*/i, '').trim() || '—';
-    return { at, date: new Date(at.getFullYear(), at.getMonth(), at.getDate()), name, status };
+    return { at, date: new Date(at.getFullYear(), at.getMonth(), at.getDate()), name, status, reason };
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
@@ -1048,6 +1051,16 @@ function renderSales(){
 }
 
 // ---------- showings ----------
+const CANCEL_REASONS = ['Bought elsewhere', 'Couch sold', 'Schedule', 'Changed mind', 'No reason given'];
+function cancelReason(t){
+  const m = t.match(/\(\s*cancel\w*\s*[-–—:]\s*([^)]*)\)/i), r = m ? m[1].trim() : '';
+  if (!r || /^no reason/i.test(r)) return 'No reason given';
+  if (/bought|elsewhere|somewhere|found/i.test(r)) return 'Bought elsewhere';
+  if (/sold/i.test(r)) return 'Couch sold';
+  if (/sched|time|work|busy|resched/i.test(r)) return 'Schedule';
+  if (/mind|interest/i.test(r)) return 'Changed mind';
+  return r.charAt(0).toUpperCase() + r.slice(1);
+}
 function shStats(list){
   const c = st => list.filter(x => x.status === st).length;
   const booked = list.length, canceled = c('Canceled'), noshow = c('No-show'), bought = c('Bought'), upcoming = c('Upcoming');
@@ -1072,6 +1085,12 @@ function renderShowings(){
   const o = baseOpts(false); o.scales.x.stacked = true; o.scales.y.stacked = true;
   chartIn('shChart', { type: 'bar', data: { labels: bk.map(b => b.label), datasets: Object.keys(sets).map(k => ({ label: k === 'Showed' ? 'Showed, no buy' : k, data: sets[k], backgroundColor: colors[k], borderRadius: 3 })) }, options: o });
 
+  const cx = list.filter(x => x.status === 'Canceled'), rc = {};
+  cx.forEach(x => rc[x.reason || 'No reason given'] = (rc[x.reason || 'No reason given'] || 0) + 1);
+  const tagged = cx.filter(x => x.reason && x.reason !== 'No reason given').length;
+  $('shWhySub').textContent = cx.length ? `${cx.length} canceled · ${tagged} with a reason` : '';
+  if (cx.length) bars($('shWhy'), Object.entries(rc).sort((a, b2) => b2[1] - a[1]).map(([k, v]) => [k, v, ` &middot; ${pct(v / cx.length)}`]), v => v + ' canceled');
+  else $('shWhy').innerHTML = '<p class="empty">No cancellations in this range.</p>';
   const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const dow = DOW.map((n, i) => { const st = shStats(list.filter(x => x.at.getDay() === i)); return [n, st.booked, ` &middot; ${st.showed} showed &middot; ${st.bought} bought`]; }).filter(x => x[1]);
   bars($('shDow'), dow, v => v + ' booked');
@@ -1084,7 +1103,7 @@ function renderShowings(){
   const pc = { Bought: 'g', Canceled: 'x', 'No-show': 'ns', Upcoming: 'u', Showed: '' };
   const rows = list.slice().sort((a, b2) => b2.at - a.at);
   $('shTbl').innerHTML = `<tr><th>Date</th><th>Time</th><th>Customer</th><th>Result</th></tr>` +
-    (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span></td></tr>`).join('')
+    (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span>${x.reason ? ` <span style="font-size:12.5px;color:var(--muted)">${esc(x.reason)}</span>` : ''}</td></tr>`).join('')
       : `<tr><td colspan="4" class="empty">${RAW.showingsError ? 'Could not read the calendar: ' + esc(RAW.showingsError) : 'No showings on the calendar in this range.'}</td></tr>`);
 }
 
