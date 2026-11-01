@@ -99,17 +99,24 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .ohcal .ev{display:block;margin-top:4px;padding:3px 5px;border-radius:6px;background:#b0524c;color:#fff;font-weight:700;font-size:11px;line-height:1.2}
 .ohcal .ev.past{background:#2b1d16}.ohcal .sh{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
 @media(max-width:640px){.ohcal .d{min-height:54px;padding:3px}.ohcal .sh{display:none}}
-.gt{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.gt label{font-size:12.5px;color:var(--muted);font-weight:600}
-.gt input{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;font-weight:700}
-@media(max-width:700px){.gt{grid-template-columns:1fr 1fr}}
-.path{position:relative;padding-left:4px}.step{display:flex;gap:12px;padding:0 0 14px;position:relative}
-.step:not(:last-child):before{content:"";position:absolute;left:15px;top:32px;bottom:2px;width:2px;background:var(--line)}
-.step .dot{flex:none;width:32px;height:32px;border-radius:50%;background:#b0524c;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:1}
-.step.ok .dot{background:var(--green)}.step b.big{font-size:18px}.step p{margin:2px 0 0;font-size:13px;color:var(--muted)}
-.gpfocus{width:100%;padding:12px;border:2px dashed #b0524c;border-radius:12px;font:inherit;font-weight:700;font-size:15px;margin-bottom:8px;background:#fff8f6}
-.mv{display:grid;grid-template-columns:auto 1fr 1fr auto;grid-template-areas:'c t t x' '. o d .';gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.mv>[data-mvk=done]{grid-area:c}.mv>[data-mvk=text]{grid-area:t}.mv .ow{grid-area:o}.mv .du{grid-area:d}.mv .xs{grid-area:x}
-.mv input[type=text],.mv input[type=date]{padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;min-width:0}
+.gh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 10px}.gh-t{font-size:24px;font-weight:800;letter-spacing:-.02em}.gh-d{font-size:13px;color:var(--muted);margin-top:2px}
+.gday{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:16px}.gday i{display:block;height:100%;background:var(--dark);border-radius:9px}
+.gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}@media(max-width:900px){.gcards{grid-template-columns:1fr 1fr}}@media(max-width:520px){.gcards{grid-template-columns:1fr}}
+.gc{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.gc .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);font-weight:600}
+.gc .pill{font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:99px}.pill.ok{background:#e3f1e8;color:var(--green)}.pill.bh{background:#f8e4e1;color:var(--bad)}.pill.no{background:var(--cream);color:var(--muted)}
+.gc .v{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0 2px;white-space:nowrap}.gc .v small{font-size:15px;color:var(--muted);font-weight:600}
+.gc .tr{position:relative;height:9px;background:var(--cream);border-radius:9px;margin:10px 0 10px}.gc .tr i{display:block;height:100%;border-radius:9px}.gc .tr b{position:absolute;top:-4px;width:2px;height:17px;background:var(--dark)}
+.gc p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}.gc p b{color:var(--text)}
+.wk{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}@media(max-width:800px){.wk{grid-template-columns:1fr 1fr}}
+.wk div{background:var(--bg);border-radius:12px;padding:14px}.wk b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em}.wk span{display:block;font-size:13px;font-weight:700;margin-top:2px}.wk em{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:4px}
+.funnel{margin-top:12px;font-size:13.5px;color:var(--muted)}.funnel b{color:var(--text)}
+.gpf{display:flex;align-items:center;gap:12px;background:var(--dark);color:#fff;border-radius:12px;padding:12px 14px;margin-bottom:6px}.gpf span{font-size:11px;letter-spacing:.12em;font-weight:800;color:#d9a39f;white-space:nowrap}
+.gpf input{flex:1;min-width:0;background:transparent;border:0;color:#fff;font:inherit;font-weight:700;font-size:16px;outline:0}.gpf input::placeholder{color:#a8988c}
+.mv{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line)}.mv input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);flex:none}
+.mv input[type=text]{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:15px;padding:4px 0;outline:0}.mv .xs{opacity:.35}.mv:hover .xs{opacity:1}
 .mv.done input[type=text]{text-decoration:line-through;color:var(--muted)}
+.gpadd{display:flex;gap:8px;margin-top:10px}.gpadd input{flex:1;min-width:0;padding:10px 12px;border:1px dashed var(--gray);border-radius:10px;font:inherit;font-size:14px}
+.pre{position:relative;display:block;margin-top:4px}.pre input{width:100%}.pre.d:before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;pointer-events:none}.pre.d input{padding-left:24px!important}
 
 @media(max-width:800px){.grid2{grid-template-columns:1fr!important}}
 .chk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
@@ -364,15 +371,14 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
 
     <!-- GOALS -->
     <section id="tab-goals" hidden>
-      <p class="empty" id="goalNote" style="margin:-6px 0 12px;font-size:13px"></p>
-      <div class="kpis k4" id="goalCards"></div>
-      <div class="card" style="margin-bottom:16px"><h2>Targets <small id="gtMonth"></small></h2><div class="gt" id="goalInputs"></div></div>
-      <div class="grid2" style="margin-top:0;margin-bottom:16px;grid-template-columns:1fr 1fr">
-        <div class="card"><h2>The pathway <small>what it takes from here</small></h2><div class="path" id="gpPath"></div></div>
-        <div class="card"><h2>Game plan <small>our moves this month</small></h2>
-          <input class="gpfocus" id="gpFocus" placeholder="This month's one big focus (e.g. 50 sales: more couches on the floor + faster follow-up)">
-          <div id="gpMoves"></div><button class="btn sm" id="gpAdd" style="margin-top:8px">+ Add a move</button></div>
-      </div>
+      <div class="gh"><div><div class="gh-t" id="goalTitle">Goals</div><div class="gh-d" id="goalNote"></div></div><button class="btn p" id="goalTargets">Edit targets</button></div>
+      <div class="gday"><i id="goalDay"></i></div>
+      <div class="gcards" id="goalCards"></div>
+      <div class="card" style="margin-bottom:16px"><h2>What it takes each week <small id="wkSub"></small></h2><div class="wk" id="gpWeek"></div><div class="funnel" id="gpFunnel"></div></div>
+      <div class="card" style="margin-bottom:16px"><h2>Game plan <small>this month's moves</small></h2>
+        <div class="gpf"><span>ONE BIG FOCUS</span><input id="gpFocus" placeholder="e.g. Sell the first new truckload in 3 weeks"></div>
+        <div id="gpMoves"></div>
+        <div class="gpadd"><input id="gpNew" placeholder="+ Add a move… (type and press Enter)"><button class="btn sm" id="gpAdd">Add</button></div></div>
       <div class="card"><h2>Road to $100K a month</h2><div class="chartwrap"><canvas id="goalChart"></canvas></div><p style="font-size:14px;margin:12px 0 0" id="roadNote"></p></div>
       <div class="card" style="margin-top:16px"><h2>Team</h2><div style="overflow-x:auto"><table id="teamTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">From the Work Log: showings each person hosted and how many bought.</p></div>
@@ -516,8 +522,8 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
 </form></div>
 <div class="mask" id="m-goals"><form class="modal" data-kind="goals">
   <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
-  <div class="two"><label>Sales<input type="number" name="sales" min="0"></label><label>Revenue ($)<input type="number" name="revenue" min="0"></label></div>
-  <div class="two"><label>Net profit ($)<input type="number" name="net" min="0"></label><label>Average sale ($)<input type="number" name="avg" min="0"></label></div>
+  <div class="two"><label>Sales<span class="pre"><input type="number" name="sales" min="0" placeholder="0"></span></label><label>Revenue<span class="pre d"><input type="number" name="revenue" min="0" placeholder="0"></span></label></div>
+  <div class="two"><label>Net profit<span class="pre d"><input type="number" name="net" min="0" placeholder="0"></span></label><label>Average sale<span class="pre d"><input type="number" name="avg" min="0" placeholder="0"></span></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-oh"><form class="modal" data-kind="oh">
@@ -793,13 +799,22 @@ function renderGoals(){
   const days = spanDays(R), elapsed = R.to < today ? days : R.from > today ? 0 : dayDiff(R.from, today) + 1, live = elapsed > 0 && elapsed < days;
   const actual = { sales: A.count, revenue: A.gross, net: A.net, avg: A.avgSale };
   const pace = k => k === 'avg' ? actual.avg : elapsed ? actual[k] / elapsed * days : 0;
+  const pm = new Date(R.from.getFullYear(), R.from.getMonth() - 1, 1), P = period({ from: pm, to: new Date(pm.getFullYear(), pm.getMonth() + 1, 0) }), pmName = MON[pm.getMonth()];
+  const left = live ? days - elapsed + 1 : elapsed ? 0 : days, wl = Math.max(1, left / 7), dayPct = days ? elapsed / days : 0;
+  $('goalTitle').textContent = R.from.toLocaleString('en-US', { month: 'long' }) + ' goals';
+  $('goalNote').textContent = live ? `Day ${elapsed} of ${days} · ${left} days left` : elapsed >= days ? 'Month complete' : 'Starts ' + rangeLabel(R);
+  $('goalDay').style.width = dayPct * 100 + '%';
   $('goalCards').innerHTML = GOAL_FIELDS.map(([k, label, fmt]) => {
-    const t = G[k], a = actual[k], pr = t ? Math.min(1, a / t) : 0, p = pace(k), ok = t ? p >= t : null;
-    return `<div class="card kpi"><div class="l">${label}</div><div class="v">${fmt(a)}${t ? ` <span style="font-size:15px;color:var(--muted);font-weight:600">/ ${fmt(t)}</span>` : ''}</div>
-      ${t ? `<div class="bar" style="height:8px;margin:10px 0 6px"><i style="width:${pr * 100}%;background:${ok ? 'var(--green)' : 'var(--red)'}"></i></div>
-      <div class="c ${ok ? 'up' : 'dn'}">${live && k !== 'avg' ? (ok ? 'On pace for ' : 'Behind: on pace for ') + fmt(p) : a >= t ? 'Hit' : (elapsed >= days ? 'Missed by ' + fmt(t - a) : fmt(t - a) + ' to go')}</div>` : '<div class="c flat">No target set</div>'}</div>`;
+    const t = Number(G[k]) || 0, a = actual[k] || 0, pr = t ? Math.min(1, a / t) : 0, p = pace(k), ok = t ? (k === 'avg' ? a >= t : live ? p >= t : a >= t) : null;
+    const st = !t ? '<span class="pill no">NO TARGET</span>' : live && !actual.sales ? '<span class="pill no">STARTING</span>' : a >= t && k !== 'avg' ? '<span class="pill ok">HIT</span>' : ok ? '<span class="pill ok">ON PACE</span>' : '<span class="pill bh">BEHIND</span>';
+    const go = Math.max(0, t - a); let lines = '';
+    if (t && k === 'sales') lines = go ? `<p>Need <b>${(go / Math.max(1, left)).toFixed(1)}/day</b> · <b>${(go / wl).toFixed(1)}/week</b></p><p>On pace for ${Math.round(p)}</p>` : `<p>${a} sold. Goal hit.</p>`;
+    if (t && k === 'revenue') lines = go ? `<p>Need <b>${money(go / wl)}/week</b></p><p>On pace for ${money(p)}</p>` : `<p>Goal hit.</p>`;
+    if (t && k === 'net') lines = `<p>Margin <b>${actual.revenue ? pct(a / actual.revenue) : '–'}</b> · ${pmName} ${P.gross ? pct(P.net / P.gross) : '–'}</p><p>${go ? money(go) + ' to go' : 'Goal hit.'}</p>`;
+    if (t && k === 'avg') lines = `<p>${pmName} average ${money(P.avgSale || 0)}</p><p>${a >= t ? 'Above target' : 'Gap <b>' + money(t - a) + '</b> a sale'}</p>`;
+    return `<div class="gc"><div class="top">${label}${st}</div><div class="v">${fmt(a)}${t ? ` <small>/ ${fmt(t)}</small>` : ''}</div>
+      <div class="tr"><i style="width:${pr * 100}%;background:${!t ? 'var(--gray)' : ok ? 'var(--green)' : 'var(--red)'}"></i>${live && k !== 'avg' ? `<b style="left:${dayPct * 100}%" title="Where you should be today"></b>` : ''}</div>${lines || '<p>Tap Edit targets to set one.</p>'}</div>`;
   }).join('');
-  $('goalNote').textContent = live ? `Day ${elapsed} of ${days} · ${days - elapsed} days left` : '';
   // road to $100K
   const months = []; for (let k = 11; k >= 0; k--) { const d = new Date(today.getFullYear(), today.getMonth() - k, 1); months.push({ d, P: period({ from: d, to: new Date(d.getFullYear(), d.getMonth() + 1, 0) }) }); }
   while (months.length > 1 && !months[0].P.gross) months.shift();
@@ -2337,66 +2352,56 @@ document.addEventListener('click', e => {
 
 // ---------- goals: targets on the page + pathway + game plan ----------
 const GP_DEFAULT = [
-  { text: 'Keep 25+ couches on the floor every weekend', owner: 'Billy' },
-  { text: 'Call every lead within 5 minutes; confirm every showing the day before', owner: 'Team' },
-  { text: 'Offer Scotchgard + delivery on every sale', owner: 'Team' },
-  { text: 'Launch 3 new ad creatives every week (Content Plan tab)', owner: 'Billy' },
-  { text: 'Run 2 open houses this month', owner: 'Billy' },
+  { text: 'Keep 25+ couches on the floor every weekend' },
+  { text: 'Call every lead within 5 minutes; confirm every showing the day before' },
+  { text: 'Offer Scotchgard + delivery on every sale' },
+  { text: 'Launch 3 new ad creatives every week (Content Plan tab)' },
+  { text: 'Run 2 open houses this month' },
 ];
 const gMonth = () => { const R = getR('goals'); return R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0'); };
 function renderGamePlan(){
   const mk = gMonth(), R = getR('goals'), G = (RAW.goals || {})[mk] || {}, A = period(R), today = day0(new Date());
-  $('gtMonth').textContent = 'for ' + rangeLabel(R) + ' · saves as you type';
-  if (!$('goalInputs').contains(document.activeElement))
-    $('goalInputs').innerHTML = [['sales', 'Sales'], ['revenue', 'Revenue ($)'], ['net', 'Net profit ($)'], ['avg', 'Average sale ($)']]
-      .map(([k, l]) => `<label>${l}<input type="number" min="0" data-goal="${k}" value="${G[k] || ''}" placeholder="–"></label>`).join('');
-  // pathway math
-  const days = spanDays(R), left = R.to < today ? 0 : Math.max(0, dayDiff(today, R.to) + (R.from <= today ? 1 : 0)), weeks = Math.max(1, left / 7);
-  const target = G.sales || (G.revenue && A.avgSale ? Math.ceil(G.revenue / A.avgSale) : 0), toGo = Math.max(0, target - A.count);
+  const days = spanDays(R), left = R.to < today ? 0 : R.from > today ? days : dayDiff(today, R.to) + 1, wl = Math.max(1, left / 7);
+  const target = Number(G.sales) || (G.revenue && A.avgSale ? Math.ceil(G.revenue / A.avgSale) : 0), toGo = Math.max(0, target - A.count);
   const past = (RAW.showings || []).filter(x => x.date < today && (today - x.date) / 864e5 <= 60);
-  const bought = past.filter(x => x.status === 'Bought').length, showed = past.filter(x => x.status === 'Showed').length + bought, noshow = past.filter(x => x.status === 'No-show').length;
-  const close = showed ? bought / showed : 0, showRate = showed + noshow ? showed / (showed + noshow) : 0;
-  const needShows = close ? Math.ceil(toGo / close) : null, needBook = needShows && showRate ? Math.ceil(needShows / showRate) : null;
-  const stock = RAW.loads.reduce((a, l) => a + l.units.filter(u => u.status === 'in').length, 0) + RAW.purchases.filter(p => p.status !== 'sold').length;
-  const m30 = metaRange({ from: addDays(today, -29), to: today }), metaShare = isFinite(m30.share) ? m30.share : 0;
-  const adMore = isFinite(m30.cps) ? toGo * metaShare * m30.cps : null;
-  const revGo = G.revenue ? Math.max(0, G.revenue - A.gross) : null;
-  const step = (ok, big, txt) => `<div class="step ${ok ? 'ok' : ''}"><div class="dot">${ok ? '✓' : ''}</div><div><b class="big">${big}</b><p>${txt}</p></div></div>`;
-  let i = 0; const n = () => ++i;
-  $('gpPath').innerHTML = !target ? '<p class="empty">Set a sales or revenue target above and the pathway fills in.</p>' : [
-    step(!toGo, toGo ? `${toGo} more sales` : 'Sales goal hit', toGo ? `${A.count} of ${target} so far · ${left} days left → <b>${(toGo / weeks).toFixed(1)} a week</b> (${(toGo / Math.max(1, left)).toFixed(1)} a day)` : `${A.count} sales against a goal of ${target}.`),
-    revGo != null ? step(!revGo, revGo ? money(revGo) + ' more revenue' : 'Revenue goal hit', revGo ? `${money(A.gross)} of ${money(G.revenue)} · at your ${money(A.avgSale || 0)} average sale` : '') : '',
-    step(false, needShows != null ? `${needShows} showings` : 'Showings', needShows != null ? `You close <b>${pct(close)}</b> of showings that show up (last 60 days) → ~${Math.ceil(needShows / weeks)} a week` : 'Not enough calendar data yet to know your close rate.'),
-    step(false, needBook != null ? `Book ${needBook}` : 'Bookings', needBook != null ? `<b>${pct(showRate)}</b> of booked showings show up → book ~${Math.ceil(needBook / weeks)} a week. Confirm the day before to raise this.` : 'Track no-shows on the calendar to see this.'),
-    step(stock >= toGo, `${stock} couches in stock`, stock >= toGo ? 'Enough inventory to hit the goal if it sells.' : `Source at least <b>${toGo - stock} more</b> couches (aim for more, so customers have choices).`),
-    adMore != null && toGo ? step(false, `~${money(adMore)} ad spend`, `About ${pct(metaShare)} of sales come from Meta at ${money(m30.cps)} each (last 30 days).`) : '',
-  ].join('');
-  // moves
+  const cnt = s => past.filter(x => x.status === s).length, bought = cnt('Bought'), showed = cnt('Showed') + bought, missed = cnt('No-show') + cnt('Canceled');
+  const close = showed ? bought / showed : 0, showRate = showed + missed ? showed / (showed + missed) : 0;
+  const m30 = metaRange({ from: addDays(today, -29), to: today }), share = isFinite(m30.share) ? m30.share : 0, cps = isFinite(m30.cps) ? m30.cps : 0;
+  const avg = Number(G.avg) || A.avgSale || 0, spw = toGo / wl, shw = close ? spw / close : null, bkw = shw != null && showRate ? shw / showRate : null, adw = cps ? spw * share * cps : null;
+  const n1 = v => v == null ? '–' : v < 10 ? (Math.round(v * 10) / 10).toString() : String(Math.round(v));
+  $('wkSub').textContent = left ? `${left} days left · rates from the last 60 days` : '';
+  $('gpWeek').innerHTML = !target ? '<p class="empty" style="grid-column:1/-1">Set a sales or revenue target and this fills in.</p>' : !toGo ? '<p class="empty" style="grid-column:1/-1">Sales goal hit. Anything more is a bonus.</p>' : [
+    [n1(spw), 'Sales', `${toGo} to go`],
+    [n1(shw), 'Showings that show up', close ? `You close ${pct(close)}` : 'Need more calendar data'],
+    [n1(bkw), 'Bookings', showRate ? `${pct(showRate)} show up (incl. cancels)` : 'Track no-shows to see this'],
+    [adw == null ? '–' : money(adw), 'Meta ad spend', cps ? `${pct(share)} of sales at ${money(cps)} each` : 'No Meta data yet'],
+  ].map(([v, l, e]) => `<div><b>${v}</b><span>${l}</span><em>${e}</em></div>`).join('');
+  $('gpFunnel').innerHTML = target && toGo && bkw != null ? `Each week: book <b>${Math.ceil(bkw)}</b> → <b>${Math.ceil(shw)}</b> show up → <b>${Math.ceil(spw)}</b> buy → <b>${money(Math.ceil(spw) * avg)}</b> at a ${money(avg)} average` : '';
   RAW.store.gamePlan = RAW.store.gamePlan || {};
-  const plan = RAW.store.gamePlan[mk] || (RAW.store.gamePlan[mk] = { focus: '', moves: GP_DEFAULT.map(m => ({ ...m, id: uid6(), due: '', done: false })) });
+  const plan = RAW.store.gamePlan[mk] || { focus: '', moves: GP_DEFAULT.map(m => ({ ...m, id: uid6(), done: false })) };
   if (document.activeElement !== $('gpFocus')) $('gpFocus').value = plan.focus || '';
   if (!$('gpMoves').contains(document.activeElement))
     $('gpMoves').innerHTML = plan.moves.map(m => `<div class="mv ${m.done ? 'done' : ''}" data-mv="${m.id}"><input type="checkbox" data-mvk="done" ${m.done ? 'checked' : ''}>
-      <input type="text" data-mvk="text" value="${esc(m.text)}" placeholder="What we'll do"><input type="text" class="ow" data-mvk="owner" value="${esc(m.owner || '')}" placeholder="Who">
-      <input type="date" class="du" data-mvk="due" value="${esc(m.due || '')}"><button class="xs" data-mvdel="${m.id}">&times;</button></div>`).join('');
+      <input type="text" data-mvk="text" value="${esc(m.text)}" placeholder="What we'll do"><button class="xs" data-mvdel="${m.id}" title="Remove">&times;</button></div>`).join('') || '<p class="empty">No moves yet.</p>';
 }
 function gpPlan(){ const mk = gMonth(), all = { ...(RAW.store.gamePlan || {}) };
-  all[mk] = all[mk] ? JSON.parse(JSON.stringify(all[mk])) : { focus: '', moves: GP_DEFAULT.map(m => ({ ...m, id: uid6(), due: '', done: false })) }; return { all, p: all[mk] }; }
+  all[mk] = all[mk] ? JSON.parse(JSON.stringify(all[mk])) : { focus: '', moves: GP_DEFAULT.map(m => ({ ...m, id: uid6(), done: false })) }; return { all, p: all[mk] }; }
+function gpAddMove(){ const i = $('gpNew'), v = i.value.trim(); if (!v) return i.focus(); const { all, p } = gpPlan(); p.moves.push({ id: uid6(), text: v, done: false }); gpSave(all); i.value = ''; renderGamePlan(); i.focus(); }
+document.addEventListener('keydown', e => { if (e.target.id === 'gpNew' && e.key === 'Enter') { e.preventDefault(); gpAddMove(); } });
 let gpT = null; const gpSave = all => { RAW.store.gamePlan = all; clearTimeout(gpT); gpT = setTimeout(() => saveStore('gamePlan', all), 600); };
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'gpFocus') { const { all, p } = gpPlan(); p.focus = t.value; gpSave(all); }
   const row = t.closest && t.closest('[data-mv]');
   if (row && t.dataset.mvk && t.type !== 'checkbox') { const { all, p } = gpPlan(), m = p.moves.find(x => x.id === row.dataset.mv); if (m) { m[t.dataset.mvk] = t.value; gpSave(all); } }
-  if (t.dataset && t.dataset.goal) { const mk = gMonth(), G = { ...((RAW.goals || {})[mk] || {}) }; G[t.dataset.goal] = Number(t.value) || 0;
-    RAW.goals[mk] = G; clearTimeout(window.__gt); window.__gt = setTimeout(async () => { try { await post('/api/goals', { month: mk, goals: G }); renderGoals(); } catch (err) { toast(err.message); } }, 700); }
 });
 document.addEventListener('change', e => {
   const t = e.target, row = t.closest && t.closest('[data-mv]');
   if (row && t.dataset.mvk === 'done') { const { all, p } = gpPlan(), m = p.moves.find(x => x.id === row.dataset.mv); if (m) { m.done = t.checked; row.classList.toggle('done', t.checked); gpSave(all); } }
 });
 document.addEventListener('click', e => {
-  if (e.target.id === 'gpAdd') { const { all, p } = gpPlan(); p.moves.push({ id: uid6(), text: '', owner: '', due: '', done: false }); gpSave(all); renderGamePlan(); const ins = $('gpMoves').querySelectorAll('[data-mvk=text]'); ins[ins.length - 1].focus(); return; }
+  if (e.target.id === 'gpAdd') return gpAddMove();
+  if (e.target.id === 'goalTargets') return openGoals();
   const d = e.target.closest('[data-mvdel]'); if (d) { const { all, p } = gpPlan(); p.moves = p.moves.filter(x => x.id !== d.dataset.mvdel); gpSave(all); renderGamePlan(); }
 });
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
