@@ -90,7 +90,7 @@
     var g = GRADE[c.grade];
     var photos = (c.photos || []).length ? c.photos : [];
     var msg = 'Hi Billy, can I get a video tour of the ' + c.title + '? (A quick video or a live FaceTime works.)';
-    var details = '<p>Delivery Pricing<br>&bull; Delivery within 40 miles of Pacific, MO: $' + fee + '<br>Further out? <a href="/contact">Contact Billy</a> for a quote.</p>'
+    var details = '<p>Delivery Pricing<br>&bull; Delivery within 50 miles of Pacific, MO: $' + fee + '<br>Further out? <a href="/contact">Contact Billy</a> for a quote.</p>'
       + '<p>Delivery pricing may increase for recliners, sleepers, or specialty deliveries.</p>'
       + (c.details.length ? '<p>' + c.details.map(esc).join('<br>') + '</p>' : '')
       + (g ? '<p>Condition: Grade ' + c.grade + ' &ndash; ' + g[0] + '</p>' : '');
