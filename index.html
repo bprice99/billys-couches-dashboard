@@ -100,7 +100,8 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .ohcal .ev.past{background:#2b1d16}.ohcal .sh{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
 @media(max-width:640px){.ohcal .d{min-height:54px;padding:3px}.ohcal .sh{display:none}}
 .gh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 10px}.gh-t{font-size:24px;font-weight:800;letter-spacing:-.02em}.gh-d{font-size:13px;color:var(--muted);margin-top:2px}
-.txt{padding:5px 12px!important;font-size:13px!important;white-space:nowrap;text-decoration:none;margin:2px 0}
+.txts{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:max-content;margin-left:auto}
+.txt{display:block!important;padding:6px 12px!important;font-size:13px!important;line-height:1.2!important;white-space:nowrap;text-decoration:none;text-align:center;margin:0!important}
 .gday{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:16px}.gday i{display:block;height:100%;background:var(--dark);border-radius:9px}
 .gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}@media(max-width:900px){.gcards{grid-template-columns:1fr 1fr}}@media(max-width:520px){.gcards{grid-template-columns:1fr}}
 .gc{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.gc .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);font-weight:600}
@@ -1116,7 +1117,7 @@ function renderShowings(){
 
   const pc = { Bought: 'g', Canceled: 'x', 'No-show': 'ns', Upcoming: 'u', Showed: '' };
   const sms = (x, body, label) => `<a class="btn sm txt" href="sms:+1${x.phone}?&body=${encodeURIComponent(body)}">${label}</a>`;
-  const txtBtn = x => x.phone ? (x.status === 'Upcoming' ? sms(x, shIntro(x), 'Intro') + ' ' : '') + sms(x, shText(x), x.status === 'Upcoming' ? 'Confirm' : 'Text') : '<span class="empty" style="font-size:12px">No #</span>';
+  const txtBtn = x => x.phone ? '<div class="txts">' + (x.status === 'Upcoming' ? sms(x, shIntro(x), 'Intro') : '') + sms(x, shText(x), x.status === 'Upcoming' ? 'Confirm' : 'Text') + '</div>' : '<span class="empty" style="font-size:12px">No #</span>';
   const rows = list.slice().sort((a, b2) => b2.at - a.at);
   $('shTbl').innerHTML = `<tr><th>Date</th><th>Time</th><th>Customer</th><th>Result</th><th></th></tr>` +
     (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span>${x.reason ? ` <span style="font-size:12.5px;color:var(--muted)">${esc(x.reason)}</span>` : ''}</td><td class="n">${txtBtn(x)}</td></tr>`).join('')
