@@ -18,7 +18,7 @@
     const text = x => [x.retail > x.price ? `$${Math.round(x.price).toLocaleString()} (retail $${Math.round(x.retail).toLocaleString()})` : `$${Math.round(x.price).toLocaleString()}`,
       '', ...(x.details || []).map(t => '- ' + t), G[x.grade] ? '- Condition: ' + G[x.grade] : '', (x.imperfections || []).length ? '- Flaws: ' + x.imperfections.join('; ') : '- No flaws to note',
       x.dimensions ? '- Size: ' + x.dimensions : '', '', 'Inspected and cleaned. Come sit on it at our Pacific showroom (126 E Orleans St) - by appointment, open daily.',
-      `Delivery within 40 miles of St. Louis: $${fee}. Pickup available.`, 'Card, Klarna (pay in 4), Venmo, Zelle or cash.', '', 'Text Billy: (314) 899-7503', 'More couches: billyscouches.com/currentinventory']
+      `Delivery within 50 miles of St. Louis: $${fee}. Pickup available.`, 'Card, Klarna (pay in 4), Venmo, Zelle or cash.', '', 'Text Billy: (314) 899-7503', 'More couches: billyscouches.com/currentinventory']
       .filter((t, i, a) => t !== '' || (a[i - 1] !== '' && i)).join('\n');
     const kits = [];
     for (const x of list) {
