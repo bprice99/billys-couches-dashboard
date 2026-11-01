@@ -1054,13 +1054,13 @@ function renderSales(){
 // ---------- showings ----------
 const CANCEL_REASONS = ['Bought elsewhere', 'Couch sold', 'Schedule', 'Changed mind', 'No reason given'];
 function shText(x){
-  const first = (x.name.split(/\s+/)[0] || '').replace(/^—$/, ''), hi = 'Hi' + (first ? ' ' + first.charAt(0).toUpperCase() + first.slice(1) : '') + ", it's Billy's Couches! ";
-  const today = day0(new Date()), dd = dayDiff(today, x.date), when = dd === 0 ? 'today' : dd === 1 ? 'tomorrow' : x.at.toLocaleDateString('en-US', { weekday: 'long' });
-  const time = x.at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  if (x.status === 'Upcoming') return hi + `Confirming your showing ${when} at ${time} at 126 E Orleans St, Pacific. Reply YES to keep your spot.`;
-  if (x.status === 'Canceled' || x.status === 'No-show') return hi + 'Sorry we missed you. Want to grab a new time to see the couch? Today or tomorrow work?';
-  if (x.status === 'Bought') return hi + 'Thanks again for your purchase! Let us know if you need anything.';
-  return hi + 'Thanks for coming by! Any questions on the couch you looked at? Happy to hold it for you.';
+  const first = (x.name.split(/\s+/)[0] || '').replace(/^—$/, ''), hi = 'Hi' + (first ? ' ' + first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : '') + '! ';
+  const dd = dayDiff(day0(new Date()), x.date), when = dd === 0 ? 'today' : dd === 1 ? 'tomorrow' : x.at.toLocaleDateString('en-US', { weekday: 'long' });
+  const h = x.at.getHours(), m = x.at.getMinutes(), time = (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm');
+  if (x.status === 'Upcoming') return hi + `I wanted to touch base and confirm your showing ${when} at ${time}?`;
+  if (x.status === 'Canceled' || x.status === 'No-show') return hi + 'Sorry we missed you, are you still wanting to come take a look? I have some time today or tomorrow if that works!';
+  if (x.status === 'Bought') return hi + 'Just wanted to check in and make sure you\'re loving the couch!';
+  return hi + 'Thanks for coming by! Did you have any questions on the couch you looked at?';
 }
 function cancelReason(t){
   const m = t.match(/\(\s*cancel\w*\s*[-–—:]\s*([^)]*)\)/i), r = m ? m[1].trim() : '';
