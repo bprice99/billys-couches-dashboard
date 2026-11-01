@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Security · Billy's HQ</title><link rel="icon" type="image/png" href="/favicon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f2ed;color:#1f1a17;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:28px 16px 60px}a{color:#b0524c}
+h1{font-size:26px;margin:6px 0 18px}.card{background:#fff;border:1px solid #ebe3d9;border-radius:16px;padding:20px;margin-bottom:16px}
+h2{font-size:17px;margin:0 0 6px}p{margin:0 0 12px;color:#5b4e45;font-size:14.5px;line-height:1.5}
+.btn{display:inline-block;border:1px solid #e3dbd1;background:#fff;border-radius:10px;padding:10px 16px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#1f1a17}
+.btn.p{background:#b0524c;border-color:#b0524c;color:#fff}.pill{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px}
+.on{background:#e3f2e8;color:#2e7d4f}.off{background:#f8e3e1;color:#9b3d37}
+input{padding:11px 13px;border:1px solid #d9d0c5;border-radius:10px;font-size:18px;width:150px;letter-spacing:.2em;text-align:center}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f1ebe4;font-size:14px}.row:first-child{border-top:0}.row .g{flex:1;min-width:0}.row small{display:block;color:#8a7d73;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#qr img,#qr svg{width:190px;height:190px}.key{font-family:ui-monospace,Menlo,monospace;background:#f6f2ed;padding:8px 10px;border-radius:8px;font-size:13px;word-break:break-all}
+.msg{font-size:14px;font-weight:600;margin-top:10px}.msg.bad{color:#b0524c}.msg.good{color:#2e7d4f}
+</style></head><body><div class="wrap">
+<a href="/">&larr; Back to HQ</a><h1>Security</h1>
+<div class="card"><h2>Two-step login <span id="tfState" class="pill"></span></h2>
+<p>With this on, logging in needs your password <b>and</b> a 6-digit code from an authenticator app on your phone (Google Authenticator, Authy, or the iPhone Passwords app). A stolen password alone won't get anyone in.</p>
+<div id="tfBody"></div></div>
+<div class="card"><h2>Logged-in devices</h2><p>Every device stays logged in for 30 days. If you lost a phone or shared a computer, log the others out.</p>
+<div id="sess"></div><button class="btn" id="outOthers" style="margin-top:10px">Log out all other devices</button><div class="msg" id="sMsg"></div></div>
+<div class="card"><h2>Also do this</h2><p>Use a long password you don't use anywhere else (16+ characters). Change it in Railway &rarr; your HQ service &rarr; Variables &rarr; <b>APP_PASSWORD</b>. Turn on two-step login for Railway and Upstash too, since they hold your data.</p></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const post = async (u, b) => { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) }); const j = await r.json(); if (!r.ok || !j.ok) throw new Error(j.error || 'Failed'); return j; };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dev = ua => /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : /Windows/.test(ua) ? 'Windows computer' : /Mac OS/.test(ua) ? 'Mac' : 'Device';
+const br = ua => /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : '';
+async function load(){
+  const j = await fetch('/api/security').then(r => r.json());
+  $('tfState').className = 'pill ' + (j.twofa ? 'on' : 'off'); $('tfState').textContent = j.twofa ? 'ON' : 'OFF';
+  $('tfBody').innerHTML = j.twofa
+    ? `<p>To turn it off, enter a current code from your app.</p><input id="offCode" inputmode="numeric" maxlength="6" placeholder="123456"> <button class="btn" id="tfOff">Turn off</button><div class="msg" id="tfMsg"></div>`
+    : `<button class="btn p" id="tfStart">Set up two-step login</button><div id="tfSetup"></div><div class="msg" id="tfMsg"></div>`;
+  $('sess').innerHTML = j.sessions.map(s => `<div class="row"><div class="g"><b>${dev(s.ua)}${br(s.ua) ? ' · ' + br(s.ua) : ''}</b>${s.current ? ' <span class="pill on">This device</span>' : ''}<small>Logged in ${new Date(s.created).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · ${esc(s.ip || '')}</small></div></div>`).join('') || '<p>No sessions.</p>';
+}
+document.addEventListener('click', async e => {
+  const t = e.target;
+  try {
+    if (t.id === 'tfStart') { const j = await post('/api/security/2fa/start'); const qr = qrcode(0, 'M'); qr.addData(j.uri); qr.make();
+      $('tfSetup').innerHTML = `<p style="margin-top:14px"><b>1.</b> Open your authenticator app, tap <b>+</b>, and scan this:</p><div id="qr">${qr.createSvgTag({ cellSize: 5, margin: 2 })}</div>
+        <p style="margin-top:8px">Can't scan? Enter this key instead:</p><div class="key">${j.secret}</div>
+        <p style="margin-top:14px"><b>2.</b> Type the 6-digit code it shows:</p><input id="tfCode" inputmode="numeric" maxlength="6" placeholder="123456"> <button class="btn p" id="tfConfirm">Turn on</button>`; t.remove(); }
+    if (t.id === 'tfConfirm') { await post('/api/security/2fa/confirm', { code: $('tfCode').value }); await load(); $('tfMsg').className = 'msg good'; $('tfMsg').textContent = "Two-step login is on. You'll enter a code next time you log in on a new device."; }
+    if (t.id === 'tfOff') { if (!confirm('Turn off two-step login?')) return; await post('/api/security/2fa/off', { code: $('offCode').value }); await load(); }
+    if (t.id === 'outOthers') { if (!confirm('Log out every other device?')) return; await post('/api/security/logout-others'); await load(); $('sMsg').className = 'msg good'; $('sMsg').textContent = 'Done. Only this device is still logged in.'; }
+  } catch (err) { const m = $('tfMsg') && (t.id || '').startsWith('tf') ? $('tfMsg') : $('sMsg'); m.className = 'msg bad'; m.textContent = err.message; }
+});
+load();
+</script></body></html>
