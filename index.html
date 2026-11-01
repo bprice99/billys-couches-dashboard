@@ -24,6 +24,9 @@ a{color:inherit}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:10px;font-size:14px;color:#d8cabd;text-decoration:none;cursor:pointer}
 .nav:hover{background:rgba(255,255,255,.06)}
 .nav.on{background:var(--red);color:#fff;font-weight:700}
+table.ppl th{white-space:nowrap}table.ppl td{padding:3px 4px}table.ppl input{width:92px;padding:6px 7px;border:1px solid transparent;border-radius:7px;background:transparent;font:inherit;font-size:13px;text-align:right}
+table.ppl input:hover{border-color:#e3dbd1}table.ppl input:focus{border-color:var(--red);background:#fff;outline:0}table.ppl td.in input{color:#2e7d4f}table.ppl td.out input{color:#9b3d37}
+table.ppl tr.tot td{font-weight:800;border-top:2px solid var(--line);padding:8px 11px}table.ppl tr.avg td{color:var(--muted);padding:6px 11px}table.ppl td.n{padding:6px 11px}table.ppl tr.fut td:first-child{color:#bbb}
 .card.dream{display:grid;grid-template-columns:170px 1fr;gap:0;padding:0;overflow:hidden;margin-bottom:16px;background:#1d1714;color:#f3ece6;border:0}
 .dream .dimg{background:#2b231f center/cover no-repeat;min-height:86px;height:100%;align-self:stretch;display:flex;align-items:center;justify-content:center;color:#a8998d;font-size:13px;cursor:pointer}
 .dream .dbody{padding:10px 18px;display:grid;grid-template-columns:1fr auto;column-gap:16px;align-items:center}.dream .dbody>.bar,.dream .dbody>.nums{grid-column:1/-1}.dream .eye{display:none}
@@ -229,6 +232,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <div class="navh">Money</div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
     <a class="nav" data-tab="cash">Daily Cash</a>
+    <a class="nav" data-tab="ppl">Personal P&amp;L</a>
     <a class="nav" data-tab="goals">Goals</a>
     <a class="nav" data-tab="payroll">Payroll</a>
     <div class="navh">Inventory</div>
@@ -417,6 +421,15 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     </section>
 
     <!-- CASH POSITION -->
+    <section id="tab-ppl" hidden>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><button class="btn" data-pply="-1">&larr;</button><b id="pplYear" style="font-size:15px;min-width:50px;text-align:center"></b><button class="btn" data-pply="1">&rarr;</button><small style="color:var(--muted);margin-left:6px">Type in any cell. Saves automatically.</small></div>
+      <div class="kpis" id="pplKpis"></div>
+      <div class="card"><h2>Month by month</h2><div style="overflow-x:auto"><table id="pplTbl" class="ppl"></table></div></div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="card"><h2>Net profit by month</h2><div class="chartwrap" style="height:240px"><canvas id="pplNet"></canvas></div></div>
+        <div class="card"><h2>Spending by month</h2><div class="chartwrap" style="height:240px"><canvas id="pplSpend"></canvas></div></div>
+      </div>
+    </section>
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
     <section id="tab-thanks" hidden><div id="tyBody"></div></section>
@@ -1617,7 +1630,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards', drops: 'Drops' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards', drops: 'Drops' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1627,11 +1640,68 @@ function syncRangeBar(){
   $('rFrom').value = ymd(R.from); $('rTo').value = ymd(R.to > addDays(day0(new Date()), 60) ? day0(new Date()) : R.to);
   $('prev').disabled = $('next').disabled = R.kind === 'all';
 }
+// ---------- Personal P&L (monthly personal income vs. spending, saved under store key 'ppl') ----------
+const PPL_IN = [['couches', "Billy's Couches"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
+const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['otherOut', 'Other']];
+let PPLY = new Date().getFullYear(), pplT = null;
+const pplData = () => (RAW.store.ppl && typeof RAW.store.ppl === 'object' ? RAW.store.ppl : {});
+const pplRow = (d, k) => { const r = d[k] || {}, n = x => Number(r[x]) || 0;
+  const inc = PPL_IN.reduce((a, [c]) => a + n(c), 0), out = PPL_OUT.reduce((a, [c]) => a + n(c), 0);
+  return { r, inc, out, net: inc - out, has: Object.values(r).some(v => v !== '' && v != null) }; };
+function renderPpl(){
+  const d = pplData(), months = Array.from({ length: 12 }, (_, i) => PPLY + '-' + String(i + 1).padStart(2, '0'));
+  const nowK = new Date().toLocaleDateString('en-CA').slice(0, 7);
+  $('pplYear').textContent = PPLY;
+  const cell = (k, c, cls) => `<td class="${cls}"><input inputmode="decimal" data-ppl="${k}|${c}" value="${d[k] && d[k][c] != null && d[k][c] !== '' ? esc(String(d[k][c])) : ''}" placeholder="–"></td>`;
+  $('pplTbl').innerHTML = `<thead><tr><th>Month</th>${PPL_IN.map(([, l]) => `<th class="n">${l}</th>`).join('')}<th class="n">Total income</th>${PPL_OUT.map(([, l]) => `<th class="n">${l}</th>`).join('')}<th class="n">Total spending</th><th class="n">Net profit</th></tr></thead><tbody>` +
+    months.map(k => `<tr data-pplrow="${k}" class="${k > nowK ? 'fut' : ''}"><td style="white-space:nowrap">${new Date(k + '-15').toLocaleDateString('en-US', { month: 'short' })} ${PPLY}</td>${PPL_IN.map(([c]) => cell(k, c, 'in')).join('')}<td class="n"><b data-pplc="inc"></b></td>${PPL_OUT.map(([c]) => cell(k, c, 'out')).join('')}<td class="n"><b data-pplc="out"></b></td><td class="n"><b data-pplc="net"></b></td></tr>`).join('') +
+    `</tbody><tfoot id="pplFoot"></tfoot>`;
+  pplRefresh();
+}
+// Recompute totals, KPIs and charts without rebuilding the inputs (so typing and Tab keep working).
+function pplRefresh(){
+  const d = pplData(), months = Array.from({ length: 12 }, (_, i) => PPLY + '-' + String(i + 1).padStart(2, '0'));
+  const rows = months.map(k => ({ k, ...pplRow(d, k) })), filled = rows.filter(r => r.has);
+  rows.forEach(r => { const tr = document.querySelector(`[data-pplrow="${r.k}"]`); if (!tr) return;
+    tr.querySelector('[data-pplc="inc"]').textContent = r.has ? money(r.inc) : '';
+    tr.querySelector('[data-pplc="out"]').textContent = r.has ? money(r.out) : '';
+    const n = tr.querySelector('[data-pplc="net"]'); n.textContent = r.has ? money(r.net) : ''; n.style.color = r.net < 0 ? 'var(--bad)' : ''; });
+  const cur = filled[filled.length - 1];
+  const prevK = cur ? (() => { const [y, m] = cur.k.split('-').map(Number); const t = new Date(y, m - 2, 1); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'); })() : null;
+  const prev = prevK ? pplRow(d, prevK) : null;
+  const mName = k => new Date(k + '-15').toLocaleDateString('en-US', { month: 'long' });
+  const chgP = (a, b, goodUp) => !b ? '' : (() => { const p = Math.round((a - b) / Math.abs(b) * 100), good = goodUp ? p >= 0 : p <= 0; return `<div class="c ${good ? 'up' : 'dn'}">${p >= 0 ? '&uarr;' : '&darr;'} ${Math.abs(p)}% vs last month</div>`; })();
+  const yInc = filled.reduce((a, r) => a + r.inc, 0), yOut = filled.reduce((a, r) => a + r.out, 0), yNet = yInc - yOut;
+  $('pplKpis').innerHTML = kpiHtml(cur ? [
+    ['Net profit, ' + mName(cur.k), money(cur.net), chgP(cur.net, prev && prev.has ? prev.net : 0, true)],
+    ['Income, ' + mName(cur.k), money(cur.inc), chgP(cur.inc, prev && prev.has ? prev.inc : 0, true)],
+    ['Spending, ' + mName(cur.k), money(cur.out), chgP(cur.out, prev && prev.has ? prev.out : 0, false)],
+    ['Net profit, ' + PPLY + ' so far', money(yNet), `<div class="c flat">avg ${money(yNet / filled.length)} / month</div>`],
+    ['Savings rate, ' + PPLY, yInc ? Math.round(yNet / yInc * 100) + '%' : '-', '<div class="c flat">of income kept</div>']]
+    : [['Net profit', '-', '<div class="c flat">Type your first month below</div>']]);
+  const sum = c => filled.reduce((a, r) => a + (Number(r.r[c]) || 0), 0), n = filled.length;
+  $('pplFoot').innerHTML = n ? `<tr class="tot"><td>Total</td>${PPL_IN.map(([c]) => `<td class="n">${money(sum(c))}</td>`).join('')}<td class="n">${money(yInc)}</td>${PPL_OUT.map(([c]) => `<td class="n">${money(sum(c))}</td>`).join('')}<td class="n">${money(yOut)}</td><td class="n">${money(yNet)}</td></tr>
+      <tr class="avg"><td>Average</td>${PPL_IN.map(([c]) => `<td class="n">${money(sum(c) / n)}</td>`).join('')}<td class="n">${money(yInc / n)}</td>${PPL_OUT.map(([c]) => `<td class="n">${money(sum(c) / n)}</td>`).join('')}<td class="n">${money(yOut / n)}</td><td class="n">${money(yNet / n)}</td></tr>` : '';
+  const labels = rows.map(r => new Date(r.k + '-15').toLocaleDateString('en-US', { month: 'short' }));
+  chartIn('pplNet', { type: 'line', data: { labels, datasets: [{ label: 'Net profit', data: rows.map(r => r.has ? r.net : null), borderColor: '#2e7d4f', backgroundColor: 'rgba(46,125,79,.12)', fill: true, tension: .3, pointRadius: 3, spanGaps: true }] },
+    options: { animation: false, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v / 100) / 10 + 'k' } } } } });
+  const cols = { rent: '#2b1d16', groceries: '#b0524c', otherOut: '#d9a79f' };
+  chartIn('pplSpend', { type: 'bar', data: { labels, datasets: PPL_OUT.map(([c, l]) => ({ label: l, data: rows.map(r => r.has ? Number(r.r[c]) || 0 : null), backgroundColor: cols[c], borderRadius: 3 })) },
+    options: { animation: false, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => '$' + v.toLocaleString() } } } } });
+}
+document.addEventListener('input', e => {
+  const k = e.target.dataset && e.target.dataset.ppl; if (!k) return;
+  const [m, c] = k.split('|'), d = { ...pplData() }; d[m] = { ...(d[m] || {}) };
+  const v = e.target.value.replace(/[^\d.\-]/g, ''); if (v === '') delete d[m][c]; else d[m][c] = Number(v);
+  RAW.store.ppl = d; clearTimeout(pplT); pplT = setTimeout(() => { saveStore('ppl', RAW.store.ppl); pplRefresh(); }, 600);
+});
+document.addEventListener('click', e => { const b = e.target.closest('[data-pply]'); if (!b) return; PPLY += Number(b.dataset.pply); renderPpl(); });
+
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'ppl';
+  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops })[tab]();
 }
 function setTab(t){
   tab = t;
