@@ -24,7 +24,7 @@ a{color:inherit}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:10px;font-size:14px;color:#d8cabd;text-decoration:none;cursor:pointer}
 .nav:hover{background:rgba(255,255,255,.06)}
 .nav.on{background:var(--red);color:#fff;font-weight:700}
-table.ppl th{white-space:nowrap}table.ppl td{padding:3px 4px}table.ppl input{width:92px;padding:6px 7px;border:1px solid transparent;border-radius:7px;background:transparent;font:inherit;font-size:13px;text-align:right}
+table.ppl th{white-space:nowrap;text-align:right}table.ppl th:first-child{text-align:left}table.ppl td{padding:3px 4px;text-align:right}table.ppl td:first-child{text-align:left}table.ppl input{width:100%;min-width:84px;box-sizing:border-box;padding:6px 7px;border:1px solid transparent;border-radius:7px;background:transparent;font:inherit;font-size:13px;text-align:right}
 table.ppl input:hover{border-color:#e3dbd1}table.ppl input:focus{border-color:var(--red);background:#fff;outline:0}table.ppl td.in input{color:#2e7d4f}table.ppl td.out input{color:#9b3d37}
 table.ppl tr.tot td{font-weight:800;border-top:2px solid var(--line);padding:8px 11px}table.ppl tr.avg td{color:var(--muted);padding:6px 11px}table.ppl td.n{padding:6px 11px}table.ppl tr.fut td:first-child{color:#bbb}
 .card.dream{display:grid;grid-template-columns:170px 1fr;gap:0;padding:0;overflow:hidden;margin-bottom:16px;background:#1d1714;color:#f3ece6;border:0}
@@ -1641,18 +1641,22 @@ function syncRangeBar(){
   $('prev').disabled = $('next').disabled = R.kind === 'all';
 }
 // ---------- Personal P&L (monthly personal income vs. spending, saved under store key 'ppl') ----------
-const PPL_IN = [['couches', "Billy's Couches"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
+const PPL_IN = [['couches', "Billy's Couches net profit"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
 const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['otherOut', 'Other']];
 let PPLY = new Date().getFullYear(), pplT = null;
 const pplData = () => (RAW.store.ppl && typeof RAW.store.ppl === 'object' ? RAW.store.ppl : {});
 const pplRow = (d, k) => { const r = d[k] || {}, n = x => Number(r[x]) || 0;
   const inc = PPL_IN.reduce((a, [c]) => a + n(c), 0), out = PPL_OUT.reduce((a, [c]) => a + n(c), 0);
   return { r, inc, out, net: inc - out, has: Object.values(r).some(v => v !== '' && v != null) }; };
+const pplFmt = v => (v == null || v === '' || !Number(v)) ? '' : '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+// Show $1,234 when not editing; plain number while typing.
+document.addEventListener('focusin', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'), v = (pplData()[m] || {})[c]; e.target.value = v ? String(v) : ''; e.target.select(); });
+document.addEventListener('focusout', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'); e.target.value = pplFmt((pplData()[m] || {})[c]); });
 function renderPpl(){
   const d = pplData(), months = Array.from({ length: 12 }, (_, i) => PPLY + '-' + String(i + 1).padStart(2, '0'));
   const nowK = new Date().toLocaleDateString('en-CA').slice(0, 7);
   $('pplYear').textContent = PPLY;
-  const cell = (k, c, cls) => `<td class="${cls}"><input inputmode="decimal" data-ppl="${k}|${c}" value="${d[k] && d[k][c] != null && d[k][c] !== '' ? esc(String(d[k][c])) : ''}" placeholder="–"></td>`;
+  const cell = (k, c, cls) => `<td class="${cls}"><input inputmode="decimal" data-ppl="${k}|${c}" value="${pplFmt(d[k] && d[k][c])}" placeholder="–"></td>`;
   $('pplTbl').innerHTML = `<thead><tr><th>Month</th>${PPL_IN.map(([, l]) => `<th class="n">${l}</th>`).join('')}<th class="n">Total income</th>${PPL_OUT.map(([, l]) => `<th class="n">${l}</th>`).join('')}<th class="n">Total spending</th><th class="n">Net profit</th></tr></thead><tbody>` +
     months.map(k => `<tr data-pplrow="${k}" class="${k > nowK ? 'fut' : ''}"><td style="white-space:nowrap">${new Date(k + '-15').toLocaleDateString('en-US', { month: 'short' })} ${PPLY}</td>${PPL_IN.map(([c]) => cell(k, c, 'in')).join('')}<td class="n"><b data-pplc="inc"></b></td>${PPL_OUT.map(([c]) => cell(k, c, 'out')).join('')}<td class="n"><b data-pplc="out"></b></td><td class="n"><b data-pplc="net"></b></td></tr>`).join('') +
     `</tbody><tfoot id="pplFoot"></tfoot>`;
@@ -1692,7 +1696,7 @@ function pplRefresh(){
 document.addEventListener('input', e => {
   const k = e.target.dataset && e.target.dataset.ppl; if (!k) return;
   const [m, c] = k.split('|'), d = { ...pplData() }; d[m] = { ...(d[m] || {}) };
-  const v = e.target.value.replace(/[^\d.\-]/g, ''); if (v === '') delete d[m][c]; else d[m][c] = Number(v);
+  const v = e.target.value.replace(/[^\d.\-]/g, ''); if (v === '' || !Number(v)) delete d[m][c]; else d[m][c] = Number(v);
   RAW.store.ppl = d; clearTimeout(pplT); pplT = setTimeout(() => { saveStore('ppl', RAW.store.ppl); pplRefresh(); }, 600);
 });
 document.addEventListener('click', e => { const b = e.target.closest('[data-pply]'); if (!b) return; PPLY += Number(b.dataset.pply); renderPpl(); });
