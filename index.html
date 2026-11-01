@@ -1928,7 +1928,7 @@ ${(c.imperfections || []).length ? `<p style="margin:0 0 6px 0;font-size:13px;li
 ${soldHtml}
 <tr><td style="padding:4px 24px 24px 24px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:23px;color:${TXT};">
 <p style="margin:0 0 10px 0;">Questions, more photos or a video? Text me: <a href="sms:3148997503" style="color:${RED};">(314) 899-7503</a></p>
-<p style="margin:0 0 10px 0;">Delivery within 40 miles is $${o.fee} flat, or pick up at 126 E Orleans St, Pacific, MO. Card, Klarna, Venmo, Zelle or cash.</p>
+<p style="margin:0 0 10px 0;">Delivery within 50 miles is $${o.fee} flat, or pick up at 126 E Orleans St, Pacific, MO. Card, Klarna, Venmo, Zelle or cash.</p>
 <p style="margin:14px 0 0 0;color:${DARK};">- Billy</p></td></tr>
 <tr><td align="center" style="background-color:${CREAM};padding:18px 24px;color:${TXT};font-size:12px;line-height:18px;font-family:Helvetica,Arial,sans-serif;border-radius:0 0 14px 14px;">
 <p style="margin:0;">You're getting this because you signed up for First Dibs at billyscouches.com.</p>
@@ -1963,7 +1963,7 @@ function kitText(d){
   return [d.retail > d.price ? `$${Math.round(d.price).toLocaleString()} (retail $${Math.round(d.retail).toLocaleString()})` : `$${Math.round(d.price).toLocaleString()}`,
     '', ...(d.details || []).map(x => '- ' + x), g ? '- Condition: ' + g : '', (d.imperfections || []).length ? '- Flaws: ' + d.imperfections.join('; ') : '- No flaws to note',
     d.dimensions ? '- Size: ' + d.dimensions : '', '', 'Inspected and cleaned. Come sit on it at our Pacific showroom (126 E Orleans St) - by appointment, open daily.',
-    `Delivery within 40 miles of St. Louis: $${fee}. Pickup available.`, 'Card, Klarna (pay in 4), Venmo, Zelle or cash.', '', 'Text Billy: (314) 899-7503', 'More couches: billyscouches.com/currentinventory']
+    `Delivery within 50 miles of St. Louis: $${fee}. Pickup available.`, 'Card, Klarna (pay in 4), Venmo, Zelle or cash.', '', 'Text Billy: (314) 899-7503', 'More couches: billyscouches.com/currentinventory']
     .filter((x, i, a) => x !== '' || (a[i - 1] !== '' && i)).join('\n');
 }
 function openKit(id){
