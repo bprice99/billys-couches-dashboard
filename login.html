@@ -21,8 +21,16 @@
   <p>Dashboard</p>
   <input type="hidden" name="next" id="next">
   <input type="password" name="password" placeholder="Password" autofocus required>
+  <input type="text" name="code" id="code" placeholder="6-digit code from your app" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="display:none">
   <div class="bad" id="bad">Wrong password. Try again.</div>
   <button type="submit">Log in</button>
 </form>
-<script>document.getElementById('next').value=location.pathname+location.search;if(location.search.indexOf('bad=1')>-1)document.getElementById('bad').style.display='block';</script>
+<script>
+document.getElementById('next').value=location.pathname+location.search.replace(/[?&]bad=\w+/,'');
+var q=location.search, b=document.getElementById('bad');
+if(/bad=1/.test(q)){b.style.display='block'}
+if(/bad=code/.test(q)){b.textContent='Wrong code. Use the newest code in your app.';b.style.display='block'}
+if(/bad=locked/.test(q)){b.textContent='Too many tries. Wait 15 minutes and try again.';b.style.display='block'}
+fetch('/login-info').then(function(r){return r.json()}).then(function(j){if(j.twofa){var c=document.getElementById('code');c.style.display='block';c.required=true}}).catch(function(){});
+</script>
 </body></html>
