@@ -46,21 +46,63 @@ const CFG = {
   STRIPE_KEY: (process.env.STRIPE_SECRET_KEY || '').trim(),
 };
 
-// ---------- password ----------
-const SECRET = crypto.createHash('sha256').update('bcd:' + CFG.PASSWORD).digest('hex');
-function authed(req) {
-  const c = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('bcd='));
-  return !!CFG.PASSWORD && !!c && c.slice(4) === SECRET;
-}
-const safeNext = n => /^\/[\w\/?=&-]*$/.test(n || '') && !String(n).startsWith('//') ? String(n).replace(/[?&]bad=1/, '') : '/';
-app.post('/login', (req, res) => {
-  if (CFG.PASSWORD && req.body.password === CFG.PASSWORD) {
-    res.setHeader('Set-Cookie', `bcd=${SECRET}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 60}; Secure`);
-    return res.redirect(safeNext(req.body.next));
-  }
-  const n = safeNext(req.body.next); res.redirect(n + (n.includes('?') ? '&' : '?') + 'bad=1');
+// ---------- login security ----------
+// Password (+ optional 6-digit authenticator code) -> a random session token saved in Redis.
+// Sessions last 30 days and can all be revoked from /security. 5 wrong tries locks that device out for 15 minutes.
+const SECRET = crypto.createHash('sha256').update('bcd:' + CFG.PASSWORD).digest('hex');   // still signs client-portal cookies
+const SESS_KEY = 'bcd:sessions', TOTP_KEY = 'bcd:totp', SESS_DAYS = 30;
+let SESS = null, TOTP = null, secLoading = null;
+const loadSec = () => secLoading || (secLoading = (async () => {
+  try { SESS = (await kget(SESS_KEY, {})) || {}; TOTP = await kget(TOTP_KEY, null); } catch (e) { console.log('security load failed', e.message); SESS = SESS || {}; secLoading = null; }
+})());
+app.use(async (req, res, next) => { if (!SESS) await loadSec(); next(); });
+// Basic browser protections on every response.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  if (!req.path.startsWith('/public/')) res.setHeader('X-Frame-Options', 'DENY');
+  next();
 });
-app.get('/logout', (req, res) => { res.setHeader('Set-Cookie', 'bcd=; Path=/; Max-Age=0'); res.redirect('/'); });
+const cookieTok = req => { const c = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('bcd=')); return c ? c.slice(4) : ''; };
+function authed(req) {
+  const t = cookieTok(req), s = t && SESS && SESS[t];
+  return !!CFG.PASSWORD && !!s && s.exp > Date.now();
+}
+const saveSess = () => { const now = Date.now(); Object.keys(SESS).forEach(k => { if (!(SESS[k].exp > now)) delete SESS[k]; }); return kset(SESS_KEY, SESS); };
+const clientIp = req => String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+const sameStr = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+// TOTP (Google Authenticator / Authy style), RFC 6238 with 30-second steps.
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+const b32dec = str => { let bits = '', out = []; for (const ch of String(str).replace(/=+$/, '').toUpperCase()) { const v = B32.indexOf(ch); if (v < 0) continue; bits += v.toString(2).padStart(5, '0'); } for (let i = 0; i + 8 <= bits.length; i += 8) out.push(parseInt(bits.slice(i, i + 8), 2)); return Buffer.from(out); };
+const b32enc = buf => { let bits = ''; for (const b of buf) bits += b.toString(2).padStart(8, '0'); let out = ''; for (let i = 0; i < bits.length; i += 5) out += B32[parseInt(bits.slice(i, i + 5).padEnd(5, '0'), 2)]; return out; };
+function totpAt(secret, step) {
+  const msg = Buffer.alloc(8); msg.writeUInt32BE(Math.floor(step / 0x100000000), 0); msg.writeUInt32BE(step >>> 0, 4);
+  const h = crypto.createHmac('sha1', b32dec(secret)).update(msg).digest(), o = h[h.length - 1] & 15;
+  return String(((h.readUInt32BE(o) & 0x7fffffff) % 1000000)).padStart(6, '0');
+}
+const totpOk = (secret, code) => { code = String(code || '').replace(/\D/g, ''); if (code.length !== 6) return false; const st = Math.floor(Date.now() / 30000); return [-1, 0, 1].some(d => sameStr(totpAt(secret, st + d), code)); };
+const safeNext = n => /^\/[\w\/?=&-]*$/.test(n || '') && !String(n).startsWith('//') ? String(n).replace(/[?&]bad=\w+/, '') : '/';
+const loginFails = new Map();
+app.get('/login-info', (req, res) => res.json({ twofa: !!(TOTP && TOTP.on) }));
+app.post('/login', async (req, res) => {
+  const ip = clientIp(req), now = Date.now(), n = safeNext(req.body.next), back = why => res.redirect(n + (n.includes('?') ? '&' : '?') + 'bad=' + why);
+  const fails = (loginFails.get(ip) || []).filter(t => now - t < 15 * 60 * 1000);
+  if (fails.length >= 5) return back('locked');
+  const fail = why => { fails.push(now); loginFails.set(ip, fails); if (fails.length === 5) textAlert(`Billy's HQ: 5 wrong login attempts from ${ip}. That device is locked out for 15 min. If this wasn't you, change APP_PASSWORD in Railway.`).catch(() => {}); return back(why); };
+  if (!CFG.PASSWORD || !sameStr(req.body.password || '', CFG.PASSWORD)) return fail('1');
+  if (TOTP && TOTP.on && !totpOk(TOTP.secret, req.body.code)) return fail('code');
+  loginFails.delete(ip);
+  const tok = crypto.randomBytes(32).toString('hex');
+  SESS[tok] = { exp: now + SESS_DAYS * 864e5, created: now, ip, ua: String(req.headers['user-agent'] || '').slice(0, 160) };
+  try { await saveSess(); } catch (e) { console.log('session save failed', e.message); }
+  res.setHeader('Set-Cookie', `bcd=${tok}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESS_DAYS * 86400}; Secure`);
+  res.redirect(n);
+});
+app.get('/logout', async (req, res) => {
+  const t = cookieTok(req); if (t && SESS && SESS[t]) { delete SESS[t]; try { await saveSess(); } catch (e) {} }
+  res.setHeader('Set-Cookie', 'bcd=; Path=/; Max-Age=0'); res.redirect('/');
+});
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
 app.get('/healthz', (req, res) => res.send('ok'));
 const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
@@ -68,6 +110,32 @@ app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modul
 ['favicon.png', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png'), longCache));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
+// ---------- /security page: sessions + two-step login ----------
+app.get('/security', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'security.html' : 'login.html')));
+app.get('/api/security', (req, res) => {
+  const cur = cookieTok(req), now = Date.now();
+  res.json({ ok: true, twofa: !!(TOTP && TOTP.on), sessions: Object.entries(SESS || {}).filter(([, v]) => v.exp > now).map(([k, v]) => ({ id: k.slice(0, 8), current: k === cur, created: v.created, ip: v.ip, ua: v.ua })).sort((a, b) => b.created - a.created) });
+});
+app.post('/api/security/logout-others', async (req, res) => {
+  const cur = cookieTok(req); Object.keys(SESS).forEach(k => { if (k !== cur) delete SESS[k]; });
+  try { await saveSess(); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+let totpPending = null;
+app.post('/api/security/2fa/start', (req, res) => {
+  totpPending = b32enc(crypto.randomBytes(20));
+  res.json({ ok: true, secret: totpPending, uri: `otpauth://totp/Billy's%20HQ:Billy?secret=${totpPending}&issuer=Billy's%20HQ&period=30&digits=6` });
+});
+app.post('/api/security/2fa/confirm', async (req, res) => {
+  if (!totpPending) return res.status(400).json({ error: 'Start setup again' });
+  if (!totpOk(totpPending, req.body.code)) return res.status(400).json({ error: "That code didn't match. Use the newest code in your app." });
+  TOTP = { on: true, secret: totpPending, at: Date.now() }; totpPending = null;
+  try { await kset(TOTP_KEY, TOTP); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/security/2fa/off', async (req, res) => {
+  if (!(TOTP && TOTP.on)) return res.json({ ok: true });
+  if (!totpOk(TOTP.secret, req.body.code)) return res.status(400).json({ error: 'Enter a current code from your app to turn this off' });
+  TOTP = null; try { await kset(TOTP_KEY, null); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 
 // ---------- storage: Upstash Redis, or a local file as fallback ----------
