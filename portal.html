@@ -1,109 +1,491 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="robots" content="noindex"><meta name="theme-color" content="#1f2a33"><link rel="icon" type="image/png" href="/favicon.png">
-<title>My Coaching</title>
+<meta name="theme-color" content="#1f2a33"><link rel="icon" type="image/png" href="/favicon.png">
+<title>Coaching HQ</title>
 <script src="/chart.js"></script>
 <style>
-:root{--red:#b0524c;--red2:#963f3a;--dark:#1f2a33;--bg:#f6f4f1;--line:#e6e0d8;--muted:#776d65;--text:#222;--green:#2e7d4f}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px}
-.wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
-header{background:var(--dark);color:#fff;padding:22px 0 26px;margin-bottom:-12px}header .wrap{padding-bottom:0;display:flex;align-items:center;gap:12px}
-header h1{margin:0;font-size:22px;flex:1}header small{display:block;opacity:.7;font-size:13px;font-weight:400;margin-top:2px}header a{color:#e8e2dc;font-size:13px}
-.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-top:16px}.card h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px}.card h2 .sp{flex:1}
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;position:relative}
-.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.kpi small{color:var(--muted);font-size:12.5px}.kpi b{display:block;font-size:24px;margin-top:3px}.kpi i{font-style:normal;font-size:12px;color:var(--muted)}
-.bar{height:8px;background:#eee7df;border-radius:99px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--red)}
-.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);text-decoration:none;display:inline-block}.btn.p{background:var(--red);border-color:var(--red);color:#fff}
-.row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.row:first-of-type{border-top:0}
-.chk{width:22px;height:22px;flex:none;accent-color:var(--red);margin-top:1px}.done{text-decoration:line-through;color:var(--muted)}
-.lbl{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 2px;letter-spacing:.04em}
-.f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:10px}.f input,.f textarea{display:block;width:100%;margin-top:4px;padding:11px 12px;border:1px solid #dcd4ca;border-radius:10px;font:inherit;font-size:16px;color:var(--text)}
-.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
-.call{padding:10px 0;border-top:1px solid var(--line)}.call:first-of-type{border-top:0}.call b{display:block}.call small{color:var(--muted)}.call p{margin:6px 0 0;font-size:14px}
+:root{--red:#b0524c;--red2:#963f3a;--dark:#1f2a33;--cream:#efe9e2;--bg:#f6f4f1;--line:#e6e0d8;--muted:#776d65;--text:#222;--green:#2e7d4f;--blue:#2f5d8a;--gold:#b7791f;--bad:#c0392b}
+*{box-sizing:border-box}html,body{margin:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+.app{display:flex;min-height:100vh}
+nav.side{width:220px;flex:none;background:var(--dark);color:#fff;padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand b{display:block;font-size:17px}.brand span{font-size:12px;opacity:.65}.brand{padding:0 10px 18px}
+.nav{display:block;padding:11px 12px;border-radius:10px;color:#e8e2dc;text-decoration:none;cursor:pointer;font-size:14.5px;margin-bottom:2px}.nav:hover{background:rgba(255,255,255,.07)}.nav.on{background:var(--red);color:#fff;font-weight:700}
+.side .foot{margin-top:auto;padding:10px;font-size:13px}.side .foot a{color:#e8e2dc}
+main{flex:1;min-width:0;padding:26px 30px 60px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}.top h1{margin:0;font-size:26px;flex:1}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);text-decoration:none;display:inline-block}
+.btn.p{background:var(--red);border-color:var(--red);color:#fff}.btn.p:hover{background:var(--red2)}.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}.btn.x{color:var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px}.kpi small{color:var(--muted);font-size:12.5px}.kpi b{display:block;font-size:24px;margin-top:4px}.kpi i{font-style:normal;font-size:12px;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:16px}.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}.card h2 .sp{flex:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid2>.card{margin-bottom:0}
 .empty{color:var(--muted);font-size:14px}
-.login{max-width:360px;margin:12vh auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px 24px;text-align:center}
-.login input{width:100%;font-size:28px;letter-spacing:.4em;text-align:center;padding:12px;border:1px solid #dcd4ca;border-radius:12px;margin:14px 0}
-.err{color:#c0392b;font-size:14px;min-height:20px}
-.chartwrap{position:relative;height:230px}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 5px;border-bottom:1px solid var(--line)}th{font-size:12px;color:var(--muted)}td.n,th.n{text-align:right}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}th{font-size:12px;color:var(--muted);font-weight:600}td.n,th.n{text-align:right}
+.ccard{display:flex;gap:14px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;margin-bottom:10px}.ccard:hover{border-color:var(--red)}
+.av{flex:none;width:44px;height:44px;border-radius:50%;background:var(--dark);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.ccard .m{flex:1;min-width:0}.ccard .m b{display:block}.ccard .m small{color:var(--muted)}
+.bar{height:7px;background:#eee7df;border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--red);border-radius:99px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:#eee;color:#555}.pill.g{background:#dff2e5;color:#1f6b3d}.pill.r{background:#fbe4e0;color:var(--red2)}.pill.y{background:#fff3d6;color:#8a5a00}.pill.b{background:#e3ecf6;color:var(--blue)}
+.f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:10px}.f input,.f select,.f textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid #dcd4ca;border-radius:9px;font:inherit;font-size:14.5px;color:var(--text);background:#fff}
+.f textarea{resize:vertical}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
+.row{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}.row input[type=text],.row input[type=date],.row input[type=url],.row input[type=number]{padding:7px 9px;border:1px solid #dcd4ca;border-radius:8px;font:inherit;font-size:14px;min-width:0}
+details.call{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff}details.call[open]{box-shadow:0 4px 14px rgba(0,0,0,.05)}
+details.call summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;font-weight:700}details.call summary::-webkit-details-marker{display:none}
+details.call summary:before{content:"\25B8";color:var(--muted);transition:transform .15s}details.call[open] summary:before{transform:rotate(90deg)}
+details.call .ct{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}details.call .cd{font-size:13px;color:var(--muted);font-weight:600}
+.cs{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--cream);color:var(--muted)}.cs.up{background:#e3ecf5;color:var(--blue)}
+.cbody{padding:0 14px 14px}.cgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:6px}@media(max-width:760px){.cgrid{grid-template-columns:1fr}}
+.cbody textarea{font-weight:400}textarea.plan{font-family:inherit;font-size:14px;line-height:1.55;min-height:300px;background:#fbfaf8}
+.row .grow{flex:1}.chk{width:20px;height:20px;flex:none;accent-color:var(--red)}
+.done{text-decoration:line-through;color:var(--muted)}
+.save{font-size:12.5px;color:var(--muted)}
+.chartwrap{position:relative;height:240px}
+.cols{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:#efebe6;border-radius:14px;padding:10px;min-height:120px}.col h3{font-size:13px;margin:2px 4px 10px;display:flex;justify-content:space-between}
+.vc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-size:14px}.vc small{display:block;color:var(--muted);margin-top:3px;font-size:12px}.vc:hover{border-color:var(--red)}
+.ytwrap{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}.ytwrap .bank{margin:0;min-height:200px}
+.calbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}.calbar h2{margin:0;font-size:18px;flex:1;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.dow{font-size:12px;font-weight:700;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);background:#faf8f5}
+.cal .d{min-height:104px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 7px;font-size:12px;cursor:pointer}.cal .d:nth-child(7n){border-right:0}.cal .d:hover{background:#fcfaf8}
+.cal .d .n{font-weight:700;color:#555;margin-bottom:4px}.cal .d.o .n{color:#c9c2ba}.cal .d.t{background:#fff7f5}.cal .d.t .n{color:var(--red)}
+.ev{border-radius:7px;padding:4px 6px;margin-bottom:4px;font-size:11.5px;line-height:1.25;color:#fff;font-weight:600;cursor:grab}.ev small{display:block;font-weight:400;opacity:.85}
+.ev.sched{background:var(--red)}.ev.posted{background:var(--green)}.ev.late{background:#b7791f}.ev.film{background:#2f3e4e}.ev.film.done{opacity:.55}
+.ftag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:1px 5px;border-radius:5px;margin-right:4px;background:rgba(255,255,255,.25);vertical-align:1px}.vc .ftag{background:#f1e6e3;color:var(--red)}
+.funsel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 8px}.funsel button{border:1.5px solid #dcd4ca;background:#fff;border-radius:10px;padding:9px 6px;font:inherit;font-size:13px;font-weight:700;color:#555;cursor:pointer;line-height:1.2}.funsel button small{display:block;font-weight:500;font-size:11px;color:var(--muted)}.funsel button.on{border-color:var(--red);background:#fff4f2;color:var(--red)}
+.funwhy{font-size:12.5px;line-height:1.45;color:#5b4e45;background:#faf6f1;border-radius:10px;padding:9px 11px;margin:0 0 10px}.fhint{display:block;font-weight:400;font-size:11.5px;color:#9a8f86;margin-top:1px}
+.agenda{display:none}.bank .vc{cursor:grab}
+@media(max-width:900px){.ytwrap{grid-template-columns:1fr}.cal{display:none}.agenda{display:block}}
+.mask{position:fixed;inset:0;background:rgba(15,20,25,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}.mask.on{display:flex}html:has(.mask.on),body:has(.mask.on){overflow:hidden}.modal{overscroll-behavior:contain}
+.modal{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow:auto;position:relative}.modal h3{margin:0 40px 14px 0}
+.xb{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px;cursor:pointer}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.acts .sp{flex:1}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;display:none;z-index:99}
-@media(max-width:640px){.kpis{grid-template-columns:1fr 1fr}.kpis .kpi:last-child{grid-column:1/-1}.three{grid-template-columns:1fr 1fr}}
+.portal{background:#f3efe9;border:1px dashed #d8cfc4;border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.portal .f{margin:0;min-width:120px}
+.ci td{vertical-align:top}.ci small{color:var(--muted)}
+@media(max-width:900px){.app{display:block}nav.side{position:sticky;z-index:10;width:auto;height:auto;flex-direction:row;align-items:center;overflow-x:auto;padding:10px;gap:4px;top:0}
+  .brand{display:none}.nav{white-space:nowrap;margin:0}.side .foot{margin:0 0 0 auto;white-space:nowrap}main{padding:18px 14px 60px}
+  .grid2,.two,.three{grid-template-columns:1fr}.cols{grid-template-columns:repeat(5,82%)}.kpis{grid-template-columns:1fr 1fr}
+  .f input,.f select,.f textarea,.row input{font-size:16px!important}}
 </style></head>
 <body>
-<div id="app"></div>
+<div class="app">
+  <nav class="side">
+    <div class="brand"><b>Billy Price Coaching</b><span>Coaching HQ</span></div>
+    <a class="nav" data-tab="home">Home</a>
+    <a class="nav" data-tab="clients">Clients</a>
+    <a class="nav" data-tab="youtube">YouTube</a>
+    <a class="nav" data-tab="pipeline">Pipeline</a>
+    <div class="foot"><a href="/">&larr; Billy's Couches HQ</a></div>
+  </nav>
+  <main><div id="view"><p class="empty">Loading…</p></div></main>
+</div>
+
+<div class="mask" id="m-item"><div class="modal"><button class="xb" data-close>&times;</button><div id="itemBody"></div></div></div>
 <div class="toast" id="toast"></div>
+
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
 const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
 const fmtD = s => { if (!s) return ''; const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 2600); }
-async function api(url, body){ const r = await fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' }); const j = await r.json().catch(() => ({})); if (r.status === 401 && !body?.pin) { ME = null; showLogin(); throw new Error('login'); } if (!j.ok) throw new Error(j.error || 'Something went wrong'); return j; }
-let ME = null, chart = null;
+async function post(url, body){ const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.status === 401) { location.reload(); return; } const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Failed'); return j; }
 
-function showLogin(){
-  $('app').innerHTML = `<div class="login"><div style="font-size:13px;letter-spacing:.12em;color:var(--red);font-weight:700">BILLY PRICE COACHING</div><h2 style="margin:8px 0 2px">Your coaching page</h2><p class="empty" style="margin:0">Enter the PIN Billy sent you.</p>
-    <form id="lf"><input id="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••" autofocus><div class="err" id="lerr"></div><button class="btn p" style="width:100%;padding:13px">Open my page</button></form></div>`;
-  $('lf').onsubmit = async e => { e.preventDefault(); $('lerr').textContent = '';
-    try { await api('/client/api/login', { pin: $('pin').value }); load(); } catch (err) { $('lerr').textContent = err.message; } };
+let D = null, TAB = 'home', CUR = null, charts = {};
+async function load(){
+  const r = await fetch('/api/coach', { cache: 'no-store' }); if (r.status === 401) return location.reload();
+  D = await r.json(); seedNotion(); render();
 }
-async function load(){ try { const j = await api('/client/api/me'); ME = j.me; render(); } catch (e) { if (e.message !== 'login') showLogin(); } }
-
-function monthTotals(mk){ const t = { flips: 0, revenue: 0, profit: 0 }; ME.checkins.filter(x => x.week.slice(0, 7) === mk).forEach(x => { t.flips += x.flips; t.revenue += x.revenue; t.profit += x.profit; }); return t; }
+// One-time: Ethan's call plans from Notion, merged into his calls on first load.
+const NOTION_ETHAN = "- Call #1 (9/30/26)\n    - [ ]  When you found me on YT what were some of your favorite YT videos?\n    - [ ]  What all did you watch in the Skool? Favorite points / topics?\n    - [ ]  What can I help with bro?\n    \n    TALKING POINTS\n    \n    - Tracking: Sales sources, accurate profits and expenses, and pick up sources, and marketplace clicks (I use Ivy Flip Tracker for $99/month)\n    - If he already is tracking numbers, have him screenshare and do analysis of numbers.\n    - Consider second marketplace profile when main one starts to decrease in clicks (Gfs, parents, siblings)\n    - Increase prices on couches (Couch sits for 7-14 days? Decrease 10-15%.)\n    - Screenshare social media profiles to optimize review.\n    - Increase delivery fee to $99 (People will still pay this)\n    - Use Gemini Prompt  for staging. (I used to be against this but A.I. is getting good)\n    \n     POSSIBLE TASKS\n    \n    - [ ]  Purchase ivy flip\n    - [ ]  Create second marketplace profile (warm up first - dont post on fresh account)\n- Call #2 (10/5/26)\n    \n    QUESTIONS\n    \n    - [ ]  Can Semi truck fit in your warehouse?\n    - [ ]  LLC?\n    \n    General talking points: \n    \n    - Prepare cash for Bstock (This is the next move)\n    \n    Sales:\n    \n    - Open House (Give people a reason to visit)\n    - Bait posts: Get leads in that you can start working with\n    - Double volume of content\n    - Look into a 3rd marketplace account\n    - Post in local FB groups 2x a week\n    - I would like to get sales rolling organically a bit before spending an ads budget but we will be starting your campaign up very soon and that\u2019s going to help bring leads in\n    - Increase visual appeal:\n        - Warehouse (paint wall, lamps, photos on wall, decor)\n        - Text / captions  in content\n    \n    Screen Share: \n    \n    - SCREEN SHARE for content improvements: More videos with couches on floor\n    - SCREEN SHARE: working hook, \u201cI just got the keys\u201d\n    \n    POSSIBLE TASKS\n    \n    - [ ]  Watch and study Bstock module\n    - [ ]  Register LLC, EIN, and Sales Tax Certificate\n    - [ ]  Place first bid on Bstock\n- Call #3 (10/13/26)\n    \n    QUESTIONS\n    \n    - [ ]  What questions do you have regarding the meta ads module? (Screen share my own meta ads manager when needed to show him stuff to get him to better understand it)\n    - [ ]  How did you find the ads module? Helpful?\n    \n    TALKING POINTS\n    \n    - Review of last call and progress made since - review FB posts and content. (SCREENSHARE)\n    - Screenshare and Review 3 creatives + ad copy live on call (You never know what works until you run it)\n    - Screenshare my meta ads dashboard to breakdown any settings or specific creatives\n    - Ethan screenshares his marketplace messages (Optimize lead follow up and messaging)\n    - Review his notes from meta ads module\n    - Pinned posts / photos / profile optimization before ads (SHARESCREEN OF HIS PROFILE)\n    - Screenshare landing page\n    - As you start to get leads, call or text within 30 seconds\n    - Tracking: Sales Log, Ad Spend, Revenue and Gross Profit from Ads\n    \n    POSSIBLE TASKS\n    \n    - [ ]  Build and launch FB ads campaign TODAY\n- Bonus Call (10/14/26)\n    - [ ]  Set up profile visits campaign\n    - [ ]  Screen share his ad data (Check pixel and performance and settings)\n    - [ ]  Let him know about 4 weekly creatives and send them to me before publishing and I\u2019ll look them over.\n    - [ ]  Small profile tweaks and optimizations\n    - [ ]  Landing page review / website tweaks\n- Call #4 (10/21/26)\n    - SCREENSHARE: Website (Tell him what I would change - Compare with my own website and tell him the reasons why)\n        - Play around with the HTMLs. The website can be improved and is sloppy compared to the result you can have of Claude HTMLs.\n        - Showing page optimization (Most important)\n    \n    - Content Review:\n        - I\u2019m a very stale person myself and very non chalant. I can tell were similar in that way Over time I learned to be more animated for ads / content, and that\u2019s what I need you to work on. (More bright, postive)\n        - MINDSET SHIFT: People want to work with people who are doing well. So you want to show that as much as possible even if things are going shit. Always say things are great.\n        - Tap into 3rd perspective: Get someone else to record you.\n        - Walking into your warehouse and other pieces of content - SCREEN SHARE MY VIEWS\n        - Aesthetic matters\n            - Website\n            - Content\n            - Social media profiles\n            - Even your own appearance (That\u2019s why I\u2019ve been wearing jeans a belt and every day for the past year)\n        \n        - SCREENSHARE: Ads Library and show how ads are going to what looks to be the old warehouse page. This may be causing the profile visits campaign to not work. (This may be the most important change we can make right now)\n        \n        - ETHAN SCREEN SHARE ADS\n            - Ensure proper ads are running and others are turned off.\n            - Ads library shows 1 new ad, 2 old ones\n        - I want to increase ad budget from $25/day very soon.\n            - I used to think it was a lot when I first started\n            - In the grand scheme of things it\u2019s small. I am running $195/day right now.\n            - It seems scary but if that $195 brings you in 1 sale a day at $600-1000 gross profit, how many times are you going to want to spend that $195? EVERY DAY.\n        \n        - Some people won\u2019t buy from you the first video: I have people tell me they have been watching my TikTok for months before they purchased.\n- Call #5 (10/28/26) \u2013 Month 1 Review + Month 2 Vision\n    \n    REMINDER: Record on iphone for IG story and seperate IPHONE clips \n    \n    Month 1 Review: \n    \n    Achievements: \n    \n    - LLC Filed\n    - FB ads live\n    - Speaking on camera has improved\n    - Posting content\n    - Warehouse is improving\n    - [ ]  Numbers: sales 10 | revenue $3600 |  ad spend $25/day | cost per lead ___\n    - [ ]  Biggest win? - Starting FB ads and posting content\n    - [ ]  Biggest bottleneck? - Marketplace was failing.\n    \n    **MONTH 2 VISION**\n    \n    - **Goal:   sales 20**  (set it together, write it down)\n    - **Scale ads:** $25/day \u2192 $50/day once tracking shows profit per sale\n    - **Inventory:** First B-Stock bid; prepare cash.\n    - **Content:** 4 creatives/week sent to me first; more animated delivery; get someone else filming\n    - **Sales:** Lead response in under 30 seconds; open house; FB groups 2x/week\n    - **Weekly scorecard:** Send me numbers every Monday\n    \n    **QUESTIONS**\n    \n    - [ ]  Confident in the Month 2 number? What\u2019s in the way?\n    \n    ---\n    \n    Content Improvements: (SCREENSHARE) \n    \n    - Keep eye contact with camera 100% of the video\n    - Re-create open garage video\n    \n    Optimization for Ads (HAVE HIM SCREENSHARE) \n    \n    - Ads manager review\n        - Ad performance\n        - Ad settings\n    \n    Other notes: \n    \n    - Continue with bait posts if they are working\n    - I\u2019ll put this\n    - Most\n    - Tracking:\n- Call #6\n    - review messages with customers and response time";
+function seedNotion(){
+  const c = (D.clients || []).find(x => /^ethan\b/i.test(x.name || '')); if (!c || c.notionSeeded) return;
+  c.calls = c.calls || [];
+  parseNotionCalls(NOTION_ETHAN).forEach(g => { const ex = c.calls.find(x => (g.date && x.date === g.date) || (x.title || '').toLowerCase().replace(/\s*\(.*$/, '') === g.title.toLowerCase().replace(/\s*[–-].*$/, ''));
+    if (ex) { if (!ex.plan) ex.plan = g.plan; if (!ex.date && g.date) ex.date = g.date; } else c.calls.push({ id: uid(), title: g.title, date: g.date, link: '', notes: '', plan: g.plan }); });
+  c.notionSeeded = true; saveClient(c);
+}
+function setTab(t, id){
+  TAB = t; CUR = id || null;
+  document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === t));
+  history.replaceState(null, '', '/coach' + (t !== 'home' ? '?tab=' + t + (id ? '&id=' + id : '') : ''));
+  render(); window.scrollTo(0, 0);
+}
 function render(){
-  const m = ME, mk = new Date().toLocaleDateString('en-CA').slice(0, 7), mt = monthTotals(mk), g = m.goals || {}, s = m.start || {};
-  const st = Date.parse(m.program.start), en = Date.parse(m.program.end), pc = st && en && en > st ? Math.max(0, Math.min(1, (Date.now() - st) / (en - st))) : 0;
-  const weekNo = st ? Math.max(1, Math.ceil((Date.now() - st) / (7 * 864e5))) : null;
-  const oneTime = m.tasks.filter(t => !t.recurring), months = [...new Set(oneTime.map(t => +t.month || 1))].sort((a, b) => a - b), rec = m.tasks.filter(t => t.recurring);
-  const thisWeek = m.checkins.find(x => x.week === m.week);
-  const task = t => `<div class="row"><input type="checkbox" class="chk" data-task="${t.id}" ${t.done ? 'checked' : ''}><span class="${t.done ? 'done' : ''}">${esc(t.text)}</span></div>`;
-  const pct = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 0;
-  $('app').innerHTML = `<header><div class="wrap"><h1>Hey ${esc(m.name.split(' ')[0])} 👋<small>${esc(m.program.length || '')} program${weekNo ? ' &middot; week ' + weekNo : ''}${m.business ? ' &middot; ' + esc(m.business) : ''}</small></h1>${m.calendly ? `<a class="btn p" href="${esc(m.calendly)}" target="_blank" rel="noopener" style="color:#fff">Book a call</a>` : ''}</div></header>
-  <div class="wrap">
-    <div class="kpis">
-      <div class="kpi"><small>Flips this month</small><b>${mt.flips}${g.flips ? ' <i>/ ' + esc(g.flips) + '</i>' : ''}</b><div class="bar"><i style="width:${pct(mt.flips, num(g.flips))}%"></i></div><i>Started at ${esc(s.flips || '?')}/month</i></div>
-      <div class="kpi"><small>Revenue this month</small><b>${money(mt.revenue)}</b><div class="bar"><i style="width:${pct(mt.revenue, num(g.revenue))}%"></i></div><i>Goal ${g.revenue ? money(g.revenue) : '-'}</i></div>
-      <div class="kpi"><small>Profit this month</small><b>${money(mt.profit)}</b><div class="bar"><i style="width:${Math.min(100, Math.round(pc * 100))}%;background:var(--green)"></i></div><i>Goal ${esc(g.profit || '-')} &middot; program ${Math.round(pc * 100)}% done</i></div>
+  if (!D) return;
+  Object.values(charts).forEach(c => c.destroy()); charts = {};
+  ({ home: renderHome, clients: CUR ? renderClient : renderClients, youtube: renderYouTube, pipeline: renderPipeline })[TAB]();
+}
+
+// ---------- helpers on clients ----------
+const monthKey = (d = new Date()) => d.toLocaleDateString('en-CA').slice(0, 7);
+function progressPct(c){ const s = Date.parse(c.program?.start), e = Date.parse(c.program?.end); if (!s || !e || e <= s) return 0; return Math.max(0, Math.min(1, (Date.now() - s) / (e - s))); }
+function lastCheckin(c){ return (c.checkins || []).slice().sort((a, b) => b.week.localeCompare(a.week))[0]; }
+function monthTotals(c, mk = monthKey()){ const t = { flips: 0, revenue: 0, profit: 0, weeks: 0 }; (c.checkins || []).filter(x => x.week.slice(0, 7) === mk).forEach(x => { t.flips += x.flips; t.revenue += x.revenue; t.profit += x.profit; t.weeks++; }); return t; }
+const paidCount = c => (c.program?.payments || []).filter(p => p.paid).length;
+const initials = n => String(n || '?').split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase();
+function daysSince(ts){ return ts ? Math.floor((Date.now() - ts) / 864e5) : null; }
+
+// ---------- Home ----------
+function renderHome(){
+  const act = D.clients.filter(c => c.active !== false), mk = monthKey();
+  const pays = act.flatMap(c => (c.program?.payments || []).map(p => ({ ...p, who: c.name })));
+  const collected = D.clients.flatMap(c => c.program?.payments || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === mk).reduce((a, p) => a + num(p.amount), 0);
+  const owed = pays.filter(p => !p.paid).reduce((a, p) => a + num(p.amount), 0);
+  const leadsM = D.leads.filter(l => String(l.date || new Date(l.createdAt).toISOString()).slice(0, 7) === mk).length;
+  const booked = D.leads.filter(l => l.stage === 'Call booked').length;
+  const posted = D.videos.filter(v => (v.posted || v.status === 'Posted') && String(v.date || '').slice(0, 7) === mk).length;
+  const quiet = act.filter(c => { const l = lastCheckin(c); return !l || daysSince(l.at) > 8; });
+  const upcoming = act.flatMap(c => (c.calls || []).filter(x => x.date >= todayISO()).map(x => ({ ...x, who: c.name, cid: c.id }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
+  const recent = act.flatMap(c => (c.checkins || []).map(x => ({ ...x, who: c.name, cid: c.id }))).sort((a, b) => b.at - a.at).slice(0, 8);
+  $('view').innerHTML = `<div class="top"><h1>Coaching</h1><button class="btn p" data-newclient>+ New client</button></div>
+  <div class="kpis">
+    <div class="kpi"><small>Active clients</small><b>${act.length}</b></div>
+    <div class="kpi"><small>Collected this month</small><b>${money(collected)}</b></div>
+    <div class="kpi"><small>Still owed (payment plans)</small><b>${money(owed)}</b></div>
+    <div class="kpi"><small>Leads this month</small><b>${leadsM}</b><i>${booked} calls booked</i></div>
+    <div class="kpi"><small>Videos posted this month</small><b>${posted}</b></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Needs attention</h2>${quiet.length ? quiet.map(c => `<div class="row" style="cursor:pointer" data-open="${c.id}"><span class="grow"><b>${esc(c.name)}</b></span><span class="pill r">${lastCheckin(c) ? 'No check-in in ' + daysSince(lastCheckin(c).at) + ' days' : 'No check-ins yet'}</span></div>`).join('') : '<p class="empty">Everyone checked in this week.</p>'}
+      ${act.filter(c => (c.program?.payments || []).some(p => !p.paid)).map(c => { const p = c.program.payments.find(x => !x.paid); return `<div class="row" style="cursor:pointer" data-open="${c.id}"><span class="grow">${esc(c.name)} &middot; next payment</span><span class="pill y">${esc(p.label)} ${money(p.amount)}</span></div>`; }).join('')}</div>
+    <div class="card"><h2>Upcoming calls</h2>${upcoming.length ? upcoming.map(x => `<div class="row" style="cursor:pointer" data-open="${x.cid}"><span class="grow"><b>${esc(x.who)}</b> &middot; ${esc(x.title)}</span><span class="pill b">${fmtD(x.date)}</span></div>`).join('') : '<p class="empty">No upcoming calls on the books. Add the date to a client\'s Calls list.</p>'}</div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Latest client check-ins</h2>${recent.length ? `<table class="ci"><tr><th>Client</th><th>Week of</th><th class="n">Flips</th><th class="n">Revenue</th><th class="n">Profit</th><th>Win / stuck on</th></tr>${recent.map(x => `<tr style="cursor:pointer" data-open="${x.cid}"><td><b>${esc(x.who)}</b></td><td>${fmtD(x.week)}</td><td class="n">${x.flips}</td><td class="n">${money(x.revenue)}</td><td class="n">${money(x.profit)}</td><td><small>${esc(x.win || '')}${x.stuck ? '<br>Stuck: ' + esc(x.stuck) : ''}</small></td></tr>`).join('')}</table>` : '<p class="empty">Check-ins show up here when clients log their week on their page.</p>'}</div>`;
+}
+
+// ---------- Clients list ----------
+function renderClients(){
+  const list = D.clients.slice().sort((a, b) => (b.active !== false) - (a.active !== false));
+  $('view').innerHTML = `<div class="top"><h1>Clients</h1><button class="btn p" data-newclient>+ New client</button></div>` +
+    (list.length ? list.map(c => { const pc = progressPct(c), mt = monthTotals(c), l = lastCheckin(c), pays = c.program?.payments || [];
+      return `<div class="ccard" data-open="${c.id}"><div class="av">${esc(initials(c.name))}</div><div class="m"><b>${esc(c.name)} ${c.active === false ? '<span class="pill">Finished</span>' : ''}</b>
+        <small>${esc(c.business || c.market || '')} &middot; ${esc(c.program?.length || '')} &middot; ${pays.length ? paidCount(c) + '/' + pays.length + ' paid' : ''} &middot; ${l ? 'last check-in ' + fmtD(l.week) : 'no check-ins yet'}</small>
+        <div class="bar"><i style="width:${Math.round(pc * 100)}%"></i></div></div>
+        <div style="text-align:right;min-width:110px"><b>${mt.flips}${c.goals?.flips ? ' / ' + c.goals.flips : ''}</b><br><small class="empty">flips this month</small></div></div>`; }).join('')
+      : '<div class="card"><p class="empty">No clients yet.</p></div>');
+}
+
+// ---------- Client detail ----------
+let saveT = null;
+function curClient(){ return D.clients.find(c => c.id === CUR); }
+function getPath(o, p){ return p.split('.').reduce((a, k) => a == null ? a : a[k], o); }
+function setPath(o, p, v){ const ks = p.split('.'); let t = o; ks.slice(0, -1).forEach(k => { if (t[k] == null || typeof t[k] !== 'object') t[k] = {}; t = t[k]; }); t[ks[ks.length - 1]] = v; }
+function queueSave(c){ $('saveSt') && ($('saveSt').textContent = 'Saving…'); clearTimeout(saveT); saveT = setTimeout(() => saveClient(c), 700); }
+async function saveClient(c){
+  try { await post('/api/coach/client/save', { client: c }); $('saveSt') && ($('saveSt').textContent = 'Saved'); }
+  catch (e) { $('saveSt') && ($('saveSt').textContent = 'Not saved'); toast(e.message); }
+}
+const F = (label, path, type = 'text', extra = '') => { const c = curClient(), v = getPath(c, path) ?? '';
+  return `<label class="f">${label}${type === 'textarea' ? `<textarea data-f="${path}" rows="3" ${extra}>${esc(v)}</textarea>` : `<input type="${type}" data-f="${path}" value="${esc(v)}" ${extra}>`}</label>`; };
+const CALL_TPL = `REMINDER: Record on iPhone for IG story + separate iPhone clips
+
+WINS SINCE LAST CALL
+- 
+
+NUMBERS
+{{numbers}}
+
+BIGGEST WIN?
+- 
+
+BIGGEST BOTTLENECK?
+- 
+
+AGENDA
+- 
+
+SCREENSHARE / REVIEW
+- 
+
+HOMEWORK (assign before we hang up)
+- `;
+const callTpl = () => (D.settings && D.settings.callTemplate) || CALL_TPL;
+function fillTpl(c){ const t = monthTotals(c), last = lastCheckin(c);
+  const nums = `- This month: ${t.flips} flips | ${money(t.revenue)} revenue | ${money(t.profit)} profit` + (last ? `\n- Last week (${fmtD(last.week)}): ${last.flips} flips | ${money(last.revenue)} | ${last.leads || 0} leads` : '');
+  const prev = (c.calls || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0], hw = prev && prev.plan && (prev.plan.split(/HOMEWORK[^\n]*\n/i)[1] || '').trim();
+  return callTpl().replace('{{numbers}}', nums) + (hw && hw !== '-' ? `\n\nLAST CALL'S HOMEWORK (did they do it?)\n${hw}` : ''); }
+// Paste a Notion toggle list ("- Call #1 (9/30/26)" with indented notes) and it becomes calls.
+function parseNotionCalls(txt){
+  const out = []; let cur = null;
+  String(txt).replace(/\r/g, '').split('\n').forEach(line => {
+    const top = line.match(/^[-*•]\s+((?:bonus\s+)?call\b.*)$/i);
+    if (top) { const t = top[1].trim(), m = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      const date = m ? `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : '';
+      cur = { title: t.replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{2,4}\)\s*/, ' ').replace(/\s+/g, ' ').trim(), date, lines: [] }; out.push(cur); return; }
+    if (cur) cur.lines.push(line.replace(/^ {4}/, '').replace(/\*\*/g, '').replace(/- \[ \]\s+/, '[ ] ').replace(/- \[x\]\s+/i, '[x] ').replace(/\s+$/, ''));
+  });
+  return out.map(c => ({ title: c.title, date: c.date, plan: c.lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() }));
+}
+let OPEN_CALL = null;
+function callsList(c){
+  const today = todayISO(), list = c.calls.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const openId = list.some(x => x.id === OPEN_CALL) ? OPEN_CALL : (list.filter(x => !x.date || x.date >= today).pop() || list[0] || {}).id;
+  return list.length ? list.map(x => { const up = !x.date || x.date >= today;
+    return `<details class="call" ${x.id === openId ? 'open' : ''}><summary><span class="ct" data-ct="${x.id}">${esc(x.title || 'New call')}</span><span class="cd">${fmtD(x.date)}</span><span class="cs ${up ? 'up' : ''}">${x.date === today ? 'Today' : !x.date ? 'No date' : up ? 'Upcoming' : 'Done'}</span></summary>
+      <div class="cbody"><div class="row" style="border:0;padding-top:0"><input type="text" class="grow" data-list="calls" data-id="${x.id}" data-k="title" value="${esc(x.title)}" placeholder="Name this call (e.g. Call #7 – Month 2 check-in)"><input type="date" data-list="calls" data-id="${x.id}" data-k="date" value="${esc(x.date)}"></div>
+      <div class="cgrid"><label class="f">Call plan <span class="empty" style="font-weight:400">private</span><textarea class="plan" data-list="calls" data-id="${x.id}" data-k="plan" rows="14" placeholder="What we'll cover">${esc(x.plan || '')}</textarea></label>
+        <div><label class="f">Fathom link <span class="empty" style="font-weight:400">he can rewatch it on his page</span><input type="url" data-list="calls" data-id="${x.id}" data-k="link" value="${esc(x.link)}" placeholder="Paste after the call"></label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${x.link ? `<a class="btn sm" href="${esc(x.link)}" target="_blank" rel="noopener">Recording</a>` : ''}${x.plan ? '' : `<button class="btn sm" data-filltpl="${x.id}">Use template</button>`}<span style="flex:1"></span><button class="btn sm x" data-delcall="${x.id}">Remove</button></div></div></div></div></details>`; }).join('')
+    : '<p class="empty">No calls yet. Tap + Plan a call.</p>';
+}
+function renderClient(){
+  const c = curClient(); if (!c) { CUR = null; return renderClients(); }
+  c.links = c.links || {}; c.program = c.program || {}; c.start = c.start || {}; c.goals = c.goals || {}; c.calls = c.calls || []; c.tasks = c.tasks || []; c.checkins = c.checkins || [];
+  c.program.payments = c.program.payments || [];
+  const portal = location.origin + '/client';
+  const oneTime = c.tasks.filter(t => !t.recurring), months = [...new Set(oneTime.map(t => +t.month || 1))].sort((a, b) => a - b), rec = c.tasks.filter(t => t.recurring);
+  const ck = c.checkins.slice().sort((a, b) => b.week.localeCompare(a.week)), mt = monthTotals(c);
+  const taskRow = t => `<div class="row"><input type="checkbox" class="chk" data-task="${t.id}" ${(t.recurring ? t.doneWeek === D.week : t.done) ? 'checked' : ''}><span class="grow ${(t.recurring ? t.doneWeek === D.week : t.done) ? 'done' : ''}" contenteditable="true" data-tasktext="${t.id}">${esc(t.text)}</span><button class="btn sm x" data-deltask="${t.id}">&times;</button></div>`;
+  $('view').innerHTML = `<div class="top"><button class="btn" data-back>&larr; Clients</button><h1>${esc(c.name || 'New client')}</h1><span class="save" id="saveSt">Saved</span></div>
+  <div class="portal"><b style="flex:none">Client page</b>
+    <label class="f">PIN (4-6 digits)<input data-f="pin" value="${esc(c.pin || '')}" inputmode="numeric" maxlength="6" placeholder="e.g. 4821"></label>
+    <button class="btn sm" data-copy="${esc(portal)}">Copy link</button>
+    <button class="btn sm" data-copymsg="1">Copy text to send</button>
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600"><input type="checkbox" class="chk" data-active ${c.active !== false ? 'checked' : ''}> Active</label>
+    <span class="empty" style="font-size:12.5px;flex-basis:100%">${c.pin ? esc(c.name.split(' ')[0]) + ' logs in at ' + esc(portal) + ' with PIN ' + esc(c.pin) + ' and sees calls, tasks and progress. Private notes stay hidden.' : 'Set a PIN to give them their own page.'}</span></div>
+  <div class="kpis">
+    <div class="kpi"><small>Flips this month</small><b>${mt.flips}${c.goals.flips ? ' <i>/ ' + esc(c.goals.flips) + ' goal</i>' : ''}</b><i>Started at ${esc(c.start.flips || '?')}/mo</i></div>
+    <div class="kpi"><small>Revenue this month</small><b>${money(mt.revenue)}</b><i>Goal ${esc(c.goals.revenue ? money(c.goals.revenue) : '-')}</i></div>
+    <div class="kpi"><small>Profit this month</small><b>${money(mt.profit)}</b><i>Goal ${esc(c.goals.profit || '-')}</i></div>
+    <div class="kpi"><small>Program</small><b>${Math.round(progressPct(c) * 100)}%</b><i>${fmtD(c.program.start)} to ${fmtD(c.program.end)}</i></div>
+    <div class="kpi"><small>Paid</small><b>${paidCount(c)}/${c.program.payments.length}</b><i>${money(c.program.payments.filter(p => p.paid).reduce((a, p) => a + num(p.amount), 0))} collected</i></div>
+  </div>
+  <div class="card"><h2>Calls<span class="sp"></span><button class="btn sm" data-calltpl>Edit template</button><button class="btn sm p" data-addcall>+ Plan a call</button></h2>
+    ${callsList(c)}
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr">
+    <div class="card"><h2>Tasks<span class="sp"></span><button class="btn sm" data-addtask="once">+ Task</button><button class="btn sm" data-addtask="rec">+ Recurring</button></h2>
+      ${months.map(m => `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 2px">MONTH ${m}</div>${oneTime.filter(t => (+t.month || 1) === m).map(taskRow).join('')}`).join('') || '<p class="empty">No one-time tasks.</p>'}
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 2px">EVERY WEEK <span style="font-weight:400">(resets Monday)</span></div>${rec.map(taskRow).join('') || '<p class="empty">No recurring tasks.</p>'}
     </div>
-
-    <div class="card"><h2>${thisWeek ? 'This week logged ✅' : 'Log this week'}<span class="sp"></span><small class="empty" style="font-weight:400">week of ${fmtD(m.week)}</small></h2>
-      <form id="cf"><div class="three"><label class="f">Couches flipped<input name="flips" inputmode="numeric" value="${thisWeek ? thisWeek.flips : ''}" placeholder="0"></label><label class="f">Revenue ($)<input name="revenue" inputmode="numeric" value="${thisWeek ? thisWeek.revenue : ''}" placeholder="0"></label>
-        <label class="f">Profit ($)<input name="profit" inputmode="numeric" value="${thisWeek ? thisWeek.profit : ''}" placeholder="0"></label><label class="f">Leads / messages<input name="leads" inputmode="numeric" value="${thisWeek ? thisWeek.leads || '' : ''}" placeholder="0"></label></div>
-        <label class="f">Biggest win this week<input name="win" value="${esc(thisWeek ? thisWeek.win : '')}"></label><label class="f">Where you're stuck<input name="stuck" value="${esc(thisWeek ? thisWeek.stuck : '')}"></label>
-        <button class="btn p">${thisWeek ? 'Update my week' : 'Save my week'}</button></form></div>
-
-    <div class="card"><h2>My tasks</h2>
-      ${months.map(mo => `<div class="lbl">MONTH ${mo}</div>${oneTime.filter(t => (+t.month || 1) === mo).map(task).join('')}`).join('') || ''}
-      ${rec.length ? `<div class="lbl">EVERY WEEK <span style="font-weight:400">(resets Monday)</span></div>${rec.map(task).join('')}` : ''}
-      ${m.tasks.length ? '' : '<p class="empty">Billy will add your tasks after your next call.</p>'}</div>
-
-    <div class="card"><h2>My progress</h2>${m.checkins.length ? `<div class="chartwrap"><canvas id="pc"></canvas></div>
-      <table style="margin-top:10px"><tr><th>Week of</th><th class="n">Flips</th><th class="n">Revenue</th><th class="n">Profit</th></tr>${m.checkins.slice().reverse().slice(0, 12).map(x => `<tr><td>${fmtD(x.week)}</td><td class="n">${x.flips}</td><td class="n">${money(x.revenue)}</td><td class="n">${money(x.profit)}</td></tr>`).join('')}</table>`
-      : '<p class="empty">Log your first week above and your progress chart starts here.</p>'}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;font-size:14px"><div><div class="lbl" style="margin-top:0">WHERE YOU STARTED</div>${s.flips != null && s.flips !== '' ? esc(s.flips) + ' flips/month' : ''}${s.profit ? '<br>' + money(s.profit) + ' profit/month' : ''}${s.bottleneck ? '<br>Bottleneck: ' + esc(s.bottleneck) : ''}</div>
-        <div><div class="lbl" style="margin-top:0">YOUR GOALS</div>${g.flips ? esc(g.flips) + ' flips/month' : ''}${g.revenue ? '<br>' + money(g.revenue) + ' revenue/month' : ''}${g.profit ? '<br>' + esc(g.profit) + ' profit' : ''}${g.other ? '<br>' + esc(g.other) : ''}</div></div></div>
-
-    <div class="card"><h2>My calls</h2>${m.calls.length ? m.calls.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(c => `<div class="call"><b>${esc(c.title)}</b><small>${fmtD(c.date)}</small>${c.notes ? `<p>${esc(c.notes)}</p>` : ''}${c.link ? `<p><a href="${esc(c.link)}" target="_blank" rel="noopener" style="color:var(--red);font-weight:600">Watch the recording &rarr;</a></p>` : ''}</div>`).join('') : '<p class="empty">No calls yet.</p>'}</div>
-    <p class="empty" style="text-align:center;margin-top:24px">Questions? Text Billy at <a href="sms:3148997503" style="color:var(--red)">(314) 899-7503</a> &middot; <a href="/client/api/logout" style="color:var(--muted)">Log out</a></p>
-  </div>`;
-  if (m.checkins.length && window.Chart) {
-    const wk = m.checkins.slice(-12), gw = num(g.flips) ? +(num(g.flips) / 4.33).toFixed(1) : null;
-    if (chart) chart.destroy();
-    chart = new Chart($('pc'), { data: { labels: wk.map(x => fmtD(x.week)), datasets: [
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Progress<span class="sp"></span><button class="btn sm" data-addci>+ Log a week</button></h2>
+    <div class="chartwrap"><canvas id="ciChart"></canvas></div>
+    ${ck.length ? `<table class="ci" style="margin-top:12px"><tr><th>Week of</th><th class="n">Flips</th><th class="n">Revenue</th><th class="n">Profit</th><th class="n">Leads</th><th>Win / stuck on</th><th></th></tr>${ck.map(x => `<tr><td>${fmtD(x.week)}</td><td class="n">${x.flips}</td><td class="n">${money(x.revenue)}</td><td class="n">${money(x.profit)}</td><td class="n">${x.leads || 0}</td><td><small>${esc(x.win || '')}${x.stuck ? '<br>Stuck: ' + esc(x.stuck) : ''}</small></td><td><button class="btn sm x" data-delci="${x.week}">&times;</button></td></tr>`).join('')}</table>` : '<p class="empty" style="margin-top:10px">No check-ins yet. Clients log their week on their page every Sunday/Monday.</p>'}
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><h2>Starting point</h2><div class="two">${F('Experience', 'start.experience')}${F('Truck / moving', 'start.truck')}${F('Flips / month', 'start.flips', 'number')}${F('Net profit / month ($)', 'start.profit', 'number')}${F('Revenue / month', 'start.revenue')}${F('Employees', 'start.employees')}${F('Inventory source', 'start.inventory')}${F('Social media', 'start.social')}</div>${F('Biggest bottleneck', 'start.bottleneck')}</div>
+    <div class="card"><h2>Goals</h2><div class="two">${F('Flips / month goal', 'goals.flips', 'number')}${F('Revenue / month goal ($)', 'goals.revenue', 'number')}</div>${F('Net-profit goal', 'goals.profit')}${F('Other goals', 'goals.other', 'textarea')}</div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><h2>Program &amp; payments<span class="sp"></span><button class="btn sm" data-addpay>+ Payment</button></h2>
+      <div class="three">${F('Program', 'program.length')}${F('Start', 'program.start', 'date')}${F('End', 'program.end', 'date')}</div>${F('Payment plan', 'program.plan')}
+      ${c.program.payments.map((p, i) => `<div class="row"><input type="checkbox" class="chk" data-paid="${i}" ${p.paid ? 'checked' : ''}><input type="text" class="grow" data-pay="${i}" data-k="label" value="${esc(p.label)}"><input type="number" style="width:100px" data-pay="${i}" data-k="amount" value="${esc(p.amount)}"><input type="date" data-pay="${i}" data-k="paidAt" value="${esc(p.paidAt || '')}" title="Date paid"><button class="btn sm x" data-delpay="${i}">&times;</button></div>`).join('')}
+    </div>
+    <div class="card"><h2>Profile</h2><div class="two">${F('Name', 'name')}${F('Business', 'business')}${F('Phone', 'phone', 'tel')}${F('Email', 'email', 'email')}${F('Market', 'market')}${F('Booking link (Calendly)', 'calendly', 'url')}${F('Instagram', 'links.ig', 'url')}${F('Facebook', 'links.fb', 'url')}</div>${F('TikTok', 'links.tiktok', 'url')}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${['ig', 'fb', 'tiktok'].filter(k => c.links[k]).map(k => `<a class="btn sm" target="_blank" rel="noopener" href="${esc(c.links[k])}">${{ ig: 'Instagram', fb: 'Facebook', tiktok: 'TikTok' }[k]}</a>`).join('')}${c.phone ? `<a class="btn sm" href="sms:${esc(c.phone.replace(/[^\d+]/g, ''))}">Text</a>` : ''}</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Private notes <span class="empty" style="font-weight:400;font-size:12.5px">only you see these</span></h2>${F('', 'notes', 'textarea', 'rows="5"')}
+    <div class="acts"><button class="btn x" data-delclient>Delete client</button></div></div>`;
+  // weekly chart
+  const wk = c.checkins.slice().sort((a, b) => a.week.localeCompare(b.week)).slice(-16);
+  if (wk.length && window.Chart) {
+    const goalWeekly = num(c.goals.flips) ? num(c.goals.flips) / 4.33 : null;
+    charts.ci = new Chart($('ciChart'), { data: { labels: wk.map(x => fmtD(x.week)), datasets: [
       { type: 'bar', label: 'Revenue', data: wk.map(x => x.revenue), backgroundColor: '#d9a39f', yAxisID: 'y1', borderRadius: 4 },
       { type: 'line', label: 'Flips', data: wk.map(x => x.flips), borderColor: '#b0524c', backgroundColor: '#b0524c', yAxisID: 'y', tension: .3 },
-      ...(gw ? [{ type: 'line', label: 'Weekly flip goal', data: wk.map(() => gw), borderColor: '#2e7d4f', borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' }] : [])] },
-      options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => '$' + v / 1000 + 'k' } } } } });
-  }
-  $('cf').onsubmit = async e => { e.preventDefault(); const f = e.target.elements;
-    try { const j = await api('/client/api/checkin', { week: ME.week, flips: f.flips.value, revenue: f.revenue.value, profit: f.profit.value, leads: f.leads.value, win: f.win.value, stuck: f.stuck.value }); ME = j.me; render(); toast('Week saved 💪'); } catch (err) { if (err.message !== 'login') toast(err.message); } };
+      ...(goalWeekly ? [{ type: 'line', label: 'Flip goal / week', data: wk.map(() => +goalWeekly.toFixed(1)), borderColor: '#2e7d4f', borderDash: [6, 4], pointRadius: 0, yAxisID: 'y' }] : [])] },
+      options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Flips' } }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => '$' + v / 1000 + 'k' } } } } });
+  } else $('ciChart').parentElement.style.display = 'none';
 }
-document.addEventListener('change', async e => {
-  const id = e.target.dataset && e.target.dataset.task; if (!id) return;
-  try { const j = await api('/client/api/task', { id, done: e.target.checked }); ME = j.me; render(); if (e.target.checked) toast('Nice. Checked off ✅'); } catch (err) { if (err.message !== 'login') { e.target.checked = !e.target.checked; toast(err.message); } }
+
+// ---------- YouTube: posting calendar + idea bank ----------
+const isPosted = v => !!(v.posted || v.status === 'Posted');
+let YM = null;   // month shown on the calendar (YYYY-MM)
+function renderYouTube(){
+  const mk = monthKey(), today = todayISO();
+  YM = YM || mk;
+  const [y, m] = YM.split('-').map(Number), first = new Date(y, m - 1, 1), days = new Date(y, m, 0).getDate();
+  const lead = (first.getDay() + 6) % 7, cells = Math.ceil((lead + days) / 7) * 7;
+  const dated = D.videos.filter(v => v.date), ideas = D.videos.filter(v => !v.date).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const next = dated.filter(v => !isPosted(v) && v.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const ev = v => `<div class="ev ${isPosted(v) ? 'posted' : v.date < today ? 'late' : 'sched'}" data-video="${v.id}" draggable="true">${ftag(v)}${esc(v.title || 'Untitled')}<small>${isPosted(v) ? 'Posted' : v.date < today ? 'Not marked posted' : 'Post day'}</small></div>`;
+  const fev = v => `<div class="ev film${isPosted(v) || v.filmDate < today ? ' done' : ''}" data-video="${v.id}" data-film="1" draggable="true">${ftag(v)}${esc(v.title || 'Untitled')}<small>Film${v.filmTime ? ' ' + fmtT(v.filmTime) : ''}</small></div>`;
+  const filmed = D.videos.filter(v => v.filmDate), nextFilm = filmed.filter(v => !isPosted(v) && v.filmDate >= today).sort((a, b) => (a.filmDate + (a.filmTime || '')).localeCompare(b.filmDate + (b.filmTime || '')))[0];
+  let grid = '';
+  for (let k = 0; k < cells; k++) {
+    const d = new Date(y, m - 1, 1 - lead + k), iso = d.toLocaleDateString('en-CA'), inM = d.getMonth() === m - 1;
+    grid += `<div class="d${inM ? '' : ' o'}${iso === today ? ' t' : ''}" data-day="${iso}"><div class="n">${d.getDate()}</div>${filmed.filter(v => v.filmDate === iso).map(fev).join('')}${dated.filter(v => v.date === iso).map(ev).join('')}</div>`;
+  }
+  const monthList = [...dated.filter(v => v.date.slice(0, 7) === YM).map(v => ({ v, d: v.date, k: 'Post' })), ...filmed.filter(v => v.filmDate.slice(0, 7) === YM).map(v => ({ v, d: v.filmDate + (v.filmTime || ''), k: 'Film' + (v.filmTime ? ' ' + fmtT(v.filmTime) : '') }))].sort((a, b) => a.d.localeCompare(b.d));
+  $('view').innerHTML = `<div class="top"><h1>YouTube</h1><button class="btn p" data-newvideo>+ Video</button></div>
+  <div class="kpis"><div class="kpi"><small>Posted this month</small><b>${D.videos.filter(v => isPosted(v) && String(v.date || '').slice(0, 7) === mk).length}</b></div>
+    <div class="kpi"><small>Scheduled</small><b>${dated.filter(v => !isPosted(v) && v.date >= today).length}</b></div>
+    <div class="kpi"><small>Ideas in the bank</small><b>${ideas.length}</b></div>
+    <div class="kpi"><small>Next upload</small><b style="font-size:18px">${next ? new Date(next.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '-'}</b></div>
+    <div class="kpi"><small>Next film day</small><b style="font-size:18px">${nextFilm ? new Date(nextFilm.filmDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + (nextFilm.filmTime ? ' &middot; ' + fmtT(nextFilm.filmTime) : '') : '-'}</b></div></div>
+  <div class="ytwrap"><div>
+    <div class="calbar"><button class="btn" data-ym="-1">&larr;</button><h2>${first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2><button class="btn" data-ym="1">&rarr;</button></div>
+    <div class="cal">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(x => `<div class="dow">${x}</div>`).join('')}${grid}</div>
+    <div class="agenda">${monthList.length ? monthList.map(({ v, d, k }) => `<div class="vc" data-video="${v.id}"><b>${new Date(d.slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${esc(v.title || 'Untitled')}</b><small>${ftag(v)}${k}${k === 'Post' && isPosted(v) ? ' &middot; Posted' : ''}</small></div>`).join('') : '<p class="empty">Nothing planned this month.</p>'}</div>
+    <p class="empty" style="font-size:12.5px;margin-top:8px">Tap a day to plan a video for it. Red = post day, dark = film day. Drag either between days, or drag an idea from the bank onto a day.</p>
+  </div>
+  <div class="card bank" data-day=""><h2>Idea bank</h2>${ideas.map(v => `<div class="vc" data-video="${v.id}" draggable="true"><b>${esc(v.title || 'Untitled')}</b><small>${ftag(v)}${esc((v.hook || '').slice(0, 80)) || 'No hook yet'}</small></div>`).join('') || '<p class="empty" style="font-size:13px">Ideas with no post date land here.</p>'}</div></div>`;
+}
+// Each funnel stage gets its own planning template. Every video starts with a foreshadow hook.
+const HOOK = ['hook', 'Hook - foreshadow (first 15-30 sec)', 'Flash the best clips or a glimpse of what\'s coming. Open a loop only the end of the video closes.', 3];
+const FUN = {
+  top: { tag: 'TOFU', name: 'Top', sub: 'Reach', why: 'Top of funnel: get new people to follow the journey. Vlogs and behind-the-scenes.',
+    fields: [HOOK, ['story', 'Storyline', 'What happens - beginning, middle, end. What\'s at stake?', 5]] },
+  mid: { tag: 'MOFU', name: 'Middle', sub: 'Belief shift', why: 'Middle of funnel: shift a belief through storytelling tied to couch flipping.',
+    fields: [HOOK, ['show', 'Show', 'What you show them - the story.', 3], ['relate', 'Relate', 'Connect it to their life and the belief you\'re shifting.', 3], ['attack', 'Attack', 'The call to action.', 3]] },
+  bot: { tag: 'BOFU', name: 'Bottom', sub: 'Program', why: 'Bottom of funnel: show the program working - client calls, Miro breakdowns, the program itself. CTA is always book a call.',
+    fields: [HOOK, ['subject', 'Subject of the video', 'What the video is - the call, the breakdown, the client, the module.', 5]] }
+};
+const VFIELDS = ['hook', 'show', 'relate', 'attack', 'story', 'subject'];
+const ftag = v => `<span class="ftag">${FUN[v.funnel || 'mid'].tag}</span>`;
+const fmtT = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm'); };
+function readVideoForm(){
+  const v = { id: $('vId').value || undefined, title: $('vTitle').value.trim(), date: $('vDate').value, posted: $('vPosted').checked, filmDate: $('vFilm').value, filmTime: $('vFilmT').value,
+    funnel: document.querySelector('.funsel .on').dataset.fun };
+  VFIELDS.forEach(k => { const el = $('vf_' + k); v[k] = el ? el.value : (VDRAFT[k] || ''); }); return v;
+}
+let VDRAFT = {};
+function openVideo(id, date, draft){
+  const v = draft || D.videos.find(x => x.id === id) || { date: date || '' }; VDRAFT = { ...v };
+  const fun = FUN[v.funnel] ? v.funnel : 'mid', F = FUN[fun];
+  $('itemBody').innerHTML = `<h3>${v.id ? 'Edit video' : 'New video'}</h3><input type="hidden" id="vId" value="${esc(v.id || '')}">
+    <div class="funsel">${Object.entries(FUN).map(([k, f]) => `<button type="button" data-fun="${k}" class="${k === fun ? 'on' : ''}">${f.name} of funnel<small>${f.tag} &middot; ${f.sub}</small></button>`).join('')}</div>
+    <p class="funwhy">${F.why}</p>
+    <label class="f">Title<input id="vTitle" value="${esc(v.title)}" placeholder="e.g. I flipped 30 couches in 30 days"></label>
+    <div class="two"><label class="f">Film date<input type="date" id="vFilm" value="${esc(v.filmDate || '')}"></label><label class="f">Film time<input type="time" id="vFilmT" value="${esc(v.filmTime || '')}"></label></div>
+    <div class="two"><label class="f">Post date <span style="font-weight:400">(blank = idea bank)</span><input type="date" id="vDate" value="${esc(v.date || '')}"></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-size:14px;font-weight:600;cursor:pointer"><input type="checkbox" class="chk" id="vPosted" ${isPosted(v) ? 'checked' : ''}> Posted</label></div>
+    ${F.fields.map(([k, label, hint, rows]) => `<label class="f">${label}<span class="fhint">${hint}</span><textarea id="vf_${k}" rows="${rows}">${esc(v[k])}</textarea></label>`).join('')}
+    <div class="acts">${v.id ? '<button class="btn x" data-delvideo="' + v.id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="vSave">Save</button></div>`;
+  $('m-item').classList.add('on');
+}
+async function saveVideo(item){
+  const j = await post('/api/coach/videos/save', { item }); const i = D.videos.findIndex(x => x.id === j.item.id); i > -1 ? D.videos[i] = j.item : D.videos.unshift(j.item);
+  if (j.item.calError) setTimeout(() => toast("Saved, but Google Calendar didn't update: " + j.item.calError), 300); return j.item;
+}
+let dragId = null, dragFilm = false;
+document.addEventListener('dragstart', e => { const v = e.target.closest && e.target.closest('[data-video]'); if (v) { dragId = v.dataset.video; dragFilm = !!v.dataset.film; e.dataTransfer.effectAllowed = 'move'; } });
+document.addEventListener('dragover', e => { if (dragId && e.target.closest && e.target.closest('[data-day]')) { e.preventDefault(); } });
+document.addEventListener('drop', async e => {
+  const d = e.target.closest && e.target.closest('[data-day]'); if (!dragId || !d) return; e.preventDefault();
+  const v = D.videos.find(x => x.id === dragId); dragId = null; if (!v) return;
+  if (dragFilm) { if (!d.dataset.day || v.filmDate === d.dataset.day) return;
+    try { await saveVideo({ id: v.id, filmDate: d.dataset.day }); render(); toast('Film day moved to ' + fmtD(d.dataset.day)); } catch (err) { toast(err.message); } return; }
+  if (v.date === d.dataset.day) return;
+  try { await saveVideo({ id: v.id, date: d.dataset.day }); render(); toast(d.dataset.day ? 'Moved to ' + fmtD(d.dataset.day) : 'Back in the idea bank'); } catch (err) { toast(err.message); }
 });
+
+// ---------- Pipeline ----------
+const LST = ['New lead', 'Contacted', 'Call booked', 'Won', 'Lost'];
+function renderPipeline(){
+  const won = D.leads.filter(l => l.stage === 'Won'), lost = D.leads.filter(l => l.stage === 'Lost');
+  const rate = won.length + lost.length ? won.length / (won.length + lost.length) : null;
+  $('view').innerHTML = `<div class="top"><h1>Pipeline</h1><button class="btn p" data-newlead>+ Lead</button></div>
+  <div class="kpis"><div class="kpi"><small>Open leads</small><b>${D.leads.filter(l => !['Won', 'Lost'].includes(l.stage)).length}</b></div><div class="kpi"><small>Calls booked</small><b>${D.leads.filter(l => l.stage === 'Call booked').length}</b></div>
+    <div class="kpi"><small>Close rate</small><b>${rate == null ? '-' : Math.round(rate * 100) + '%'}</b><i>${won.length} won / ${lost.length} lost</i></div><div class="kpi"><small>Won revenue</small><b>${money(won.reduce((a, l) => a + num(l.value), 0))}</b></div></div>
+  <div class="cols">${LST.map(s => { const ls = D.leads.filter(l => (l.stage || 'New lead') === s);
+    return `<div class="col"><h3>${s}<span>${ls.length}</span></h3>${ls.map(l => `<div class="vc" data-lead="${l.id}"><b>${esc(l.name || 'Lead')}</b><small>${esc(l.source || '')}${l.callDate ? ' &middot; call ' + fmtD(l.callDate) : ''}${l.value ? ' &middot; ' + money(l.value) : ''}</small></div>`).join('') || '<p class="empty" style="font-size:12.5px;margin:4px">Nothing here.</p>'}</div>`; }).join('')}</div>`;
+}
+function openLead(id){
+  const l = D.leads.find(x => x.id === id) || { stage: 'New lead', date: todayISO() };
+  $('itemBody').innerHTML = `<h3>${id ? 'Edit lead' : 'New lead'}</h3><input type="hidden" id="lId" value="${esc(l.id || '')}">
+    <div class="two"><label class="f">Name<input id="lName" value="${esc(l.name)}"></label><label class="f">Stage<select id="lStage">${LST.map(s => `<option ${l.stage === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+    <label class="f">Contact (IG / phone / email)<input id="lContact" value="${esc(l.contact)}"></label><label class="f">Source<select id="lSource">${['', 'Instagram DM', 'TikTok', 'YouTube', 'Skool / Telegram', 'Referral', 'Calendly', 'Other'].map(s => `<option ${l.source === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+    <label class="f">Date added<input type="date" id="lDate" value="${esc(l.date || '')}"></label><label class="f">Call date<input type="date" id="lCall" value="${esc(l.callDate || '')}"></label></div>
+    <label class="f">Deal value ($)<input type="number" id="lValue" value="${esc(l.value || '')}" placeholder="3000"></label>
+    <label class="f">Notes<textarea id="lNotes" rows="4">${esc(l.notes)}</textarea></label>
+    <div class="acts">${id ? '<button class="btn x" data-dellead="' + id + '">Delete</button>' : ''}<span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="lSave">Save</button></div>`;
+  $('m-item').classList.add('on');
+}
+
+// ---------- events ----------
+document.addEventListener('click', async e => {
+  const t = e.target, c = curClient();
+  const nv = t.closest('.nav'); if (nv) return setTab(nv.dataset.tab);
+  if (t.closest('[data-close]')) return $('m-item').classList.remove('on');
+  const op = t.closest('[data-open]'); if (op) return setTab('clients', op.dataset.open);
+  if (t.closest('[data-back]')) return setTab('clients');
+  if (t.closest('[data-newclient]')) {
+    const name = prompt('Client name'); if (!name) return;
+    const st = todayISO(), end = new Date(Date.now() + 91 * 864e5).toLocaleDateString('en-CA');
+    try { const j = await post('/api/coach/client/save', { client: { name, active: true, program: { length: '3-month', start: st, end, plan: '', payments: [] }, start: {}, goals: {}, links: {}, calls: [{ id: uid(), title: 'Onboarding Call', date: st, link: '', notes: '' }], tasks: [], checkins: [], notes: '' } });
+      D.clients.unshift(j.client); setTab('clients', j.client.id); } catch (err) { toast(err.message); } return; }
+  if (c) {
+    if (t.closest('[data-addcall]')) { const plan = fillTpl(c), nid = uid(); OPEN_CALL = nid; c.calls.push({ id: nid, title: '', date: todayISO(), link: '', notes: '', plan }); queueSave(c); renderClient(); const ti = document.querySelector('details.call[open] input[data-k=title]'); ti && ti.focus(); return; }
+    const ft = t.closest('[data-filltpl]'); if (ft) { const x = c.calls.find(y => y.id === ft.dataset.filltpl); if (x) { x.plan = fillTpl(c); queueSave(c); renderClient(); } return; }
+    if (t.closest('[data-callimp]')) { $('impText').value = ''; $('m-imp').classList.add('on'); return; }
+    if (t.closest('[data-calltpl]')) { $('tplText').value = callTpl(); $('m-tpl').classList.add('on'); return; }
+    const dc = t.closest('[data-delcall]'); if (dc) { c.calls = c.calls.filter(x => x.id !== dc.dataset.delcall); queueSave(c); return renderClient(); }
+    const at = t.closest('[data-addtask]'); if (at) { const rec = at.dataset.addtask === 'rec'; const text = prompt(rec ? 'Weekly task' : 'Task'); if (!text) return;
+      const month = rec ? null : +(prompt('Which month of the program? (1, 2, 3...)', String(Math.min(12, Math.max(1, Math.ceil(progressPct(c) * 3) || 1)))) || 1);
+      c.tasks.push(rec ? { id: uid(), text, recurring: true, doneWeek: '' } : { id: uid(), text, month, done: false }); queueSave(c); return renderClient(); }
+    const dt = t.closest('[data-deltask]'); if (dt) { c.tasks = c.tasks.filter(x => x.id !== dt.dataset.deltask); queueSave(c); return renderClient(); }
+    if (t.closest('[data-addpay]')) { c.program.payments.push({ label: 'Month ' + (c.program.payments.length + 1), amount: c.program.payments[0]?.amount || 1000, paid: false }); queueSave(c); return renderClient(); }
+    const dp = t.closest('[data-delpay]'); if (dp) { c.program.payments.splice(+dp.dataset.delpay, 1); queueSave(c); return renderClient(); }
+    if (t.closest('[data-addci]')) { const wk = prompt('Week starting (YYYY-MM-DD, a Monday)', D.week); if (!wk) return; const fl = prompt('Flips that week', '0'); if (fl == null) return; const rv = prompt('Revenue that week ($)', '0'); const pf = prompt('Profit that week ($)', '0');
+      c.checkins = c.checkins.filter(x => x.week !== wk); c.checkins.push({ week: wk, flips: num(fl), revenue: num(rv), profit: num(pf), leads: 0, win: '', stuck: '', at: Date.now() }); queueSave(c); return renderClient(); }
+    const dci = t.closest('[data-delci]'); if (dci) { if (!confirm('Delete this check-in?')) return; c.checkins = c.checkins.filter(x => x.week !== dci.dataset.delci); queueSave(c); return renderClient(); }
+    if (t.closest('[data-delclient]')) { if (!confirm('Delete ' + c.name + ' and everything on their page?')) return; await post('/api/coach/client/delete', { id: c.id }); D.clients = D.clients.filter(x => x.id !== c.id); return setTab('clients'); }
+    const cp = t.closest('[data-copy]'); if (cp) { navigator.clipboard.writeText(cp.dataset.copy).then(() => toast('Link copied')); return; }
+    if (t.closest('[data-copymsg]')) { if (!c.pin) return toast('Set a PIN first');
+      navigator.clipboard.writeText(`Hey ${c.name.split(' ')[0]}! Here's your coaching page: ${location.origin}/client\nYour PIN: ${c.pin}\nIt has your calls and recordings, your tasks to check off, and your progress. Log your numbers there every Monday so we can track the wins.`).then(() => toast('Message copied')); return; }
+  }
+  if (t.closest('[data-newvideo]')) return openVideo(null);
+  const vc = t.closest('[data-video]'); if (vc) return openVideo(vc.dataset.video);
+  const fb = t.closest('.funsel [data-fun]'); if (fb) { const cur = readVideoForm(); cur.funnel = fb.dataset.fun; return openVideo(cur.id, null, cur); }
+  if (t.id === 'vSave') { const item = readVideoForm();
+    if (!item.title) return toast('Add a title'); try { await saveVideo(item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
+  const ym = t.closest('[data-ym]'); if (ym) { const [yy, mm] = YM.split('-').map(Number), d = new Date(yy, mm - 1 + Number(ym.dataset.ym), 1); YM = d.toLocaleDateString('en-CA').slice(0, 7); return render(); }
+  const day = t.closest('.cal [data-day]'); if (day && !t.closest('[data-video]')) return openVideo(null, day.dataset.day);
+  const dv = t.closest('[data-delvideo]'); if (dv) { if (!confirm('Delete this video?')) return; await post('/api/coach/videos/delete', { id: dv.dataset.delvideo }); D.videos = D.videos.filter(x => x.id !== dv.dataset.delvideo); $('m-item').classList.remove('on'); return render(); }
+  if (t.closest('[data-newlead]')) return openLead(null);
+  const lc = t.closest('[data-lead]'); if (lc) return openLead(lc.dataset.lead);
+  if (t.id === 'lSave') { const item = { id: $('lId').value || undefined, name: $('lName').value.trim(), stage: $('lStage').value, contact: $('lContact').value, source: $('lSource').value, date: $('lDate').value, callDate: $('lCall').value, value: num($('lValue').value), notes: $('lNotes').value };
+    if (!item.name) return toast('Add a name'); try { const j = await post('/api/coach/leads/save', { item }); const i = D.leads.findIndex(x => x.id === j.item.id); i > -1 ? D.leads[i] = j.item : D.leads.unshift(j.item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
+  const dl = t.closest('[data-dellead]'); if (dl) { if (!confirm('Delete this lead?')) return; await post('/api/coach/leads/delete', { id: dl.dataset.dellead }); D.leads = D.leads.filter(x => x.id !== dl.dataset.dellead); $('m-item').classList.remove('on'); return render(); }
+});
+document.addEventListener('input', e => {
+  const c = curClient(); if (!c) return; const t = e.target;
+  if (t.dataset.f) { let v = t.value; if (t.type === 'number') v = t.value === '' ? '' : num(t.value); setPath(c, t.dataset.f, v); return queueSave(c); }
+  if (t.dataset.list) { const it = c[t.dataset.list].find(x => x.id === t.dataset.id); if (it) { it[t.dataset.k] = t.value; queueSave(c);
+    if (t.dataset.k === 'title') { const ct = document.querySelector(`[data-ct="${it.id}"]`); if (ct) ct.textContent = t.value || 'New call'; } } return; }
+  if (t.dataset.pay != null) { const p = c.program.payments[+t.dataset.pay]; p[t.dataset.k] = t.dataset.k === 'amount' ? num(t.value) : t.value; return queueSave(c); }
+  if (t.dataset.tasktext) { const tk = c.tasks.find(x => x.id === t.dataset.tasktext); if (tk) { tk.text = t.textContent.trim(); queueSave(c); } }
+});
+document.addEventListener('change', e => {
+  const c = curClient(); if (!c) return; const t = e.target;
+  if (t.dataset.task) { const tk = c.tasks.find(x => x.id === t.dataset.task); if (tk.recurring) tk.doneWeek = t.checked ? D.week : ''; else tk.done = t.checked; queueSave(c); return renderClient(); }
+  if (t.dataset.paid != null) { const p = c.program.payments[+t.dataset.paid]; p.paid = t.checked; if (t.checked && !p.paidAt) p.paidAt = todayISO(); queueSave(c); return renderClient(); }
+  if (t.hasAttribute('data-active')) { c.active = t.checked; queueSave(c); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tasktext) { e.preventDefault(); e.target.blur(); } });
+
+const q = new URLSearchParams(location.search); TAB = ['home', 'clients', 'youtube', 'pipeline'].includes(q.get('tab')) ? q.get('tab') : 'home'; CUR = q.get('id');
+document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === TAB));
 load();
+</script>
+<div class="mask" id="m-tpl"><div class="modal" style="max-width:640px"><h3 style="margin-top:0">Call template</h3>
+  <p class="empty" style="font-size:13px;margin-top:-4px">Every new call starts with this. {{numbers}} fills in their latest numbers automatically, and last call's homework gets added at the bottom.</p>
+  <textarea id="tplText" rows="18" style="width:100%;font:inherit;font-size:14px;line-height:1.5;padding:10px;border:1px solid var(--line);border-radius:10px"></textarea>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" id="tplReset" style="margin-right:auto">Reset to default</button><button class="btn" data-closetpl>Cancel</button><button class="btn p" id="tplSave">Save template</button></div></div></div>
+<div class="mask" id="m-imp"><div class="modal" style="max-width:640px"><h3 style="margin-top:0">Import calls from Notion</h3>
+  <p class="empty" style="font-size:13px;margin-top:-4px">In Notion, select the call toggles, copy, and paste here. Each line starting with "- Call" becomes a call, and everything under it becomes the call plan.</p>
+  <textarea id="impText" rows="16" style="width:100%;font:inherit;font-size:13px;line-height:1.45;padding:10px;border:1px solid var(--line);border-radius:10px" placeholder="- Call #1 (9/30/26)&#10;    - [ ]  Question..."></textarea>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" data-closeimp>Cancel</button><button class="btn p" id="impGo">Import</button></div></div></div>
+<script>
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.closest('[data-closetpl]')) return $('m-tpl').classList.remove('on');
+  if (t.closest('[data-closeimp]')) return $('m-imp').classList.remove('on');
+  if (t.id === 'impGo') { const c = curClient(), got = parseNotionCalls($('impText').value); if (!c || !got.length) return toast('No calls found. Each call should start with "- Call"');
+    let add = 0, upd = 0; got.forEach(g => { const ex = c.calls.find(x => (g.date && x.date === g.date) || (x.title || '').toLowerCase() === g.title.toLowerCase());
+      if (ex) { if (!ex.plan) { ex.plan = g.plan; upd++; } } else { c.calls.push({ id: uid(), title: g.title, date: g.date, link: '', notes: '', plan: g.plan }); add++; } });
+    queueSave(c); $('m-imp').classList.remove('on'); renderClient(); return toast(`Imported ${add} new call${add === 1 ? '' : 's'}` + (upd ? `, added plans to ${upd}` : '')); }
+  if (t.id === 'tplReset') { $('tplText').value = CALL_TPL; return; }
+  if (t.id === 'tplSave') { try { const j = await post('/api/coach/settings', { callTemplate: $('tplText').value }); D.settings = j.settings; $('m-tpl').classList.remove('on'); toast('Template saved'); } catch (err) { toast(err.message); } }
+});
 </script>
 </body></html>
