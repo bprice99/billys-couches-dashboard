@@ -967,7 +967,7 @@ function renderDeliveries(){
   const ap = d => d.getHours() < 12 ? 'am' : 'pm';
   el.innerHTML = `<div class="dlv"><b class="dlv-h">Today's deliveries <span>${list.length}</span></b>${list.map(x => {
     const win = hr(x.at) + (ap(x.at) !== ap(x.end) ? ap(x.at) : '') + '–' + hr(x.end) + ap(x.end), first = x.name.split(/\s+/)[0], street = x.addr.split(',')[0].trim(), town = (x.addr.split(',')[1] || '').trim();
-    const msg = `Hi ${first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : 'there'}! I wanted to confirm your delivery today between ${win.replace('–', '-')}${street ? ' at ' + street : ''}?`;
+    const msg = `Hi ${first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : 'there'}! I wanted to confirm your delivery today between ${win.replace('–', '-')}?`;
     const ok = done[x.id];
     return `<div class="dlv-r"><span class="dlv-t">${win}</span><span class="dlv-n">${esc(x.name)}${town ? ` <i>${esc(town)}</i>` : ''}</span>${x.phone ? `<a class="btn sm dlv-b ${ok ? 'ok' : ''}" data-delok="${esc(x.id)}" href="sms:+1${x.phone}?&body=${encodeURIComponent(msg)}">${ok ? '✓ Sent' : 'Confirm'}</a>` : '<span class="empty" style="font-size:12px">No #</span>'}</div>`; }).join('')}</div>`;
 }
