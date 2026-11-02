@@ -1119,7 +1119,7 @@ function renderShowings(){
 
   const pc = { Bought: 'g', Canceled: 'x', 'No-show': 'ns', Upcoming: 'u', Showed: '' };
   const sms = (x, body, label) => `<a class="btn sm txt" href="sms:+1${x.phone}?&body=${encodeURIComponent(body)}">${label}</a>`;
-  const txtBtn = x => x.phone ? '<div class="txts">' + (x.status === 'Upcoming' ? sms(x, shIntro(x), 'Intro') : '') + sms(x, shText(x), x.status === 'Upcoming' ? 'Confirm' : 'Text') + '</div>' : '<span class="empty" style="font-size:12px">No #</span>';
+  const txtBtn = x => x.phone ? '<div class="txts">' + (x.status === 'Upcoming' ? sms(x, shIntro(x), 'Intro') : '') + sms(x, shText(x), x.status === 'Upcoming' ? 'Confirm' : 'Text') + (x.status === 'Upcoming' ? sms(x, "Sounds good. Here's what you can expect on the floor: https://billyscouches.com/currentinventory", 'Inventory') : '') + '</div>' : '<span class="empty" style="font-size:12px">No #</span>';
   const rows = list.slice().sort((a, b2) => b2.at - a.at);
   $('shTbl').innerHTML = `<tr><th>Date</th><th>Time</th><th>Customer</th><th>Result</th><th></th></tr>` +
     (rows.length ? rows.map(x => `<tr><td>${x.at.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td><td>${x.at.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</td><td>${esc(x.name)}</td><td><span class="pill ${pc[x.status]}">${x.status === 'Showed' ? 'Showed, no buy' : x.status}</span>${x.reason ? ` <span style="font-size:12.5px;color:var(--muted)">${esc(x.reason)}</span>` : ''}</td><td class="n">${txtBtn(x)}</td></tr>`).join('')
