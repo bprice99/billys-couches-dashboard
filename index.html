@@ -2053,7 +2053,7 @@ ${(c.imperfections || []).length ? `<p style="margin:0 0 6px 0;font-size:13px;li
 <tr><td style="padding:0 8px 12px 8px;"><table width="100%" cellpadding="0" cellspacing="0" border="0">${[0, 2].filter(i => sold[i]).map(i => `<tr>${[sold[i], sold[i + 1]].map(s => s ? `<td width="50%" valign="top" style="padding:0 6px 14px 6px;font-family:Helvetica,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:${RED};color:#ffffff;text-align:center;font-size:13px;font-weight:bold;letter-spacing:2px;padding:5px 0;border-radius:10px 10px 0 0;">SOLD</td></tr>
 <tr><td><img src="${dPhoto(s.photos[0], 600)}" width="250" alt="${ah(s.title)}" style="display:block;width:100%;height:auto;border-radius:0 0 10px 10px;border:0;"></td></tr></table>
-<p style="margin:8px 0 0 0;font-size:13px;line-height:17px;font-weight:bold;color:${DARK};">${ah(s.title)}</p>${s.days != null ? `<p style="margin:2px 0 0 0;font-size:12px;color:${RED};font-weight:bold;">Sold in ${s.days <= 1 ? '1 day' : s.days + ' days'}</p>` : ''}</td>` : '<td width="50%"></td>').join('')}</tr>`).join('')}</table></td></tr></table></td></tr>` : '';
+<p style="margin:8px 0 0 0;font-size:13px;line-height:17px;font-weight:bold;color:${DARK};">${ah(s.title)}</p>${s.ago ? `<p style="margin:2px 0 0 0;font-size:12px;color:${RED};font-weight:bold;">Sold ${s.ago}</p>` : ''}</td>` : '<td width="50%"></td>').join('')}</tr>`).join('')}</table></td></tr></table></td></tr>` : '';
   return asc(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${ah(o.subject)}</title></head>
 <body style="margin:0;padding:0;background-color:${BG};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${ah(o.preview)}</div>
@@ -2086,8 +2086,10 @@ function openDropMail(ids){
   drawDropMail(); $('m-dropmail').classList.add('on');
 }
 function dropMailOpts(){
+  const soldAgo = t => { const m = Math.max(1, Math.round((Date.now() - t) / 6e4)), h = Math.round(m / 60), d = Math.round(m / 1440);
+    return m < 60 ? (m < 5 ? 'just now' : m + ' minutes ago') : h < 24 ? (h === 1 ? '1 hour ago' : h + ' hours ago') : d === 1 ? 'yesterday' : d < 7 ? d + ' days ago' : d < 14 ? 'last week' : Math.round(d / 7) + ' weeks ago'; };
   const sold = DR.drops.filter(d => d.status === 'sold' && (d.photos || []).length).sort((a, b) => (b.soldAt || 0) - (a.soldAt || 0)).slice(0, 4)
-    .map(d => ({ ...d, days: d.soldAt && (d.liveAt || d.emailedAt) ? Math.max(1, Math.round((d.soldAt - (d.emailedAt || d.liveAt)) / 864e5)) : null }));
+    .map(d => ({ ...d, ago: d.soldAt ? soldAgo(d.soldAt) : null }));
   return { subject: $('dmSubject').value, preview: $('dmPreview').value, headline: $('dmHead').value, sold, fee: Date.now() >= Date.parse('2026-11-01T00:00:00-05:00') ? 199 : 150 };
 }
 function drawDropMail(){ $('dmFrame').srcdoc = dropEmailHtml(DMSEL, dropMailOpts()); }
