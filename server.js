@@ -1383,7 +1383,7 @@ app.get('/public/orderable', async (req, res) => {
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
 // ---------- Coaching (Billy Price Coaching): admin at /coach, client portal at /client ----------
-const COACH = { clients: 'bcd:coach:clients', leads: 'bcd:coach:leads', videos: 'bcd:coach:videos' };
+const COACH = { clients: 'bcd:coach:clients', leads: 'bcd:coach:leads', videos: 'bcd:coach:videos', settings: 'bcd:coach:settings' };
 const cid = () => crypto.randomBytes(6).toString('hex');
 const weekKey = (d = new Date()) => { const t = new Date(d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
 async function getClients() {
@@ -1420,7 +1420,7 @@ const coachList = k => kget(COACH[k], []);
 app.get('/bridge', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'bridge.html' : 'login.html')));
 app.get('/coach', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'coach.html' : 'login.html')));
 app.get('/api/coach', async (req, res) => {
-  try { const [clients, leads, videos] = await Promise.all([getClients(), coachList('leads'), coachList('videos')]); res.json({ ok: true, clients, leads, videos, week: weekKey() }); }
+  try { const [clients, leads, videos, settings] = await Promise.all([getClients(), coachList('leads'), coachList('videos'), kget(COACH.settings, {})]); res.json({ ok: true, clients, leads, videos, settings: settings || {}, week: weekKey() }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/coach/client/save', async (req, res) => {
@@ -1434,6 +1434,11 @@ app.post('/api/coach/client/save', async (req, res) => {
     if (i < 0) { c.id = cid(); c.createdAt = Date.now(); list.unshift(c); } else list[i] = { ...list[i], ...c };
     await kset(COACH.clients, list); res.json({ ok: true, client: list.find(x => x.id === c.id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/coach/settings', async (req, res) => {
+  try { const cur = (await kget(COACH.settings, {})) || {}, t = req.body.callTemplate;
+    if (typeof t === 'string') cur.callTemplate = t.slice(0, 8000);
+    await kset(COACH.settings, cur); res.json({ ok: true, settings: cur }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/coach/client/delete', async (req, res) => {
   try { await kset(COACH.clients, (await getClients()).filter(x => x.id !== req.body.id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
