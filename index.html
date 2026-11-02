@@ -102,6 +102,11 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .gh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 10px}.gh-t{font-size:24px;font-weight:800;letter-spacing:-.02em}.gh-d{font-size:13px;color:var(--muted);margin-top:2px}
 .txts{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:max-content;margin-left:auto}
 .txt{display:block!important;padding:6px 12px!important;font-size:13px!important;line-height:1.2!important;white-space:nowrap;text-decoration:none;text-align:center;margin:0!important}
+.dlv{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:12px}
+.dlv-h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}.dlv-h span{display:inline-block;background:var(--red);color:#fff;border-radius:99px;padding:0 7px;margin-left:4px;font-size:11px}
+.dlv-r{display:flex;align-items:center;gap:8px;font-size:13.5px;padding-left:14px;border-left:1px solid var(--line)}.dlv-t{font-weight:800;white-space:nowrap}.dlv-n{white-space:nowrap}.dlv-n i{font-style:normal;color:var(--muted);font-size:12.5px}
+.dlv-b{padding:3px 10px!important;font-size:12px!important;text-decoration:none}.dlv-b.ok{background:#e3f1e8;border-color:#bfe0cb;color:var(--green)}
+@media(max-width:700px){.dlv{display:block;padding:8px 12px}.dlv-r{border:0;padding:6px 0 0;justify-content:space-between}.dlv-n{flex:1;overflow:hidden;text-overflow:ellipsis}}
 .gday{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:16px}.gday i{display:block;height:100%;background:var(--dark);border-radius:9px}
 .gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}@media(max-width:900px){.gcards{grid-template-columns:1fr 1fr}}@media(max-width:520px){.gcards{grid-template-columns:1fr}}
 .gc{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.gc .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);font-weight:600}
@@ -287,6 +292,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <!-- SALES -->
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
+      <div id="delToday"></div>
       <div id="dreamCard"></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
@@ -701,7 +707,8 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  return { sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, store: d.store || {}, showingsError: d.showingsError };
+  const deliveries = (d.deliveries || []).map(([s, e, title, phone, addr, id]) => ({ at: new Date(s), end: new Date(e), name: String(title || '').replace(/\(.*?\)/g, '').replace(/^\s*delivery\s*(for)?\s*/i, '').trim() || '—', phone: phone || '', addr: addr || '', id: id || s })).filter(x => !isNaN(x.at)).sort((a, b) => a.at - b.at);
+  return { deliveries, sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, store: d.store || {}, showingsError: d.showingsError };
 }
 
 // ---------- date ranges (one per tab) ----------
@@ -951,8 +958,24 @@ document.addEventListener('change', async e => {
     const list = dreamList().map(g => g.id === id ? { ...g, photoV: j.v } : g); await saveDreams(list); renderDream(); toast('Photo saved'); } catch (err) { toast(err.message); }
 });
 
+function renderDeliveries(){
+  const el = $('delToday'); if (!el) return;
+  const today = day0(new Date()), list = (RAW.deliveries || []).filter(x => day0(x.at).getTime() === today.getTime());
+  let done = {}; try { done = JSON.parse(localStorage.getItem('bcdDelOk') || '{}'); } catch {}
+  if (!list.length) { el.innerHTML = ''; return; }
+  const hr = d => { const h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : ''); };
+  const ap = d => d.getHours() < 12 ? 'am' : 'pm';
+  el.innerHTML = `<div class="dlv"><b class="dlv-h">Today's deliveries <span>${list.length}</span></b>${list.map(x => {
+    const win = hr(x.at) + (ap(x.at) !== ap(x.end) ? ap(x.at) : '') + '–' + hr(x.end) + ap(x.end), first = x.name.split(/\s+/)[0], street = x.addr.split(',')[0].trim(), town = (x.addr.split(',')[1] || '').trim();
+    const msg = `Hi ${first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : 'there'}! I wanted to confirm your delivery today between ${win.replace('–', '-')}${street ? ' at ' + street : ''}?`;
+    const ok = done[x.id];
+    return `<div class="dlv-r"><span class="dlv-t">${win}</span><span class="dlv-n">${esc(x.name)}${town ? ` <i>${esc(town)}</i>` : ''}</span>${x.phone ? `<a class="btn sm dlv-b ${ok ? 'ok' : ''}" data-delok="${esc(x.id)}" href="sms:+1${x.phone}?&body=${encodeURIComponent(msg)}">${ok ? '✓ Sent' : 'Confirm'}</a>` : '<span class="empty" style="font-size:12px">No #</span>'}</div>`; }).join('')}</div>`;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-delok]'); if (!b) return;
+  try { const d = JSON.parse(localStorage.getItem('bcdDelOk') || '{}'); d[b.dataset.delok] = Date.now(); localStorage.setItem('bcdDelOk', JSON.stringify(d)); } catch {}
+  setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
 function renderSales(){
-  renderJustSold(); renderDream();
+  renderJustSold(); renderDream(); renderDeliveries();
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
