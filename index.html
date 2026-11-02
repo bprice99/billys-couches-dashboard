@@ -225,6 +225,8 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
   .brand,.side .foot{display:none}
   .nav{white-space:nowrap;padding:9px 12px}
   .navh{display:none}
+  .side .nav{order:10}.side .nav[href]{order:20}
+  .side .nav[data-tab=sales]{order:1}.side .nav[data-tab=showings]{order:2}.side .nav[data-tab=drops]{order:3}.side .nav[data-tab=content]{order:4}.side .nav[data-tab=ads]{order:5}
   .main{padding:18px 14px 50px}
   .kpis,.kpis.k7,.kpis.k4{grid-template-columns:repeat(2,1fr)}
   .kpi .v{font-size:21px}
