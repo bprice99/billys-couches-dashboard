@@ -30,6 +30,13 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:10px}.f input,.f select,.f textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid #dcd4ca;border-radius:9px;font:inherit;font-size:14.5px;color:var(--text);background:#fff}
 .f textarea{resize:vertical}.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
 .row{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}.row input[type=text],.row input[type=date],.row input[type=url],.row input[type=number]{padding:7px 9px;border:1px solid #dcd4ca;border-radius:8px;font:inherit;font-size:14px;min-width:0}
+details.call{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff}details.call[open]{box-shadow:0 4px 14px rgba(0,0,0,.05)}
+details.call summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;font-weight:700}details.call summary::-webkit-details-marker{display:none}
+details.call summary:before{content:"\25B8";color:var(--muted);transition:transform .15s}details.call[open] summary:before{transform:rotate(90deg)}
+details.call .ct{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}details.call .cd{font-size:13px;color:var(--muted);font-weight:600}
+.cs{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--cream);color:var(--muted)}.cs.up{background:#e3ecf5;color:var(--blue)}
+.cbody{padding:0 14px 14px}.cgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:6px}@media(max-width:760px){.cgrid{grid-template-columns:1fr}}
+.cbody textarea{font-weight:400}textarea.plan{font-family:inherit;font-size:14px;line-height:1.55;min-height:300px;background:#fbfaf8}
 .row .grow{flex:1}.chk{width:20px;height:20px;flex:none;accent-color:var(--red)}
 .done{text-decoration:line-through;color:var(--muted)}
 .save{font-size:12.5px;color:var(--muted)}
@@ -168,6 +175,45 @@ async function saveClient(c){
 }
 const F = (label, path, type = 'text', extra = '') => { const c = curClient(), v = getPath(c, path) ?? '';
   return `<label class="f">${label}${type === 'textarea' ? `<textarea data-f="${path}" rows="3" ${extra}>${esc(v)}</textarea>` : `<input type="${type}" data-f="${path}" value="${esc(v)}" ${extra}>`}</label>`; };
+const CALL_TPL = `REMINDER: Record on iPhone for IG story + separate iPhone clips
+
+WINS SINCE LAST CALL
+- 
+
+NUMBERS
+{{numbers}}
+
+BIGGEST WIN?
+- 
+
+BIGGEST BOTTLENECK?
+- 
+
+AGENDA
+- 
+
+SCREENSHARE / REVIEW
+- 
+
+HOMEWORK (assign before we hang up)
+- `;
+const callTpl = () => (D.settings && D.settings.callTemplate) || CALL_TPL;
+function fillTpl(c){ const t = monthTotals(c), last = lastCheckin(c);
+  const nums = `- This month: ${t.flips} flips | ${money(t.revenue)} revenue | ${money(t.profit)} profit` + (last ? `\n- Last week (${fmtD(last.week)}): ${last.flips} flips | ${money(last.revenue)} | ${last.leads || 0} leads` : '');
+  const prev = (c.calls || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))[0], hw = prev && prev.plan && (prev.plan.split(/HOMEWORK[^\n]*\n/i)[1] || '').trim();
+  return callTpl().replace('{{numbers}}', nums) + (hw && hw !== '-' ? `\n\nLAST CALL'S HOMEWORK (did they do it?)\n${hw}` : ''); }
+function callsList(c){
+  const today = todayISO(), list = c.calls.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const openId = (list.filter(x => x.date >= today).pop() || list[0] || {}).id;
+  return list.length ? list.map(x => { const up = x.date >= today;
+    return `<details class="call" ${x.id === openId ? 'open' : ''}><summary><span class="ct">${esc(x.title || 'Call')}</span><span class="cd">${fmtD(x.date)}</span><span class="cs ${up ? 'up' : ''}">${x.date === today ? 'Today' : up ? 'Upcoming' : 'Done'}</span></summary>
+      <div class="cbody"><div class="row" style="border:0;padding-top:0"><input type="text" class="grow" data-list="calls" data-id="${x.id}" data-k="title" value="${esc(x.title)}" placeholder="Call #5: Month 1 review"><input type="date" data-list="calls" data-id="${x.id}" data-k="date" value="${esc(x.date)}"></div>
+      <div class="cgrid"><label class="f">Call plan <span class="empty" style="font-weight:400">private</span><textarea class="plan" data-list="calls" data-id="${x.id}" data-k="plan" rows="14" placeholder="What we'll cover">${esc(x.plan || '')}</textarea></label>
+        <div><label class="f">Fathom link<input type="url" data-list="calls" data-id="${x.id}" data-k="link" value="${esc(x.link)}" placeholder="Paste after the call"></label>
+          <label class="f">Takeaways <span class="empty" style="font-weight:400">client sees these</span><textarea data-list="calls" data-id="${x.id}" data-k="notes" rows="7" placeholder="What we decided + their homework">${esc(x.notes)}</textarea></label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${x.link ? `<a class="btn sm" href="${esc(x.link)}" target="_blank" rel="noopener">Recording</a>` : ''}${x.plan ? '' : `<button class="btn sm" data-filltpl="${x.id}">Use template</button>`}<span style="flex:1"></span><button class="btn sm x" data-delcall="${x.id}">Remove</button></div></div></div></div></details>`; }).join('')
+    : '<p class="empty">No calls yet. Tap + Plan a call.</p>';
+}
 function renderClient(){
   const c = curClient(); if (!c) { CUR = null; return renderClients(); }
   c.links = c.links || {}; c.program = c.program || {}; c.start = c.start || {}; c.goals = c.goals || {}; c.calls = c.calls || []; c.tasks = c.tasks || []; c.checkins = c.checkins || [];
@@ -190,13 +236,10 @@ function renderClient(){
     <div class="kpi"><small>Program</small><b>${Math.round(progressPct(c) * 100)}%</b><i>${fmtD(c.program.start)} to ${fmtD(c.program.end)}</i></div>
     <div class="kpi"><small>Paid</small><b>${paidCount(c)}/${c.program.payments.length}</b><i>${money(c.program.payments.filter(p => p.paid).reduce((a, p) => a + num(p.amount), 0))} collected</i></div>
   </div>
-  <div class="grid2">
-    <div class="card"><h2>Calls<span class="sp"></span><button class="btn sm" data-addcall>+ Call</button></h2>
-      ${c.calls.length ? c.calls.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(x => `<div class="row" style="flex-wrap:wrap"><input type="text" class="grow" data-list="calls" data-id="${x.id}" data-k="title" value="${esc(x.title)}" placeholder="Call #"><input type="date" data-list="calls" data-id="${x.id}" data-k="date" value="${esc(x.date)}">
-        <input type="url" style="flex:1 1 100%" data-list="calls" data-id="${x.id}" data-k="link" value="${esc(x.link)}" placeholder="Fathom link">
-        <input type="text" style="flex:1 1 100%" data-list="calls" data-id="${x.id}" data-k="notes" value="${esc(x.notes)}" placeholder="Takeaways (client sees these)">
-        ${x.link ? `<a class="btn sm" href="${esc(x.link)}" target="_blank" rel="noopener">Recording</a>` : ''}<button class="btn sm x" data-delcall="${x.id}">Remove</button></div>`).join('') : '<p class="empty">No calls yet.</p>'}
-    </div>
+  <div class="card"><h2>Calls<span class="sp"></span><button class="btn sm" data-calltpl>Edit template</button><button class="btn sm p" data-addcall>+ Plan a call</button></h2>
+    ${callsList(c)}
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr">
     <div class="card"><h2>Tasks<span class="sp"></span><button class="btn sm" data-addtask="once">+ Task</button><button class="btn sm" data-addtask="rec">+ Recurring</button></h2>
       ${months.map(m => `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 2px">MONTH ${m}</div>${oneTime.filter(t => (+t.month || 1) === m).map(taskRow).join('')}`).join('') || '<p class="empty">No one-time tasks.</p>'}
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 2px">EVERY WEEK <span style="font-weight:400">(resets Monday)</span></div>${rec.map(taskRow).join('') || '<p class="empty">No recurring tasks.</p>'}
@@ -350,7 +393,9 @@ document.addEventListener('click', async e => {
     try { const j = await post('/api/coach/client/save', { client: { name, active: true, program: { length: '3-month', start: st, end, plan: '', payments: [] }, start: {}, goals: {}, links: {}, calls: [{ id: uid(), title: 'Onboarding Call', date: st, link: '', notes: '' }], tasks: [], checkins: [], notes: '' } });
       D.clients.unshift(j.client); setTab('clients', j.client.id); } catch (err) { toast(err.message); } return; }
   if (c) {
-    if (t.closest('[data-addcall]')) { c.calls.push({ id: uid(), title: 'Call #' + (c.calls.filter(x => /^call #/i.test(x.title)).length + 1), date: todayISO(), link: '', notes: '' }); queueSave(c); return renderClient(); }
+    if (t.closest('[data-addcall]')) { const plan = fillTpl(c); c.calls.push({ id: uid(), title: 'Call #' + (c.calls.length + 1), date: todayISO(), link: '', notes: '', plan }); queueSave(c); return renderClient(); }
+    const ft = t.closest('[data-filltpl]'); if (ft) { const x = c.calls.find(y => y.id === ft.dataset.filltpl); if (x) { x.plan = fillTpl(c); queueSave(c); renderClient(); } return; }
+    if (t.closest('[data-calltpl]')) { $('tplText').value = callTpl(); $('m-tpl').classList.add('on'); return; }
     const dc = t.closest('[data-delcall]'); if (dc) { c.calls = c.calls.filter(x => x.id !== dc.dataset.delcall); queueSave(c); return renderClient(); }
     const at = t.closest('[data-addtask]'); if (at) { const rec = at.dataset.addtask === 'rec'; const text = prompt(rec ? 'Weekly task' : 'Task'); if (!text) return;
       const month = rec ? null : +(prompt('Which month of the program? (1, 2, 3...)', String(Math.min(12, Math.max(1, Math.ceil(progressPct(c) * 3) || 1)))) || 1);
@@ -398,5 +443,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.da
 const q = new URLSearchParams(location.search); TAB = ['home', 'clients', 'youtube', 'pipeline'].includes(q.get('tab')) ? q.get('tab') : 'home'; CUR = q.get('id');
 document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === TAB));
 load();
+</script>
+<div class="mask" id="m-tpl"><div class="modal" style="max-width:640px"><h3 style="margin-top:0">Call template</h3>
+  <p class="empty" style="font-size:13px;margin-top:-4px">Every new call starts with this. {{numbers}} fills in their latest numbers automatically, and last call's homework gets added at the bottom.</p>
+  <textarea id="tplText" rows="18" style="width:100%;font:inherit;font-size:14px;line-height:1.5;padding:10px;border:1px solid var(--line);border-radius:10px"></textarea>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" id="tplReset" style="margin-right:auto">Reset to default</button><button class="btn" data-closetpl>Cancel</button><button class="btn p" id="tplSave">Save template</button></div></div></div>
+<script>
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.closest('[data-closetpl]')) return $('m-tpl').classList.remove('on');
+  if (t.id === 'tplReset') { $('tplText').value = CALL_TPL; return; }
+  if (t.id === 'tplSave') { try { const j = await post('/api/coach/settings', { callTemplate: $('tplText').value }); D.settings = j.settings; $('m-tpl').classList.remove('on'); toast('Template saved'); } catch (err) { toast(err.message); } }
+});
 </script>
 </body></html>
