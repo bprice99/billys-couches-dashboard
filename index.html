@@ -84,9 +84,40 @@ td.n,th.n{text-align:right}
 .pill.ns{background:#2b1d16;color:#fff}
 .pill.u{background:#e6eef8;color:#2a5a8a}
 select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-size:14px;font-weight:600;font-family:inherit;color:var(--text)}
-.ctadd{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:12px}.ctadd #ctIdea{grid-column:1/-1;order:-1}
-.ctadd input,.ctadd select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px;background:#fff;min-width:0}
-@media(max-width:600px){.ctadd{grid-template-columns:1fr 1fr}.ctadd button{grid-column:1/-1}}
+.cthero{background:var(--dark);color:#fff;border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:22px;margin-bottom:16px}
+.cth-big{font-size:28px;font-weight:900;letter-spacing:-.02em}.cthero small{display:block;color:#cbbdb2;font-size:12.5px;margin-top:2px}
+.cth-bar{flex:1;min-width:0}.cth-bar .t{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:#cbbdb2;margin-bottom:6px}.cth-bar .t b{color:#fff}.cth-bar .tr{height:10px;background:rgba(255,255,255,.12);border-radius:9px;overflow:hidden}.cth-bar .tr i{display:block;height:100%;background:#d9a39f;border-radius:9px}
+.cth-go{background:#fff;color:var(--dark);border:0;border-radius:12px;padding:13px 18px;font:inherit;font-weight:900;font-size:14.5px;cursor:pointer;white-space:nowrap}.cth-go:disabled{opacity:.4}
+.ctgrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}.ctgrid>div{min-width:0}.ctgrid .card{margin-bottom:16px}
+.ctnew{width:100%;border:1.5px dashed #d6cabd;border-radius:12px;padding:12px 13px;font:inherit;font-size:14.5px;background:#fff;margin-bottom:6px;outline:none}.ctnew:focus{border-style:solid;border-color:var(--red)}.ctnew.sm{font-size:13px;padding:9px 12px;margin:10px 0 0}
+.ctit2{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:14.5px;background:#fff}.ctit2.drag{opacity:.4}
+.ctgrip{color:#cfc4b8;font-size:13px;letter-spacing:-2px;cursor:grab;width:12px;flex:none}
+.ctcb{width:24px;height:24px;border-radius:7px;border:2px solid #cfc4b8;background:#fff;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;cursor:pointer;padding:0}
+.ctit2.done .ctcb{background:var(--green);border-color:var(--green)}.ctit2.done .cttx{color:var(--muted);text-decoration:line-through}
+.cttx{flex:1;min-width:0;cursor:pointer}.cttx small{display:block;color:var(--muted);font-size:12px;margin-top:2px;text-decoration:none}
+.cttag{font-size:10.5px;font-weight:800;border-radius:99px;padding:3px 8px;background:#f3ece4;color:var(--muted);white-space:nowrap}.cttag.r{background:#fbf0ee;color:var(--red)}.cttag.g{background:#e3f1e8;color:var(--green)}
+.ctstar{border:0;background:none;font-size:17px;color:#d9cfc4;cursor:pointer;padding:0 2px}.ctstar.on{color:#e0b23c}
+.ctx{border:0;background:none;color:#c9bfb5;font-size:18px;cursor:pointer;padding:0 4px;line-height:1}.ctx:hover{color:var(--bad)}
+.ctedit{background:var(--bg);border-radius:12px;padding:10px;margin:6px 0 8px;display:grid;gap:8px}.ctedit input,.ctedit textarea,.ctedit select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:14px;background:#fff}
+.ctedit .row3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
+.ctlbl{font-size:11.5px;font-weight:800;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin:16px 0 2px}.ctlbl small{text-transform:none;letter-spacing:0;font-weight:500}
+.ctcouch{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}.ctcouch:last-child{border:0}.ctcouch img,.ctcouch .ph{width:62px;height:42px;object-fit:cover;border-radius:7px;background:var(--cream);flex:none}
+.ctcouch div{flex:1;min-width:0}.ctcouch b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ctcouch small{color:var(--muted)}
+.cthook{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}.cthook span{flex:1;cursor:pointer}.cthook em{font-style:normal;color:var(--muted);font-size:11.5px;white-space:nowrap}
+.ctangs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ctang{border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:var(--bg)}.ctang-h{display:flex;justify-content:space-between;align-items:center}.ctang b{font-size:14.5px}.ctang small{color:var(--muted);font-size:12px;display:block;margin-top:2px}
+.ctang p{margin:8px 0 0;font-size:13.5px;line-height:1.4}.ctang-f{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
+.ctang.add{display:grid;gap:6px;background:#fff;border-style:dashed}.ctang.add input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
+.cfbox{display:none;position:fixed;inset:0;z-index:60;background:var(--dark);color:#fff;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.cfbox.on{display:flex}
+.cf-top{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0;font-size:14px;color:#cbbdb2}.cf-x{border:0;background:none;color:#cbbdb2;font:inherit;font-size:14px;cursor:pointer;padding:0}
+.cf-prog{display:flex;gap:4px;padding:12px 20px}.cf-prog i{flex:1;height:4px;border-radius:9px;background:rgba(255,255,255,.15)}.cf-prog i.on{background:#d9a39f}
+.cf-card{flex:1;margin:6px 16px;background:#fff;color:var(--dark);border-radius:24px;padding:24px 22px;overflow:auto;max-width:620px;width:calc(100% - 32px);align-self:center}
+.cf-k{font-size:12px;font-weight:800;color:var(--red);letter-spacing:.08em}.cf-card h3{font-size:28px;line-height:1.2;margin:10px 0 14px;font-weight:900;letter-spacing:-.02em}
+.cf-hk{background:var(--bg);border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.45}.cf-hk b{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
+.cf-card ul{margin:14px 0 0;padding-left:20px;font-size:15px;line-height:1.75;color:#4a3f37}
+.cf-acts{display:flex;gap:10px;padding:16px;max-width:620px;width:100%;align-self:center}.cf-acts button{flex:1;border:0;border-radius:16px;padding:18px;font:inherit;font-weight:900;font-size:17px;cursor:pointer}
+.cf-skip{background:rgba(255,255,255,.1);color:#fff}.cf-film{background:#7bc497;color:#123d24}
+@media(max-width:800px){.ctgrid{grid-template-columns:minmax(0,1fr)}.ctnew{font-size:16px}.cthero{flex-wrap:wrap;gap:14px}.cth-bar{flex-basis:100%;order:3}.cth-go{margin-left:auto}.ctangs{grid-template-columns:1fr}}
 .ctday{border-top:1px solid var(--line);padding:8px 0}.ctday h4{margin:0 0 4px;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .ctit{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:14px}.ctit .idea{flex:1;min-width:0}.ctit small{color:var(--muted)}
 .stat{border:0;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -341,15 +372,22 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
 
     <!-- CONTENT PLAN -->
     <section id="tab-content" hidden>
-      <div class="kpis" id="ctKpis"></div>
-      <div style="margin-top:0">
-        <div class="card"><h2>Content this week <small>tap a status to move it along</small></h2>
-          <div class="ctadd">
-            <input type="date" id="ctDate"><select id="ctType"><option>Reel / video</option><option>Photo post</option><option>Story</option><option>Ad creative</option><option>Listing</option><option>Live</option></select>
-            <input id="ctIdea" placeholder="Idea / hook (e.g. 'Why this $2,500 couch is $1,100 here')"><button class="btn p" id="ctAdd">Add</button>
+      <div class="cthero" id="ctHero"></div>
+      <div class="ctgrid">
+        <div>
+          <div class="card"><h2>Shot list <small>check it off when it's filmed, that's it</small><span class="sp" style="flex:1"></span><small class="hide-m">drag to reorder · tap a shot to add a hook</small></h2>
+            <input class="ctnew" id="ctNew" placeholder="＋ Type an idea and press Enter">
+            <div id="ctList"></div>
+            <input class="ctnew sm" id="ctWkNew" placeholder="＋ Add something you film every week">
           </div>
-          <div id="ctBoard"></div></div>
+          <div class="card"><h2>Marketing angles <small>who each video calls out (from your customer avatar)</small></h2><div class="ctangs" id="ctAngles"></div></div>
+        </div>
+        <div>
+          <div class="card"><h2>New couches to film <small>live in Drops, not on the list yet</small></h2><div id="ctCouches"></div></div>
+          <div class="card"><h2>Hook bank <small>openers that worked · tap to copy</small></h2><div id="ctHooks"></div><input class="ctnew sm" id="ctHookNew" placeholder="＋ Save a hook and press Enter"></div>
+        </div>
       </div>
+      <div class="cfbox" id="ctFilmBox"></div>
     </section>
 
     <!-- B-STOCK -->
@@ -1818,7 +1856,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1906,7 +1944,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-pply
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'ppl' || tab === 'sched';
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'ppl' || tab === 'sched' || tab === 'content';
   ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
 }
 function setTab(t){
@@ -2421,31 +2459,138 @@ document.addEventListener('click', e => {
   f.category.value = x.cat; $('expTitle').textContent = 'Edit expense'; m.classList.add('on');
 });
 
-// ---------- content plan ----------
-const CT_STATUS = ['Idea', 'Filmed', 'Edited', 'Posted'];
-function renderContent(){
-  const R = getR('content'), wk = ymd(mondayOf(R.from)), list = (RAW.store.content || []).filter(x => x.date >= ymd(R.from) && x.date <= ymd(R.to)).sort((a, b) => a.date.localeCompare(b.date));
-  if (!$('ctDate').value || $('ctDate').value < ymd(R.from) || $('ctDate').value > ymd(R.to)) $('ctDate').value = ymd(R.from) > todayStr() ? ymd(R.from) : (todayStr() > ymd(R.to) ? ymd(R.from) : todayStr());
-  const n = st => list.filter(x => x.status === st).length, ads = list.filter(x => x.type === 'Ad creative').length;
-  $('ctKpis').innerHTML = kpiHtml([['Planned', list.length], ['Posted', n('Posted') + ' / ' + list.length], ['Ready to post', n('Edited')], ['Still ideas', n('Idea')], ['New ad creatives', ads]]);
-  const days = []; for (let d = R.from; d <= R.to; d = addDays(d, 1)) days.push(d);
-  $('ctBoard').innerHTML = days.map(d => { const items = list.filter(x => x.date === ymd(d));
-    return `<div class="ctday"><h4>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h4>` +
-      (items.length ? items.map(x => `<div class="ctit"><button class="stat ${x.status}" data-ctstat="${x.id}">${x.status}</button><span class="idea">${esc(x.idea || '(no idea yet)')}<br><small>${esc(x.type)}</small></span><button class="xs" data-ctdel="${x.id}" title="Delete">&times;</button></div>`).join('')
-        : '<div class="ctit"><small>Nothing planned</small></div>') + '</div>'; }).join('');
-}
-document.addEventListener('click', e => {
-  if (e.target.id === 'ctAdd') {
-    const idea = $('ctIdea').value.trim(), date = $('ctDate').value; if (!date) return toast('Pick a date');
-    const list = (RAW.store.content || []).concat({ id: uid6(), date, type: $('ctType').value, idea, status: 'Idea' });
-    $('ctIdea').value = ''; saveStore('content', list); renderContent(); return;
+// ---------- content: shot list (no dates, no statuses: check it when it's filmed) ----------
+const CT_ANGLES0 = [
+  { id: 'a1', title: 'Baby on the way', who: 'Couples expecting a baby (Jordan & Taylor)', line: '"Baby on the way? Get the living room ready without blowing the nursery budget."' },
+  { id: 'a2', title: 'Toddlers & kids', who: 'Parents with little kids', line: '"Got toddlers? This fabric wipes clean, and you didn\'t pay $3,000 for it."' },
+  { id: 'a3', title: 'Pets & dogs', who: 'Dog and cat owners', line: '"Your dog is going to love this couch more than you do."' },
+  { id: 'a4', title: 'Want a deal', who: 'People who won\'t pay full retail', line: '"Why pay $2,500 at the store when it\'s $1,100 here?"' },
+];
+const CT_WEEKLY0 = [{ id: 'w1', text: 'Sold wall update' }, { id: 'w2', text: 'Weekend open house promo' }, { id: 'w3', text: 'Delivery day clip' }];
+function ctData(){
+  let d = RAW.store.shots;
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {   // first time: carry over unposted ideas from the old planner
+    const old = (Array.isArray(RAW.store.content) ? RAW.store.content : []).filter(x => (x.idea || '').trim() && x.status !== 'Posted');
+    d = { items: old.map(x => ({ id: uid6(), text: x.idea.trim(), tag: /ad/i.test(x.type || '') ? 'ad' : /story/i.test(x.type || '') ? 'story' : '', star: false, done: false })),
+      weekly: CT_WEEKLY0, weeklyDone: {}, hooks: [{ id: 'h1', text: 'Retail is $2,500. Watch this.', used: 0 }, { id: 'h2', text: 'I just got the keys to a new warehouse…', used: 0 }, { id: 'h3', text: 'Stop buying couches from Marketplace strangers.', used: 0 }],
+      angles: CT_ANGLES0, goal: 10, adGoal: 4, hiddenDrops: [] };
+    RAW.store.shots = d;
   }
-  const st = e.target.closest('[data-ctstat]');
-  if (st) { const list = RAW.store.content || [], x = list.find(y => y.id === st.dataset.ctstat); if (x) { x.status = CT_STATUS[(CT_STATUS.indexOf(x.status) + 1) % CT_STATUS.length]; saveStore('content', list); renderContent(); } return; }
-  const del = e.target.closest('[data-ctdel]');
-  if (del) { saveStore('content', (RAW.store.content || []).filter(y => y.id !== del.dataset.ctdel)); renderContent(); }
+  d.items = d.items || []; d.weekly = d.weekly || []; d.weeklyDone = d.weeklyDone || {}; d.hooks = d.hooks || []; d.angles = d.angles || []; d.hiddenDrops = d.hiddenDrops || [];
+  return d;
+}
+const ctWeek = () => ymd(mondayOf(new Date()));
+let ctT = null, CT_OPEN = null, CT_FILM = null;
+const ctSave = (d, now) => { RAW.store.shots = d; clearTimeout(ctT); if (now) saveStore('shots', d); else ctT = setTimeout(() => saveStore('shots', d), 500); };
+const ctTag = t => t === 'ad' ? '<span class="cttag r">AD</span>' : t === 'story' ? '<span class="cttag">STORY</span>' : '';
+function ctOpenList(d){   // what's left to film, in list order, starred first; weekly ones not done this week
+  const wk = d.weeklyDone[ctWeek()] || [];
+  return [...d.items.filter(x => !x.done && x.star), ...d.items.filter(x => !x.done && !x.star), ...d.weekly.filter(w => !wk.includes(w.id)).map(w => ({ ...w, weeklyItem: true }))];
+}
+function renderContent(){
+  const d = ctData(), wk = ctWeek(), wkDone = d.weeklyDone[wk] || [], open = ctOpenList(d);
+  const doneWeek = d.items.filter(x => x.done && x.doneAt && x.doneAt >= wk), filmedN = doneWeek.length + wkDone.length, adsN = doneWeek.filter(x => x.tag === 'ad').length;
+  const ang = id => d.angles.find(a => a.id === id);
+  $('ctHero').innerHTML = `<div><div class="cth-big">${open.length} to film</div><small>${open.length ? 'about ' + Math.max(5, open.length * 5) + ' min at the store' : 'All caught up 🎉'}</small></div>
+    <div class="cth-bar"><div class="t"><span>This week · ${filmedN} of ${d.goal} filmed</span><span>Ads: <b>${adsN} / ${d.adGoal}</b> ${adsN >= d.adGoal ? '✓' : ''} · <a href="#" id="ctGoalEdit" style="color:#d9a39f">edit goals</a></span></div><div class="tr"><i style="width:${Math.min(100, filmedN / Math.max(1, d.goal) * 100)}%"></i></div></div>
+    <button class="cth-go" id="ctFilm" ${open.length ? '' : 'disabled'}>▶ Start filming</button>`;
+  const item = x => { const a = ang(x.angle), on = CT_OPEN === x.id;
+    return `<div class="ctit2 ${x.done ? 'done' : ''}" data-ctid="${x.id}" draggable="${x.done ? 'false' : 'true'}">
+      <span class="ctgrip">${x.done ? '' : '⋮⋮'}</span><button class="ctcb" data-ctdone="${x.id}">${x.done ? '✓' : ''}</button>
+      <span class="cttx" data-ctopen="${x.id}">${esc(x.text)}${x.hook || a ? `<small>${x.hook ? 'Hook: "' + esc(x.hook) + '"' : ''}${x.hook && a ? ' · ' : ''}${a ? 'Angle: ' + esc(a.title) : ''}</small>` : ''}</span>
+      ${ctTag(x.tag)}${x.done ? `<span class="cttag g">${new Date(x.doneAt + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}</span>` : `<button class="ctstar ${x.star ? 'on' : ''}" data-ctstar="${x.id}" title="Priority">★</button>`}
+      </div>${on && !x.done ? `<div class="ctedit">
+        <input data-cte="${x.id}" data-k="text" value="${esc(x.text)}" placeholder="Shot">
+        <input data-cte="${x.id}" data-k="hook" value="${esc(x.hook || '')}" placeholder="Hook (what you say first)">
+        <textarea data-cte="${x.id}" data-k="notes" rows="3" placeholder="Shot notes, one per line (e.g. Start at the door)">${esc(x.notes || '')}</textarea>
+        <div class="row3"><select data-cte="${x.id}" data-k="tag"><option value="">No tag</option><option value="ad" ${x.tag === 'ad' ? 'selected' : ''}>Ad creative</option><option value="story" ${x.tag === 'story' ? 'selected' : ''}>Story</option></select>
+        <select data-cte="${x.id}" data-k="angle"><option value="">No angle</option>${d.angles.map(a => `<option value="${a.id}" ${x.angle === a.id ? 'selected' : ''}>${esc(a.title)}</option>`).join('')}</select>
+        <button class="btn sm x" data-ctdel="${x.id}">Delete</button></div></div>` : ''}`; };
+  const openItems = [...d.items.filter(x => !x.done && x.star), ...d.items.filter(x => !x.done && !x.star)];
+  const recent = d.items.filter(x => x.done).sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || '')), thisWeek = recent.filter(x => x.doneAt >= wk);
+  $('ctList').innerHTML = (openItems.map(item).join('') || '<p class="empty">Nothing on the list. Type an idea above.</p>')
+    + (d.weekly.length ? `<div class="ctlbl">Every week <small>back on the list each Monday</small></div>` + d.weekly.map(w => { const dn = wkDone.includes(w.id);
+      return `<div class="ctit2 ${dn ? 'done' : ''}"><span class="ctgrip"></span><button class="ctcb" data-ctwk="${w.id}">${dn ? '✓' : ''}</button><span class="cttx">${esc(w.text)}</span><span class="cttag">↻ WEEKLY</span><button class="ctx" data-ctwkdel="${w.id}" title="Stop repeating">&times;</button></div>`; }).join('') : '')
+    + `<div class="ctlbl">Filmed this week · ${thisWeek.length + wkDone.length}</div>` + (thisWeek.map(item).join('') || '<p class="empty" style="margin:4px 0 0">Nothing filmed yet this week.</p>')
+    + (recent.length > thisWeek.length ? `<button class="btn sm" id="ctClear" style="margin-top:10px">Clear ${recent.length - thisWeek.length} older filmed</button>` : '');
+  // couches from Drops that are live and not added/hidden
+  const live = ((DR && DR.drops) || []).filter(x => (x.status === 'live' || x.status === 'emailed') && !d.hiddenDrops.includes(x.id) && !d.items.some(i => i.dropId === x.id)).slice(0, 6);
+  $('ctCouches').innerHTML = !DR ? '<p class="empty">Loading…</p>' : live.length ? live.map(x => `<div class="ctcouch">${(x.photos || [])[0] ? `<img src="${esc(/^https?:/.test(x.photos[0]) ? x.photos[0] : '/public/dphoto/' + x.photos[0] + '.jpg')}">` : '<span class="ph"></span>'}<div><b>${esc(x.title)}</b><small>${money(x.price || 0)}${x.liveAt ? ' · live ' + Math.max(0, Math.round((Date.now() - x.liveAt) / 864e5)) + 'd' : ''}</small></div><button class="btn sm" data-ctcadd="${x.id}">＋ Add</button><button class="ctx" data-ctchide="${x.id}" title="Not filming this one">&times;</button></div>`).join('') : '<p class="empty">Every couch on the floor is covered.</p>';
+  $('ctHooks').innerHTML = d.hooks.map(h => `<div class="cthook"><span data-cthcopy="${h.id}" title="Tap to copy">"${esc(h.text)}"</span><em>${h.used ? 'used ' + h.used + '×' : 'new'}</em><button class="ctx" data-cthdel="${h.id}">&times;</button></div>`).join('') || '<p class="empty">No hooks saved yet.</p>';
+  $('ctAngles').innerHTML = d.angles.map(a => `<div class="ctang"><div class="ctang-h"><b>${esc(a.title)}</b><button class="ctx" data-ctadel="${a.id}" title="Remove angle">&times;</button></div><small>Calling out: ${esc(a.who)}</small>${a.line ? `<p>${esc(a.line)}</p>` : ''}
+    <div class="ctang-f"><span>${d.items.filter(i => i.angle === a.id && i.done).length} filmed · ${d.items.filter(i => i.angle === a.id && !i.done).length} on the list</span><button class="btn sm" data-ctause="${a.id}">＋ Add a shot</button></div></div>`).join('')
+    + `<div class="ctang add"><input id="ctAngTitle" placeholder="New angle (e.g. First apartment)"><input id="ctAngWho" placeholder="Who you're calling out"><input id="ctAngLine" placeholder="Example line (optional)"><button class="btn sm p" id="ctAngAdd">Add angle</button></div>`;
+  if (!DR) fetch('/api/drops', { cache: 'no-store' }).then(r => r.json()).then(j => { if (j && j.drops) { DR = j; if (tab === 'content') renderContent(); } }).catch(() => {});
+}
+function ctAddText(raw){
+  const d = ctData(); let t = raw.trim(); if (!t) return;
+  let tag = ''; if (/#ad\b/i.test(t)) tag = 'ad'; else if (/#story\b/i.test(t)) tag = 'story';
+  t = t.replace(/#(ad|story)\b/ig, '').replace(/\s+/g, ' ').trim(); if (!t) return;
+  d.items.unshift({ id: uid6(), text: t, tag, star: false, done: false }); ctSave(d, true); renderContent();
+}
+function ctFilmShow(){
+  const d = ctData(), list = ctOpenList(d).filter(x => !(CT_FILM.skipped || []).includes(x.id));
+  if (!list.length) { $('ctFilmBox').classList.remove('on'); CT_FILM = null; renderContent(); return toast(`Session done: ${CT_FILM_DONE} filmed 🎬`); }
+  const x = list[0], a = d.angles.find(y => y.id === x.angle), total = CT_FILM.total, n = Math.min(total, CT_FILM.done + (CT_FILM.skipped || []).length + 1);
+  $('ctFilmBox').innerHTML = `<div class="cf-top"><button class="cf-x" id="ctFilmEnd">✕ Done for now</button><span>${n} of ${total}</span></div>
+    <div class="cf-prog">${Array.from({ length: total }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="cf-card"><div class="cf-k">${x.weeklyItem ? '↻ EVERY WEEK' : x.tag === 'ad' ? 'AD CREATIVE' : x.tag === 'story' ? 'STORY' : 'SHOT'}${x.star ? ' · ★ PRIORITY' : ''}</div>
+      <h3>${esc(x.text)}</h3>
+      ${x.hook ? `<div class="cf-hk"><b>HOOK</b>"${esc(x.hook)}"</div>` : ''}
+      ${a ? `<div class="cf-hk" style="margin-top:8px"><b>ANGLE · ${esc(a.title.toUpperCase())}</b>Calling out ${esc(a.who)}${a.line && a.line.replace(/^"|"$/g, '') !== (x.hook || '') ? '<br>' + esc(a.line) : ''}</div>` : ''}
+      ${x.notes ? `<ul>${x.notes.split('\n').filter(Boolean).map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}</div>
+    <div class="cf-acts"><button class="cf-skip" data-cfskip="${x.id}">Skip</button><button class="cf-film" data-cffilm="${x.id}" data-wk="${x.weeklyItem ? 1 : ''}">✓ Filmed</button></div>`;
+}
+let CT_FILM_DONE = 0;
+function ctMark(id, weekly){
+  const d = ctData(), wk = ctWeek();
+  if (weekly) { const l = d.weeklyDone[wk] = d.weeklyDone[wk] || []; if (!l.includes(id)) l.push(id); Object.keys(d.weeklyDone).forEach(k => { if (k < ymd(addDays(new Date(), -60))) delete d.weeklyDone[k]; }); }
+  else { const x = d.items.find(y => y.id === id); if (x) { x.done = true; x.doneAt = todayStr(); const h = d.hooks.find(h => x.hook && h.text.toLowerCase() === x.hook.toLowerCase()); if (h) h.used = (h.used || 0) + 1; } }
+  ctSave(d, true);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'ctNew') { e.preventDefault(); ctAddText(e.target.value); e.target.value = ''; }
+  if (e.key === 'Enter' && e.target.id === 'ctHookNew') { e.preventDefault(); const v = e.target.value.trim().replace(/^"|"$/g, ''); if (!v) return; const d = ctData(); d.hooks.unshift({ id: uid6(), text: v, used: 0 }); e.target.value = ''; ctSave(d, true); renderContent(); }
+  if (e.key === 'Enter' && e.target.id === 'ctWkNew') { e.preventDefault(); const v = e.target.value.trim(); if (!v) return; const d = ctData(); d.weekly.push({ id: uid6(), text: v }); e.target.value = ''; ctSave(d, true); renderContent(); }
 });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'ctIdea') $('ctAdd').click(); });
+document.addEventListener('input', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.cte) return;
+  const d = ctData(), x = d.items.find(y => y.id === t.dataset.cte); if (!x) return;
+  x[t.dataset.k] = t.value; ctSave(d);
+  if (t.tagName === 'SELECT') renderContent();
+});
+document.addEventListener('click', e => {
+  const t = e.target, d = () => ctData();
+  if (t.id === 'ctFilm') { const l = ctOpenList(d()); if (!l.length) return; CT_FILM = { total: l.length, done: 0, skipped: [] }; CT_FILM_DONE = 0; $('ctFilmBox').classList.add('on'); return ctFilmShow(); }
+  if (t.id === 'ctFilmEnd') { $('ctFilmBox').classList.remove('on'); CT_FILM = null; renderContent(); if (CT_FILM_DONE) toast(`${CT_FILM_DONE} filmed 🎬`); return; }
+  if (t.dataset && t.dataset.cffilm) { ctMark(t.dataset.cffilm, !!t.dataset.wk); CT_FILM.done++; CT_FILM_DONE++; return ctFilmShow(); }
+  if (t.dataset && t.dataset.cfskip) { CT_FILM.skipped.push(t.dataset.cfskip); return ctFilmShow(); }
+  if (t.id === 'ctGoalEdit') { e.preventDefault(); const D = d(), g = prompt('Videos to film each week?', D.goal); if (g === null) return; const a = prompt('Of those, how many ad creatives?', D.adGoal); D.goal = Math.max(1, Number(g) || D.goal); if (a !== null) D.adGoal = Math.max(0, Number(a) || 0); ctSave(D, true); return renderContent(); }
+  const done = t.closest('[data-ctdone]'); if (done) { const D = d(), x = D.items.find(y => y.id === done.dataset.ctdone); if (!x) return; if (x.done) { x.done = false; delete x.doneAt; ctSave(D, true); } else ctMark(x.id); CT_OPEN = null; return renderContent(); }
+  const wkb = t.closest('[data-ctwk]'); if (wkb) { const D = d(), l = D.weeklyDone[ctWeek()] = D.weeklyDone[ctWeek()] || []; const i = l.indexOf(wkb.dataset.ctwk); if (i > -1) l.splice(i, 1); else l.push(wkb.dataset.ctwk); ctSave(D, true); return renderContent(); }
+  const wkd = t.closest('[data-ctwkdel]'); if (wkd) { const D = d(); D.weekly = D.weekly.filter(w => w.id !== wkd.dataset.ctwkdel); ctSave(D, true); return renderContent(); }
+  const st = t.closest('[data-ctstar]'); if (st) { const D = d(), x = D.items.find(y => y.id === st.dataset.ctstar); if (x) { x.star = !x.star; ctSave(D, true); renderContent(); } return; }
+  const op = t.closest('[data-ctopen]'); if (op) { CT_OPEN = CT_OPEN === op.dataset.ctopen ? null : op.dataset.ctopen; renderContent(); const f = document.querySelector(`[data-cte="${CT_OPEN}"][data-k="hook"]`); if (f) f.focus(); return; }
+  const del = t.closest('[data-ctdel]'); if (del) { const D = d(); D.items = D.items.filter(y => y.id !== del.dataset.ctdel); CT_OPEN = null; ctSave(D, true); return renderContent(); }
+  if (t.id === 'ctClear') { const D = d(), wk = ctWeek(); D.items = D.items.filter(x => !x.done || (x.doneAt || '') >= wk); ctSave(D, true); return renderContent(); }
+  const ca = t.closest('[data-ctcadd]'); if (ca) { const D = d(), x = ((DR && DR.drops) || []).find(y => y.id === ca.dataset.ctcadd); if (!x) return; D.items.unshift({ id: uid6(), text: 'Walkthrough: ' + x.title, dropId: x.id, tag: 'ad', star: false, done: false }); ctSave(D, true); return renderContent(); }
+  const ch = t.closest('[data-ctchide]'); if (ch) { const D = d(); D.hiddenDrops.push(ch.dataset.ctchide); D.hiddenDrops = D.hiddenDrops.slice(-300); ctSave(D, true); return renderContent(); }
+  const hc = t.closest('[data-cthcopy]'); if (hc) { const h = d().hooks.find(y => y.id === hc.dataset.cthcopy); if (h) copyText(h.text, 'Hook copied'); return; }
+  const hd = t.closest('[data-cthdel]'); if (hd) { const D = d(); D.hooks = D.hooks.filter(h => h.id !== hd.dataset.cthdel); ctSave(D, true); return renderContent(); }
+  const au = t.closest('[data-ctause]'); if (au) { const D = d(), a = D.angles.find(y => y.id === au.dataset.ctause); if (!a) return; const id = uid6(); D.items.unshift({ id, text: a.title + ' video', angle: a.id, hook: (a.line || '').replace(/^"|"$/g, ''), tag: '', star: false, done: false }); CT_OPEN = id; ctSave(D, true); renderContent(); const f = document.querySelector(`[data-cte="${id}"][data-k="text"]`); if (f) { f.focus(); f.select(); } return; }
+  const ad = t.closest('[data-ctadel]'); if (ad) { if (!confirm('Remove this angle?')) return; const D = d(); D.angles = D.angles.filter(a => a.id !== ad.dataset.ctadel); ctSave(D, true); return renderContent(); }
+  if (t.id === 'ctAngAdd') { const title = $('ctAngTitle').value.trim(); if (!title) return toast('Name the angle'); const D = d(); D.angles.push({ id: uid6(), title, who: $('ctAngWho').value.trim() || title, line: $('ctAngLine').value.trim() }); ctSave(D, true); return renderContent(); }
+});
+// drag to reorder the shot list
+let ctDrag = null;
+document.addEventListener('dragstart', e => { const r = e.target.closest && e.target.closest('.ctit2[draggable=true]'); if (r) { ctDrag = r.dataset.ctid; r.classList.add('drag'); } });
+document.addEventListener('dragend', e => { document.querySelectorAll('.ctit2.drag').forEach(r => r.classList.remove('drag')); });
+document.addEventListener('dragover', e => { if (ctDrag && e.target.closest && e.target.closest('.ctit2[data-ctid]')) e.preventDefault(); });
+document.addEventListener('drop', e => {
+  const r = e.target.closest && e.target.closest('.ctit2[data-ctid]'); if (!ctDrag || !r || r.dataset.ctid === ctDrag) { ctDrag = null; return; }
+  e.preventDefault(); const D = ctData(), from = D.items.findIndex(x => x.id === ctDrag), it = D.items.splice(from, 1)[0], to = D.items.findIndex(x => x.id === r.dataset.ctid);
+  D.items.splice(to, 0, it); const tgt = D.items[to + 1]; if (tgt && tgt.star && !it.star) it.star = true; ctDrag = null; ctSave(D, true); renderContent();
+});
 
 // ---------- open house calendar ----------
 let ohCalM = null;
