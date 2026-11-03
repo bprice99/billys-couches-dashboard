@@ -1164,7 +1164,7 @@ async function recentOrders(days) {
     const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= -2 && dayDiff(sd, l.day) <= 4 && (Math.abs(l.price - d.price) < 1 || Math.abs(l.net - d.price) < 1));
     const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
     if (hit) hit.drop = d;
-    else if (d.soldAt > cutoff && d.soldAt <= Date.now()) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
+    else if (d.soldAt > cutoff && d.soldAt <= Date.now()) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
   });
   return log.map(l => {
     const at = l.ts || Math.min(Date.now(), Date.parse(l.day + 'T12:00:00-05:00'));
@@ -1379,6 +1379,22 @@ app.get('/public/orderable', async (req, res) => {
     const list = (await getDrops()).filter(d => d.status === 'live' || d.status === 'emailed');
     res.set('Cache-Control', 'public, max-age=30').json({ ok: true, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '' })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
+});
+// Private order app (team checkout): marks the couches it just sold as Sold in Drops, so they leave the
+// website + public order app and the website's "just sold" pop-up gets the right title and photo.
+// Only accepted from the order app's own page (Origin check), and only flips live/emailed couches.
+const ORDER_ORIGINS = (process.env.ORDER_APP_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+const orderOriginOk = o => { if (ORDER_ORIGINS.includes(o)) return true; try { const h = new URL(o).hostname; return h.includes('billys-couches-proxy') || h === 'billyscouches.com' || h.endsWith('.billyscouches.com'); } catch { return false; } };
+function orderCors(req, res) { const o = req.get('origin') || ''; if (orderOriginOk(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'POST'); return true; } return false; }
+app.options('/public/order-sold', (req, res) => { orderCors(req, res); res.sendStatus(204); });
+app.post('/public/order-sold', async (req, res) => {
+  if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const ids = new Set((req.body.ids || []).map(String).slice(0, 10)), who = clean(req.body.customer, 60), list = await getDrops(), now = Date.now(); let n = 0;
+    list.forEach(d => { if (!ids.has(d.id) || !['live', 'emailed'].includes(d.status)) return; d.status = 'sold'; d.soldAt = now; d.updatedAt = now; if (who) d.soldCustomer = who; d.soldVia = 'order app'; n++; });
+    if (n) { await setDrops(list); dropsAt = now; recentCache.at = 0; }
+    res.json({ ok: true, marked: n });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
