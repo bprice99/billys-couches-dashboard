@@ -255,7 +255,7 @@ app.post('/api/openhouse/check', async (req, res) => {
 });
 
 // Small saved lists edited in the dashboard: content plan, ad checklist, goal game plan, after-sale upsells, open house plans.
-const STORE_KEYS = ['content', 'adChecks', 'gamePlan', 'upsellAdds', 'dream', 'ppl'];
+const STORE_KEYS = ['content', 'adChecks', 'gamePlan', 'upsellAdds', 'dream', 'ppl', 'slots'];
 app.post('/api/store/:k', async (req, res) => {
   try {
     if (!STORE_KEYS.includes(req.params.k)) return res.status(400).json({ error: 'bad key' });
@@ -528,14 +528,15 @@ app.get('/api/payroll', async (req, res) => {
 // Uses THANKYOU_FORM_ID (comma-separated OK) if set; otherwise finds your Jotform forms
 // whose title mentions "schedul" or "order confirmation".
 let ty = { at: 0, data: null, forms: null };
+// The Signature & Agreement form is always included too: that's where "Pick up today" buyers give their address.
 async function thankYouForms() {
-  const env = String(process.env.THANKYOU_FORM_ID || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (env.length) return env;
   if (ty.forms) return ty.forms;
+  const env = String(process.env.THANKYOU_FORM_ID || '').split(',').map(s => s.trim()).filter(Boolean);
   const r = await fetch(`${CFG.JOTFORM_BASE}/user/forms?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=500`);
-  const j = await r.json();
-  const ids = (j.content || []).filter(f => f.status !== 'DELETED' && /schedul|order confirm|delivery confirm|pickup confirm/i.test(f.title || '')).map(f => f.id);
-  ty.forms = ids; return ids;
+  const j = await r.json(), all = (j.content || []).filter(f => f.status !== 'DELETED');
+  const sched = env.length ? env : all.filter(f => /schedul|order confirm|delivery confirm|pickup confirm/i.test(f.title || '')).map(f => f.id);
+  const sig = all.filter(f => /signature|agreement/i.test(f.title || '')).map(f => f.id).filter(id => !sched.includes(id));
+  ty.forms = [...sched, ...sig]; ty.sigForms = sig; return ty.forms;
 }
 function parseAddress(q) {
   const a = q && q.answer; if (!a) return null;
@@ -560,6 +561,7 @@ function parseThankYou(subs, formId) {
     if (qCity && !addr.line2) addr.line2 = ansText(qCity.answer);
     return {
       id: s.id, form: formId, name: qName ? ansText(qName.answer).trim() : 'Unknown',
+      phone: (() => { const q = qs.find(x => x.type === 'control_phone') || find(/phone/i); return q ? ansText(q.answer).trim() : ''; })(),
       line1: addr.line1, line2: addr.line2,
       type: qType ? ansText(qType.answer).trim() : '',
       date: (qDate && ansDate(qDate)) || String(s.created_at || '').slice(0, 10),
@@ -567,18 +569,42 @@ function parseThankYou(subs, formId) {
     };
   });
 }
+// Bookings made on HQ's own scheduling page become cards too.
+async function schedCards() {
+  const m = await kget('bcd:sched', {}).catch(() => ({}));
+  return Object.values(m).filter(o => o.booking).map(o => ({ id: 's' + o.token, form: 'hq', name: o.name,
+    line1: o.type === 'delivery' ? o.booking.address : '', line2: o.type === 'delivery' ? `${o.booking.city}, MO ${o.booking.zip}` : '',
+    type: o.type === 'delivery' ? 'Delivery' : 'Pick up', date: o.booking.date, submitted: new Date(o.booking.at || o.created).toISOString().slice(0, 10) }));
+}
+// Pick-up-today buyers from the Signature & Agreement form -> the Customers sheet (once each).
+async function logSignatureCustomers(cards) {
+  if (!CFG.API || !cards.length) return;
+  const done = new Set(await kget('bcd:custLogged', []).catch(() => [])), fresh = cards.filter(c => !done.has(c.id)).slice(0, 25);
+  if (!done.size) { await kset('bcd:custLogged', cards.map(c => c.id)); return; }   // first run: don't back-fill old ones
+  for (const c of fresh) {
+    try { const u = new URL(CFG.API); u.searchParams.set('key', CFG.KEY); u.searchParams.set('action', 'customer');
+      u.searchParams.set('row', JSON.stringify([c.submitted, c.name, c.phone || '', c.line1, c.line2, '', 'Pick up today', '', '', c.submitted, 'Signature form']));
+      await fetch(u); done.add(c.id); } catch (e) { console.log('Customer row failed', e.message); }
+  }
+  await kset('bcd:custLogged', [...done].slice(-5000));
+}
 async function thankYouList(force) {
-  if (!CFG.JOTFORM_KEY) return { cards: [], error: 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
   if (!force && ty.data && Date.now() - ty.at < 2 * 60 * 1000) return ty.data;
+  const hq = await schedCards();
+  if (!CFG.JOTFORM_KEY) return { cards: hq, error: hq.length ? '' : 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
   const forms = await thankYouForms();
-  if (!forms.length) return { cards: [], error: 'No scheduling form found. Add THANKYOU_FORM_ID in Railway (the form ID from its Jotform URL).' };
   const lists = await Promise.all(forms.map(async id => {
     const r = await fetch(`${CFG.JOTFORM_BASE}/form/${id}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=1000&orderby=created_at`);
     const j = await r.json();
     if (j.responseCode && j.responseCode !== 200) throw new Error('Jotform: ' + (j.message || j.responseCode));
-    return parseThankYou(j.content || [], id);
+    const cards = parseThankYou(j.content || [], id);
+    if (!(ty.sigForms || []).includes(id)) return cards;
+    // Signature form: only buyers who gave an address (Pick up today), and send them to the Customers sheet.
+    const withAddr = cards.filter(c => c.line1).map(c => ({ ...c, type: c.type || 'Pick up today' }));
+    logSignatureCustomers(withAddr).catch(() => {});
+    return withAddr;
   }));
-  ty.at = Date.now(); ty.data = { cards: lists.flat(), forms };
+  ty.at = Date.now(); ty.data = { cards: [...lists.flat(), ...hq], forms };
   return ty.data;
 }
 app.get('/api/thankyou', async (req, res) => {
@@ -1410,6 +1436,153 @@ app.post('/public/order-sold', async (req, res) => {
     res.json({ ok: true, marked: n });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ===================================================================
+// SCHEDULING (replaces the Jotform scheduling form)
+// Order apps create an order here -> the receipt text links to /s/<token> -> the customer picks an open
+// window, confirms the address and can add upsells -> HQ puts it on the Billy's Couches calendar (with the
+// couch photo + add-ons), the Customers sheet, Thank You Cards and the Today's deliveries strip.
+// Delivery/pickup windows are edited in HQ > Scheduling (store key "slots").
+// ===================================================================
+const SCHED_KEY = 'bcd:sched';
+const SCHED_PROXY = (process.env.ORDER_PROXY_URL || 'https://billys-couches-proxy-production.up.railway.app').replace(/\/$/, '');
+const SCHED_TAX = Number(process.env.SCHED_TAX_RATE || 9.738), SCHED_FEE = 0.03;
+const SCHED_ADDONS = [
+  { id: 'scotchgard', label: 'Scotchgard', price: 49, pitch: 'Stain and spill protection, applied before it leaves', match: /scotch/i },
+  { id: 'wrap', label: 'Plastic Wrap', price: 99, pitch: 'Wrapped and protected for the ride', match: /wrap/i },
+  { id: 'removal', label: 'Couch Removal', price: 125, pitch: 'We haul your old couch away on delivery day', match: /remov|haul/i, deliveryOnly: true },
+];
+const SLOT_DEFAULT = {
+  delivery: { days: { 2: { on: true, win: ['16-18', '18-20', '20-22'], cap: 1 }, 5: { on: true, win: ['16-18', '18-20', '20-22'], cap: 1 }, 6: { on: true, win: ['10-12', '12-14', '14-16', '16-18'], cap: 1 } } },
+  pickup: { days: { 1: { on: true, win: ['12-14', '14-16', '16-18'], cap: 2 }, 2: { on: true, win: ['12-14', '14-16', '16-18'], cap: 2 }, 3: { on: true, win: ['12-14', '14-16', '16-18'], cap: 2 }, 4: { on: true, win: ['12-14', '14-16', '16-18'], cap: 2 }, 5: { on: true, win: ['12-14', '14-16', '16-18'], cap: 2 }, 6: { on: true, win: ['10-12', '12-14', '14-16'], cap: 2 } } },
+  blocked: [], maxDays: 14, noticeHours: 12,
+};
+const getSched = () => kget(SCHED_KEY, {});
+const setSched = m => kset(SCHED_KEY, m);
+async function slotCfg() { const s = await kget('bcd:store:slots', null).catch(() => null); return s && s.delivery ? { ...SLOT_DEFAULT, ...s } : SLOT_DEFAULT; }
+const ctParts = d => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(d).map(x => [x.type, x.value])); return p; };
+const ctYmd = d => { const p = ctParts(d); return `${p.year}-${p.month}-${p.day}`; };
+// A wall-clock time in St. Louis -> real Date (handles daylight saving).
+function ctAt(ymd, min) {
+  const guess = new Date(`${ymd}T${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}:00Z`);
+  for (const off of [5, 6]) { const d = new Date(guess.getTime() + off * 3600e3), p = ctParts(d); if (`${p.year}-${p.month}-${p.day}` === ymd && +p.hour * 60 + +p.minute === min) return d; }
+  return new Date(guess.getTime() + 6 * 3600e3);
+}
+const parseWin = w => { const m = String(w).match(/^(\d{1,2})(?::(\d\d))?-(\d{1,2})(?::(\d\d))?$/); if (!m) return null; const a = +m[1] * 60 + (+m[2] || 0), b = +m[3] * 60 + (+m[4] || 0); return b > a ? [a, b] : null; };
+const minLabel = m => { const h = Math.floor(m / 60), mm = m % 60; return (h % 12 || 12) + (mm ? ':' + String(mm).padStart(2, '0') : ''); };
+const winLabel = w => { const p = parseWin(w); if (!p) return w; const ap = m => (m < 720 ? 'am' : 'pm'); return minLabel(p[0]) + (ap(p[0]) !== ap(p[1]) ? ap(p[0]) : '') + ' – ' + minLabel(p[1]) + ap(p[1]); };
+// Open windows for the next maxDays days, minus what's on the calendar and what was just booked here.
+async function openSlots(kind, skipToken) {
+  const cfg = await slotCfg(), conf = (cfg[kind] || SLOT_DEFAULT[kind]).days || {};
+  const g = await google(false).catch(() => ({})), sched = await getSched();
+  const calIds = new Set(), busy = [];
+  (g.deliveries || []).forEach(([s, e, title, , , id]) => { const isPick = /pick\s*-?\s*up/i.test(title || ''); if ((kind === 'pickup') !== isPick) return; calIds.add(id); busy.push({ s: Date.parse(s), e: Date.parse(e), id }); });
+  Object.values(sched).forEach(o => { const b = o.booking; if (!b || o.token === skipToken || o.type !== kind) return;
+    if (b.eventId && calIds.has(b.eventId)) { if (skipToken) {} return; }
+    const w = parseWin(b.win); if (w) busy.push({ s: ctAt(b.date, w[0]).getTime(), e: ctAt(b.date, w[1]).getTime() }); });
+  if (skipToken && sched[skipToken] && sched[skipToken].booking && sched[skipToken].booking.eventId) { const own = sched[skipToken].booking.eventId; for (let i = busy.length - 1; i >= 0; i--) if (busy[i].id === own) busy.splice(i, 1); }
+  const now = Date.now(), days = [], blocked = new Set(cfg.blocked || []);
+  for (let i = 0; i <= (cfg.maxDays || 14); i++) {
+    const ymd = ctYmd(new Date(now + i * 864e5)); if (blocked.has(ymd)) continue;
+    const dow = new Date(ymd + 'T12:00:00Z').getUTCDay(), d = conf[dow]; if (!d || !d.on) continue;
+    const slots = (d.win || []).map(w => { const p = parseWin(w); if (!p) return null; const s = ctAt(ymd, p[0]).getTime(), e = ctAt(ymd, p[1]).getTime();
+      if (s - now < (cfg.noticeHours || 0) * 3600e3) return null;
+      const used = busy.filter(b => b.s < e && b.e > s).length, left = Math.max(0, (d.cap || 1) - used);
+      return { win: w, label: winLabel(w), left }; }).filter(Boolean);
+    if (slots.length) days.push({ date: ymd, dow: new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }), day: +ymd.slice(8), label: new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }), slots });
+  }
+  return days;
+}
+const schedLink = t => `${PUBLIC_BASE}/s/${t}`;
+// Order app -> HQ: remember the order so the scheduling page knows the couch, photo and add-ons.
+app.options('/public/order-create', (req, res) => { orderCors(req, res); res.sendStatus(204); });
+app.post('/public/order-create', async (req, res) => {
+  if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const b = req.body || {}, name = clean(b.name, 80); if (!name) return res.status(400).json({ error: 'name required' });
+    const drops = await getDrops().catch(() => []);
+    const couches = (Array.isArray(b.couches) ? b.couches : []).slice(0, 6).map(c => {
+      const title = clean(c.title || c.name, 120), d = drops.find(x => (c.dropId && x.id === c.dropId) || (title && x.title.toLowerCase() === title.toLowerCase()));
+      return { title: title || (d && d.title) || 'Couch', dropId: d ? d.id : '', photo: d && (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : (/^https:\/\//.test(c.photo || '') ? String(c.photo).slice(0, 300) : '') };
+    });
+    const token = crypto.randomBytes(6).toString('hex'), type = /pick/i.test(b.type || '') ? 'pickup' : 'delivery';
+    const m = await getSched();
+    // keep the store small: drop unbooked orders older than 60 days and booked ones 90 days past their date
+    const cut = Date.now() - 60 * 864e5; Object.keys(m).forEach(k => { const o = m[k]; if ((!o.booking && o.created < cut) || (o.booking && Date.parse(o.booking.date) < Date.now() - 90 * 864e5)) delete m[k]; });
+    m[token] = { token, created: Date.now(), name, phone: String(b.phone || '').replace(/\D/g, '').slice(-10), type, couches,
+      addons: (Array.isArray(b.addons) ? b.addons : []).map(a => clean(a && a.label || a, 40)).filter(Boolean), total: Number(b.total) || 0, payment: clean(b.payment, 30), zip: clean(b.zip, 10), from: clean(b.from, 20) };
+    await setSched(m); res.json({ ok: true, token, url: schedLink(token) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, 'schedule.html')));
+const schedPublic = (o, days) => ({ name: o.name, first: o.name.split(/\s+/)[0], phone: o.phone, type: o.type, couches: o.couches, addons: o.addons, zip: o.zip,
+  booking: o.booking ? { date: o.booking.date, win: o.booking.win, label: o.booking.label, address: o.booking.address, city: o.booking.city, zip: o.booking.zip, room: o.booking.room, notes: o.booking.notes, extras: o.booking.extras || [] } : null,
+  upsells: SCHED_ADDONS.filter(a => !(a.deliveryOnly && o.type !== 'delivery') && !o.addons.some(x => a.match.test(x)) && !((o.booking && o.booking.extras) || []).some(x => a.match.test(x))).map(({ id, label, price, pitch }) => ({ id, label, price, pitch })),
+  days, taxRate: SCHED_TAX, feeRate: SCHED_FEE });
+app.get('/public/sched/:token', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try { const o = (await getSched())[String(req.params.token)]; if (!o) return res.status(404).json({ error: 'This link has expired. Text us at (314) 899-7503 and we\'ll get you scheduled.' });
+    res.json({ ok: true, ...schedPublic(o, await openSlots(o.type, o.token)) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+async function sheetsBook(q) {
+  if (!CFG.API) return { eventId: q.eventId || 'demo-' + Date.now() };
+  const u = new URL(CFG.API); Object.entries({ key: CFG.KEY, action: 'book', ...q }).forEach(([k, v]) => u.searchParams.set(k, v));
+  const j = await (await fetch(u)).json(); if (j.error) throw new Error(j.error); return j;
+}
+const fmtPhone = p => p && p.length === 10 ? `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}` : p;
+app.post('/public/sched/:token', async (req, res) => {
+  try {
+    const m = await getSched(), o = m[String(req.params.token)]; if (!o) return res.status(404).json({ error: 'This link has expired. Text us at (314) 899-7503.' });
+    const b = req.body || {}, date = clean(b.date, 10), win = clean(b.win, 12);
+    const days = await openSlots(o.type, o.token), day = days.find(d => d.date === date), slot = day && day.slots.find(s => s.win === win);
+    if (!slot || slot.left < 1) return res.status(409).json({ error: 'That time just filled up. Please pick another.', days });
+    const isDel = o.type === 'delivery', address = clean(b.address, 120), city = clean(b.city, 60), zip = clean(b.zip, 10).replace(/[^\d]/g, '');
+    if (isDel && (!address || !city || zip.length !== 5)) return res.status(400).json({ error: 'Add your full address and ZIP code.' });
+    const phone = String(b.phone || o.phone || '').replace(/\D/g, '').slice(-10) || o.phone;
+    const offered = schedPublic(o, []).upsells, extrasNew = offered.filter(a => (b.extras || []).includes(a.id));
+    const prev = o.booking || {}, w = parseWin(win), start = ctAt(date, w[0]), end = ctAt(date, w[1]);
+    const extras = [...(prev.extras || []), ...extrasNew.map(a => a.label)];
+    const room = clean(b.room, 80), notes = clean(b.notes, 300), couch = o.couches.map(c => c.title).join(' + ');
+    const allAdds = [...o.addons, ...extras];
+    const desc = [`Phone Number:`, fmtPhone(phone), `Address:`, isDel ? `${address}, ${city}, MO, ${zip}` : 'Pickup at warehouse', `Pick up or Delivery? :`, isDel ? 'Delivery' : 'Pick up', '',
+      `Couch: ${couch}`, `Add-ons: ${allAdds.length ? allAdds.join(', ') : 'None'}`, room ? `Room: ${room}` : '', notes ? `Notes: ${notes}` : '',
+      extrasNew.length ? `Added when scheduling: ${extrasNew.map(a => a.label).join(', ')} (paid by card link)` : '',
+      o.couches[0] && o.couches[0].photo ? `Photo: ${o.couches[0].photo}` : '', `Booked online · ${schedLink(o.token)}`].filter(x => x !== '').join('\n');
+    const row = [new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago' }), o.name, fmtPhone(phone), isDel ? address : '', isDel ? city : '', isDel ? zip : '', isDel ? 'Delivery' : 'Pickup', couch, allAdds.join(', '), `${date} ${winLabel(win)}`, o.from || 'Order app'];
+    const j = await sheetsBook({ eventId: prev.eventId || '', title: `${isDel ? 'Delivery' : 'Pick up'} for ${o.name}`, start: start.toISOString(), end: end.toISOString(),
+      location: isDel ? `${address}, ${city}, MO ${zip}` : '126 E Orleans St, Pacific, MO 63069', desc, photo: (o.couches[0] && o.couches[0].photo) || '', photoName: (couch || 'couch').replace(/[^\w -]/g, '').slice(0, 60) + '.jpg', row: JSON.stringify(row) });
+    // Card link for anything they added now (couch + tax + 3% card fee), made by the order proxy like the team app does.
+    let payUrl = '', due = 0;
+    if (extrasNew.length) {
+      const sub = extrasNew.reduce((a, x) => a + x.price, 0), tax = Math.round(sub * SCHED_TAX) / 100; due = Math.round((sub + tax) * (1 + SCHED_FEE) * 100) / 100;
+      try { const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: o.name, orderType: 'Add-ons: ' + extrasNew.map(a => a.label).join(', '), totalCents: Math.round(due * 100), totalDisplay: '$' + due.toFixed(2), redirectUrl: schedLink(o.token) + '?paid=1' }) });
+        const d = await r.json(); payUrl = d.url || ''; } catch (e) { console.log('Add-on pay link failed', e.message); }
+    }
+    o.booking = { date, win, label: `${day.label} · ${winLabel(win)}`, address, city, zip, room, notes, phone, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
+    if (extrasNew.length) o.extraDue = (o.extraDue || 0) + due;
+    m[o.token] = o; await setSched(m);
+    cache.at = 0;   // so the next HQ load re-reads the calendar
+    textAlert(`${prev.date ? 'RESCHEDULED' : 'BOOKED'}: ${isDel ? 'Delivery' : 'Pickup'} ${o.booking.label}\n${o.name} ${fmtPhone(phone)}\n${couch}${allAdds.length ? '\nAdd-ons: ' + allAdds.join(', ') : ''}${extrasNew.length ? `\nNEW ADD-ONS: ${extrasNew.map(a => a.label).join(', ')} ($${due.toFixed(2)} link sent)` : ''}${isDel ? '\n' + address + ', ' + city : ''}`).catch(() => {});
+    res.json({ ok: true, payUrl, due, ...schedPublic(o, []) });
+  } catch (e) { console.log('Schedule failed', e.message); res.status(500).json({ error: 'Could not book that time. Please text us at (314) 899-7503.' }); }
+});
+// Public order app's "next delivery" banner.
+app.get('/public/next-slot', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cache-Control', 'public, max-age=120');
+  try { const d = (await openSlots('delivery')).map(x => ({ ...x, slots: x.slots.filter(s => s.left > 0) })).find(x => x.slots.length);
+    if (!d) return res.json({ nextDate: null, spotsLeft: 0, live: true });
+    const daysOut = Math.round((Date.parse(d.date + 'T12:00:00Z') - Date.parse(ctYmd(new Date()) + 'T12:00:00Z')) / 864e5);
+    res.json({ nextDate: d.date, dayName: new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }), dateLabel: new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }), daysOut, spotsLeft: d.slots.length, slots: d.slots.map(s => s.label.replace(' – ', '–')), live: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// HQ: bookings list for the Scheduling tab.
+app.get('/api/sched', async (req, res) => {
+  try { const m = await getSched(), list = Object.values(m).sort((a, b) => (b.booking ? b.booking.date : '').localeCompare(a.booking ? a.booking.date : '') || b.created - a.created).slice(0, 200)
+    .map(o => ({ token: o.token, name: o.name, phone: o.phone, type: o.type, couch: o.couches.map(c => c.title).join(' + '), photo: (o.couches[0] || {}).photo || '', addons: [...o.addons, ...((o.booking || {}).extras || [])], created: o.created, booking: o.booking || null, link: schedLink(o.token), extraDue: o.extraDue || 0 }));
+    res.json({ ok: true, list, cfg: await slotCfg(), defaults: SLOT_DEFAULT }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ===================== END SCHEDULING =====================
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
 // ---------- Coaching (Billy Price Coaching): admin at /coach, client portal at /client ----------
