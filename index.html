@@ -468,7 +468,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
         </div><div id="scBook"></div></div>
       <div class="grid2" style="margin-top:16px">
         <div class="card"><h2>Delivery times <small>what customers can pick</small></h2><div id="scDel"></div></div>
-        <div class="card"><h2>Pick up times</h2><div id="scPick"></div></div>
+        <div class="card"><h2>Pick up times <small>open hours, split into 30-minute pick up times</small></h2><div id="scPick"></div></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Rules</h2><div id="scRules"></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
@@ -1011,10 +1011,10 @@ async function renderSched(){
     <td><b>${esc(o.name)}</b><br><small style="color:var(--muted)">${o.type === 'delivery' ? 'Delivery' : 'Pick up'}${o.phone ? ' · ' + esc(o.phone) : ''}</small></td>
     <td>${o.booking ? `<b>${esc(o.booking.label)}</b>${o.booking.address ? `<br><small style="color:var(--muted)">${esc(o.booking.address)}, ${esc(o.booking.city)}</small>` : ''}` : '<span class="pill">Not booked yet</span>'}</td>
     <td class="hide-m">${esc(o.couch)}${o.addons.length ? `<br><small style="color:var(--muted)">${esc(o.addons.join(', '))}</small>` : ''}${o.extraDue ? `<br><small style="color:var(--green);font-weight:700">+${money(o.extraDue)} add-ons at scheduling</small>` : ''}</td>
-    <td class="n"><button class="xs" data-sccopy="${esc(o.link)}" title="Copy their scheduling link">Link</button></td></tr>`;
+    <td class="n" style="white-space:nowrap"><button class="xs" data-sccopy="${esc(o.link)}" title="Copy their scheduling link">Link</button> <button class="xs" data-scdel="${esc(o.token)}" data-scname="${esc(o.name)}" title="Remove" style="color:var(--bad)">&times;</button></td></tr>`;
   $('scBook').innerHTML = `<div style="overflow-x:auto"><table><tr><th></th><th>Customer</th><th>When</th><th class="hide-m">Couch</th><th></th></tr>${up.map(row).join('') || '<tr><td colspan="5" class="empty">No upcoming bookings from the scheduling page yet.</td></tr>'}</table></div>`
     + (waiting.length ? `<h3 style="font-size:13px;margin:16px 0 4px;color:var(--muted)">SENT A LINK, NOT BOOKED YET (${waiting.length})</h3><div style="overflow-x:auto"><table>${waiting.map(row).join('')}</table></div>` : '');
-  const daysTbl = kind => `<table><tr><th>Day</th><th>Open</th><th>Windows</th><th class="n">${kind === 'delivery' ? 'Trucks' : 'At once'}</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const d = (cfg[kind].days || {})[dw] || { on: false, win: [], cap: 1 };
+  const daysTbl = kind => `<table><tr><th>Day</th><th>Open</th><th>${kind === 'delivery' ? 'Windows' : 'Open hours'}</th><th class="n">${kind === 'delivery' ? 'Trucks' : 'Per 30 min'}</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const d = (cfg[kind].days || {})[dw] || { on: false, win: [], cap: 1 };
     return `<tr><td><b>${DOWS[dw]}</b></td><td><input type="checkbox" data-sck="${kind}" data-dw="${dw}" data-f="on" ${d.on ? 'checked' : ''}></td>
       <td><input data-sck="${kind}" data-dw="${dw}" data-f="win" value="${esc((d.win || []).map(scLabel).join(', '))}" placeholder="4–6pm, 6–8pm" style="width:100%;min-width:150px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td>
       <td class="n"><input type="number" min="1" max="9" data-sck="${kind}" data-dw="${dw}" data-f="cap" value="${d.cap || 1}" style="width:56px;padding:7px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td></tr>`; }).join('')}</table>`;
@@ -1042,6 +1042,9 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.sck && e.target.dataset.f === 'on') return; });
 document.addEventListener('click', async e => { const b = e.target.closest('[data-sccopy]'); if (b) copyText(b.dataset.sccopy, 'Scheduling link copied');
+  const del = e.target.closest('[data-scdel]');
+  if (del) { if (!confirm(`Remove ${del.dataset.scname}'s booking? This also deletes it from the Google Calendar.`)) return;
+    try { await post('/api/sched/delete', { token: del.dataset.scdel }); SC = null; toast('Removed'); renderSched(); } catch (err) { toast(err.message); } return; }
   if (e.target.id === 'scNew') { const box = $('scNewBox'); box.hidden = !box.hidden; if (!box.hidden) {
       if (!DR) { try { DR = await (await fetch('/api/drops', { cache: 'no-store' })).json(); } catch {} }
       const live = ((DR && DR.drops) || []).filter(x => ['live', 'emailed', 'sold'].includes(x.status)).sort((a, b) => (a.status === 'sold') - (b.status === 'sold') || (b.soldAt || 0) - (a.soldAt || 0)).slice(0, 60);
