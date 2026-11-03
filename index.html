@@ -471,7 +471,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
         <div class="card"><h2>Pick up times</h2><div id="scPick"></div></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Rules</h2><div id="scRules"></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">Windows are 24-hour, like 16-18 for 4–6pm. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
     </section>
     <section id="tab-drops" hidden><div id="drBody"></div></section>
   </main>
@@ -982,6 +982,25 @@ document.addEventListener('change', async e => {
 
 // ---------- scheduling: delivery / pickup windows + bookings ----------
 let SC = null;
+// Windows are saved as 24-hour "16-18" but shown and typed like "4–6pm".
+const scMin = m => { const h = Math.floor(m / 60), mm = m % 60; return (h % 12 || 12) + (mm ? ':' + String(mm).padStart(2, '0') : ''); };
+const scLabel = w => { const x = String(w).match(/^(\d{1,2})(?::(\d\d))?-(\d{1,2})(?::(\d\d))?$/); if (!x) return w; const a = +x[1] * 60 + (+x[2] || 0), b = +x[3] * 60 + (+x[4] || 0), ap = m => m < 720 ? 'am' : 'pm';
+  return scMin(a) + (ap(a) !== ap(b) ? ap(a) : '') + '–' + scMin(b) + ap(b); };
+function scParse(txt){   // "4-6pm, 10am-12pm, 6:30-8" -> ["16-18","10-12","18:30-20"]  (no am/pm: 9–11 = morning, else afternoon/evening)
+  return String(txt).split(',').map(part => {
+    const x = part.trim().toLowerCase().replace(/\s+/g, '').replace(/[–—]/g, '-').match(/^(\d{1,2})(?::(\d\d))?(am|pm|a|p)?-(\d{1,2})(?::(\d\d))?(am|pm|a|p)?$/); if (!x) return null;
+    let [, h1, m1, s1, h2, m2, s2] = x; h1 = +h1 % 12; h2 = +h2 % 12; m1 = +m1 || 0; m2 = +m2 || 0;
+    const fix = (h, suf) => suf[0] === 'p' ? h + 12 : h;
+    let st, e;
+    if (s1) st = fix(h1, s1);
+    if (s2) e = fix(h2, s2);
+    if (st === undefined && e === undefined) st = (h1 >= 9 && h1 <= 11) ? h1 : h1 + 12;
+    if (e === undefined) e = [h2, h2 + 12, h2 + 24].find(v => v * 60 + m2 > st * 60 + m1);
+    if (st === undefined) st = [h1 + 12, h1].find(v => v * 60 + m1 < e * 60 + m2);
+    if (st === undefined || e === undefined || e > 24 || st * 60 + m1 >= e * 60 + m2) return null;
+    return `${st}${m1 ? ':' + String(m1).padStart(2, '0') : ''}-${e}${m2 ? ':' + String(m2).padStart(2, '0') : ''}`;
+  }).filter(Boolean);
+}
 const DOWS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 async function renderSched(){
   if (!SC) { $('scBook').innerHTML = '<p class="empty">Loading...</p>'; try { const r = await fetch('/api/sched', { cache: 'no-store' }); SC = await r.json(); } catch (e) { $('scBook').innerHTML = '<p class="empty">Could not load.</p>'; return; } }
@@ -997,7 +1016,7 @@ async function renderSched(){
     + (waiting.length ? `<h3 style="font-size:13px;margin:16px 0 4px;color:var(--muted)">SENT A LINK, NOT BOOKED YET (${waiting.length})</h3><div style="overflow-x:auto"><table>${waiting.map(row).join('')}</table></div>` : '');
   const daysTbl = kind => `<table><tr><th>Day</th><th>Open</th><th>Windows</th><th class="n">${kind === 'delivery' ? 'Trucks' : 'At once'}</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const d = (cfg[kind].days || {})[dw] || { on: false, win: [], cap: 1 };
     return `<tr><td><b>${DOWS[dw]}</b></td><td><input type="checkbox" data-sck="${kind}" data-dw="${dw}" data-f="on" ${d.on ? 'checked' : ''}></td>
-      <td><input data-sck="${kind}" data-dw="${dw}" data-f="win" value="${esc((d.win || []).join(', '))}" placeholder="16-18, 18-20" style="width:100%;min-width:150px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td>
+      <td><input data-sck="${kind}" data-dw="${dw}" data-f="win" value="${esc((d.win || []).map(scLabel).join(', '))}" placeholder="4–6pm, 6–8pm" style="width:100%;min-width:150px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td>
       <td class="n"><input type="number" min="1" max="9" data-sck="${kind}" data-dw="${dw}" data-f="cap" value="${d.cap || 1}" style="width:56px;padding:7px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td></tr>`; }).join('')}</table>`;
   $('scDel').innerHTML = daysTbl('delivery'); $('scPick').innerHTML = daysTbl('pickup');
   $('scRules').innerHTML = `<div class="two" style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px">
@@ -1006,12 +1025,14 @@ async function renderSched(){
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Blocked dates (closed)<input data-scr="blocked" value="${esc((cfg.blocked || []).join(', '))}" placeholder="2026-11-26, 2026-12-25" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label></div>`;
 }
 function scSave(){ RAW.store.slots = SC.cfg; clearTimeout(scSave.t); scSave.t = setTimeout(() => saveStore('slots', SC.cfg), 600); }
-document.addEventListener('change', e => { if (e.target.id === 'snCouch') $('snOther').hidden = !!e.target.value; });
+document.addEventListener('change', e => { if (e.target.id === 'snCouch') $('snOther').hidden = !!e.target.value;
+  const t = e.target; if (SC && t.dataset && t.dataset.sck && t.dataset.f === 'win') { const days = SC.cfg[t.dataset.sck].days = SC.cfg[t.dataset.sck].days || {}, d = days[t.dataset.dw] = days[t.dataset.dw] || { on: false, win: [], cap: 1 };
+    const w = scParse(t.value); if (t.value.trim() && !w.length) { toast('Type times like 4-6pm, 6-8pm'); return; } d.win = w; t.value = w.map(scLabel).join(', '); scSave(); } });
 document.addEventListener('input', e => {
   const t = e.target; if (!SC) return;
   if (t.dataset.sck) { const k = t.dataset.sck, dw = t.dataset.dw, days = SC.cfg[k].days = SC.cfg[k].days || {}, d = days[dw] = days[dw] || { on: false, win: [], cap: 1 };
     if (t.dataset.f === 'on') { d.on = t.checked; scSave(); return renderSched(); }
-    if (t.dataset.f === 'win') d.win = t.value.split(/[,\s]+/).map(x => x.trim()).filter(x => /^\d{1,2}(:\d\d)?-\d{1,2}(:\d\d)?$/.test(x));
+    if (t.dataset.f === 'win') return;   // saved when you leave the box (see change handler)
     if (t.dataset.f === 'cap') d.cap = Math.max(1, Math.min(9, Number(t.value) || 1));
     scSave(); }
   if (t.dataset.scr) { const k = t.dataset.scr; SC.cfg[k] = k === 'blocked' ? t.value.split(/[,\s]+/).filter(x => /^\d{4}-\d\d-\d\d$/.test(x)) : Number(t.value) || 0; scSave(); }
