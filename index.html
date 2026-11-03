@@ -231,7 +231,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
   .nav{white-space:nowrap;padding:9px 12px}
   .navh{display:none}
   .side .nav{order:10}.side .nav[href]{order:20}
-  .side .nav[data-tab=sales]{order:1}.side .nav[data-tab=showings]{order:2}.side .nav[data-tab=drops]{order:3}.side .nav[data-tab=content]{order:4}.side .nav[data-tab=ads]{order:5}
+  .side .nav[data-tab=sales]{order:1}.side .nav[data-tab=showings]{order:2}.side .nav[data-tab=drops]{order:3}.side .nav[data-tab=sched]{order:4}.side .nav[data-tab=content]{order:5}.side .nav[data-tab=ads]{order:6}
   .main{padding:18px 14px 50px}
   .kpis,.kpis.k7,.kpis.k4{grid-template-columns:repeat(2,1fr)}
   .kpi .v{font-size:21px}
@@ -457,7 +457,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
         <div id="scNewBox" hidden style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
             <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Customer name<input id="snName" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
-            <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Phone<input id="snPhone" type="tel" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+            <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Phone<input id="snPhone" type="tel" inputmode="tel" maxlength="14" placeholder="(314) 555-0123" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
             <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Type<select id="snType" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"><option value="delivery">Delivery</option><option value="pickup">Pick up</option></select></label>
           </div>
           <label style="display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-top:10px">Couch<select id="snCouch" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></select></label>
@@ -1025,6 +1025,9 @@ async function renderSched(){
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Blocked dates (closed)<input data-scr="blocked" value="${esc((cfg.blocked || []).join(', '))}" placeholder="2026-11-26, 2026-12-25" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label></div>`;
 }
 function scSave(){ RAW.store.slots = SC.cfg; clearTimeout(scSave.t); scSave.t = setTimeout(() => saveStore('slots', SC.cfg), 600); }
+// Phone boxes: format as (314) 555-0123 while typing.
+const fmtTel = v => { const d = String(v).replace(/\D/g, '').replace(/^1/, '').slice(0, 10); return d.length > 6 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : d.length > 3 ? `(${d.slice(0, 3)}) ${d.slice(3)}` : d; };
+document.addEventListener('input', e => { if (e.target.id === 'snPhone') e.target.value = fmtTel(e.target.value); });
 document.addEventListener('change', e => { if (e.target.id === 'snCouch') $('snOther').hidden = !!e.target.value;
   const t = e.target; if (SC && t.dataset && t.dataset.sck && t.dataset.f === 'win') { const days = SC.cfg[t.dataset.sck].days = SC.cfg[t.dataset.sck].days || {}, d = days[t.dataset.dw] = days[t.dataset.dw] || { on: false, win: [], cap: 1 };
     const w = scParse(t.value); if (t.value.trim() && !w.length) { toast('Type times like 4-6pm, 6-8pm'); return; } d.win = w; t.value = w.map(scLabel).join(', '); scSave(); } });
@@ -1050,7 +1053,8 @@ document.addEventListener('click', async e => { const b = e.target.closest('[dat
     try { const r = await fetch('/public/order-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone: $('snPhone').value, type: $('snType').value,
         couches: [{ title: title || 'Couch', dropId: d ? d.id : '' }], addons: [...document.querySelectorAll('.snAdd:checked')].map(x => x.value), from: 'Sent from HQ' }) });
       const j = await r.json(); if (!j.url) throw new Error(j.error || 'failed');
-      const ph = $('snPhone').value.replace(/\D/g, '').slice(-10), first = name.split(/\s+/)[0];
+      const ph = $('snPhone').value.replace(/\D/g, '').slice(-10); if (ph && ph.length !== 10) return toast('Phone should be 10 digits');
+      const first = name.split(/\s+/)[0];
       const msg = `Hi ${first}! Here's the link to schedule your ${$('snType').value === 'delivery' ? 'delivery' : 'pick up'}: ${j.url}`;
       $('snOut').innerHTML = `<a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.url)}</a> <button class="btn sm" data-sccopy="${esc(j.url)}">Copy</button>${ph.length === 10 ? ` <a class="btn sm" href="sms:+1${ph}?&body=${encodeURIComponent(msg)}">Text it</a>` : ''}`;
       copyText(j.url, 'Link copied'); SC = null; }
