@@ -729,7 +729,7 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  const deliveries = (d.deliveries || []).filter(r => /deliver/i.test(r[2] || '')).map(([s, e, title, phone, addr, id]) => ({ at: new Date(s), end: new Date(e), name: String(title || '').replace(/\(.*?\)/g, '').replace(/^\s*delivery\s*(for)?\s*/i, '').trim() || '—', phone: phone || '', addr: addr || '', id: id || s })).filter(x => !isNaN(x.at)).sort((a, b) => a.at - b.at);
+  const deliveries = (d.deliveries || []).map(([s, e, title, phone, addr, id]) => ({ at: new Date(s), end: new Date(e), pickup: !/deliver/i.test(title || ''), name: String(title || '').replace(/\(.*?\)/g, '').replace(/^\s*(delivery|pick\s*-?\s*up)\s*(for)?\s*/i, '').trim() || '—', phone: phone || '', addr: addr || '', id: id || s })).filter(x => !isNaN(x.at)).sort((a, b) => a.at - b.at);
   return { deliveries, sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, store: d.store || {}, showingsError: d.showingsError };
 }
 
@@ -1075,9 +1075,11 @@ function renderDeliveries(){
   if (!list.length) { el.innerHTML = ''; return; }
   const hr = d => { const h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : ''); };
   const ap = d => d.getHours() < 12 ? 'am' : 'pm';
-  el.innerHTML = `<div class="dlv"><b class="dlv-h">Today's deliveries <span>${list.length}</span></b>${list.map(x => {
-    const win = hr(x.at) + (ap(x.at) !== ap(x.end) ? ap(x.at) : '') + '–' + hr(x.end) + ap(x.end), first = x.name.split(/\s+/)[0], street = x.addr.split(',')[0].trim(), town = (x.addr.split(',')[1] || '').trim();
-    const msg = `Hi ${first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : 'there'}! I wanted to confirm your delivery today between ${win.replace('–', '-')}?`;
+  const pk = list.some(x => x.pickup), dl = list.some(x => !x.pickup);
+  el.innerHTML = `<div class="dlv"><b class="dlv-h">Today's ${dl && pk ? 'deliveries & pick ups' : pk ? 'pick ups' : 'deliveries'} <span>${list.length}</span></b>${list.map(x => {
+    const win = x.pickup ? hr(x.at) + ap(x.at) : hr(x.at) + (ap(x.at) !== ap(x.end) ? ap(x.at) : '') + '–' + hr(x.end) + ap(x.end), first = x.name.split(/\s+/)[0], town = x.pickup ? 'Pick up' : (x.addr.split(',')[1] || '').trim();
+    const hi = `Hi ${first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : 'there'}!`;
+    const msg = x.pickup ? `${hi} I wanted to confirm your pick up today at ${win}?` : `${hi} I wanted to confirm your delivery today between ${win.replace('–', '-')}?`;
     const ok = done[x.id];
     return `<div class="dlv-r"><span class="dlv-t">${win}</span><span class="dlv-n">${esc(x.name)}${town ? ` <i>${esc(town)}</i>` : ''}</span>${x.phone ? `<a class="btn sm dlv-b ${ok ? 'ok' : ''}" data-delok="${esc(x.id)}" href="sms:+1${x.phone}?&body=${encodeURIComponent(msg)}">${ok ? '✓ Sent' : 'Confirm'}</a>` : '<span class="empty" style="font-size:12px">No #</span>'}</div>`; }).join('')}</div>`;
 }
