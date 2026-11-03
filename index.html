@@ -453,7 +453,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
     <section id="tab-thanks" hidden><div id="tyBody"></div></section>
     <section id="tab-sched" hidden>
-      <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small></h2><div id="scBook"></div></div>
+      <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small><span style="flex:1"></span><button class="btn sm" id="scTest">Preview the customer page</button></h2><div id="scBook"></div></div>
       <div class="grid2" style="margin-top:16px">
         <div class="card"><h2>Delivery times <small>what customers can pick</small></h2><div id="scDel"></div></div>
         <div class="card"><h2>Pick up times</h2><div id="scPick"></div></div>
@@ -1004,7 +1004,13 @@ document.addEventListener('input', e => {
   if (t.dataset.scr) { const k = t.dataset.scr; SC.cfg[k] = k === 'blocked' ? t.value.split(/[,\s]+/).filter(x => /^\d{4}-\d\d-\d\d$/.test(x)) : Number(t.value) || 0; scSave(); }
 });
 document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.sck && e.target.dataset.f === 'on') return; });
-document.addEventListener('click', e => { const b = e.target.closest('[data-sccopy]'); if (b) copyText(b.dataset.sccopy, 'Scheduling link copied'); });
+document.addEventListener('click', async e => { const b = e.target.closest('[data-sccopy]'); if (b) copyText(b.dataset.sccopy, 'Scheduling link copied');
+  if (e.target.id === 'scTest') { // a throwaway order so you can see exactly what customers get
+    try { const d = (DR && DR.drops || []).find(x => (x.status === 'live' || x.status === 'emailed') && (x.photos || []).length);
+      const r = await fetch('/public/order-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Test Customer', phone: '', type: 'delivery', couches: [{ title: d ? d.title : 'Sample couch', dropId: d ? d.id : '' }], addons: ['Scotchgard'], from: 'Test' }) });
+      const j = await r.json(); if (!j.url) throw new Error(j.error || 'failed'); window.open(j.url, '_blank'); toast('Test link opened. Booking it adds a real calendar event, so delete that after.'); }
+    catch (err) { toast('Could not make a test link: ' + err.message); } }
+});
 function renderDeliveries(){
   const el = $('delToday'); if (!el) return;
   const today = day0(new Date()), list = (RAW.deliveries || []).filter(x => day0(x.at).getTime() === today.getTime());
