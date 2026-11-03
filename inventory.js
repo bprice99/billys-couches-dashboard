@@ -27,7 +27,7 @@
     + '.bci-item:last-child{border-bottom:0}'
     + '.bci-gal{position:relative;max-width:820px;margin:0 auto 28px;aspect-ratio:4/3;background:#f4efe9;border-radius:6px;overflow:hidden;touch-action:pan-y}'
     + '.bci-track{display:flex;height:100%;transition:transform .35s ease}'
-    + '.bci-track img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none}'
+    + '.bci-track img{flex:0 0 100%;width:100%;height:100%;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none}'
     + '.bci-arr{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.88);color:var(--ink);font-size:22px;line-height:42px;text-align:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.15);padding:0}'
     + '.bci-arr.l{left:12px}.bci-arr.r{right:12px}'
     + '.bci-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:6px}'
