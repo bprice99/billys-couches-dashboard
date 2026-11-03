@@ -257,6 +257,7 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
     <div class="navh">Customers</div>
     <a class="nav" data-tab="showings">Showing Tracker</a>
+    <a class="nav" data-tab="sched">Scheduling</a>
     <a class="nav" data-tab="upsells">Upsells</a>
     <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
     <a class="nav" data-tab="thanks">Thank You Cards<span class="obadge" id="tyBadge" hidden></span></a>
@@ -451,6 +452,15 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
     <section id="tab-thanks" hidden><div id="tyBody"></div></section>
+    <section id="tab-sched" hidden>
+      <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small></h2><div id="scBook"></div></div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="card"><h2>Delivery times <small>what customers can pick</small></h2><div id="scDel"></div></div>
+        <div class="card"><h2>Pick up times</h2><div id="scPick"></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2>Rules</h2><div id="scRules"></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Windows are 24-hour, like 16-18 for 4–6pm. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
+    </section>
     <section id="tab-drops" hidden><div id="drBody"></div></section>
   </main>
 </div>
@@ -707,7 +717,7 @@ function parse(d){
   }).filter(x => !isNaN(x.at));
 
   const loads = (d.loads || []).map(l => ({ ...l, arrived: toDate(l.date), units: l.units.map(u => ({ ...u, sold: toDate(u.soldDate) })) })).filter(l => l.arrived);
-  const deliveries = (d.deliveries || []).map(([s, e, title, phone, addr, id]) => ({ at: new Date(s), end: new Date(e), name: String(title || '').replace(/\(.*?\)/g, '').replace(/^\s*delivery\s*(for)?\s*/i, '').trim() || '—', phone: phone || '', addr: addr || '', id: id || s })).filter(x => !isNaN(x.at)).sort((a, b) => a.at - b.at);
+  const deliveries = (d.deliveries || []).filter(r => /deliver/i.test(r[2] || '')).map(([s, e, title, phone, addr, id]) => ({ at: new Date(s), end: new Date(e), name: String(title || '').replace(/\(.*?\)/g, '').replace(/^\s*delivery\s*(for)?\s*/i, '').trim() || '—', phone: phone || '', addr: addr || '', id: id || s })).filter(x => !isNaN(x.at)).sort((a, b) => a.at - b.at);
   return { deliveries, sales, purchases, expenses, hSales, hExp, hMonths, showings, loads, openhouses: d.openhouses || [], photos: d.photos || {}, goals: d.goals || {}, store: d.store || {}, showingsError: d.showingsError };
 }
 
@@ -958,6 +968,43 @@ document.addEventListener('change', async e => {
     const list = dreamList().map(g => g.id === id ? { ...g, photoV: j.v } : g); await saveDreams(list); renderDream(); toast('Photo saved'); } catch (err) { toast(err.message); }
 });
 
+// ---------- scheduling: delivery / pickup windows + bookings ----------
+let SC = null;
+const DOWS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+async function renderSched(){
+  if (!SC) { $('scBook').innerHTML = '<p class="empty">Loading...</p>'; try { const r = await fetch('/api/sched', { cache: 'no-store' }); SC = await r.json(); } catch (e) { $('scBook').innerHTML = '<p class="empty">Could not load.</p>'; return; } }
+  const cfg = SC.cfg, today = new Date().toLocaleDateString('en-CA');
+  const up = SC.list.filter(o => o.booking && o.booking.date >= today).sort((a, b) => (a.booking.date + a.booking.win).localeCompare(b.booking.date + b.booking.win));
+  const waiting = SC.list.filter(o => !o.booking && Date.now() - o.created < 21 * 864e5);
+  const row = o => `<tr><td>${o.photo ? `<img src="${esc(o.photo)}" style="width:56px;height:38px;object-fit:cover;border-radius:6px;vertical-align:middle">` : ''}</td>
+    <td><b>${esc(o.name)}</b><br><small style="color:var(--muted)">${o.type === 'delivery' ? 'Delivery' : 'Pick up'}${o.phone ? ' · ' + esc(o.phone) : ''}</small></td>
+    <td>${o.booking ? `<b>${esc(o.booking.label)}</b>${o.booking.address ? `<br><small style="color:var(--muted)">${esc(o.booking.address)}, ${esc(o.booking.city)}</small>` : ''}` : '<span class="pill">Not booked yet</span>'}</td>
+    <td class="hide-m">${esc(o.couch)}${o.addons.length ? `<br><small style="color:var(--muted)">${esc(o.addons.join(', '))}</small>` : ''}${o.extraDue ? `<br><small style="color:var(--green);font-weight:700">+${money(o.extraDue)} add-ons at scheduling</small>` : ''}</td>
+    <td class="n"><button class="xs" data-sccopy="${esc(o.link)}" title="Copy their scheduling link">Link</button></td></tr>`;
+  $('scBook').innerHTML = `<div style="overflow-x:auto"><table><tr><th></th><th>Customer</th><th>When</th><th class="hide-m">Couch</th><th></th></tr>${up.map(row).join('') || '<tr><td colspan="5" class="empty">No upcoming bookings from the scheduling page yet.</td></tr>'}</table></div>`
+    + (waiting.length ? `<h3 style="font-size:13px;margin:16px 0 4px;color:var(--muted)">SENT A LINK, NOT BOOKED YET (${waiting.length})</h3><div style="overflow-x:auto"><table>${waiting.map(row).join('')}</table></div>` : '');
+  const daysTbl = kind => `<table><tr><th>Day</th><th>Open</th><th>Windows</th><th class="n">${kind === 'delivery' ? 'Trucks' : 'At once'}</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const d = (cfg[kind].days || {})[dw] || { on: false, win: [], cap: 1 };
+    return `<tr><td><b>${DOWS[dw]}</b></td><td><input type="checkbox" data-sck="${kind}" data-dw="${dw}" data-f="on" ${d.on ? 'checked' : ''}></td>
+      <td><input data-sck="${kind}" data-dw="${dw}" data-f="win" value="${esc((d.win || []).join(', '))}" placeholder="16-18, 18-20" style="width:100%;min-width:150px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td>
+      <td class="n"><input type="number" min="1" max="9" data-sck="${kind}" data-dw="${dw}" data-f="cap" value="${d.cap || 1}" style="width:56px;padding:7px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td></tr>`; }).join('')}</table>`;
+  $('scDel').innerHTML = daysTbl('delivery'); $('scPick').innerHTML = daysTbl('pickup');
+  $('scRules').innerHTML = `<div class="two" style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px">
+    <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Book up to (days out)<input type="number" min="1" max="60" data-scr="maxDays" value="${cfg.maxDays || 14}" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+    <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Notice needed (hours)<input type="number" min="0" max="96" data-scr="noticeHours" value="${cfg.noticeHours ?? 12}" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+    <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Blocked dates (closed)<input data-scr="blocked" value="${esc((cfg.blocked || []).join(', '))}" placeholder="2026-11-26, 2026-12-25" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label></div>`;
+}
+function scSave(){ RAW.store.slots = SC.cfg; clearTimeout(scSave.t); scSave.t = setTimeout(() => saveStore('slots', SC.cfg), 600); }
+document.addEventListener('input', e => {
+  const t = e.target; if (!SC) return;
+  if (t.dataset.sck) { const k = t.dataset.sck, dw = t.dataset.dw, days = SC.cfg[k].days = SC.cfg[k].days || {}, d = days[dw] = days[dw] || { on: false, win: [], cap: 1 };
+    if (t.dataset.f === 'on') { d.on = t.checked; scSave(); return renderSched(); }
+    if (t.dataset.f === 'win') d.win = t.value.split(/[,\s]+/).map(x => x.trim()).filter(x => /^\d{1,2}(:\d\d)?-\d{1,2}(:\d\d)?$/.test(x));
+    if (t.dataset.f === 'cap') d.cap = Math.max(1, Math.min(9, Number(t.value) || 1));
+    scSave(); }
+  if (t.dataset.scr) { const k = t.dataset.scr; SC.cfg[k] = k === 'blocked' ? t.value.split(/[,\s]+/).filter(x => /^\d{4}-\d\d-\d\d$/.test(x)) : Number(t.value) || 0; scSave(); }
+});
+document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.sck && e.target.dataset.f === 'on') return; });
+document.addEventListener('click', e => { const b = e.target.closest('[data-sccopy]'); if (b) copyText(b.dataset.sccopy, 'Scheduling link copied'); });
 function renderDeliveries(){
   const el = $('delToday'); if (!el) return;
   const today = day0(new Date()), list = (RAW.deliveries || []).filter(x => day0(x.at).getTime() === today.getTime());
@@ -1706,7 +1753,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards', drops: 'Drops' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content Plan', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1794,8 +1841,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-pply
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'ppl';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'ppl' || tab === 'sched';
+  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
 }
 function setTab(t){
   tab = t;
