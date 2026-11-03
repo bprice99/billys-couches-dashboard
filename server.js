@@ -535,7 +535,9 @@ async function thankYouForms() {
   const r = await fetch(`${CFG.JOTFORM_BASE}/user/forms?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=500`);
   const j = await r.json(), all = (j.content || []).filter(f => f.status !== 'DELETED');
   const sched = env.length ? env : all.filter(f => /schedul|order confirm|delivery confirm|pickup confirm/i.test(f.title || '')).map(f => f.id);
-  const sig = all.filter(f => /signature|agreement/i.test(f.title || '')).map(f => f.id).filter(id => !sched.includes(id));
+  // Only the customer "Signature and Agreement" form (SIGNATURE_FORM_ID in Railway overrides) — not employee/contractor agreements.
+  const sigEnv = String(process.env.SIGNATURE_FORM_ID || '').split(',').map(s => s.trim()).filter(Boolean);
+  const sig = (sigEnv.length ? sigEnv : all.filter(f => /signature\s*(and|&)\s*agreement/i.test(f.title || '') && !/employ|contractor|hire|hiring|team|staff|w-?9|onboard|application|driver|cleaner/i.test(f.title || '')).map(f => f.id)).filter(id => !sched.includes(id));
   ty.forms = [...sched, ...sig]; ty.sigForms = sig; return ty.forms;
 }
 function parseAddress(q) {
@@ -599,8 +601,10 @@ async function thankYouList(force) {
     if (j.responseCode && j.responseCode !== 200) throw new Error('Jotform: ' + (j.message || j.responseCode));
     const cards = parseThankYou(j.content || [], id);
     if (!(ty.sigForms || []).includes(id)) return cards;
-    // Signature form: only buyers who gave an address (Pick up today), and send them to the Customers sheet.
-    const withAddr = cards.filter(c => c.line1).map(c => ({ ...c, type: c.type || 'Pick up today' }));
+    // Signature form: only buyers who gave an address (Pick up today), from the day this was turned on (older ones were already handled), and send them to the Customers sheet.
+    let since = await kget('bcd:tySigSince', null).catch(() => null);
+    if (!since) { since = new Date().toISOString().slice(0, 10); await kset('bcd:tySigSince', since).catch(() => {}); }
+    const withAddr = cards.filter(c => c.line1 && c.submitted >= since).map(c => ({ ...c, type: c.type || 'Pick up today' }));
     logSignatureCustomers(withAddr).catch(() => {});
     return withAddr;
   }));
