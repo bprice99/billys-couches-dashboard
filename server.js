@@ -1551,7 +1551,7 @@ app.post('/public/sched/:token', async (req, res) => {
     const desc = [`Phone Number:`, fmtPhone(phone), `Address:`, isDel ? `${address}, ${city}, MO, ${zip}` : 'Pickup at warehouse', `Pick up or Delivery? :`, isDel ? 'Delivery' : 'Pick up', '',
       `Couch: ${couch}`, `Add-ons: ${allAdds.length ? allAdds.join(', ') : 'None'}`, room ? `Room: ${room}` : '', notes ? `Notes: ${notes}` : '',
       extrasNew.length ? `Added when scheduling: ${extrasNew.map(a => a.label).join(', ')} (paid by card link)` : '',
-      o.couches[0] && o.couches[0].photo ? `Photo: ${o.couches[0].photo}` : '', `Booked online · ${schedLink(o.token)}`].filter(x => x !== '').join('\n');
+      o.couches[0] && o.couches[0].photo ? `Photo: ${o.couches[0].photo}` : ''].filter(x => x !== '').join('\n');
     const row = [new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago' }), o.name, fmtPhone(phone), isDel ? address : '', isDel ? city : '', isDel ? zip : '', isDel ? 'Delivery' : 'Pickup', couch, allAdds.join(', '), `${date} ${winLabel(win)}`, o.from || 'Order app'];
     const j = await sheetsBook({ eventId: prev.eventId || '', title: `${isDel ? 'Delivery' : 'Pick up'} for ${o.name}`, start: start.toISOString(), end: end.toISOString(),
       location: isDel ? `${address}, ${city}, MO ${zip}` : '126 E Orleans St, Pacific, MO 63069', desc, photo: (o.couches[0] && o.couches[0].photo) || '', photoName: (couch || 'couch').replace(/[^\w -]/g, '').slice(0, 60) + '.jpg', row: JSON.stringify(row) });
