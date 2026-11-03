@@ -453,7 +453,19 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
     <section id="tab-thanks" hidden><div id="tyBody"></div></section>
     <section id="tab-sched" hidden>
-      <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small><span style="flex:1"></span><button class="btn sm" id="scTest">Preview the customer page</button></h2><div id="scBook"></div></div>
+      <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small><span style="flex:1"></span><button class="btn sm" id="scTest">Preview</button><button class="btn sm p" id="scNew">+ New scheduling link</button></h2>
+        <div id="scNewBox" hidden style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Customer name<input id="snName" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+            <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Phone<input id="snPhone" type="tel" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+            <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Type<select id="snType" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"><option value="delivery">Delivery</option><option value="pickup">Pick up</option></select></label>
+          </div>
+          <label style="display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-top:10px">Couch<select id="snCouch" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></select></label>
+          <input id="snOther" placeholder="Couch name" hidden style="display:block;width:100%;margin-top:6px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13.5px"><b style="font-size:12.5px;color:var(--muted)">Already on their order:</b>
+            <label><input type="checkbox" class="snAdd" value="Scotchgard"> Scotchgard</label><label><input type="checkbox" class="snAdd" value="Plastic Wrap"> Plastic Wrap</label><label><input type="checkbox" class="snAdd" value="Couch Removal"> Couch Removal</label></div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center"><button class="btn sm p" id="snGo">Create link</button><span id="snOut" style="font-size:13.5px"></span></div>
+        </div><div id="scBook"></div></div>
       <div class="grid2" style="margin-top:16px">
         <div class="card"><h2>Delivery times <small>what customers can pick</small></h2><div id="scDel"></div></div>
         <div class="card"><h2>Pick up times</h2><div id="scPick"></div></div>
@@ -994,6 +1006,7 @@ async function renderSched(){
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Blocked dates (closed)<input data-scr="blocked" value="${esc((cfg.blocked || []).join(', '))}" placeholder="2026-11-26, 2026-12-25" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label></div>`;
 }
 function scSave(){ RAW.store.slots = SC.cfg; clearTimeout(scSave.t); scSave.t = setTimeout(() => saveStore('slots', SC.cfg), 600); }
+document.addEventListener('change', e => { if (e.target.id === 'snCouch') $('snOther').hidden = !!e.target.value; });
 document.addEventListener('input', e => {
   const t = e.target; if (!SC) return;
   if (t.dataset.sck) { const k = t.dataset.sck, dw = t.dataset.dw, days = SC.cfg[k].days = SC.cfg[k].days || {}, d = days[dw] = days[dw] || { on: false, win: [], cap: 1 };
@@ -1005,6 +1018,22 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.sck && e.target.dataset.f === 'on') return; });
 document.addEventListener('click', async e => { const b = e.target.closest('[data-sccopy]'); if (b) copyText(b.dataset.sccopy, 'Scheduling link copied');
+  if (e.target.id === 'scNew') { const box = $('scNewBox'); box.hidden = !box.hidden; if (!box.hidden) {
+      if (!DR) { try { DR = await (await fetch('/api/drops', { cache: 'no-store' })).json(); } catch {} }
+      const live = ((DR && DR.drops) || []).filter(x => ['live', 'emailed', 'sold'].includes(x.status)).sort((a, b) => (a.status === 'sold') - (b.status === 'sold') || (b.soldAt || 0) - (a.soldAt || 0)).slice(0, 60);
+      $('snCouch').innerHTML = live.map(x => `<option value="${esc(x.id)}">${esc(x.title)}${x.status === 'sold' ? ' (sold)' : ''}</option>`).join('') + '<option value="">Other (type it)</option>';
+      $('snOther').hidden = !!live.length; $('snOut').textContent = ''; $('snName').focus(); } return; }
+  if (e.target.id === 'snGo') {
+    const name = $('snName').value.trim(); if (!name) return toast('Add the customer name');
+    const id = $('snCouch').value, d = ((DR && DR.drops) || []).find(x => x.id === id), title = d ? d.title : $('snOther').value.trim();
+    try { const r = await fetch('/public/order-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone: $('snPhone').value, type: $('snType').value,
+        couches: [{ title: title || 'Couch', dropId: d ? d.id : '' }], addons: [...document.querySelectorAll('.snAdd:checked')].map(x => x.value), from: 'Sent from HQ' }) });
+      const j = await r.json(); if (!j.url) throw new Error(j.error || 'failed');
+      const ph = $('snPhone').value.replace(/\D/g, '').slice(-10), first = name.split(/\s+/)[0];
+      const msg = `Hi ${first}! Here's the link to schedule your ${$('snType').value === 'delivery' ? 'delivery' : 'pick up'}: ${j.url}`;
+      $('snOut').innerHTML = `<a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.url)}</a> <button class="btn sm" data-sccopy="${esc(j.url)}">Copy</button>${ph.length === 10 ? ` <a class="btn sm" href="sms:+1${ph}?&body=${encodeURIComponent(msg)}">Text it</a>` : ''}`;
+      copyText(j.url, 'Link copied'); SC = null; }
+    catch (err) { toast('Could not make a link: ' + err.message); } return; }
   if (e.target.id === 'scTest') { // a throwaway order so you can see exactly what customers get
     try { const d = (DR && DR.drops || []).find(x => (x.status === 'live' || x.status === 'emailed') && (x.photos || []).length);
       const r = await fetch('/public/order-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Test Customer', phone: '', type: 'delivery', couches: [{ title: d ? d.title : 'Sample couch', dropId: d ? d.id : '' }], addons: ['Scotchgard'], from: 'Test' }) });
