@@ -1488,10 +1488,13 @@ async function openSlots(kind, skipToken) {
   for (let i = 0; i <= (cfg.maxDays || 14); i++) {
     const ymd = ctYmd(new Date(now + i * 864e5)); if (blocked.has(ymd)) continue;
     const dow = new Date(ymd + 'T12:00:00Z').getUTCDay(), d = conf[dow]; if (!d || !d.on) continue;
-    const slots = (d.win || []).map(w => { const p = parseWin(w); if (!p) return null; const s = ctAt(ymd, p[0]).getTime(), e = ctAt(ymd, p[1]).getTime();
+    // Pick ups: the windows are open hours, split into 30-minute times (slotMins in the settings).
+    const step = kind === 'pickup' ? Number((cfg.pickup || {}).slotMins) || 30 : 0;
+    const wins = step ? (d.win || []).flatMap(w => { const p = parseWin(w); if (!p) return []; const out = []; for (let t = p[0]; t + step <= p[1]; t += step) { const a = t, b = t + step, f = m => Math.floor(m / 60) + (m % 60 ? ':' + String(m % 60).padStart(2, '0') : ''); out.push(f(a) + '-' + f(b)); } return out; }) : (d.win || []);
+    const slots = wins.map(w => { const p = parseWin(w); if (!p) return null; const s = ctAt(ymd, p[0]).getTime(), e = ctAt(ymd, p[1]).getTime();
       if (s - now < (cfg.noticeHours || 0) * 3600e3) return null;
       const used = busy.filter(b => b.s < e && b.e > s).length, left = Math.max(0, (d.cap || 1) - used);
-      return { win: w, label: winLabel(w), left }; }).filter(Boolean);
+      return { win: w, label: step ? minLabel(p[0]) + (p[0] < 720 ? 'am' : 'pm') : winLabel(w), left }; }).filter(Boolean);
     if (slots.length) days.push({ date: ymd, dow: new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }), day: +ymd.slice(8), label: new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }), slots });
   }
   return days;
@@ -1562,7 +1565,7 @@ app.post('/public/sched/:token', async (req, res) => {
       try { const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: o.name, orderType: 'Add-ons: ' + extrasNew.map(a => a.label).join(', '), totalCents: Math.round(due * 100), totalDisplay: '$' + due.toFixed(2), redirectUrl: schedLink(o.token) + '?paid=1' }) });
         const d = await r.json(); payUrl = d.url || ''; } catch (e) { console.log('Add-on pay link failed', e.message); }
     }
-    o.booking = { date, win, label: `${day.label} · ${winLabel(win)}`, address, city, zip, room, notes, phone, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
+    o.booking = { date, win, label: `${day.label} · ${slot.label}`, address, city, zip, room, notes, phone, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
     if (extrasNew.length) o.extraDue = (o.extraDue || 0) + due;
     m[o.token] = o; await setSched(m);
     cache.at = 0;   // so the next HQ load re-reads the calendar
@@ -1584,6 +1587,13 @@ app.get('/api/sched', async (req, res) => {
   try { const m = await getSched(), list = Object.values(m).sort((a, b) => (b.booking ? b.booking.date : '').localeCompare(a.booking ? a.booking.date : '') || b.created - a.created).slice(0, 200)
     .map(o => ({ token: o.token, name: o.name, phone: o.phone, type: o.type, couch: o.couches.map(c => c.title).join(' + '), photo: (o.couches[0] || {}).photo || '', addons: [...o.addons, ...((o.booking || {}).extras || [])], created: o.created, booking: o.booking || null, link: schedLink(o.token), extraDue: o.extraDue || 0 }));
     res.json({ ok: true, list, cfg: await slotCfg(), defaults: SLOT_DEFAULT }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// HQ: remove a booking (and its calendar event).
+app.post('/api/sched/delete', async (req, res) => {
+  try { const m = await getSched(), o = m[String(req.body.token || '')]; if (!o) return res.status(404).json({ error: 'not found' });
+    if (o.booking && o.booking.eventId && !/^demo-/.test(o.booking.eventId)) { try { await sheetsBook({ op: 'delete', eventId: o.booking.eventId, start: new Date().toISOString(), end: new Date().toISOString() }); } catch (e) { console.log('Calendar delete failed', e.message); } }
+    delete m[o.token]; await setSched(m); cache.at = 0; ty.at = 0; res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ===================== END SCHEDULING =====================
