@@ -1385,7 +1385,21 @@ app.get('/public/orderable', async (req, res) => {
 // Only accepted from the order app's own page (Origin check), and only flips live/emailed couches.
 const ORDER_ORIGINS = (process.env.ORDER_APP_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const orderOriginOk = o => { if (ORDER_ORIGINS.includes(o)) return true; try { const h = new URL(o).hostname; return h.includes('billys-couches-proxy') || h === 'billyscouches.com' || h.endsWith('.billyscouches.com'); } catch { return false; } };
-function orderCors(req, res) { const o = req.get('origin') || ''; if (orderOriginOk(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'POST'); return true; } return false; }
+function orderCors(req, res) { const o = req.get('origin') || ''; if (orderOriginOk(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET, POST'); return true; } return false; }
+// Private order app: today's showings so the team can tap a customer instead of typing them in.
+// Only answered for the order app's own page (Origin check). Returns first-name-level info + phone for today only.
+app.options('/public/today-showings', (req, res) => { orderCors(req, res); res.sendStatus(204); });
+app.get('/public/today-showings', async (req, res) => {
+  if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const g = await google(false), today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const list = (g.showings || []).filter(r => new Date(r[0]).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) === today && !/cancel/i.test(r[1] || ''))
+      .map(([iso, title, , phone]) => ({ at: iso, name: String(title || '').replace(/\(.*?\)/g, '').replace(/^\s*showing\s*(for)?\s*/i, '').trim(), phone: phone || '' }))
+      .filter(x => x.name).sort((a, b) => a.at.localeCompare(b.at));
+    res.json({ ok: true, showings: list });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.options('/public/order-sold', (req, res) => { orderCors(req, res); res.sendStatus(204); });
 app.post('/public/order-sold', async (req, res) => {
   if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
