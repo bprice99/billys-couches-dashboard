@@ -108,14 +108,14 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .ctang{border:1px solid var(--line);border-radius:14px;padding:12px 13px;background:var(--bg)}.ctang-h{display:flex;justify-content:space-between;align-items:center}.ctang b{font-size:14.5px}.ctang small{color:var(--muted);font-size:12px;display:block;margin-top:2px}
 .ctang p{margin:8px 0 0;font-size:13.5px;line-height:1.4}.ctang-f{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
 .ctang.add{display:grid;gap:6px;background:#fff;border-style:dashed}.ctang.add input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
-.cfbox{display:none;position:fixed;inset:0;z-index:60;background:var(--dark);color:#fff;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.cfbox.on{display:flex}
+.cfbox{display:none;position:fixed;top:0;left:0;right:0;bottom:0;height:100vh;height:100dvh;overflow:hidden;z-index:200;background:var(--dark);color:#fff;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.cfbox.on{display:flex}
 .cf-top{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0;font-size:14px;color:#cbbdb2}.cf-x{border:0;background:none;color:#cbbdb2;font:inherit;font-size:14px;cursor:pointer;padding:0}
 .cf-prog{display:flex;gap:4px;padding:12px 20px}.cf-prog i{flex:1;height:4px;border-radius:9px;background:rgba(255,255,255,.15)}.cf-prog i.on{background:#d9a39f}
-.cf-card{flex:1;margin:6px 16px;background:#fff;color:var(--dark);border-radius:24px;padding:24px 22px;overflow:auto;max-width:620px;width:calc(100% - 32px);align-self:center}
+.cf-card{flex:0 1 auto;margin:6px 16px;background:#fff;color:var(--dark);border-radius:24px;padding:24px 22px;overflow:auto;max-width:620px;width:calc(100% - 32px);align-self:center}
 .cf-k{font-size:12px;font-weight:800;color:var(--red);letter-spacing:.08em}.cf-card h3{font-size:28px;line-height:1.2;margin:10px 0 14px;font-weight:900;letter-spacing:-.02em}
 .cf-hk{background:var(--bg);border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.45}.cf-hk b{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px}
 .cf-card ul{margin:14px 0 0;padding-left:20px;font-size:15px;line-height:1.75;color:#4a3f37}
-.cf-acts{display:flex;gap:10px;padding:16px;max-width:620px;width:100%;align-self:center}.cf-acts button{flex:1;border:0;border-radius:16px;padding:18px;font:inherit;font-weight:900;font-size:17px;cursor:pointer}
+.cf-acts{margin-top:auto;display:flex;gap:10px;padding:16px;max-width:620px;width:100%;align-self:center}.cf-acts button{flex:1;border:0;border-radius:16px;padding:18px;font:inherit;font-weight:900;font-size:17px;cursor:pointer}
 .cf-skip{background:rgba(255,255,255,.1);color:#fff}.cf-film{background:#7bc497;color:#123d24}
 @media(max-width:800px){.ctgrid{grid-template-columns:minmax(0,1fr)}.ctnew{font-size:16px}.cthero{flex-wrap:wrap;gap:14px}.cth-bar{flex-basis:100%;order:3}.cth-go{margin-left:auto}.ctangs{grid-template-columns:1fr}}
 .ctday{border-top:1px solid var(--line);padding:8px 0}.ctday h4{margin:0 0 4px;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
@@ -232,7 +232,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .orow{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.orow span{color:var(--muted)}.orow b{text-align:right}
 .oacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.oacts a,.oacts select{flex:1;min-width:90px;text-align:center;padding:12px;border-radius:12px;font-weight:700;text-decoration:none}.oacts a{background:#b0524c;color:#fff}.oacts a.dk{background:var(--text)}.oacts select{border:1px solid var(--line);background:#fff;font-size:15px}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
-html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-behavior:contain;max-height:92vh;overflow:auto}
+html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden}.mask .modal{overscroll-behavior:contain;max-height:92vh;overflow:auto}
 .mask.on{display:flex}
 .modal{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:420px}
 .modal h3{margin:0 0 16px;font-size:19px}
@@ -383,7 +383,6 @@ html:has(.mask.on),body:has(.mask.on){overflow:hidden}.mask .modal{overscroll-be
           <div class="card"><h2>Marketing angles <small>who each video calls out (from your customer avatar)</small></h2><div class="ctangs" id="ctAngles"></div></div>
         </div>
         <div>
-          <div class="card"><h2>New couches to film <small>live in Drops, not on the list yet</small></h2><div id="ctCouches"></div></div>
           <div class="card"><h2>Hook bank <small>openers that worked · tap to copy</small></h2><div id="ctHooks"></div><input class="ctnew sm" id="ctHookNew" placeholder="＋ Save a hook and press Enter"></div>
         </div>
       </div>
@@ -2513,14 +2512,10 @@ function renderContent(){
       return `<div class="ctit2 ${dn ? 'done' : ''}"><span class="ctgrip"></span><button class="ctcb" data-ctwk="${w.id}">${dn ? '✓' : ''}</button><span class="cttx">${esc(w.text)}</span><span class="cttag">↻ WEEKLY</span><button class="ctx" data-ctwkdel="${w.id}" title="Stop repeating">&times;</button></div>`; }).join('') : '')
     + `<div class="ctlbl">Filmed this week · ${thisWeek.length + wkDone.length}</div>` + (thisWeek.map(item).join('') || '<p class="empty" style="margin:4px 0 0">Nothing filmed yet this week.</p>')
     + (recent.length > thisWeek.length ? `<button class="btn sm" id="ctClear" style="margin-top:10px">Clear ${recent.length - thisWeek.length} older filmed</button>` : '');
-  // couches from Drops that are live and not added/hidden
-  const live = ((DR && DR.drops) || []).filter(x => (x.status === 'live' || x.status === 'emailed') && !d.hiddenDrops.includes(x.id) && !d.items.some(i => i.dropId === x.id)).slice(0, 6);
-  $('ctCouches').innerHTML = !DR ? '<p class="empty">Loading…</p>' : live.length ? live.map(x => `<div class="ctcouch">${(x.photos || [])[0] ? `<img src="${esc(/^https?:/.test(x.photos[0]) ? x.photos[0] : '/public/dphoto/' + x.photos[0] + '.jpg')}">` : '<span class="ph"></span>'}<div><b>${esc(x.title)}</b><small>${money(x.price || 0)}${x.liveAt ? ' · live ' + Math.max(0, Math.round((Date.now() - x.liveAt) / 864e5)) + 'd' : ''}</small></div><button class="btn sm" data-ctcadd="${x.id}">＋ Add</button><button class="ctx" data-ctchide="${x.id}" title="Not filming this one">&times;</button></div>`).join('') : '<p class="empty">Every couch on the floor is covered.</p>';
   $('ctHooks').innerHTML = d.hooks.map(h => `<div class="cthook"><span data-cthcopy="${h.id}" title="Tap to copy">"${esc(h.text)}"</span><em>${h.used ? 'used ' + h.used + '×' : 'new'}</em><button class="ctx" data-cthdel="${h.id}">&times;</button></div>`).join('') || '<p class="empty">No hooks saved yet.</p>';
   $('ctAngles').innerHTML = d.angles.map(a => `<div class="ctang"><div class="ctang-h"><b>${esc(a.title)}</b><button class="ctx" data-ctadel="${a.id}" title="Remove angle">&times;</button></div><small>Calling out: ${esc(a.who)}</small>${a.line ? `<p>${esc(a.line)}</p>` : ''}
     <div class="ctang-f"><span>${d.items.filter(i => i.angle === a.id && i.done).length} filmed · ${d.items.filter(i => i.angle === a.id && !i.done).length} on the list</span><button class="btn sm" data-ctause="${a.id}">＋ Add a shot</button></div></div>`).join('')
     + `<div class="ctang add"><input id="ctAngTitle" placeholder="New angle (e.g. First apartment)"><input id="ctAngWho" placeholder="Who you're calling out"><input id="ctAngLine" placeholder="Example line (optional)"><button class="btn sm p" id="ctAngAdd">Add angle</button></div>`;
-  if (!DR) fetch('/api/drops', { cache: 'no-store' }).then(r => r.json()).then(j => { if (j && j.drops) { DR = j; if (tab === 'content') renderContent(); } }).catch(() => {});
 }
 function ctAddText(raw){
   const d = ctData(); let t = raw.trim(); if (!t) return;
@@ -2530,7 +2525,7 @@ function ctAddText(raw){
 }
 function ctFilmShow(){
   const d = ctData(), list = ctOpenList(d).filter(x => !(CT_FILM.skipped || []).includes(x.id));
-  if (!list.length) { $('ctFilmBox').classList.remove('on'); CT_FILM = null; renderContent(); return toast(`Session done: ${CT_FILM_DONE} filmed 🎬`); }
+  if (!list.length) { $('ctFilmBox').classList.remove('on'); document.documentElement.classList.remove('cf-on'); CT_FILM = null; renderContent(); return toast(`Session done: ${CT_FILM_DONE} filmed 🎬`); }
   const x = list[0], a = d.angles.find(y => y.id === x.angle), total = CT_FILM.total, n = Math.min(total, CT_FILM.done + (CT_FILM.skipped || []).length + 1);
   $('ctFilmBox').innerHTML = `<div class="cf-top"><button class="cf-x" id="ctFilmEnd">✕ Done for now</button><span>${n} of ${total}</span></div>
     <div class="cf-prog">${Array.from({ length: total }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
@@ -2561,8 +2556,8 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('click', e => {
   const t = e.target, d = () => ctData();
-  if (t.id === 'ctFilm') { const l = ctOpenList(d()); if (!l.length) return; CT_FILM = { total: l.length, done: 0, skipped: [] }; CT_FILM_DONE = 0; $('ctFilmBox').classList.add('on'); return ctFilmShow(); }
-  if (t.id === 'ctFilmEnd') { $('ctFilmBox').classList.remove('on'); CT_FILM = null; renderContent(); if (CT_FILM_DONE) toast(`${CT_FILM_DONE} filmed 🎬`); return; }
+  if (t.id === 'ctFilm') { const l = ctOpenList(d()); if (!l.length) return; CT_FILM = { total: l.length, done: 0, skipped: [] }; CT_FILM_DONE = 0; const fb = $('ctFilmBox'); if (fb.parentNode !== document.body) document.body.appendChild(fb); document.documentElement.classList.add('cf-on'); fb.classList.add('on'); fb.scrollTop = 0; return ctFilmShow(); }
+  if (t.id === 'ctFilmEnd') { $('ctFilmBox').classList.remove('on'); document.documentElement.classList.remove('cf-on'); CT_FILM = null; renderContent(); if (CT_FILM_DONE) toast(`${CT_FILM_DONE} filmed 🎬`); return; }
   if (t.dataset && t.dataset.cffilm) { ctMark(t.dataset.cffilm, !!t.dataset.wk); CT_FILM.done++; CT_FILM_DONE++; return ctFilmShow(); }
   if (t.dataset && t.dataset.cfskip) { CT_FILM.skipped.push(t.dataset.cfskip); return ctFilmShow(); }
   if (t.id === 'ctGoalEdit') { e.preventDefault(); const D = d(), g = prompt('Videos to film each week?', D.goal); if (g === null) return; const a = prompt('Of those, how many ad creatives?', D.adGoal); D.goal = Math.max(1, Number(g) || D.goal); if (a !== null) D.adGoal = Math.max(0, Number(a) || 0); ctSave(D, true); return renderContent(); }
