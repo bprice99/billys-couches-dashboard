@@ -1099,7 +1099,7 @@ async function txnSync(){
               const xfer = /^TRANSFER_OUT/.test(base.pfc);
               const cat = rule && rule.scope === 'business' ? rule.cat : (!P2P.test(base.raw) && !xfer && (BIZ_GUESS.find(([re]) => re.test(base.name + ' ' + base.raw)) || [])[1]);
               // already typed in by hand (same amount within 3 days)? don't add it twice
-              if (exp.some(x => !x.auto && Math.abs((Number(x.amount) || 0) - amount) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(date)) <= 3 * 864e5)) { review({ note: 'Might match one you typed in' }); continue; }
+              if (exp.some(x => !x.auto && Math.abs((Number(x.amount) || 0) - amount) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(date)) <= 3 * 864e5)) { if (allTx[t.transaction_id]) allTx[t.transaction_id].dupe = true; skipped++; continue; }
               if (cat) { exp.push({ id: 'tx_' + t.transaction_id, date, category: cat, amount, vendor: base.name, notes: `Auto · ${it.institution}${base.mask ? ' ••' + base.mask : ''}`, auto: true }); added++; }
               else { inbox.push({ ...base, scope, suggest: /DIGITAL_ADVERTISING|ADVERTISING/.test(base.pfc) ? 'Advertising' : '' }); queued++; }
             } else {
@@ -1162,7 +1162,7 @@ app.get('/api/txn/all', async (req, res) => {
     const month = (req.query.month || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }).slice(0, 7));
     const list = Object.values(all || {}).filter(t => t.date.startsWith(month)).map(t => {
       const x = e.get(t.id), y = p.get(t.id);
-      const status = x ? 'Business: ' + x.category : y ? 'Personal: ' + (PPL_CATS[y.cat] || y.cat) : q.has(t.id) ? 'In Review' : g.has(t.id) ? 'Ignored' : rules.vendors[vkey({ name: t.raw, merchant_name: t.name })] === 'ignore' ? 'Ignored by rule' : 'Not sorted';
+      const status = t.dupe ? 'Already on tracker' : x ? 'Business: ' + x.category : y ? 'Personal: ' + (PPL_CATS[y.cat] || y.cat) : q.has(t.id) ? 'In Review' : g.has(t.id) ? 'Ignored' : rules.vendors[vkey({ name: t.raw, merchant_name: t.name })] === 'ignore' ? 'Ignored by rule' : 'Not sorted';
       return { ...t, status, canRedo: !x && !y && !q.has(t.id) };
     }).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
     res.json({ ok: true, list });
@@ -1172,6 +1172,7 @@ app.get('/api/txn/all', async (req, res) => {
 app.post('/api/txn/redo', async (req, res) => {
   try {
     const id = clean(req.body.id, 120), all = (await kget(TXN.all, {})) || {}, t = all[id]; if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.dupe) { delete t.dupe; await kset(TXN.all, all); }
     const inbox = (await kget(TXN.inbox, [])) || [], ign = ((await kget(TXN.ignored, [])) || []).filter(x => x !== id), accts = await txnAccounts();
     if (!inbox.some(x => x.id === id)) { const a = accts.find(x => x.item_id === t.item && x.mask && x.mask === t.mask), scope = a && a.scope !== 'ignore' ? a.scope : '';
       inbox.push({ ...t, key: vkey({ name: t.raw, merchant_name: t.name }), scope, suggest: '', note: 'Sent back to review' }); }
@@ -1180,7 +1181,10 @@ app.post('/api/txn/redo', async (req, res) => {
 });
 // Re-check everything since the start date (picks up transfers the old rules skipped, like rent paid by Zelle).
 app.post('/api/txn/rescan', async (req, res) => {
-  try { await kset(TXN.cursor, {}); await kset(TXN.seen, []); const j = await txnSync(); res.json({ ok: true, ...j }); }
+  try {
+    const since = /^\d{4}-\d{2}-\d{2}$/.test(req.body.since || '') ? req.body.since : '';
+    if (since) { const m = (await kget(TXN.meta, null)) || {}; if (!m.since || since < m.since) { m.since = since; await kset(TXN.meta, m); } }
+    await kset(TXN.cursor, {}); await kset(TXN.seen, []); const j = await txnSync(); res.json({ ok: true, ...j }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/txn/rule-delete', async (req, res) => {
