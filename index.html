@@ -140,7 +140,7 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 @media(max-width:700px){.dlv{display:block;padding:8px 12px}.dlv-r{border:0;padding:6px 0 0;justify-content:space-between}.dlv-n{flex:1;overflow:hidden;text-overflow:ellipsis}}
 .pill.r{background:#fbf0ee;color:var(--red)}.pplpie{display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:center}.pplpie .pw{height:200px;position:relative}@media(max-width:600px){.pplpie{grid-template-columns:1fr}}.pplpl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.pplpl:last-child{border:0}.pplpl i{width:10px;height:10px;border-radius:3px;flex:none}.pplpl span{flex:1}.pplpl em{font-style:normal;color:var(--muted);font-size:12px;width:38px;text-align:right}.txsync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-4px 0 12px}.txsync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .txrev{background:#fff8f6;border:2px solid var(--red);border-radius:14px;padding:12px 14px;margin-bottom:14px}.txrev-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.txrev-h small{color:var(--muted);font-size:12px}
-table.txtab{width:100%;font-size:13.5px}table.txtab td,table.txtab th{vertical-align:middle;text-align:left}table.txtab .n{text-align:right}table.txtab small{color:var(--muted);font-size:11.5px}table.txtab{table-layout:auto}table.txtab td:nth-child(2){word-break:break-word;min-width:140px}table.txtab .act{white-space:nowrap}table.txtab .md{display:none}@media(max-width:640px){table.txtab tr:first-child{display:none}table.txtab tr{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line);padding:6px 0}table.txtab td{border:0!important;padding:4px 2px!important}table.txtab td:first-child{display:none}table.txtab .md{display:inline}table.txtab td.act{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}table.txtab td.act br{display:none}table.txtab td.act select{flex:1;max-width:none}}table.txtab select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;max-width:190px}
+table.txtab{width:100%;font-size:13.5px}table.txtab td,table.txtab th{vertical-align:middle;text-align:left}table.txtab .n{text-align:right}table.txtab small{color:var(--muted);font-size:11.5px}table.txtab{table-layout:auto}table.txtab td:nth-child(2){word-break:break-word;min-width:140px}table.txtab .act{white-space:nowrap}table.txtab .md{display:none}#pplAllM,#pplAllC{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;font-weight:600;background:#fff}@media(max-width:640px){table.txtab tr:first-child{display:none}table.txtab tr{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line);padding:6px 0}table.txtab td{border:0!important;padding:4px 2px!important}table.txtab td:first-child{display:none}table.txtab .md{display:inline}table.txtab td.act{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}table.txtab td.act br{display:none}table.txtab td.act select{flex:1;max-width:none}}table.txtab select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;max-width:190px}
 .txrem{font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}.btn.g{background:var(--green);border-color:var(--green);color:#fff}
 #txAccts .row select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
 .gday{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:16px}.gday i{display:block;height:100%;background:var(--dark);border-radius:9px}
@@ -496,6 +496,8 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
         <div class="card"><h2>Where it went <small id="pplPieMT"></small></h2><div class="pplpie"><div class="pw"><canvas id="pplPieM"></canvas></div><div id="pplPieML"></div></div></div>
         <div class="card"><h2>Where it went <small>this year</small></h2><div class="pplpie"><div class="pw"><canvas id="pplPieY"></canvas></div><div id="pplPieYL"></div></div></div>
       </div>
+      <div class="card" style="margin-top:16px" id="pplAllCard"><h2 style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">Every transaction that came through <small id="pplAllNote"></small><span style="flex:1"></span><select id="pplAllM"></select><select id="pplAllC"></select></h2>
+        <div style="overflow:auto;max-height:520px"><table class="txtab" id="pplAllTbl"></table></div></div>
     </section>
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
@@ -1898,14 +1900,14 @@ function pplAuto(k){
   if (k > nowK) return {};
   let couches = 0; try { couches = Math.round(period({ from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59) }).net); } catch (e) {}
   const coaching = (PPL_COACH || []).flatMap(c => (c.program && c.program.payments) || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === k).reduce((a, p) => a + (Number(p.amount) || 0), 0);
-  const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (Number(t.amount) || 0); });
-  PPL_OUT.forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
+  const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (t.cat === 'otherIn' ? -1 : 1) * (Number(t.amount) || 0); });
+  [...PPL_OUT, ['otherIn']].forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
   return { couches, coaching, ...tx };
 }
-const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching', ...PPL_OUT.map(([c]) => c)].forEach(c => { if ((r[c] == null || r[c] === '') && a[c]) r[c] = a[c]; });
+const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching', 'otherIn', ...PPL_OUT.map(([c]) => c)].forEach(c => { if ((r[c] == null || r[c] === '') && a[c]) r[c] = a[c]; });
   const n = x => Number(r[x]) || 0;
   const inc = PPL_IN.reduce((a, [c]) => a + n(c), 0), out = PPL_OUT.reduce((a, [c]) => a + n(c), 0);
-  return { r, inc, out, net: inc - out, has: Object.keys(d[k] || {}).length > 0 || !!(a.couches || a.coaching || PPL_OUT.some(([c]) => a[c])) }; };
+  return { r, inc, out, net: inc - out, has: Object.keys(d[k] || {}).length > 0 || !!(a.couches || a.coaching || a.otherIn || PPL_OUT.some(([c]) => a[c])) }; };
 const pplFmt = v => (v == null || v === '' || !Number(v)) ? '' : '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
 // Show $1,234 when not editing; plain number while typing.
 document.addEventListener('focusin', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'), v = (pplData()[m] || {})[c]; e.target.value = v ? String(v) : ''; e.target.select(); });
@@ -1925,11 +1927,31 @@ function renderPpl(){
   pplRefresh();
 }
 // This month's auto-sorted personal transactions (tap the bucket to move one).
+let PPLF = { m: '', c: '' };
 function renderTxPplList(){
-  const el = $('txPplList'); if (!el) return; if (!TX || !TX.configured) { $('txPplCard').hidden = !!(TX && !TX.configured); el.innerHTML = ''; return; }
-  const k = new Date().toLocaleDateString('en-CA').slice(0, 7), l = (TX.ppl || []).filter(t => String(t.date || '').slice(0, 7) === k).sort((a, b) => b.date.localeCompare(a.date));
-  el.innerHTML = l.length ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700;font-size:13.5px">This month: ${l.length} transaction${l.length === 1 ? '' : 's'} sorted automatically</summary><div style="overflow-x:auto;margin-top:6px"><table class="txtab">${l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td>${esc(t.name)}</td><td class="n">${money(t.amount)}</td><td><select data-txpplcat="${esc(t.id)}">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}<option value="remove">Not mine / remove</option></select></td></tr>`).join('')}</table></div></details>` : '';
+  const card = $('pplAllCard'); if (!card) return; const old = $('txPplList'); if (old) old.innerHTML = '';
+  if (!TX || !TX.configured) { card.hidden = true; return; } card.hidden = false;
+  const all = TX.ppl || [], nowK = new Date().toLocaleDateString('en-CA').slice(0, 7);
+  const months = [...new Set([nowK, ...all.map(t => String(t.date || '').slice(0, 7))])].filter(Boolean).sort().reverse();
+  if (!PPLF.m || !months.includes(PPLF.m)) PPLF.m = nowK;
+  $('pplAllM').innerHTML = months.map(k => `<option value="${k}" ${k === PPLF.m ? 'selected' : ''}>${new Date(k + '-15').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>`).join('');
+  $('pplAllC').innerHTML = `<option value="">All categories</option>` + Object.entries(TX.pplCats).map(([c, l]) => `<option value="${c}" ${PPLF.c === c ? 'selected' : ''}>${l}</option>`).join('');
+  const l = all.filter(t => String(t.date || '').slice(0, 7) === PPLF.m && (!PPLF.c || t.cat === PPLF.c)).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
+  const out = l.filter(t => t.cat !== 'otherIn').reduce((a, t) => a + (Number(t.amount) || 0), 0), inc = l.filter(t => t.cat === 'otherIn').reduce((a, t) => a - (Number(t.amount) || 0), 0);
+  $('pplAllNote').textContent = `${l.length} transaction${l.length === 1 ? '' : 's'} · ${money(out)} spent${inc ? ' · ' + money(inc) + ' income' : ''}`;
+  $('pplAllTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Category</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
+    <td class="act"><select data-txpplcat="${esc(t.id)}">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}<option value="remove">Not mine / remove</option></select></td></tr>`).join('')
+    : `<tr><td colspan="4" class="empty">Nothing here${PPLF.c ? ' in this category' : ''} for this month.</td></tr>`);
 }
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-pplfilt]'); if (!f || !TX) return;
+  const c = Object.entries(TX.pplCats).find(([, l]) => l === f.dataset.pplfilt); PPLF.c = c ? c[0] : ''; if (f.dataset.pplm) PPLF.m = f.dataset.pplm;
+  renderTxPplList(); $('pplAllCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'pplAllM') { PPLF.m = e.target.value; renderTxPplList(); }
+  if (e.target.id === 'pplAllC') { PPLF.c = e.target.value; renderTxPplList(); }
+});
 document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.txpplcat) return;
   try { await post('/api/txn/ppl', { id: t.dataset.txpplcat, cat: t.value }); const x = TX.ppl.find(y => y.id === t.dataset.txpplcat); if (t.value === 'remove') TX.ppl = TX.ppl.filter(y => y !== x); else if (x) x.cat = t.value; renderPpl(); } catch (err) { toast(err.message); } });
 // Recompute totals, KPIs and charts without rebuilding the inputs (so typing and Tab keep working).
@@ -1968,7 +1990,7 @@ function pplRefresh(){
     if (!pairs.length) { $(el).innerHTML = '<p class="empty">No spending yet.</p>'; chartIn(id, { type: 'doughnut', data: { labels: [], datasets: [{ data: [] }] } }); return; }
     chartIn(id, { type: 'doughnut', data: { labels: pairs.map(p => p[0]), datasets: [{ data: pairs.map(p => p[1]), backgroundColor: pairs.map(p => p[2]), borderWidth: 2, borderColor: '#fff' }] },
       options: { animation: false, responsive: true, maintainAspectRatio: false, cutout: '58%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: i => i.label + ': ' + money(i.raw) + ' (' + Math.round(i.raw / total * 100) + '%)' } } } } });
-    $(el).innerHTML = pairs.map(p => `<div class="pplpl"><i style="background:${p[2]}"></i><span>${p[0]}</span><b>${money(p[1])}</b><em>${Math.round(p[1] / total * 100)}%</em></div>`).join(''); };
+    $(el).innerHTML = pairs.map(p => `<div class="pplpl" style="cursor:pointer" title="See these transactions" data-pplfilt="${esc(p[0])}" data-pplm="${el === 'pplPieML' && cur ? cur.k : ''}"><i style="background:${p[2]}"></i><span>${p[0]}</span><b>${money(p[1])}</b><em>${Math.round(p[1] / total * 100)}%</em></div>`).join(''); };
   const curRow = rows.find(r => r.k === (cur ? cur.k : '')) ;
   $('pplPieMT').textContent = cur ? mName(cur.k) : 'This month';
   pie('pplPieM', curRow ? [curRow] : [], 'pplPieML'); pie('pplPieY', filled, 'pplPieYL');
@@ -2517,9 +2539,25 @@ async function loadTx(sync){
 const txAgo = iso => { if (!iso) return 'not yet'; const m = Math.round((Date.now() - Date.parse(iso)) / 6e4); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
 function txOpts(t, scope){
   const biz = TX.bizCats.map(c => `<option value="business|${c}" ${scope === 'business' && t.suggest === c ? 'selected' : ''}>${c}</option>`).join('');
-  const per = Object.entries(TX.pplCats).map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
-  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><option value="ignore|">Ignore (not an expense)</option>`;
+  const per = Object.entries(TX.pplCats).filter(([k]) => k !== 'otherIn').map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
+  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (transfers, couch sales, coaching: already counted)</option>`;
 }
+let TXALL_OPEN = false, TXALL = null;
+async function loadTxAll(){
+  const box = $('txAllBox'); if (!box) return; box.hidden = false; box.innerHTML = '<p class="empty">Loading…</p>';
+  try { TXALL = (await (await fetch('/api/txn/all')).json()).list || []; } catch (e) { box.innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+  const out = TXALL.filter(t => t.amount > 0).reduce((a, t) => a + t.amount, 0), cnt = s => TXALL.filter(t => t.status.startsWith(s)).length;
+  box.innerHTML = `<div class="txrev" style="background:#fff;border-color:var(--line)"><div class="txrev-h"><b>Every transaction this month</b><span class="pill">${TXALL.length}</span><small>${money(out)} out · ${cnt('Business')} business · ${cnt('Personal')} personal · ${cnt('In Review')} in review · ${cnt('Ignored')} ignored${cnt('Not sorted') ? ' · ' + cnt('Not sorted') + ' not sorted' : ''}</small><span style="flex:1"></span><button class="btn sm" data-txallv>Close</button></div>
+    <div style="overflow:auto;max-height:460px"><table class="txtab"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Where it went</th></tr>${TXALL.map(t => `<tr>
+      <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small><br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}</small></td>
+      <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
+      <td class="act"><span class="pill ${/^Business|^Personal/.test(t.status) ? 'g' : /Ignored|Not sorted/.test(t.status) ? 'r' : ''}">${esc(t.status)}</span>${t.canRedo ? ` <button class="btn sm" data-txredo="${esc(t.id)}">Review it</button>` : ''}</td></tr>`).join('')}</table></div>
+    <p class="empty" style="font-size:12px;margin-top:8px">Missing something you see in your bank? Tap Banks &amp; rules → Re-check this month.</p></div>`;
+}
+document.addEventListener('click', async e => {
+  if (e.target.closest('[data-txallv]')) { TXALL_OPEN = !TXALL_OPEN; if (TXALL_OPEN) loadTxAll(); else { const b = $('txAllBox'); if (b) b.hidden = true; } return; }
+  const r = e.target.closest('[data-txredo]'); if (r) { r.disabled = true; try { await post('/api/txn/redo', { id: r.dataset.txredo }); toast('Back in Review'); await loadTx(); loadTxAll(); } catch (err) { toast(err.message); } }
+});
 function renderTxReview(scope){
   const el = $(scope === 'business' ? 'txBiz' : 'txPpl'); if (!el) return;
   if (!TX) { el.innerHTML = ''; if (!TX_LOADING) loadTx(); return; }
@@ -2527,12 +2565,14 @@ function renderTxReview(scope){
   const list = TX.inbox.filter(t => t.scope === scope || !t.scope).sort((a, b) => b.date.localeCompare(a.date));
   const unset = TX.accounts.filter(a => !a.scope).length;
   el.innerHTML = `<div class="txsync"><span class="dot"></span>Synced from ${TX.accounts.filter(a => a.scope === scope).length} ${scope} account${TX.accounts.filter(a => a.scope === scope).length === 1 ? '' : 's'} · ${txAgo(TX.meta.lastSync)}${(TX.meta.lastErrors || []).length ? ` · <span style="color:var(--bad)">${esc(TX.meta.lastErrors[0])}</span>` : ''}${unset ? ` · <b style="color:var(--red)">${unset} account${unset > 1 ? 's' : ''} not set up</b>` : ''}
-      <span style="flex:1"></span><button class="btn sm" data-txsync>Sync now</button><button class="btn sm" data-txset>Banks &amp; rules</button></div>`
-    + (list.length ? `<div class="txrev"><div class="txrev-h"><b>Review new</b><span class="pill r">${list.length}</span><small>Pick once and HQ remembers that vendor.</small><span style="flex:1"></span>${list.some(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')) ? '<button class="btn sm g" data-txall>Approve suggestions</button>' : ''}</div>
+      <span style="flex:1"></span>${scope === 'business' ? '<button class="btn sm" data-txallv>All transactions</button>' : ''}<button class="btn sm" data-txsync>Sync now</button><button class="btn sm" data-txset>Banks &amp; rules</button></div>`
+    + (scope === 'business' ? `<div id="txAllBox" hidden></div>` : '') + (list.length ? `<div class="txrev"><div class="txrev-h"><b>Review new</b><span class="pill r">${list.length}</span><small>Pick once and HQ remembers that vendor.</small><span style="flex:1"></span>${list.some(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')) ? '<button class="btn sm g" data-txall>Approve suggestions</button>' : ''}</div>
       <div style="overflow-x:auto"><table class="txtab"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Goes to</th></tr>${list.slice(0, 300).map(t => `<tr>
         <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small>${t.raw && t.raw !== t.name ? `<br><small>${esc(t.raw)}</small>` : ''}<br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}${!t.scope ? ' · account not set up' : ''}</small>${t.note ? `<br><small style="color:var(--red);font-weight:700">${esc(t.note)}</small>` : ''}</td>
         <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txpick="${esc(t.id)}">${txOpts(t, t.scope)}</select><br><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" checked> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓ Save</button></td></tr>`).join('')}</table></div></div>` : '');
+  if (TXALL_OPEN && scope === 'business') loadTxAll();
 }
+
 function openTxSettings(){
   const m = $('m-txset'); if (!TX) return;
   const sc = a => ['business', 'personal', 'ignore'].map(s => `<option value="${s}" ${a.scope === s ? 'selected' : ''}>${s === 'business' ? 'Business (Sales Tracker)' : s === 'personal' ? 'Personal (P&L)' : 'Ignore (savings, moving money)'}</option>`).join('');
