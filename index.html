@@ -356,6 +356,8 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <!-- SHOWINGS -->
     <section id="tab-showings" hidden>
       <div class="kpis k7" id="shKpis"></div>
+      <div class="card" style="margin-bottom:16px"><h2>Every showing this month</h2><div style="overflow-x:auto"><table id="shTbl"></table></div>
+        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled; add a reason like "(Canceled - Schedule)". Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
       <div class="card"><h2>Showings by day <small>from the Billy's Couches calendar</small></h2><div class="chartwrap"><canvas id="shChart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Why they canceled <small id="shWhySub"></small></h2><div id="shWhy"></div>
         <p class="empty" style="margin-top:10px;font-size:12.5px">Add the reason in the title: (Canceled - Bought elsewhere), (Canceled - Couch sold), (Canceled - Schedule), (Canceled - Changed mind), (Canceled - No reason).</p></div>
@@ -363,8 +365,6 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
         <div class="card"><h2>By day of week</h2><div id="shDow"></div></div>
         <div class="card"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="shTrend"></table></div></div>
       </div>
-      <div class="card" style="margin-top:16px"><h2>Every showing this month</h2><div style="overflow-x:auto"><table id="shTbl"></table></div>
-        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled; add a reason like "(Canceled - Schedule)". Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
     </section>
 
     <!-- META ADS -->
