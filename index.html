@@ -138,6 +138,11 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .dlv-r{display:flex;align-items:center;gap:8px;font-size:13.5px;padding-left:14px;border-left:1px solid var(--line)}.dlv-t{font-weight:800;white-space:nowrap}.dlv-n{white-space:nowrap}.dlv-n i{font-style:normal;color:var(--muted);font-size:12.5px}
 .dlv-b{padding:3px 10px!important;font-size:12px!important;text-decoration:none}.dlv-b.ok{background:#e3f1e8;border-color:#bfe0cb;color:var(--green)}
 @media(max-width:700px){.dlv{display:block;padding:8px 12px}.dlv-r{border:0;padding:6px 0 0;justify-content:space-between}.dlv-n{flex:1;overflow:hidden;text-overflow:ellipsis}}
+.pill.r{background:#fbf0ee;color:var(--red)}.txsync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-4px 0 12px}.txsync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.txrev{background:#fff8f6;border:2px solid var(--red);border-radius:14px;padding:12px 14px;margin-bottom:14px}.txrev-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.txrev-h small{color:var(--muted);font-size:12px}
+table.txt{width:100%;font-size:13.5px}table.txt td,table.txt th{vertical-align:middle;text-align:left}table.txt .n{text-align:right}table.txt small{color:var(--muted);font-size:11.5px}table.txt select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;max-width:190px}
+.txrem{font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}.btn.g{background:var(--green);border-color:var(--green);color:#fff}
+#txAccts .row select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
 .gday{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:16px}.gday i{display:block;height:100%;background:var(--dark);border-radius:9px}
 .gcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}@media(max-width:900px){.gcards{grid-template-columns:1fr 1fr}}@media(max-width:520px){.gcards{grid-template-columns:1fr}}
 .gc{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.gc .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);font-weight:600}
@@ -330,6 +335,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
       <div class="card" style="margin-top:16px"><h2>Expenses</h2>
+        <div id="txBiz"></div>
         <div class="kpis" id="expKpis" style="margin-bottom:14px"></div>
         <div class="grid2" style="margin-top:0;grid-template-columns:1fr 1.6fr">
           <div><div class="piewrap"><canvas id="expPie"></canvas></div></div>
@@ -480,7 +486,8 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <section id="tab-ppl" hidden>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><button class="btn" data-pply="-1">&larr;</button><b id="pplYear" style="font-size:15px;min-width:50px;text-align:center"></b><button class="btn" data-pply="1">&rarr;</button><small style="color:var(--muted);margin-left:6px">Type in any cell. Saves automatically. Billy's Couches profit and coaching fill in on their own.</small></div>
       <div class="kpis" id="pplKpis"></div>
-      <div class="card"><h2>Month by month</h2><div style="overflow-x:auto"><table id="pplTbl" class="ppl"></table></div></div>
+      <div class="card" id="txPplCard"><h2>From your personal accounts</h2><div id="txPpl"></div><div id="txPplList"></div></div>
+      <div class="card" style="margin-top:16px"><h2>Month by month</h2><div style="overflow-x:auto"><table id="pplTbl" class="ppl"></table></div></div>
       <div class="grid2" style="margin-top:16px">
         <div class="card"><h2>Net profit by month</h2><div class="chartwrap" style="height:240px"><canvas id="pplNet"></canvas></div></div>
         <div class="card"><h2>Spending by month</h2><div class="chartwrap" style="height:240px"><canvas id="pplSpend"></canvas></div></div>
@@ -591,6 +598,13 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   <div class="two"><label>Capital One ··8760 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="capone8760"></span><span class="mlast" data-last="capone8760"></span></label><label>Discover ··6166 owed<span class="mwrap"><input type="text" inputmode="decimal" autocomplete="off" data-money name="discover6166"></span><span class="mlast" data-last="discover6166"></span></label></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
+<div class="mask" id="m-txset"><div class="modal" style="max-width:640px">
+  <button type="button" class="xbtn" data-close>&times;</button>
+  <h3>Banks &amp; rules</h3>
+  <p class="empty" style="font-size:13px;margin-top:-6px">Business accounts fill the Sales Tracker's expenses. Personal accounts fill your Personal P&amp;L. Ignore savings and accounts that just move money around. Link new banks on the Daily Cash tab.</p>
+  <h4 style="margin:14px 0 4px;font-size:13px">Accounts</h4><div id="txAccts"></div>
+  <h4 style="margin:18px 0 4px;font-size:13px">Remembered vendors</h4><div id="txRules"></div>
+</div></div>
 <div class="mask" id="m-goals"><form class="modal" data-kind="goals">
   <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
   <div class="two"><label>Sales<span class="pre"><input type="number" name="sales" min="0" placeholder="0"></span></label><label>Revenue<span class="pre d"><input type="number" name="revenue" min="0" placeholder="0"></span></label></div>
@@ -1124,7 +1138,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-delo
   try { const d = JSON.parse(localStorage.getItem('bcdDelOk') || '{}'); d[b.dataset.delok] = Date.now(); localStorage.setItem('bcdDelOk', JSON.stringify(d)); } catch {}
   setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
 function renderSales(){
-  renderJustSold(); renderDream(); renderDeliveries();
+  renderJustSold(); renderDream(); renderDeliveries(); renderTxReview('business');
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
@@ -1878,17 +1892,20 @@ function pplAuto(k){
   if (k > nowK) return {};
   let couches = 0; try { couches = Math.round(period({ from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59) }).net); } catch (e) {}
   const coaching = (PPL_COACH || []).flatMap(c => (c.program && c.program.payments) || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === k).reduce((a, p) => a + (Number(p.amount) || 0), 0);
-  return { couches, coaching };
+  const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (Number(t.amount) || 0); });
+  ['rent', 'groceries', 'otherOut'].forEach(c => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
+  return { couches, coaching, ...tx };
 }
-const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching'].forEach(c => { if (r[c] == null && a[c]) r[c] = a[c]; });
+const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching', 'rent', 'groceries', 'otherOut'].forEach(c => { if ((r[c] == null || r[c] === '') && a[c]) r[c] = a[c]; });
   const n = x => Number(r[x]) || 0;
   const inc = PPL_IN.reduce((a, [c]) => a + n(c), 0), out = PPL_OUT.reduce((a, [c]) => a + n(c), 0);
-  return { r, inc, out, net: inc - out, has: Object.keys(d[k] || {}).length > 0 || !!(a.couches || a.coaching) }; };
+  return { r, inc, out, net: inc - out, has: Object.keys(d[k] || {}).length > 0 || !!(a.couches || a.coaching || a.rent || a.groceries || a.otherOut) }; };
 const pplFmt = v => (v == null || v === '' || !Number(v)) ? '' : '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
 // Show $1,234 when not editing; plain number while typing.
 document.addEventListener('focusin', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'), v = (pplData()[m] || {})[c]; e.target.value = v ? String(v) : ''; e.target.select(); });
 document.addEventListener('focusout', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'); e.target.value = pplFmt((pplData()[m] || {})[c]); });
 function renderPpl(){
+  renderTxReview('personal'); renderTxPplList();
   if (PPL_COACH == null) { PPL_COACH = []; fetch('/api/coach').then(r => r.json()).then(j => { PPL_COACH = j.clients || []; if (tab === 'ppl') renderPpl(); }).catch(() => {}); }
   // One-time switch: drop the typed-in couches/coaching numbers so the automatic ones take over.
   if (RAW.store.ppl && !RAW.store.ppl._v) { const m = JSON.parse(JSON.stringify(RAW.store.ppl)); Object.keys(m).forEach(k => { if (/^\d{4}-\d{2}$/.test(k)) { delete m[k].couches; delete m[k].coaching; } }); m._v = 2; RAW.store.ppl = m; saveStore('ppl', m); }
@@ -1901,6 +1918,14 @@ function renderPpl(){
     `</tbody><tfoot id="pplFoot"></tfoot>`;
   pplRefresh();
 }
+// This month's auto-sorted personal transactions (tap the bucket to move one).
+function renderTxPplList(){
+  const el = $('txPplList'); if (!el) return; if (!TX || !TX.configured) { $('txPplCard').hidden = !!(TX && !TX.configured); el.innerHTML = ''; return; }
+  const k = new Date().toLocaleDateString('en-CA').slice(0, 7), l = (TX.ppl || []).filter(t => String(t.date || '').slice(0, 7) === k).sort((a, b) => b.date.localeCompare(a.date));
+  el.innerHTML = l.length ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700;font-size:13.5px">This month: ${l.length} transaction${l.length === 1 ? '' : 's'} sorted automatically</summary><div style="overflow-x:auto;margin-top:6px"><table class="txt">${l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td>${esc(t.name)}</td><td class="n">${money(t.amount)}</td><td><select data-txpplcat="${esc(t.id)}">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}<option value="remove">Not mine / remove</option></select></td></tr>`).join('')}</table></div></details>` : '';
+}
+document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.txpplcat) return;
+  try { await post('/api/txn/ppl', { id: t.dataset.txpplcat, cat: t.value }); const x = TX.ppl.find(y => y.id === t.dataset.txpplcat); if (t.value === 'remove') TX.ppl = TX.ppl.filter(y => y !== x); else if (x) x.cat = t.value; renderPpl(); } catch (err) { toast(err.message); } });
 // Recompute totals, KPIs and charts without rebuilding the inputs (so typing and Tab keep working).
 function pplRefresh(){
   const d = pplData(), months = Array.from({ length: 12 }, (_, i) => PPLY + '-' + String(i + 1).padStart(2, '0'));
@@ -2456,6 +2481,59 @@ document.addEventListener('click', e => {
   f.id.value = x.id; f.date.value = ymd(x.date); f.amount.value = x.amt; f.vendor.value = x.vendor || ''; f.notes.value = x.notes || '';
   if (![...f.category.options].some(o => o.value === x.cat)) f.category.add(new Option(x.cat, x.cat));
   f.category.value = x.cat; $('expTitle').textContent = 'Edit expense'; m.classList.add('on');
+});
+
+// ---------- auto expenses from linked banks + cards ----------
+let TX = null, TX_LOADING = false;
+async function loadTx(sync){
+  if (TX_LOADING) return; TX_LOADING = true;
+  try { const r = await fetch('/api/txn' + (sync ? '?sync=1' : ''), { cache: 'no-store' }); const j = await r.json(); if (j.ok) TX = j; } catch (e) {}
+  if (!TX) TX = { configured: false, inbox: [], accounts: [], ppl: [], vendors: {}, meta: {}, bizCats: [], pplCats: {} };
+  TX_LOADING = false;
+  if (tab === 'sales') { renderTxReview('business'); } if (tab === 'ppl') { renderPpl(); }
+}
+const txAgo = iso => { if (!iso) return 'not yet'; const m = Math.round((Date.now() - Date.parse(iso)) / 6e4); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
+function txOpts(t, scope){
+  const biz = TX.bizCats.map(c => `<option value="business|${c}" ${scope === 'business' && t.suggest === c ? 'selected' : ''}>${c}</option>`).join('');
+  const per = Object.entries(TX.pplCats).map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
+  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><option value="ignore|">Ignore (not an expense)</option>`;
+}
+function renderTxReview(scope){
+  const el = $(scope === 'business' ? 'txBiz' : 'txPpl'); if (!el) return;
+  if (!TX) { el.innerHTML = ''; if (!TX_LOADING) loadTx(); return; }
+  if (!TX.configured) { el.innerHTML = ''; return; }
+  const list = TX.inbox.filter(t => t.scope === scope || !t.scope).sort((a, b) => b.date.localeCompare(a.date));
+  const unset = TX.accounts.filter(a => !a.scope).length;
+  el.innerHTML = `<div class="txsync"><span class="dot"></span>Synced from ${TX.accounts.filter(a => a.scope === scope).length} ${scope} account${TX.accounts.filter(a => a.scope === scope).length === 1 ? '' : 's'} · ${txAgo(TX.meta.lastSync)}${(TX.meta.lastErrors || []).length ? ` · <span style="color:var(--bad)">${esc(TX.meta.lastErrors[0])}</span>` : ''}${unset ? ` · <b style="color:var(--red)">${unset} account${unset > 1 ? 's' : ''} not set up</b>` : ''}
+      <span style="flex:1"></span><button class="btn sm" data-txsync>Sync now</button><button class="btn sm" data-txset>Banks &amp; rules</button></div>`
+    + (list.length ? `<div class="txrev"><div class="txrev-h"><b>Review new</b><span class="pill r">${list.length}</span><small>Pick once and HQ remembers that vendor.</small><span style="flex:1"></span>${list.some(t => t.scope && (t.suggest || t.scope === 'personal')) ? '<button class="btn sm g" data-txall>Approve suggestions</button>' : ''}</div>
+      <div style="overflow-x:auto"><table class="txt"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Goes to</th><th></th></tr>${list.slice(0, 40).map(t => `<tr>
+        <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b>${t.raw && t.raw !== t.name ? `<br><small>${esc(t.raw)}</small>` : ''}<br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}${!t.scope ? ' · account not set up' : ''}</small></td>
+        <td class="n"><b>${money(t.amount)}</b></td><td><select data-txpick="${esc(t.id)}">${txOpts(t, t.scope)}</select></td>
+        <td class="n" style="white-space:nowrap"><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" ${/venmo|zelle|cash ?app|paypal/i.test(t.raw || t.name) ? '' : 'checked'}> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓</button></td></tr>`).join('')}</table></div></div>` : '');
+}
+function openTxSettings(){
+  const m = $('m-txset'); if (!TX) return;
+  const sc = a => ['business', 'personal', 'ignore'].map(s => `<option value="${s}" ${a.scope === s ? 'selected' : ''}>${s === 'business' ? 'Business (Sales Tracker)' : s === 'personal' ? 'Personal (P&L)' : 'Ignore (savings, moving money)'}</option>`).join('');
+  $('txAccts').innerHTML = TX.accounts.length ? TX.accounts.map(a => `<div class="row"><span><b>${esc(a.institution)}</b> · ${esc(a.name)}${a.mask ? ' ••' + esc(a.mask) : ''}${a.guessed ? ' <small style="color:var(--muted)">(guessed)</small>' : ''}</span><select data-txacct="${esc(a.id)}"><option value="">Not set up</option>${sc(a)}</select></div>`).join('') : '<p class="empty">No banks linked yet. Link them on the Daily Cash tab.</p>';
+  const v = Object.entries(TX.vendors || {});
+  $('txRules').innerHTML = v.length ? v.sort((a, b) => a[0].localeCompare(b[0])).map(([k, r]) => `<div class="row"><span><b>${esc(k)}</b> → ${r === 'ignore' ? 'Ignore' : r.scope === 'business' ? esc(r.cat) : 'Personal: ' + esc(TX.pplCats[r.cat] || r.cat)}</span><button class="xs" data-txrdel="${esc(k)}">&times;</button></div>`).join('') : '<p class="empty">No rules yet. They get made when you approve something with "remember" checked.</p>';
+  m.classList.add('on');
+}
+document.addEventListener('change', async e => {
+  const t = e.target; if (!t.dataset) return;
+  if (t.dataset.txacct != null) { try { await post('/api/txn/account', { id: t.dataset.txacct, scope: t.value }); const a = TX.accounts.find(x => x.id === t.dataset.txacct); if (a) { a.scope = t.value; a.guessed = false; } toast('Saved. Applies to new transactions.'); } catch (err) { toast(err.message); } }
+});
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.closest('[data-txsync]')) { t.textContent = 'Syncing…'; t.disabled = true; await loadTx(true); const m = TX && TX.meta; toast(m && m.lastErrors && m.lastErrors.length ? 'Synced with errors' : 'Synced'); load(); return; }
+  if (t.closest('[data-txset]')) return openTxSettings();
+  const rd = t.closest('[data-txrdel]'); if (rd) { await post('/api/txn/rule-delete', { key: rd.dataset.txrdel }); delete TX.vendors[rd.dataset.txrdel]; return openTxSettings(); }
+  const ok = t.closest('[data-txok]');
+  if (ok) { const id = ok.dataset.txok, v = (document.querySelector(`[data-txpick="${CSS.escape(id)}"]`) || {}).value || ''; if (!v) return toast('Pick where it goes');
+    const [scope, cat] = v.split('|'), remember = !!(document.querySelector(`[data-txrem="${CSS.escape(id)}"]`) || {}).checked;
+    try { await post('/api/txn/review', { id, scope, cat, remember }); TX.inbox = TX.inbox.filter(x => x.id !== id); if (scope === 'personal') TX.ppl.push({ id, cat }); toast(scope === 'ignore' ? 'Ignored' : 'Added'); renderTxReview(tab === 'ppl' ? 'personal' : 'business'); if (scope === 'business') load(); loadTx(); } catch (err) { toast(err.message); } return; }
+  if (t.closest('[data-txall]')) { try { const j = await post('/api/txn/review', { all: true }); toast(`Approved ${j.done}`); await loadTx(); load(); } catch (err) { toast(err.message); } return; }
 });
 
 // ---------- content: shot list (no dates, no statuses: check it when it's filmed) ----------
