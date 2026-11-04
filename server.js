@@ -1007,13 +1007,18 @@ app.get('/api/plaid/balances', async (req, res) => {
 // ===================================================================
 const TXN = { rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta' };
 const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
-const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', otherOut: 'Other' };
+const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other' };
 // Built-in guesses (your own "remember this" rules always win).
 const BIZ_GUESS = [[/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
   [/shell|qt |quiktrip|bp |exxon|mobil|phillips 66|casey|speedway|marathon|circle k|\bgas\b|fuel/i, 'Fuel'], [/home depot|lowe|menards|uline|harbor freight|walmart|amazon|scotchgard|ace hardware/i, 'Supplies'],
   [/u-?haul|penske|ryder|tire|jiffy|valvoline|autozone|o.?reilly|advance auto/i, 'Truck'], [/progressive|state farm|geico|insurance|next insurance/i, 'Insurance'], [/ameren|spire|at&t|verizon|t-?mobile|comcast|spectrum|water/i, 'Utilities'],
   [/b-?stock|ch robinson|freight|uship/i, 'Freight'], [/forklift/i, 'Equipment']];
-const PPL_GUESS = [[/schnucks|aldi|dierbergs|hy-?vee|kroger|trader joe|whole foods|sam'?s club|costco|grocery|walmart super/i, 'groceries']];
+const PPL_GUESS = [[/schnucks|aldi|dierbergs|hy-?vee|kroger|trader joe|whole foods|sam'?s club|costco|grocery|walmart super/i, 'groceries'],
+  [/netflix|spotify|hulu|disney|youtube premium|apple\.com\/bill|icloud|amazon prime|hbo|max\.com|peacock|paramount|chatgpt|gym|planet fitness|crunch|audible|patreon/i, 'subscriptions'],
+  [/mcdonald|chick-?fil|starbucks|chipotle|taco bell|wendy|burger|panera|subway|domino|pizza|doordash|uber ?eats|grubhub|restaurant|grill|cafe|coffee|bar & grill|wingstop|raising cane/i, 'eatingOut'],
+  [/airline|delta|american air|united|southwest|spirit|frontier|hotel|marriott|hilton|airbnb|vrbo|expedia|booking\.com|uber(?! ?eats)|lyft/i, 'travel'],
+  [/udemy|coursera|skool|masterclass|book|barnes|tuition|school|course/i, 'education'],
+  [/walgreens|cvs|pharmacy|target|clinic|doctor|dental|haircut|barber|great clips|laundry/i, 'needs']];
 const P2P = /venmo|zelle|cash ?app|paypal|apple cash/i;
 const vkey = t => String(t.merchant_name || t.name || '').toLowerCase().replace(/[#*]\S*|\d{3,}/g, ' ').replace(/[^a-z&' ]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
 const isSkip = t => {   // money in, card payments and moves between your own accounts. Venmo/Zelle payments to people are kept.
@@ -1068,7 +1073,7 @@ async function txnSync(){
               if (cat) { exp.push({ id: 'tx_' + t.transaction_id, date, category: cat, amount, vendor: base.name, notes: `Auto · ${it.institution}${base.mask ? ' ••' + base.mask : ''}`, auto: true }); added++; }
               else { inbox.push({ ...base, scope, suggest: /DIGITAL_ADVERTISING|ADVERTISING/.test(base.pfc) ? 'Advertising' : '' }); queued++; }
             } else {
-              const cat = rule && rule.scope === 'personal' ? rule.cat : P2P.test(base.raw) ? '' : ((PPL_GUESS.find(([re]) => re.test(base.name)) || [])[1] || (/GROCERIES/.test(base.pfc) ? 'groceries' : /RENT_AND_UTILITIES_RENT/.test(base.pfc) ? 'rent' : 'otherOut'));
+              const cat = rule && rule.scope === 'personal' ? rule.cat : P2P.test(base.raw) ? '' : ((PPL_GUESS.find(([re]) => re.test(base.name)) || [])[1] || (/GROCERIES/.test(base.pfc) ? 'groceries' : /RENT_AND_UTILITIES_RENT/.test(base.pfc) ? 'rent' : /FOOD_AND_DRINK/.test(base.pfc) ? 'eatingOut' : /^TRAVEL/.test(base.pfc) ? 'travel' : /SUBSCRIPTION|STREAMING/.test(base.pfc) ? 'subscriptions' : /EDUCATION/.test(base.pfc) ? 'education' : /MEDICAL|PERSONAL_CARE|PHARMAC/.test(base.pfc) ? 'needs' : 'otherOut'));
               if (cat) { ppl.push({ id: t.transaction_id, date, amount, name: base.name, cat }); added++; }
               else { inbox.push({ ...base, scope, suggest: 'otherOut' }); queued++; }
             }
