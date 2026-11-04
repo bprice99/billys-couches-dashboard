@@ -696,7 +696,9 @@ app.post('/api/payroll/paid', async (req, res) => {
     else {
       const sun = new Date(week + 'T12:00:00Z'); sun.setUTCDate(sun.getUTCDate() + 6);
       const d = sun.toISOString().slice(0, 10);
-      (Array.isArray(lines) ? lines : []).filter(l => Number(l.total) > 0).forEach(l => list.push({
+      // Skip anyone whose Venmo payment already came in from the bank (no double payroll).
+      const fromBank = l => list.some(x => x.auto && /payroll/i.test(x.category) && Math.abs((Number(x.amount) || 0) - Number(l.total)) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(d)) <= 4 * 864e5);
+      (Array.isArray(lines) ? lines : []).filter(l => Number(l.total) > 0 && !fromBank(l)).forEach(l => list.push({
         id: `pay-${week}-${lc(l.name).replace(/[^a-z0-9]/g, '')}`, date: d, category: 'Payroll',
         amount: Math.round(Number(l.total) * 100) / 100, vendor: clean(l.name, 60), notes: 'Weekly payroll ' + week,
       }));
