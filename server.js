@@ -999,6 +999,137 @@ app.get('/api/plaid/balances', async (req, res) => {
   try { res.json({ ok: true, ...(await plaidBalances(req.query.fresh === '1')) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ===================================================================
+// AUTO EXPENSES from linked banks + cards (Plaid /transactions/sync)
+// Business accounts -> Sales Tracker expenses. Personal accounts -> Personal P&L (rent / groceries / other).
+// Transfers, card payments and money coming in are skipped. Anything unsure waits in "Review new".
+// ===================================================================
+const TXN = { rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta' };
+const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
+const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', otherOut: 'Other' };
+// Built-in guesses (your own "remember this" rules always win).
+const BIZ_GUESS = [[/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
+  [/shell|qt |quiktrip|bp |exxon|mobil|phillips 66|casey|speedway|marathon|circle k|\bgas\b|fuel/i, 'Fuel'], [/home depot|lowe|menards|uline|harbor freight|walmart|amazon|scotchgard|ace hardware/i, 'Supplies'],
+  [/u-?haul|penske|ryder|tire|jiffy|valvoline|autozone|o.?reilly|advance auto/i, 'Truck'], [/progressive|state farm|geico|insurance|next insurance/i, 'Insurance'], [/ameren|spire|at&t|verizon|t-?mobile|comcast|spectrum|water/i, 'Utilities'],
+  [/b-?stock|ch robinson|freight|uship/i, 'Freight'], [/forklift/i, 'Equipment']];
+const PPL_GUESS = [[/schnucks|aldi|dierbergs|hy-?vee|kroger|trader joe|whole foods|sam'?s club|costco|grocery|walmart super/i, 'groceries']];
+const P2P = /venmo|zelle|cash ?app|paypal|apple cash/i;
+const vkey = t => String(t.merchant_name || t.name || '').toLowerCase().replace(/[#*]\S*|\d{3,}/g, ' ').replace(/[^a-z&' ]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+const isSkip = t => {   // money in, card payments and moves between your own accounts. Venmo/Zelle payments to people are kept.
+  if (!(t.amount > 0)) return true;
+  if (P2P.test((t.name || '') + ' ' + (t.merchant_name || ''))) return false;
+  const p = ((t.personal_finance_category || {}).primary || '');
+  return /^(TRANSFER_IN|TRANSFER_OUT|LOAN_PAYMENTS|INCOME)$/.test(p) || /\b(payment|autopay|transfer|xfer|thank you|online pymt|card ?pmt|deposit)\b/i.test(t.name || '');
+};
+async function txnRules(){ const r = (await kget(TXN.rules, null)) || {}; r.accounts = r.accounts || {}; r.vendors = r.vendors || {}; return r; }
+// Accounts + their scope (business / personal / ignore). Guessed from the Daily Cash mapping until you set it.
+async function txnAccounts(){
+  const pb = await plaidBalances(false).catch(() => ({ banks: [] })), rules = await txnRules(), out = [];
+  (pb.banks || []).forEach(b => (b.accounts || []).forEach(a => {
+    const f = a.field || '', guess = /personal/.test(f) ? 'personal' : /marcus|taxReserve/.test(f) ? 'ignore' : /checking|ink|amex/.test(f) ? 'business' : '';
+    const id = `${b.item_id}:${a.mask || a.name}`;
+    out.push({ id, item_id: b.item_id, institution: b.institution, name: a.name, mask: a.mask, type: a.type, scope: rules.accounts[id] || guess, guessed: !rules.accounts[id] && !!guess });
+  }));
+  return out;
+}
+let txnBusy = null;
+async function txnSync(){
+  if (txnBusy) return txnBusy;
+  txnBusy = (async () => {
+    if (!PLAID.ID || !PLAID.SECRET) return { error: 'Plaid is not set up' };
+    const items = await getPlaidItems(); if (!items.length) return { added: 0 };
+    const meta = (await kget(TXN.meta, null)) || {};
+    if (!meta.since) { meta.since = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }).slice(0, 8) + '01'; }   // start with this month, no back-fill
+    const cursors = (await kget(TXN.cursor, null)) || {}, seen = new Set((await kget(TXN.seen, [])) || []), rules = await txnRules(), accts = await txnAccounts();
+    const scopeOf = (item, t) => { const a = accts.find(x => x.item_id === item && x.mask && x.mask === t.account_mask); return a ? a.scope : ''; };
+    const exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [], inbox = (await kget(TXN.inbox, [])) || [];
+    let added = 0, queued = 0, skipped = 0, errors = [];
+    for (const it of items) {
+      let cursor = cursors[it.item_id] || '', more = true, guard = 0, accMap = {};
+      try {
+        while (more && guard++ < 20) {
+          const j = await plaid('/transactions/sync', { access_token: it.access_token, cursor: cursor || undefined, count: 500 });
+          (j.accounts || []).forEach(a => { accMap[a.account_id] = a.mask; });
+          for (const t of [...(j.added || []), ...(j.modified || [])]) {
+            if (t.pending || seen.has(t.transaction_id)) continue;
+            const date = t.authorized_date || t.date; if (!date || date < meta.since) { seen.add(t.transaction_id); continue; }
+            seen.add(t.transaction_id);
+            if (isSkip(t)) { skipped++; continue; }
+            t.account_mask = accMap[t.account_id];
+            const scope = scopeOf(it.item_id, t), key = vkey(t), rule = rules.vendors[key], amount = Math.round(t.amount * 100) / 100;
+            const base = { id: t.transaction_id, date, name: t.merchant_name || t.name, raw: t.name, amount, key, item: it.item_id, mask: t.account_mask || '', institution: it.institution, pfc: ((t.personal_finance_category || {}).detailed || '') };
+            if (rule === 'ignore' || scope === 'ignore') { skipped++; continue; }
+            if (!scope || (rule && rule.scope && rule.scope !== scope && !P2P.test(t.name || ''))) { inbox.push({ ...base, scope: scope || '', suggest: rule ? rule.cat : '' }); queued++; continue; }
+            if (scope === 'business') {
+              const cat = rule && rule.scope === 'business' ? rule.cat : (!P2P.test(base.raw) && (BIZ_GUESS.find(([re]) => re.test(base.name + ' ' + base.raw)) || [])[1]);
+              // already typed in by hand (same amount within 3 days)? don't add it twice
+              if (exp.some(x => !x.auto && Math.abs((Number(x.amount) || 0) - amount) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(date)) <= 3 * 864e5)) { skipped++; continue; }
+              if (cat) { exp.push({ id: 'tx_' + t.transaction_id, date, category: cat, amount, vendor: base.name, notes: `Auto · ${it.institution}${base.mask ? ' ••' + base.mask : ''}`, auto: true }); added++; }
+              else { inbox.push({ ...base, scope, suggest: /DIGITAL_ADVERTISING|ADVERTISING/.test(base.pfc) ? 'Advertising' : '' }); queued++; }
+            } else {
+              const cat = rule && rule.scope === 'personal' ? rule.cat : P2P.test(base.raw) ? '' : ((PPL_GUESS.find(([re]) => re.test(base.name)) || [])[1] || (/GROCERIES/.test(base.pfc) ? 'groceries' : /RENT_AND_UTILITIES_RENT/.test(base.pfc) ? 'rent' : 'otherOut'));
+              if (cat) { ppl.push({ id: t.transaction_id, date, amount, name: base.name, cat }); added++; }
+              else { inbox.push({ ...base, scope, suggest: 'otherOut' }); queued++; }
+            }
+          }
+          cursor = j.next_cursor; more = j.has_more;
+        }
+        cursors[it.item_id] = cursor;
+      } catch (e) { errors.push(`${it.institution}: ${e.message}`); }
+    }
+    await kset(KEYS.expenses, exp); await kset(TXN.ppl, ppl.slice(-5000)); await kset(TXN.inbox, inbox.slice(-500)); await kset(TXN.cursor, cursors); await kset(TXN.seen, [...seen].slice(-8000));
+    meta.lastSync = new Date().toISOString(); meta.lastErrors = errors; await kset(TXN.meta, meta);
+    return { added, queued, skipped, errors };
+  })().finally(() => { txnBusy = null; });
+  return txnBusy;
+}
+// Keep it fresh: every 3 hours, and when HQ is opened if it's been 30+ minutes.
+setInterval(() => txnSync().catch(e => console.log('Txn sync failed', e.message)), 3 * 3600e3);
+async function txnMaybeSync(){ const m = (await kget(TXN.meta, null)) || {}; if (!m.lastSync || Date.now() - Date.parse(m.lastSync) > 30 * 60e3) txnSync().catch(() => {}); }
+app.get('/api/txn', async (req, res) => {
+  try { if (req.query.sync === '1') await txnSync(); else txnMaybeSync().catch(() => {});
+    const [inbox, accounts, rules, meta, ppl] = await Promise.all([kget(TXN.inbox, []), txnAccounts(), txnRules(), kget(TXN.meta, null), kget(TXN.ppl, [])]);
+    res.json({ ok: true, inbox: inbox || [], accounts, vendors: rules.vendors, meta: meta || {}, ppl: ppl || [], bizCats: BIZ_CATS, pplCats: PPL_CATS, configured: !!(PLAID.ID && PLAID.SECRET) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/txn/account', async (req, res) => {
+  try { const r = await txnRules(), id = clean(req.body.id, 120), scope = ['business', 'personal', 'ignore', ''].includes(req.body.scope) ? req.body.scope : '';
+    if (scope) r.accounts[id] = scope; else delete r.accounts[id]; await kset(TXN.rules, r); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Review: { id, scope: business|personal|ignore, cat, remember } or { all: true } to accept every suggestion.
+app.post('/api/txn/review', async (req, res) => {
+  try {
+    const inbox = (await kget(TXN.inbox, [])) || [], r = await txnRules(), exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [];
+    const todo = req.body.all ? inbox.filter(t => t.scope && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
+    let done = 0;
+    for (const q of todo) {
+      const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope;
+      if (scope === 'business') { const cat = BIZ_CATS.includes(q.cat) ? q.cat : ''; if (!cat) continue;
+        exp.push({ id: 'tx_' + t.id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `Auto · ${t.institution}${t.mask ? ' ••' + t.mask : ''}`, auto: true });
+        if (q.remember && !P2P.test(t.raw || '')) r.vendors[t.key] = { scope, cat }; }
+      else if (scope === 'personal') { const cat = PPL_CATS[q.cat] ? q.cat : 'otherOut'; ppl.push({ id: t.id, date: t.date, amount: t.amount, name: t.name, cat });
+        if (q.remember && !P2P.test(t.raw || '')) r.vendors[t.key] = { scope, cat }; }
+      else if (scope === 'ignore') { if (q.remember && !P2P.test(t.raw || '')) r.vendors[t.key] = 'ignore'; }
+      else continue;
+      inbox.splice(i, 1); done++;
+    }
+    await Promise.all([kset(TXN.inbox, inbox), kset(TXN.rules, r), kset(KEYS.expenses, exp), kset(TXN.ppl, ppl)]);
+    res.json({ ok: true, done, left: inbox.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/txn/rule-delete', async (req, res) => {
+  try { const r = await txnRules(); delete r.vendors[clean(req.body.key, 60)]; await kset(TXN.rules, r); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Move one personal transaction to another bucket (or remove it).
+app.post('/api/txn/ppl', async (req, res) => {
+  try { let l = (await kget(TXN.ppl, [])) || []; const x = l.find(t => t.id === req.body.id); if (!x) return res.status(404).json({ error: 'not found' });
+    if (req.body.cat === 'remove') l = l.filter(t => t.id !== x.id); else if (PPL_CATS[req.body.cat]) x.cat = req.body.cat; await kset(TXN.ppl, l); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ===================== END AUTO EXPENSES =====================
+
 // Every morning at 7am Central: if no entry exists for today, save one from the banks
 // (safe, Venmo, stocks and rent carry over from your last entry; Stripe is pulled live).
 async function autoCashSnapshot() {
