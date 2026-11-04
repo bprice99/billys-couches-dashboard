@@ -1055,6 +1055,7 @@ async function txnSync(){
     const exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [], inbox = (await kget(TXN.inbox, [])) || [];
     const have = new Set([...((await kget(TXN.ignored, [])) || []), ...exp.filter(x => x.auto).map(x => String(x.id).replace(/^tx_/, '')), ...ppl.map(x => x.id), ...inbox.map(x => x.id)]);
     let added = 0, queued = 0, skipped = 0, errors = [];
+    const hasVenmo = items.some(x => /venmo/i.test(x.institution || ''));
     for (const it of items) {
       let cursor = cursors[it.item_id] || '', more = true, guard = 0, accMap = {};
       try {
@@ -1071,6 +1072,8 @@ async function txnSync(){
             const base = { id: t.transaction_id, date, name: (P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : t.merchant_name) || t.name, raw: t.name, amount, key, item: it.item_id, mask: t.account_mask || '', institution: it.institution, pfc: ((t.personal_finance_category || {}).detailed || '') };
             if (rule === 'ignore') { skipped++; continue; }   // only vendors YOU said to ignore
             if (note) { review({ note }); continue; }
+            // Venmo linked too? The bank line is just Venmo pulling money; the real payment (with the name) comes from the Venmo account.
+            if (hasVenmo && !/venmo/i.test(it.institution || '') && /venmo/i.test(base.raw + ' ' + base.name)) { review({ note: 'Bank side of a Venmo payment. The Venmo account already has it, so Ignore this one' }); continue; }
             if (scope === 'ignore') { review({ note: 'From an account set to Ignore' }); continue; }
             if (!scope || (rule && rule.scope && rule.scope !== scope && !P2P.test(t.name || ''))) { inbox.push({ ...base, scope: scope || '', suggest: rule ? rule.cat : '' }); queued++; continue; }
             if (scope === 'business') {
