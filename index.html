@@ -607,7 +607,8 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   <h3>Banks &amp; rules</h3>
   <p class="empty" style="font-size:13px;margin-top:-6px">Business accounts fill the Sales Tracker's expenses. Personal accounts fill your Personal P&amp;L. Ignore savings and accounts that just move money around. Link new banks on the Daily Cash tab.</p>
   <h4 style="margin:14px 0 4px;font-size:13px">Accounts</h4><div id="txAccts"></div>
-  <h4 style="margin:18px 0 4px;font-size:13px">Remembered vendors</h4><div id="txRules"></div>
+  <h4 style="margin:18px 0 4px;font-size:13px">Remembered vendors <small style="font-weight:500;color:var(--muted)">(Venmo/Zelle remember each person separately)</small></h4><div id="txRules"></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><button class="btn sm" data-txrescan>Re-check this month</button><small style="color:var(--muted);font-size:12px">Looks through this month again for anything missed. Nothing gets added twice.</small></div>
 </div></div>
 <div class="mask" id="m-goals"><form class="modal" data-kind="goals">
   <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
@@ -2524,7 +2525,7 @@ function renderTxReview(scope){
       <div style="overflow-x:auto"><table class="txt"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Goes to</th><th></th></tr>${list.slice(0, 40).map(t => `<tr>
         <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b>${t.raw && t.raw !== t.name ? `<br><small>${esc(t.raw)}</small>` : ''}<br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}${!t.scope ? ' · account not set up' : ''}</small></td>
         <td class="n"><b>${money(t.amount)}</b></td><td><select data-txpick="${esc(t.id)}">${txOpts(t, t.scope)}</select></td>
-        <td class="n" style="white-space:nowrap"><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" ${/venmo|zelle|cash ?app|paypal/i.test(t.raw || t.name) ? '' : 'checked'}> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓</button></td></tr>`).join('')}</table></div></div>` : '');
+        <td class="n" style="white-space:nowrap"><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" checked> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓</button></td></tr>`).join('')}</table></div></div>` : '');
 }
 function openTxSettings(){
   const m = $('m-txset'); if (!TX) return;
@@ -2542,6 +2543,7 @@ document.addEventListener('click', async e => {
   const t = e.target;
   if (t.closest('[data-txsync]')) { t.textContent = 'Syncing…'; t.disabled = true; await loadTx(true); const m = TX && TX.meta; toast(m && m.lastErrors && m.lastErrors.length ? 'Synced with errors' : 'Synced'); load(); return; }
   if (t.closest('[data-txset]')) return openTxSettings();
+  if (t.closest('[data-txrescan]')) { t.textContent = 'Checking…'; t.disabled = true; try { const j = await post('/api/txn/rescan', {}); toast(`Found ${j.added || 0} new, ${j.queued || 0} to review`); $('m-txset').classList.remove('on'); await loadTx(); load(); } catch (err) { toast(err.message); } t.disabled = false; t.textContent = 'Re-check this month'; return; }
   const rd = t.closest('[data-txrdel]'); if (rd) { await post('/api/txn/rule-delete', { key: rd.dataset.txrdel }); delete TX.vendors[rd.dataset.txrdel]; return openTxSettings(); }
   const ok = t.closest('[data-txok]');
   if (ok) { const id = ok.dataset.txok, v = (document.querySelector(`[data-txpick="${CSS.escape(id)}"]`) || {}).value || ''; if (!v) return toast('Pick where it goes');
