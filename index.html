@@ -611,6 +611,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   <h4 style="margin:14px 0 4px;font-size:13px">Accounts</h4><div id="txAccts"></div>
   <h4 style="margin:18px 0 4px;font-size:13px">Remembered vendors <small style="font-weight:500;color:var(--muted)">(Venmo/Zelle remember each person separately)</small></h4><div id="txRules"></div>
   <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><button class="btn sm" data-txrescan>Re-check this month</button><small style="color:var(--muted);font-size:12px">Looks through this month again for anything missed. Nothing gets added twice.</small></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700">Pull in older ones since</span><input type="date" id="txSince" style="padding:5px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px"><button class="btn sm" data-txback>Pull them in</button><small style="color:var(--muted);font-size:12px;flex-basis:100%">Anything matching an expense you already typed in (same amount within 3 days) is left out, so only what's missing comes in.</small></div>
 </div></div>
 <div class="mask" id="m-goals"><form class="modal" data-kind="goals">
   <h3 id="goalsTitle">Goals</h3><input type="hidden" name="month">
@@ -2542,18 +2543,19 @@ function txOpts(t, scope){
   const per = Object.entries(TX.pplCats).filter(([k]) => k !== 'otherIn').map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
   return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (transfers, couch sales, coaching: already counted)</option>`;
 }
-let TXALL_OPEN = false, TXALL = null;
+let TXALL_OPEN = false, TXALL = null, TXALL_M = '';
 async function loadTxAll(){
   const box = $('txAllBox'); if (!box) return; box.hidden = false; box.innerHTML = '<p class="empty">Loading…</p>';
-  try { TXALL = (await (await fetch('/api/txn/all')).json()).list || []; } catch (e) { box.innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+  try { TXALL = (await (await fetch('/api/txn/all' + (TXALL_M ? '?month=' + TXALL_M : ''))).json()).list || []; } catch (e) { box.innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
   const out = TXALL.filter(t => t.amount > 0).reduce((a, t) => a + t.amount, 0), cnt = s => TXALL.filter(t => t.status.startsWith(s)).length;
-  box.innerHTML = `<div class="txrev" style="background:#fff;border-color:var(--line)"><div class="txrev-h"><b>Every transaction this month</b><span class="pill">${TXALL.length}</span><small>${money(out)} out · ${cnt('Business')} business · ${cnt('Personal')} personal · ${cnt('In Review')} in review · ${cnt('Ignored')} ignored${cnt('Not sorted') ? ' · ' + cnt('Not sorted') + ' not sorted' : ''}</small><span style="flex:1"></span><button class="btn sm" data-txallv>Close</button></div>
+  box.innerHTML = `<div class="txrev" style="background:#fff;border-color:var(--line)"><div class="txrev-h"><b>Every transaction</b><select id="txAllM" style="padding:4px 6px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:12.5px">${[0, 1, 2].map(i => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); const k = d.toLocaleDateString('en-CA').slice(0, 7); return `<option value="${k}" ${(TXALL_M || new Date().toLocaleDateString('en-CA').slice(0, 7)) === k ? 'selected' : ''}>${d.toLocaleDateString('en-US', { month: 'long' })}</option>`; }).join('')}</select><span class="pill">${TXALL.length}</span><small>${money(out)} out · ${cnt('Business')} business · ${cnt('Personal')} personal · ${cnt('In Review')} in review · ${cnt('Ignored')} ignored${cnt('Not sorted') ? ' · ' + cnt('Not sorted') + ' not sorted' : ''}</small><span style="flex:1"></span><button class="btn sm" data-txallv>Close</button></div>
     <div style="overflow:auto;max-height:460px"><table class="txtab"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Where it went</th></tr>${TXALL.map(t => `<tr>
       <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small><br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}</small></td>
       <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
-      <td class="act"><span class="pill ${/^Business|^Personal/.test(t.status) ? 'g' : /Ignored|Not sorted/.test(t.status) ? 'r' : ''}">${esc(t.status)}</span>${t.canRedo ? ` <button class="btn sm" data-txredo="${esc(t.id)}">Review it</button>` : ''}</td></tr>`).join('')}</table></div>
+      <td class="act"><span class="pill ${/^Business|^Personal|Already/.test(t.status) ? 'g' : /Ignored|Not sorted/.test(t.status) ? 'r' : ''}">${esc(t.status)}</span>${t.canRedo ? ` <button class="btn sm" data-txredo="${esc(t.id)}">Review it</button>` : ''}</td></tr>`).join('')}</table></div>
     <p class="empty" style="font-size:12px;margin-top:8px">Missing something you see in your bank? Tap Banks &amp; rules → Re-check this month.</p></div>`;
 }
+document.addEventListener('change', e => { if (e.target.id === 'txAllM') { TXALL_M = e.target.value; loadTxAll(); } });
 document.addEventListener('click', async e => {
   if (e.target.closest('[data-txallv]')) { TXALL_OPEN = !TXALL_OPEN; if (TXALL_OPEN) loadTxAll(); else { const b = $('txAllBox'); if (b) b.hidden = true; } return; }
   const r = e.target.closest('[data-txredo]'); if (r) { r.disabled = true; try { await post('/api/txn/redo', { id: r.dataset.txredo }); toast('Back in Review'); await loadTx(); loadTxAll(); } catch (err) { toast(err.message); } }
@@ -2589,6 +2591,9 @@ document.addEventListener('click', async e => {
   const t = e.target;
   if (t.closest('[data-txsync]')) { t.textContent = 'Syncing…'; t.disabled = true; await loadTx(true); const m = TX && TX.meta; toast(m && m.lastErrors && m.lastErrors.length ? 'Synced with errors' : 'Synced'); load(); return; }
   if (t.closest('[data-txset]')) return openTxSettings();
+  if (t.closest('[data-txback]')) { const d = $('txSince').value; if (!d) return toast('Pick a date'); t.textContent = 'Pulling…'; t.disabled = true;
+    try { const j = await post('/api/txn/rescan', { since: d }); toast(`Pulled in ${j.added || 0} automatically, ${j.queued || 0} to review, ${j.skipped || 0} already on the tracker`); $('m-txset').classList.remove('on'); await loadTx(); load(); } catch (err) { toast(err.message); }
+    t.disabled = false; t.textContent = 'Pull them in'; return; }
   if (t.closest('[data-txrescan]')) { t.textContent = 'Checking…'; t.disabled = true; try { const j = await post('/api/txn/rescan', {}); toast(`Found ${j.added || 0} new, ${j.queued || 0} to review`); $('m-txset').classList.remove('on'); await loadTx(); load(); } catch (err) { toast(err.message); } t.disabled = false; t.textContent = 'Re-check this month'; return; }
   const rd = t.closest('[data-txrdel]'); if (rd) { await post('/api/txn/rule-delete', { key: rd.dataset.txrdel }); delete TX.vendors[rd.dataset.txrdel]; return openTxSettings(); }
   const ok = t.closest('[data-txok]');
