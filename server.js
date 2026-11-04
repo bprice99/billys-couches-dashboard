@@ -1022,9 +1022,9 @@ app.get('/api/plaid/balances', async (req, res) => {
 // Business accounts -> Sales Tracker expenses. Personal accounts -> Personal P&L (rent / groceries / other).
 // Transfers, card payments and money coming in are skipped. Anything unsure waits in "Review new".
 // ===================================================================
-const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta' };
+const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta', all: 'bcd:txnAll' };
 const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
-const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other' };
+const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income' };
 // Built-in guesses (your own "remember this" rules always win).
 const BIZ_GUESS = [[/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
   [/shell|qt |quiktrip|bp |exxon|mobil|phillips 66|casey|speedway|marathon|circle k|\bgas\b|fuel/i, 'Fuel'], [/home depot|lowe|menards|uline|harbor freight|walmart|amazon|scotchgard|ace hardware/i, 'Supplies'],
@@ -1072,6 +1072,7 @@ async function txnSync(){
     const exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [], inbox = (await kget(TXN.inbox, [])) || [];
     const have = new Set([...((await kget(TXN.ignored, [])) || []), ...exp.filter(x => x.auto).map(x => String(x.id).replace(/^tx_/, '')), ...ppl.map(x => x.id), ...inbox.map(x => x.id)]);
     let added = 0, queued = 0, skipped = 0, errors = [];
+    const allTx = (await kget(TXN.all, null)) || {};   // every posted transaction we got, so nothing can go missing
     const hasVenmo = items.some(x => /venmo/i.test(x.institution || ''));
     for (const it of items) {
       let cursor = cursors[it.item_id] || '', more = true, guard = 0, accMap = {};
@@ -1080,6 +1081,7 @@ async function txnSync(){
           const j = await plaid('/transactions/sync', { access_token: it.access_token, cursor: cursor || undefined, count: 500 });
           (j.accounts || []).forEach(a => { accMap[a.account_id] = a.mask; });
           for (const t of [...(j.added || []), ...(j.modified || [])]) {
+            if (!t.pending && (t.authorized_date || t.date) >= meta.since) allTx[t.transaction_id] = { id: t.transaction_id, date: t.authorized_date || t.date, name: (P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : t.merchant_name) || t.name, raw: t.name, amount: Math.round(t.amount * 100) / 100, item: it.item_id, institution: it.institution, mask: accMap[t.account_id] || '', pfc: ((t.personal_finance_category || {}).detailed || '') };
             if (t.pending || seen.has(t.transaction_id) || have.has(t.transaction_id)) continue;
             const date = t.authorized_date || t.date; if (!date || date < meta.since) { seen.add(t.transaction_id); continue; }
             seen.add(t.transaction_id);
@@ -1111,7 +1113,7 @@ async function txnSync(){
         cursors[it.item_id] = cursor;
       } catch (e) { errors.push(`${it.institution}: ${e.message}`); }
     }
-    await kset(KEYS.expenses, exp); await kset(TXN.ppl, ppl.slice(-5000)); await kset(TXN.inbox, inbox.slice(-3000)); await kset(TXN.cursor, cursors); await kset(TXN.seen, [...seen].slice(-8000));
+    await kset(KEYS.expenses, exp); await kset(TXN.ppl, ppl.slice(-5000)); await kset(TXN.inbox, inbox.slice(-3000)); { const ks = Object.keys(allTx); if (ks.length > 6000) ks.sort((a, b) => allTx[a].date.localeCompare(allTx[b].date)).slice(0, ks.length - 6000).forEach(k => delete allTx[k]); } await kset(TXN.all, allTx); await kset(TXN.cursor, cursors); await kset(TXN.seen, [...seen].slice(-8000));
     meta.lastSync = new Date().toISOString(); meta.lastErrors = errors; await kset(TXN.meta, meta);
     return { added, queued, skipped, errors };
   })().finally(() => { txnBusy = null; });
@@ -1150,6 +1152,30 @@ app.post('/api/txn/review', async (req, res) => {
     }
     await Promise.all([kset(TXN.inbox, inbox), kset(TXN.rules, r), kset(KEYS.expenses, exp), kset(TXN.ppl, ppl), kset(TXN.ignored, ign.slice(-3000))]);
     res.json({ ok: true, done, left: inbox.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Every synced transaction this month and where it went.
+app.get('/api/txn/all', async (req, res) => {
+  try {
+    const [all, exp, ppl, inbox, ign, rules] = await Promise.all([kget(TXN.all, {}), kget(KEYS.expenses, []), kget(TXN.ppl, []), kget(TXN.inbox, []), kget(TXN.ignored, []), txnRules()]);
+    const e = new Map((exp || []).filter(x => x.auto).map(x => [String(x.id).replace(/^tx_/, ''), x])), p = new Map((ppl || []).map(x => [x.id, x])), q = new Set((inbox || []).map(x => x.id)), g = new Set(ign || []);
+    const month = (req.query.month || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }).slice(0, 7));
+    const list = Object.values(all || {}).filter(t => t.date.startsWith(month)).map(t => {
+      const x = e.get(t.id), y = p.get(t.id);
+      const status = x ? 'Business: ' + x.category : y ? 'Personal: ' + (PPL_CATS[y.cat] || y.cat) : q.has(t.id) ? 'In Review' : g.has(t.id) ? 'Ignored' : rules.vendors[vkey({ name: t.raw, merchant_name: t.name })] === 'ignore' ? 'Ignored by rule' : 'Not sorted';
+      return { ...t, status, canRedo: !x && !y && !q.has(t.id) };
+    }).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
+    res.json({ ok: true, list });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Send an ignored / unsorted transaction back to Review.
+app.post('/api/txn/redo', async (req, res) => {
+  try {
+    const id = clean(req.body.id, 120), all = (await kget(TXN.all, {})) || {}, t = all[id]; if (!t) return res.status(404).json({ error: 'Not found' });
+    const inbox = (await kget(TXN.inbox, [])) || [], ign = ((await kget(TXN.ignored, [])) || []).filter(x => x !== id), accts = await txnAccounts();
+    if (!inbox.some(x => x.id === id)) { const a = accts.find(x => x.item_id === t.item && x.mask && x.mask === t.mask), scope = a && a.scope !== 'ignore' ? a.scope : '';
+      inbox.push({ ...t, key: vkey({ name: t.raw, merchant_name: t.name }), scope, suggest: '', note: 'Sent back to review' }); }
+    await kset(TXN.inbox, inbox); await kset(TXN.ignored, ign); res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Re-check everything since the start date (picks up transfers the old rules skipped, like rent paid by Zelle).
