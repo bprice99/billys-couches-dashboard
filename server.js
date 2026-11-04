@@ -1005,7 +1005,7 @@ app.get('/api/plaid/balances', async (req, res) => {
 // Business accounts -> Sales Tracker expenses. Personal accounts -> Personal P&L (rent / groceries / other).
 // Transfers, card payments and money coming in are skipped. Anything unsure waits in "Review new".
 // ===================================================================
-const TXN = { rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta' };
+const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta' };
 const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
 const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other' };
 // Built-in guesses (your own "remember this" rules always win).
@@ -1020,12 +1020,14 @@ const PPL_GUESS = [[/schnucks|aldi|dierbergs|hy-?vee|kroger|trader joe|whole foo
   [/udemy|coursera|skool|masterclass|book|barnes|tuition|school|course/i, 'education'],
   [/walgreens|cvs|pharmacy|target|clinic|doctor|dental|haircut|barber|great clips|laundry/i, 'needs']];
 const P2P = /venmo|zelle|cash ?app|paypal|apple cash/i;
-const vkey = t => String(t.merchant_name || t.name || '').toLowerCase().replace(/[#*]\S*|\d{3,}/g, ' ').replace(/[^a-z&' ]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
-const isSkip = t => {   // money in, card payments and moves between your own accounts. Venmo/Zelle payments to people are kept.
+const vkey = t => String((P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : (t.merchant_name || t.name)) || '').toLowerCase().replace(/[#*]\S*|\d{3,}/g, ' ').replace(/[^a-z&' ]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+const isSkip = t => {   // money in, card payments and moves between your own accounts. Zelle/Venmo/other payments to people go to review.
   if (!(t.amount > 0)) return true;
   if (P2P.test((t.name || '') + ' ' + (t.merchant_name || ''))) return false;
-  const p = ((t.personal_finance_category || {}).primary || '');
-  return /^(TRANSFER_IN|TRANSFER_OUT|LOAN_PAYMENTS|INCOME)$/.test(p) || /\b(payment|autopay|transfer|xfer|thank you|online pymt|card ?pmt|deposit)\b/i.test(t.name || '');
+  const pf = t.personal_finance_category || {}, p = pf.primary || '', d = pf.detailed || '';
+  if (/^(TRANSFER_IN|LOAN_PAYMENTS|INCOME)$/.test(p)) return true;
+  if (/^TRANSFER_OUT_(ACCOUNT_TRANSFER|SAVINGS|INVESTMENT)/.test(d)) return true;
+  return /\b(autopay|card ?pmt|online pymt|credit card payment|payment thank you|thank you)\b/i.test(t.name || '');
 };
 async function txnRules(){ const r = (await kget(TXN.rules, null)) || {}; r.accounts = r.accounts || {}; r.vendors = r.vendors || {}; return r; }
 // Accounts + their scope (business / personal / ignore). Guessed from the Daily Cash mapping until you set it.
@@ -1049,6 +1051,7 @@ async function txnSync(){
     const cursors = (await kget(TXN.cursor, null)) || {}, seen = new Set((await kget(TXN.seen, [])) || []), rules = await txnRules(), accts = await txnAccounts();
     const scopeOf = (item, t) => { const a = accts.find(x => x.item_id === item && x.mask && x.mask === t.account_mask); return a ? a.scope : ''; };
     const exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [], inbox = (await kget(TXN.inbox, [])) || [];
+    const have = new Set([...((await kget(TXN.ignored, [])) || []), ...exp.filter(x => x.auto).map(x => String(x.id).replace(/^tx_/, '')), ...ppl.map(x => x.id), ...inbox.map(x => x.id)]);
     let added = 0, queued = 0, skipped = 0, errors = [];
     for (const it of items) {
       let cursor = cursors[it.item_id] || '', more = true, guard = 0, accMap = {};
@@ -1057,23 +1060,24 @@ async function txnSync(){
           const j = await plaid('/transactions/sync', { access_token: it.access_token, cursor: cursor || undefined, count: 500 });
           (j.accounts || []).forEach(a => { accMap[a.account_id] = a.mask; });
           for (const t of [...(j.added || []), ...(j.modified || [])]) {
-            if (t.pending || seen.has(t.transaction_id)) continue;
+            if (t.pending || seen.has(t.transaction_id) || have.has(t.transaction_id)) continue;
             const date = t.authorized_date || t.date; if (!date || date < meta.since) { seen.add(t.transaction_id); continue; }
             seen.add(t.transaction_id);
             if (isSkip(t)) { skipped++; continue; }
             t.account_mask = accMap[t.account_id];
             const scope = scopeOf(it.item_id, t), key = vkey(t), rule = rules.vendors[key], amount = Math.round(t.amount * 100) / 100;
-            const base = { id: t.transaction_id, date, name: t.merchant_name || t.name, raw: t.name, amount, key, item: it.item_id, mask: t.account_mask || '', institution: it.institution, pfc: ((t.personal_finance_category || {}).detailed || '') };
+            const base = { id: t.transaction_id, date, name: (P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : t.merchant_name) || t.name, raw: t.name, amount, key, item: it.item_id, mask: t.account_mask || '', institution: it.institution, pfc: ((t.personal_finance_category || {}).detailed || '') };
             if (rule === 'ignore' || scope === 'ignore') { skipped++; continue; }
             if (!scope || (rule && rule.scope && rule.scope !== scope && !P2P.test(t.name || ''))) { inbox.push({ ...base, scope: scope || '', suggest: rule ? rule.cat : '' }); queued++; continue; }
             if (scope === 'business') {
-              const cat = rule && rule.scope === 'business' ? rule.cat : (!P2P.test(base.raw) && (BIZ_GUESS.find(([re]) => re.test(base.name + ' ' + base.raw)) || [])[1]);
+              const xfer = /^TRANSFER_OUT/.test(base.pfc);
+              const cat = rule && rule.scope === 'business' ? rule.cat : (!P2P.test(base.raw) && !xfer && (BIZ_GUESS.find(([re]) => re.test(base.name + ' ' + base.raw)) || [])[1]);
               // already typed in by hand (same amount within 3 days)? don't add it twice
               if (exp.some(x => !x.auto && Math.abs((Number(x.amount) || 0) - amount) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(date)) <= 3 * 864e5)) { skipped++; continue; }
               if (cat) { exp.push({ id: 'tx_' + t.transaction_id, date, category: cat, amount, vendor: base.name, notes: `Auto · ${it.institution}${base.mask ? ' ••' + base.mask : ''}`, auto: true }); added++; }
               else { inbox.push({ ...base, scope, suggest: /DIGITAL_ADVERTISING|ADVERTISING/.test(base.pfc) ? 'Advertising' : '' }); queued++; }
             } else {
-              const cat = rule && rule.scope === 'personal' ? rule.cat : P2P.test(base.raw) ? '' : ((PPL_GUESS.find(([re]) => re.test(base.name)) || [])[1] || (/GROCERIES/.test(base.pfc) ? 'groceries' : /RENT_AND_UTILITIES_RENT/.test(base.pfc) ? 'rent' : /FOOD_AND_DRINK/.test(base.pfc) ? 'eatingOut' : /^TRAVEL/.test(base.pfc) ? 'travel' : /SUBSCRIPTION|STREAMING/.test(base.pfc) ? 'subscriptions' : /EDUCATION/.test(base.pfc) ? 'education' : /MEDICAL|PERSONAL_CARE|PHARMAC/.test(base.pfc) ? 'needs' : 'otherOut'));
+              const cat = rule && rule.scope === 'personal' ? rule.cat : (P2P.test(base.raw) || /^TRANSFER_OUT/.test(base.pfc)) ? '' : ((PPL_GUESS.find(([re]) => re.test(base.name)) || [])[1] || (/GROCERIES/.test(base.pfc) ? 'groceries' : /RENT_AND_UTILITIES_RENT/.test(base.pfc) ? 'rent' : /FOOD_AND_DRINK/.test(base.pfc) ? 'eatingOut' : /^TRAVEL/.test(base.pfc) ? 'travel' : /SUBSCRIPTION|STREAMING/.test(base.pfc) ? 'subscriptions' : /EDUCATION/.test(base.pfc) ? 'education' : /MEDICAL|PERSONAL_CARE|PHARMAC/.test(base.pfc) ? 'needs' : 'otherOut'));
               if (cat) { ppl.push({ id: t.transaction_id, date, amount, name: base.name, cat }); added++; }
               else { inbox.push({ ...base, scope, suggest: 'otherOut' }); queued++; }
             }
@@ -1108,21 +1112,26 @@ app.post('/api/txn/review', async (req, res) => {
   try {
     const inbox = (await kget(TXN.inbox, [])) || [], r = await txnRules(), exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [];
     const todo = req.body.all ? inbox.filter(t => t.scope && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
-    let done = 0;
+    let done = 0; const ign = (await kget(TXN.ignored, [])) || [];
     for (const q of todo) {
       const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope;
       if (scope === 'business') { const cat = BIZ_CATS.includes(q.cat) ? q.cat : ''; if (!cat) continue;
         exp.push({ id: 'tx_' + t.id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `Auto · ${t.institution}${t.mask ? ' ••' + t.mask : ''}`, auto: true });
-        if (q.remember && !P2P.test(t.raw || '')) r.vendors[t.key] = { scope, cat }; }
+        if (q.remember) r.vendors[t.key] = { scope, cat }; }
       else if (scope === 'personal') { const cat = PPL_CATS[q.cat] ? q.cat : 'otherOut'; ppl.push({ id: t.id, date: t.date, amount: t.amount, name: t.name, cat });
-        if (q.remember && !P2P.test(t.raw || '')) r.vendors[t.key] = { scope, cat }; }
-      else if (scope === 'ignore') { if (q.remember && !P2P.test(t.raw || '')) r.vendors[t.key] = 'ignore'; }
+        if (q.remember) r.vendors[t.key] = { scope, cat }; }
+      else if (scope === 'ignore') { if (q.remember) r.vendors[t.key] = 'ignore'; ign.push(t.id); }
       else continue;
       inbox.splice(i, 1); done++;
     }
-    await Promise.all([kset(TXN.inbox, inbox), kset(TXN.rules, r), kset(KEYS.expenses, exp), kset(TXN.ppl, ppl)]);
+    await Promise.all([kset(TXN.inbox, inbox), kset(TXN.rules, r), kset(KEYS.expenses, exp), kset(TXN.ppl, ppl), kset(TXN.ignored, ign.slice(-3000))]);
     res.json({ ok: true, done, left: inbox.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Re-check everything since the start date (picks up transfers the old rules skipped, like rent paid by Zelle).
+app.post('/api/txn/rescan', async (req, res) => {
+  try { await kset(TXN.cursor, {}); await kset(TXN.seen, []); const j = await txnSync(); res.json({ ok: true, ...j }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/txn/rule-delete', async (req, res) => {
   try { const r = await txnRules(); delete r.vendors[clean(req.body.key, 60)]; await kset(TXN.rules, r); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
