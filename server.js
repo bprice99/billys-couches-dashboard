@@ -1021,20 +1021,22 @@ const PPL_GUESS = [[/schnucks|aldi|dierbergs|hy-?vee|kroger|trader joe|whole foo
   [/walgreens|cvs|pharmacy|target|clinic|doctor|dental|haircut|barber|great clips|laundry/i, 'needs']];
 const P2P = /venmo|zelle|cash ?app|paypal|apple cash/i;
 const vkey = t => String((P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : (t.merchant_name || t.name)) || '').toLowerCase().replace(/[#*]\S*|\d{3,}/g, ' ').replace(/[^a-z&' ]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
-const isSkip = t => {   // money in, card payments and moves between your own accounts. Zelle/Venmo/other payments to people go to review.
-  if (!(t.amount > 0)) return true;
-  if (P2P.test((t.name || '') + ' ' + (t.merchant_name || ''))) return false;
+// Nothing is dropped. These just get a note and go to Review so you decide.
+const skipNote = t => {
+  if (!(t.amount > 0)) return 'Money in';
+  if (P2P.test((t.name || '') + ' ' + (t.merchant_name || ''))) return '';
   const pf = t.personal_finance_category || {}, p = pf.primary || '', d = pf.detailed || '';
-  if (/^(TRANSFER_IN|LOAN_PAYMENTS|INCOME)$/.test(p)) return true;
-  if (/^TRANSFER_OUT_(ACCOUNT_TRANSFER|SAVINGS|INVESTMENT)/.test(d)) return true;
-  return /\b(autopay|card ?pmt|online pymt|credit card payment|payment thank you|thank you)\b/i.test(t.name || '');
+  if (p === 'INCOME' || p === 'TRANSFER_IN') return 'Money in';
+  if (p === 'LOAN_PAYMENTS' || /\b(autopay|card ?pmt|online pymt|credit card payment|payment thank you|thank you)\b/i.test(t.name || '')) return 'Looks like a card/loan payment';
+  if (/^TRANSFER_OUT_(ACCOUNT_TRANSFER|SAVINGS|INVESTMENT)/.test(d)) return 'Looks like a move between your accounts';
+  return '';
 };
 async function txnRules(){ const r = (await kget(TXN.rules, null)) || {}; r.accounts = r.accounts || {}; r.vendors = r.vendors || {}; return r; }
 // Accounts + their scope (business / personal / ignore). Guessed from the Daily Cash mapping until you set it.
 async function txnAccounts(){
   const pb = await plaidBalances(false).catch(() => ({ banks: [] })), rules = await txnRules(), out = [];
   (pb.banks || []).forEach(b => (b.accounts || []).forEach(a => {
-    const f = a.field || '', guess = /personal/.test(f) ? 'personal' : /marcus|taxReserve/.test(f) ? 'ignore' : /checking|ink|amex/.test(f) ? 'business' : '';
+    const f = a.field || '', guess = /personal/.test(f) ? 'personal' : /checking|ink|amex/.test(f) ? 'business' : '';
     const id = `${b.item_id}:${a.mask || a.name}`;
     out.push({ id, item_id: b.item_id, institution: b.institution, name: a.name, mask: a.mask, type: a.type, scope: rules.accounts[id] || guess, guessed: !rules.accounts[id] && !!guess });
   }));
@@ -1063,17 +1065,19 @@ async function txnSync(){
             if (t.pending || seen.has(t.transaction_id) || have.has(t.transaction_id)) continue;
             const date = t.authorized_date || t.date; if (!date || date < meta.since) { seen.add(t.transaction_id); continue; }
             seen.add(t.transaction_id);
-            if (isSkip(t)) { skipped++; continue; }
             t.account_mask = accMap[t.account_id];
-            const scope = scopeOf(it.item_id, t), key = vkey(t), rule = rules.vendors[key], amount = Math.round(t.amount * 100) / 100;
+            const note = skipNote(t);
+            const scope = scopeOf(it.item_id, t), key = vkey(t), rule = rules.vendors[key], amount = Math.round(t.amount * 100) / 100, review = x => { inbox.push({ ...base, scope: scope === 'ignore' ? '' : scope, suggest: '', ...x }); queued++; };
             const base = { id: t.transaction_id, date, name: (P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : t.merchant_name) || t.name, raw: t.name, amount, key, item: it.item_id, mask: t.account_mask || '', institution: it.institution, pfc: ((t.personal_finance_category || {}).detailed || '') };
-            if (rule === 'ignore' || scope === 'ignore') { skipped++; continue; }
+            if (rule === 'ignore') { skipped++; continue; }   // only vendors YOU said to ignore
+            if (note) { review({ note }); continue; }
+            if (scope === 'ignore') { review({ note: 'From an account set to Ignore' }); continue; }
             if (!scope || (rule && rule.scope && rule.scope !== scope && !P2P.test(t.name || ''))) { inbox.push({ ...base, scope: scope || '', suggest: rule ? rule.cat : '' }); queued++; continue; }
             if (scope === 'business') {
               const xfer = /^TRANSFER_OUT/.test(base.pfc);
               const cat = rule && rule.scope === 'business' ? rule.cat : (!P2P.test(base.raw) && !xfer && (BIZ_GUESS.find(([re]) => re.test(base.name + ' ' + base.raw)) || [])[1]);
               // already typed in by hand (same amount within 3 days)? don't add it twice
-              if (exp.some(x => !x.auto && Math.abs((Number(x.amount) || 0) - amount) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(date)) <= 3 * 864e5)) { skipped++; continue; }
+              if (exp.some(x => !x.auto && Math.abs((Number(x.amount) || 0) - amount) < 0.01 && Math.abs(Date.parse(x.date) - Date.parse(date)) <= 3 * 864e5)) { review({ note: 'Might match one you typed in' }); continue; }
               if (cat) { exp.push({ id: 'tx_' + t.transaction_id, date, category: cat, amount, vendor: base.name, notes: `Auto · ${it.institution}${base.mask ? ' ••' + base.mask : ''}`, auto: true }); added++; }
               else { inbox.push({ ...base, scope, suggest: /DIGITAL_ADVERTISING|ADVERTISING/.test(base.pfc) ? 'Advertising' : '' }); queued++; }
             } else {
@@ -1087,7 +1091,7 @@ async function txnSync(){
         cursors[it.item_id] = cursor;
       } catch (e) { errors.push(`${it.institution}: ${e.message}`); }
     }
-    await kset(KEYS.expenses, exp); await kset(TXN.ppl, ppl.slice(-5000)); await kset(TXN.inbox, inbox.slice(-500)); await kset(TXN.cursor, cursors); await kset(TXN.seen, [...seen].slice(-8000));
+    await kset(KEYS.expenses, exp); await kset(TXN.ppl, ppl.slice(-5000)); await kset(TXN.inbox, inbox.slice(-3000)); await kset(TXN.cursor, cursors); await kset(TXN.seen, [...seen].slice(-8000));
     meta.lastSync = new Date().toISOString(); meta.lastErrors = errors; await kset(TXN.meta, meta);
     return { added, queued, skipped, errors };
   })().finally(() => { txnBusy = null; });
@@ -1111,7 +1115,7 @@ app.post('/api/txn/account', async (req, res) => {
 app.post('/api/txn/review', async (req, res) => {
   try {
     const inbox = (await kget(TXN.inbox, [])) || [], r = await txnRules(), exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [];
-    const todo = req.body.all ? inbox.filter(t => t.scope && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
+    const todo = req.body.all ? inbox.filter(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
     let done = 0; const ign = (await kget(TXN.ignored, [])) || [];
     for (const q of todo) {
       const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope;
