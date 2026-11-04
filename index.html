@@ -138,7 +138,7 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .dlv-r{display:flex;align-items:center;gap:8px;font-size:13.5px;padding-left:14px;border-left:1px solid var(--line)}.dlv-t{font-weight:800;white-space:nowrap}.dlv-n{white-space:nowrap}.dlv-n i{font-style:normal;color:var(--muted);font-size:12.5px}
 .dlv-b{padding:3px 10px!important;font-size:12px!important;text-decoration:none}.dlv-b.ok{background:#e3f1e8;border-color:#bfe0cb;color:var(--green)}
 @media(max-width:700px){.dlv{display:block;padding:8px 12px}.dlv-r{border:0;padding:6px 0 0;justify-content:space-between}.dlv-n{flex:1;overflow:hidden;text-overflow:ellipsis}}
-.pill.r{background:#fbf0ee;color:var(--red)}.txsync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-4px 0 12px}.txsync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.pill.r{background:#fbf0ee;color:var(--red)}.pplpie{display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:center}.pplpie .pw{height:200px;position:relative}@media(max-width:600px){.pplpie{grid-template-columns:1fr}}.pplpl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.pplpl:last-child{border:0}.pplpl i{width:10px;height:10px;border-radius:3px;flex:none}.pplpl span{flex:1}.pplpl em{font-style:normal;color:var(--muted);font-size:12px;width:38px;text-align:right}.txsync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-4px 0 12px}.txsync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .txrev{background:#fff8f6;border:2px solid var(--red);border-radius:14px;padding:12px 14px;margin-bottom:14px}.txrev-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.txrev-h small{color:var(--muted);font-size:12px}
 table.txt{width:100%;font-size:13.5px}table.txt td,table.txt th{vertical-align:middle;text-align:left}table.txt .n{text-align:right}table.txt small{color:var(--muted);font-size:11.5px}table.txt select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;max-width:190px}
 .txrem{font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}.btn.g{background:var(--green);border-color:var(--green);color:#fff}
@@ -491,6 +491,10 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       <div class="grid2" style="margin-top:16px">
         <div class="card"><h2>Net profit by month</h2><div class="chartwrap" style="height:240px"><canvas id="pplNet"></canvas></div></div>
         <div class="card"><h2>Spending by month</h2><div class="chartwrap" style="height:240px"><canvas id="pplSpend"></canvas></div></div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="card"><h2>Where it went <small id="pplPieMT"></small></h2><div class="pplpie"><div class="pw"><canvas id="pplPieM"></canvas></div><div id="pplPieML"></div></div></div>
+        <div class="card"><h2>Where it went <small>this year</small></h2><div class="pplpie"><div class="pw"><canvas id="pplPieY"></canvas></div><div id="pplPieYL"></div></div></div>
       </div>
     </section>
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
@@ -1881,7 +1885,7 @@ function syncRangeBar(){
 }
 // ---------- Personal P&L (monthly personal income vs. spending, saved under store key 'ppl') ----------
 const PPL_IN = [['couches', "Billy's Couches net profit"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
-const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['otherOut', 'Other']];
+const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['eatingOut', 'Eating out'], ['subscriptions', 'Subscriptions'], ['needs', 'Needs'], ['education', 'Education'], ['travel', 'Travel'], ['otherOut', 'Other']];
 let PPLY = new Date().getFullYear(), pplT = null;
 const pplData = () => (RAW.store.ppl && typeof RAW.store.ppl === 'object' ? RAW.store.ppl : {});
 // Billy's Couches net profit comes from the Sales Tracker and coaching from payments marked paid in Coaching HQ,
@@ -1893,13 +1897,13 @@ function pplAuto(k){
   let couches = 0; try { couches = Math.round(period({ from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59) }).net); } catch (e) {}
   const coaching = (PPL_COACH || []).flatMap(c => (c.program && c.program.payments) || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === k).reduce((a, p) => a + (Number(p.amount) || 0), 0);
   const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (Number(t.amount) || 0); });
-  ['rent', 'groceries', 'otherOut'].forEach(c => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
+  PPL_OUT.forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
   return { couches, coaching, ...tx };
 }
-const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching', 'rent', 'groceries', 'otherOut'].forEach(c => { if ((r[c] == null || r[c] === '') && a[c]) r[c] = a[c]; });
+const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching', ...PPL_OUT.map(([c]) => c)].forEach(c => { if ((r[c] == null || r[c] === '') && a[c]) r[c] = a[c]; });
   const n = x => Number(r[x]) || 0;
   const inc = PPL_IN.reduce((a, [c]) => a + n(c), 0), out = PPL_OUT.reduce((a, [c]) => a + n(c), 0);
-  return { r, inc, out, net: inc - out, has: Object.keys(d[k] || {}).length > 0 || !!(a.couches || a.coaching || a.rent || a.groceries || a.otherOut) }; };
+  return { r, inc, out, net: inc - out, has: Object.keys(d[k] || {}).length > 0 || !!(a.couches || a.coaching || PPL_OUT.some(([c]) => a[c])) }; };
 const pplFmt = v => (v == null || v === '' || !Number(v)) ? '' : '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
 // Show $1,234 when not editing; plain number while typing.
 document.addEventListener('focusin', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'), v = (pplData()[m] || {})[c]; e.target.value = v ? String(v) : ''; e.target.select(); });
@@ -1953,9 +1957,19 @@ function pplRefresh(){
   const labels = rows.map(r => new Date(r.k + '-15').toLocaleDateString('en-US', { month: 'short' }));
   chartIn('pplNet', { type: 'line', data: { labels, datasets: [{ label: 'Net profit', data: rows.map(r => r.has ? r.net : null), borderColor: '#2e7d4f', backgroundColor: 'rgba(46,125,79,.12)', fill: true, tension: .3, pointRadius: 3, spanGaps: true }] },
     options: { animation: false, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v / 100) / 10 + 'k' } } } } });
-  const cols = { rent: '#2b1d16', groceries: '#b0524c', otherOut: '#d9a79f' };
+  const cols = { rent: '#2b1d16', groceries: '#b0524c', eatingOut: '#e08a4f', subscriptions: '#6b7fa8', needs: '#5c8a6b', education: '#8a6bb0', travel: '#3e9bb3', otherOut: '#d9c4b8' };
   chartIn('pplSpend', { type: 'bar', data: { labels, datasets: PPL_OUT.map(([c, l]) => ({ label: l, data: rows.map(r => r.has ? Number(r.r[c]) || 0 : null), backgroundColor: cols[c], borderRadius: 3 })) },
     options: { animation: false, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => '$' + v.toLocaleString() } } } } });
+  // Where the money goes: this month + the whole year
+  const pie = (id, picked, el) => { const pairs = PPL_OUT.map(([c, l]) => [l, picked.reduce((a, r) => a + (Number(r.r[c]) || 0), 0), cols[c]]).filter(p => p[1] > 0).sort((a, b) => b[1] - a[1]);
+    const total = pairs.reduce((a, p) => a + p[1], 0);
+    if (!pairs.length) { $(el).innerHTML = '<p class="empty">No spending yet.</p>'; chartIn(id, { type: 'doughnut', data: { labels: [], datasets: [{ data: [] }] } }); return; }
+    chartIn(id, { type: 'doughnut', data: { labels: pairs.map(p => p[0]), datasets: [{ data: pairs.map(p => p[1]), backgroundColor: pairs.map(p => p[2]), borderWidth: 2, borderColor: '#fff' }] },
+      options: { animation: false, responsive: true, maintainAspectRatio: false, cutout: '58%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: i => i.label + ': ' + money(i.raw) + ' (' + Math.round(i.raw / total * 100) + '%)' } } } } });
+    $(el).innerHTML = pairs.map(p => `<div class="pplpl"><i style="background:${p[2]}"></i><span>${p[0]}</span><b>${money(p[1])}</b><em>${Math.round(p[1] / total * 100)}%</em></div>`).join(''); };
+  const curRow = rows.find(r => r.k === (cur ? cur.k : '')) ;
+  $('pplPieMT').textContent = cur ? mName(cur.k) : 'This month';
+  pie('pplPieM', curRow ? [curRow] : [], 'pplPieML'); pie('pplPieY', filled, 'pplPieYL');
 }
 document.addEventListener('input', e => {
   const k = e.target.dataset && e.target.dataset.ppl; if (!k) return;
