@@ -346,12 +346,12 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
           <div><h2 style="font-size:14px">Biggest expenses</h2><div id="expBig"></div></div>
         </div>
       </div>
+      <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses <small>tap Edit to fix an expense</small></h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
       <div class="card" style="margin-top:16px"><h2 style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">Couches in stock <small id="stockNote"></small>
         <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-sf="all">All</button><button class="btn sm" data-sf="bstock">B-Stock</button><button class="btn sm" data-sf="used">Used</button></span></h2>
         <div style="overflow-x:auto;max-height:520px"><table id="stockTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Click <b>Sold</b> when a couch sells. B-Stock couches show up here once their load is added on the B-Stock tab; used couches with + Used pickup.</p></div>
       <div class="card" style="margin-top:16px"><h2>Sold couches &amp; profit <small id="soldNote"></small></h2><p class="empty" style="font-size:12.5px;margin:-6px 0 10px">Every couch you marked Sold: what it cost, what it sold for, and what you made on it. Use Undo if you marked one sold by mistake.</p><div id="missBox" hidden style="margin:8px 0 14px;padding:12px;border:1px dashed var(--bad);border-radius:12px;overflow:auto"></div><div style="overflow:auto;max-height:440px"><table id="soldTbl"></table></div></div>
-      <div class="card" style="margin-top:16px" id="logCard"><h2>Used pickups &amp; expenses <small>tap Edit to fix an expense</small></h2><div style="overflow:auto;max-height:440px"><table id="logTbl"></table></div></div>
     </section>
 
     <!-- SHOWINGS -->
@@ -1142,6 +1142,7 @@ function renderDeliveries(){
 document.addEventListener('click', e => { const b = e.target.closest('[data-delok]'); if (!b) return;
   try { const d = JSON.parse(localStorage.getItem('bcdDelOk') || '{}'); d[b.dataset.delok] = Date.now(); localStorage.setItem('bcdDelOk', JSON.stringify(d)); } catch {}
   setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
+let COMBINE = null;
 function renderSales(){
   renderJustSold(); renderDream(); renderDeliveries(); renderTxReview('business');
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
@@ -1175,11 +1176,11 @@ function renderSales(){
   const f = SALES_FILTER;
   const shown = inStock.filter(x => f === 'all' || x.kind === f);
   const aged = inStock.filter(x => x.days >= 21).length;
-  $('stockNote').textContent = `${inStock.length} couches · ${money(inStock.reduce((a, x) => a + x.cost, 0))} cost on the floor${aged ? ' · ' + aged + ' over 21 days' : ''}`;
+  $('stockNote').innerHTML = (COMBINE ? `<b style="color:var(--red)">Combining into ${esc(COMBINE.name)}: tap ＋ Into set on the other piece from the same load.</b> <button class="btn sm" data-combine-cancel>Cancel</button> · ` : '') + `${inStock.length} couches · ${money(inStock.reduce((a, x) => a + x.cost, 0))} cost on the floor${aged ? ' · ' + aged + ' over 21 days' : ''}`;
   $('stockTbl').innerHTML = `<tr><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
     (shown.length ? shown.map(x => `<tr><td style="width:64px">${photoCell(x)}</td><td>${nameCell(x)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
       <td class="n hide-m">${x.comp ? money(x.comp) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td>
-      <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button>` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
+      <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button> ${COMBINE ? (COMBINE.id === x.id && COMBINE.uid !== x.uid ? `<button class="btn sm g" data-combine-into="${esc(x.uid)}" title="Fold this into ${esc(COMBINE.name)}">＋ Into set</button>` : COMBINE.uid === x.uid ? `<button class="btn sm" data-combine-cancel>Cancel</button>` : '') : `<button class="btn sm" data-combine="${esc(x.id)}:${esc(x.uid)}" data-name="${esc(x.name)}" title="Combine with another piece from this load (sofa + loveseat = set)">Combine</button>`}` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
       : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
   const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
   const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)).length;
@@ -2078,6 +2079,12 @@ document.addEventListener('click', async e => {
     el.delivery.value = ''; el.upOther.value = ''; el.customer.value = '';
     $('upBoxes').innerHTML = UPSELLS.map(u => `<label class="chk"><input type="checkbox" data-up="${u.id}"> ${u.label} <span style="margin-left:auto;color:var(--muted)">+${money(u.price)}</span></label>`).join('');
     soldSum(); $('soldTitle').textContent = 'Sold: ' + sb.dataset.name; m.classList.add('on'); return; }
+  const cb = e.target.closest('[data-combine]');
+  if (cb) { const [id, uid] = cb.dataset.combine.split(':'); COMBINE = { id, uid, name: cb.dataset.name }; renderSales(); return; }
+  if (e.target.closest('[data-combine-cancel]')) { COMBINE = null; renderSales(); return; }
+  const ci = e.target.closest('[data-combine-into]');
+  if (ci && COMBINE) { ci.disabled = true; const j = await post('/api/loads/combine', { id: COMBINE.id, keep: COMBINE.uid, merge: ci.dataset.combineInto }).catch(err => ({ error: err.message }));
+    if (j.ok) COMBINE = null; toast(j.ok ? 'Combined. Cost and comp added together.' : (j.error || 'Failed')); await load(true); return; }
   const ub = e.target.closest('[data-unit]');
   if (ub) { const [id, uid, status] = ub.dataset.unit.split(':');
     const r = await fetch(uid === 'p' ? '/api/purchases/sale' : '/api/loads/unit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, uid, status }) });
