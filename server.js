@@ -392,6 +392,23 @@ app.post('/api/loads/unit', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Combine two units from the same load into one listing (sofa + loveseat = sofa set). Cost and comp add together.
+app.post('/api/loads/combine', async (req, res) => {
+  try {
+    const { id, keep, merge } = req.body || {}, loads = await getLoads(), l = loads.find(x => x.id === id);
+    const a = l && l.units.find(u => u.uid === keep), b = l && l.units.find(u => u.uid === merge);
+    if (!a || !b || a === b) return res.status(404).json({ error: 'Units not found' });
+    if (a.status !== 'in' || b.status !== 'in') return res.status(400).json({ error: 'Only couches still in stock can be combined' });
+    a.cost = Math.round(((Number(a.cost) || 0) + (Number(b.cost) || 0)) * 100) / 100;
+    a.comp = (Number(a.comp) || 0) + (Number(b.comp) || 0);
+    a.parts = [...(a.parts || [a.name]), ...(b.parts || [b.name])];
+    if (!a.photo && b.photo) a.photo = b.photo;
+    l.units = l.units.filter(u => u !== b);
+    await kset(KEYS.loads, loads);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Rename a couch (B-Stock unit or used pickup).
 app.post('/api/couch/rename', async (req, res) => {
   try {
