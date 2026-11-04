@@ -330,7 +330,6 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div id="delToday"></div>
-      <div id="dreamCard"></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
@@ -1147,7 +1146,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-delo
   setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
 let COMBINE = null;
 function renderSales(){
-  renderJustSold(); renderDream(); renderDeliveries(); renderTxReview('business');
+  renderJustSold(); renderDeliveries(); renderTxReview('business');
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
