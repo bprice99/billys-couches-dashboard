@@ -121,3 +121,19 @@
     mo.observe(document.body, { childList: true, subtree: true }); setTimeout(function(){ mo.disconnect(); }, 20000);
   }).catch(function(){});
 })();
+
+// Visit Showroom: "Ask to stop by now" link right under the booking form. Opens a text to Billy.
+(function(){
+  if (location.pathname.replace(/\/$/, '') !== '/visitshowroom') return;
+  var tries = 0;
+  (function place(){
+    if (document.getElementById('bc-stopby')) return;
+    var f = document.querySelector('iframe[id^="JotFormIFrame-252730823270048"], iframe[src*="252730823270048"]');
+    if (!f) { if (++tries < 40) setTimeout(place, 250); return; }
+    var msg = "Hi Billy, any chance you're available for me to visit the showroom now?";
+    var el = document.createElement('div'); el.id = 'bc-stopby';
+    el.style.cssText = 'text-align:center;margin:10px 0 18px;font-size:15px;line-height:1.5;color:#4a3f37;font-family:inherit';
+    el.innerHTML = 'Want to come right now? <a href="sms:+13148997503?&body=' + encodeURIComponent(msg) + '" style="color:#b0524c;font-weight:800;text-decoration:none;white-space:nowrap">💬 Ask to stop by now →</a>';
+    f.parentNode.insertBefore(el, f.nextSibling);
+  })();
+})();
