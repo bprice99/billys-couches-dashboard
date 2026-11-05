@@ -121,29 +121,3 @@
     mo.observe(document.body, { childList: true, subtree: true }); setTimeout(function(){ mo.disconnect(); }, 20000);
   }).catch(function(){});
 })();
-
-// Visit Showroom: small sale strip at the top while the sale is on (ad traffic still sees the form). Gone when it ends.
-(function(){
-  var path = location.pathname.replace(/\/$/, '');
-  if (path !== '/visitshowroom' || document.getElementById('bc-oops')) return;
-  fetch('https://order.billyscouches.com/api/sale', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(s){
-    if (!s || !s.on) return;
-    var st = document.createElement('style');
-    st.textContent = '#bc-oops{box-sizing:border-box;max-width:1100px;margin:12px auto 0;padding:0 16px;font-family:inherit}'
-      + '#bc-oops .in{background:#1f1a17;color:#fff;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:12px}'
-      + '#bc-oops .tx{flex:1;min-width:0;font-size:14px;line-height:1.3;color:#d9cfc7}#bc-oops .tx b{color:#fff;font-weight:800}#bc-oops .tx em{font-style:normal;color:#fff;background:#8f2b23;border-radius:6px;padding:1px 6px;font-weight:800;white-space:nowrap}'
-      + '#bc-oops .cd{display:flex;gap:4px;flex:none}#bc-oops .cd span{background:#8f2b23;border-radius:7px;padding:4px 6px;font-weight:800;text-align:center;font-size:14px;line-height:1;color:#fff;min-width:34px}#bc-oops .cd i{display:block;font-style:normal;font-size:8px;font-weight:600;opacity:.85;margin-top:2px}'
-      + '@media(max-width:640px){#bc-oops{margin-top:8px;padding:0 10px}#bc-oops .in{padding:9px 10px;gap:8px}#bc-oops .tx{font-size:12.5px}#bc-oops .cd span{font-size:13px;min-width:30px;padding:4px 5px}}';
-    document.head.appendChild(st);
-    var el = document.createElement('section'); el.id = 'bc-oops';
-    el.innerHTML = '<div class="in"><div class="tx"><b>I bought way too many couches.</b> 84 pallets on the way, so the floor has to go: <em>$' + s.big + ' OFF</em> every couch $' + s.min.toLocaleString() + '+, $' + s.small + ' off the rest.</div><div class="cd" id="bc-oops-cd"></div></div>';
-    var main = document.querySelector('main') || document.querySelector('#page') || document.body;
-    var first = main.querySelector('section') || main.firstElementChild;
-    if (first && first.parentNode) first.parentNode.insertBefore(el, first); else main.insertBefore(el, main.firstChild);
-    var end = Date.parse(s.ends), cd = document.getElementById('bc-oops-cd'), t;
-    function tick(){ var ms = end - Date.now(); if (ms <= 0) { el.remove(); clearInterval(t); return; }
-      var h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), sec = Math.floor(ms % 6e4 / 1e3);
-      cd.innerHTML = [[h, 'HRS'], [m, 'MIN'], [sec, 'SEC']].map(function(x){ return '<span>' + (x[0] < 10 ? '0' : '') + x[0] + '<i>' + x[1] + '</i></span>'; }).join(''); }
-    tick(); t = setInterval(tick, 1000);
-  }).catch(function(){});
-})();
