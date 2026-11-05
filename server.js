@@ -1601,11 +1601,14 @@ app.get('/public/dphoto/:id', async (req, res) => {
   } catch (e) { res.sendStatus(404); }
 });
 // The website's Current Inventory page reads this (see /public/inventory.js).
+// Website prices during the sale: sale price + the old price + how much off. Back to normal when it ends.
+// (Only the website feed. The public order app applies the sale itself, so /public/orderable stays at full price.)
+function salePrice(p) { const price = Number(p) || 0; if (!saleLive() || !price) return { price }; const off = saleSaved(0, price); return { price: Math.max(price - off, 0), was: price, saleOff: off, saleEnds: new Date(SALE_WIN.end).toISOString() }; }
 app.get('/public/inventory', async (req, res) => {
   dropCors(res);
   try {
     const list = (await getDrops()).filter(d => d.status === 'live');
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, retail: d.retail || 0, grade: d.grade || '',
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
       details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', photos: (d.photos || []).map(dropPhotoUrl) })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
