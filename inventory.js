@@ -35,6 +35,7 @@
     + '.bci-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);grid-template-areas:"info btns" "acc btns";gap:0 48px;max-width:1100px;margin:0 auto;align-items:start}'
     + '.bci-left{grid-area:info}.bci-right{grid-area:btns}.bci-accw{grid-area:acc}'
     + '.bci-title{font-size:22px;font-weight:400;line-height:1.5;margin:0 0 6px;font-family:inherit;color:var(--ink);letter-spacing:0}'
+    + '.bci-sale{display:inline-block;margin-left:10px;vertical-align:middle;background:#8f2b23;color:#fff;font-size:12px;font-weight:800;letter-spacing:.04em;border-radius:99px;padding:4px 10px;white-space:nowrap}'
     + '.bci-price{font-size:22px;font-weight:700;margin:0 0 6px}.bci-price s{color:var(--red);font-weight:400;margin-left:8px;font-size:19px}'
     + '.bci-grade{display:flex;align-items:center;gap:10px;margin:8px 0 2px;max-width:440px}'
     + '.bci-badge{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;color:#fff;line-height:1}.bci-badge b{font-size:15px}'
@@ -70,6 +71,7 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+  function saleDay(iso) { var d = new Date(iso); return d.getTime() - Date.now() < 864e5 ? 'TONIGHT' : d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(); }
   function img(u, w) { return /images\.squarespace-cdn\.com/.test(u) ? u + '?format=' + w + 'w' : u; }
 
   var gm = document.createElement('div');
@@ -101,7 +103,8 @@
         + '</div>' : '')
       + '<div class="bci-body"><div class="bci-left">'
       + '<h2 class="bci-title">' + esc(c.title) + '</h2>'
-      + '<div class="bci-price">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div>'
+      + (c.was ? '<div class="bci-price"><span style="color:#8f2b23">' + money(c.price) + '</span><s style="color:#8a8078">' + money(c.was) + '</s><span class="bci-sale">$' + c.saleOff + ' OFF &middot; ENDS ' + saleDay(c.saleEnds) + '</span></div>'
+        : '<div class="bci-price">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div>')
       + (g ? '<div class="bci-grade"><span class="bci-badge" style="background:' + g[2] + '">Grade <b>' + c.grade + '</b> &middot; ' + g[0] + '</span><span class="bci-gtxt">' + g[1] + ' <button type="button" class="bci-q">What do grades mean?</button></span></div>' : '')
       + '<div class="bci-k"><div class="bci-del"></div><div class="bci-km"><div class="bci-ki"><div class="bci-kr">Or 4 payments of <b>$' + per + '</b></div><div class="bci-kf">Incl. tax + 6% fee. Subject to approval.</div></div>'
       + '<a class="bci-kb" href="' + ORDER_URL + '">Pay with Klarna</a></div></div>'
