@@ -235,7 +235,7 @@ input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px
 .ost{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#efe3da;white-space:nowrap}.ost.new{background:#b0524c;color:#fff}.ost.bought{background:#2f7a4f;color:#fff}.ost.passed{background:#ddd;color:#555}
 .ophotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0}.ophotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
 .orow{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.orow span{color:var(--muted)}.orow b{text-align:right}
-.oacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.oacts a,.oacts select{flex:1;min-width:90px;text-align:center;padding:12px;border-radius:12px;font-weight:700;text-decoration:none}.oacts a{background:#b0524c;color:#fff}.oacts a.dk{background:var(--text)}.oacts select{border:1px solid var(--line);background:#fff;font-size:15px}
+.oacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.oacts a,.oacts select{flex:1;min-width:90px;text-align:center;padding:12px;border-radius:12px;font-weight:700;text-decoration:none}.oacts a{background:#b0524c;color:#fff}.oacts a.dk{background:var(--text)}.oacts a.ok{background:#2e7d4f}.oacts a.no{background:#fff;color:#b0524c;border:2px solid #b0524c}.oacts select{border:1px solid var(--line);background:#fff;font-size:15px}
 .mask{position:fixed;inset:0;background:rgba(20,12,8,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
 html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden}.mask .modal{overscroll-behavior:contain;max-height:92vh;overflow:auto}
 .mask.on{display:flex}
@@ -2179,6 +2179,14 @@ function offerGcal(o, addr){
     o.heard ? `Heard about us: ${o.heard}` : '', ''].filter((x, i, a) => x !== '' || a[i - 1] !== '');
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('Pick up for ' + name) + '&details=' + encodeURIComponent(lines.join('\n')) + '&location=' + encodeURIComponent(addr) + '&src=' + encodeURIComponent(BC_CAL);
 }
+// Approve / Decline open a text to the seller with the message filled in (edit before sending), and update the status.
+function offerSms(o, tel, kind){
+  const first = (o.firstName || '').trim().split(/\s+/)[0] || 'there', couch = o.brand ? 'your ' + o.brand + ' couch' : 'your couch';
+  const body = kind === 'yes'
+    ? `Hi ${first}, Billy here from Billy's Couches. Good news: ${couch} qualifies and we'd love to buy it! What day works for us to come pick it up?`
+    : `Hi ${first}, Billy here from Billy's Couches. Thanks for sending ${couch} over. Unfortunately it doesn't qualify for us to buy right now, but we really appreciate you thinking of us!`;
+  return 'sms:' + tel + '?&body=' + encodeURIComponent(body);
+}
 function openOffer(id){
   const o = (OFFERS || []).find(x => x.id === id); if (!o) return toast('Offer not found');
   const tel = (o.phone || '').replace(/[^\d+]/g, ''), addr = [o.street, o.street2, o.city, o.state, o.zip].filter(Boolean).join(', ');
@@ -2187,6 +2195,7 @@ function openOffer(id){
     <div class="ophotos">${Array.from({ length: o.photoCount || 0 }, (_, i) => `<a href="/offers/${esc(o.id)}/photo/${i}" target="_blank"><img src="/offers/${esc(o.id)}/photo/${i}" alt=""></a>`).join('')}</div>
     ${R('Issues', o.issues && o.issues.length ? o.issues.join(', ') : 'None checked')}${R('Details', o.details)}${R('Can help load', o.helpLoad)}${R('Heard about us', o.heard)}
     ${R('Name', (o.firstName + ' ' + (o.lastName || '')).trim())}${R('Phone', o.phone)}${R('Email', o.email)}${R('Address', addr)}
+    <div class="oacts"><a class="ok" href="${offerSms(o, tel, 'yes')}" data-odecide="${esc(o.id)}:contacted">✓ Approve</a><a class="no" href="${offerSms(o, tel, 'no')}" data-odecide="${esc(o.id)}:passed">✕ Decline</a></div>
     <div class="oacts"><a href="sms:${tel}">Text</a><a target="_blank" rel="noopener" href="${offerGcal(o, addr)}">Schedule</a><a class="dk" target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(addr)}">Map</a></div>
     <div class="oacts" style="align-items:center"><b style="flex:none;font-size:14px">Status</b><select id="oStatus" data-id="${esc(o.id)}">${Object.entries(OSTATUS).map(([k, v]) => `<option value="${k}" ${o.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
   $('m-offer').classList.add('on');
@@ -2194,6 +2203,13 @@ function openOffer(id){
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-ofilter]'); if (f) { OFILTER = f.dataset.ofilter; renderOffers(); return; }
   const c = e.target.closest('[data-offer]'); if (c) openOffer(c.dataset.offer);
+  const d = e.target.closest('[data-odecide]');
+  if (d) {   // the link still opens Messages; this just records the decision
+    const [id, status] = d.dataset.odecide.split(':');
+    post('/api/offers/status', { id, status }).then(() => { const o = OFFERS.find(x => x.id === id); if (o) o.status = status;
+      const n = OFFERS.filter(x => x.status === 'new').length; $('offerBadge').hidden = !n; $('offerBadge').textContent = n;
+      const sel = $('oStatus'); if (sel) sel.value = status; renderOffers(); }).catch(err => toast(err.message));
+  }
 });
 document.addEventListener('change', async e => {
   if (e.target.id !== 'oStatus') return;
