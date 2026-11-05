@@ -50,6 +50,7 @@ body{font-family:Inter,-apple-system,Segoe UI,Arial,sans-serif;background:var(--
 .err{background:#fdecea;color:#b91c1c;border-radius:12px;padding:12px 14px;font-size:14px;margin-top:12px;display:none}.err.show{display:block}
 .note{background:#fff7ed;color:#9a3412;border-radius:12px;padding:12px 14px;font-size:14px;margin:12px 0;text-align:left}
 .empty{color:var(--muted);font-size:14px;padding:10px 0}
+.tip{display:flex;gap:12px;align-items:center;background:#f7f3ee;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px;text-align:left;font-size:13.5px;color:var(--muted);line-height:1.4}.tip span{font-size:22px}.tip b{display:block;color:var(--dark);font-size:14.5px}
 .foot{font-size:12.5px;color:var(--muted);text-align:center;margin-top:18px}.foot a{color:var(--red);font-weight:600;text-decoration:none}
 .load{padding:80px 20px;text-align:center;color:var(--muted)}
 </style></head>
@@ -165,6 +166,7 @@ function confirmed(payFailed){
     <div class="sum"><div><span>When</span><b>${esc(b.label)}</b></div>
       ${isDel() ? `<div><span>Where</span><b>${esc(b.address)}${b.city ? ', ' + esc(b.city) : ''}</b></div>${b.room ? `<div><span>Room</span><b>${esc(b.room)}</b></div>` : ''}` : '<div><span>Where</span><b>126 E Orleans St, Pacific</b></div>'}
       <div><span>Need to change it?</span><b><a href="#" style="color:var(--red);text-decoration:none" onclick="event.preventDefault();ST.reschedule=true;ST.date=D.booking.date;ST.win='';load()">Reschedule</a></b></div></div>
+    ${isDel() ? '<div class="tip"><span>💵</span><div><b>Tips are appreciated</b>Never expected, always appreciated by our crew.</div></div>' : ''}
     ${icsHref() ? `<a class="ghost" href="${icsHref()}">＋ Add to my calendar</a>` : ''}
     <p class="foot">Questions? Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
 }
