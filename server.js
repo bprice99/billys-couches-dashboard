@@ -1369,6 +1369,11 @@ async function salesLogRows() {
 }
 // Every Sales Log order in the last 5 days becomes a pop-up. The couch comes from (1) what you picked in HQ,
 // (2) the couch marked Sold on the Sales Tracker for that order, else it says "a couch".
+// Sale window (same times as the public order app). While it runs, the Just Sold pop-up says how much each buyer saved.
+const SALE_WIN = { start: Date.parse(process.env.SALE_START || '2026-11-04T22:00:00-06:00'), end: Date.parse(process.env.SALE_END || '2026-11-06T23:59:00-06:00'), big: 250, small: 100, min: 999 };
+const saleLive = () => process.env.SALE !== 'off' && Date.now() >= SALE_WIN.start && Date.now() < SALE_WIN.end;
+const inSale = t => t >= SALE_WIN.start && t < SALE_WIN.end;
+const saleSaved = (salePrice, listPrice) => listPrice ? (listPrice >= SALE_WIN.min ? SALE_WIN.big : SALE_WIN.small) : (Number(salePrice) + SALE_WIN.big >= SALE_WIN.min ? SALE_WIN.big : SALE_WIN.small);
 async function recentOrders(days) {
   const [loads, purchases, picks, site, pidx, drops] = await Promise.all([getLoads(), getPurchases(), kget('bcd:soldPicks', {}).catch(() => ({})), siteCouches(false), kget('bcd:photos', {}).catch(() => ({})), getDrops().catch(() => [])]);
   let log = []; try { log = await salesLogRows(); } catch (e) { console.log('Just sold: Sales Log unavailable', e.message); }
@@ -1392,7 +1397,8 @@ async function recentOrders(days) {
   const extra = [];
   soldDrops.forEach(d => {
     const sd = ctDay(d.soldAt);
-    const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= -2 && dayDiff(sd, l.day) <= 4 && (Math.abs(l.price - d.price) < 1 || Math.abs(l.net - d.price) < 1));
+    const off = inSale(d.soldAt) ? saleSaved(0, d.price) : 0, near = (a, b) => Math.abs(a - b) < 1 || (off && Math.abs(a - (b - off)) < 1);
+    const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= -2 && dayDiff(sd, l.day) <= 4 && (near(l.price, d.price) || near(l.net, d.price)));
     const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
     if (hit) hit.drop = d;
     else if (d.soldAt > cutoff && d.soldAt <= Date.now()) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
@@ -1410,16 +1416,17 @@ async function recentOrders(days) {
       if (pidx[c.pkey]) { const t = crypto.createHash('sha1').update(c.pkey).digest('hex').slice(0, 16); photo = `/public/sale-photo/${t}?v=${pidx[c.pkey]}`; recentPhotos[t] = c.pkey; }
       else { const m = bestSiteMatch(c.name, site); if (m && m.img) photo = m.img; }
     }
-    return { key: l.key, at: new Date(at).toISOString(), exact: !!l.ts, customer: l.name, price: l.price, title, photo, from };
+    return { key: l.key, at: new Date(at).toISOString(), exact: !!l.ts, customer: l.name, price: l.price, title, photo, from, saved: inSale(at) ? saleSaved(l.price, l.drop && l.drop.price) : 0 };
   }).filter(Boolean).concat(extra).sort((a, b) => b.at.localeCompare(a.at));
 }
 async function buildRecent() {
-  if (recentCache.data && Date.now() - recentCache.at < 5 * 60 * 1000) return;
+  if (recentCache.data && Date.now() - recentCache.at < 5 * 60 * 1000 && recentCache.live === saleLive()) return;
   const shortName = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
     const f = w[0][0].toUpperCase() + w[0].slice(1).toLowerCase(); return w.length > 1 ? f + ' ' + w[w.length - 1][0].toUpperCase() + '.' : f; };
   const list = await recentOrders(5);
-  recentCache = { at: Date.now(), data: list.slice(0, 20).map(o => {
+  recentCache = { at: Date.now(), live: saleLive(), data: list.slice(0, 20).map(o => {
     const row = { title: o.title || 'A couch from our showroom', at: o.at, exact: o.exact };
+    if (saleLive() && o.saved) row.saved = o.saved;   // only while the sale is on
     const who = shortName(o.customer); if (who) row.who = who;
     if (o.photo) row.photo = /^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo;
     return row; }) };
