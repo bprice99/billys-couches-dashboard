@@ -75,7 +75,7 @@
     grids.forEach(function(g){
       var el = g[0], fd = g[2] === 'fdGrid', items = list.slice(0, g[1]);
       var html = items.map(function(c){
-        var t = esc(c.title), ph = (c.photos || [])[0], pr = money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '');
+        var t = esc(c.title), ph = (c.photos || [])[0], pr = c.was ? '<span style="color:#8f2b23">' + money(c.price) + '</span><s style="color:#8a8078">' + money(c.was) + '</s> <span style="display:inline-block;background:#8f2b23;color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px;vertical-align:middle">$' + c.saleOff + ' OFF</span>' : money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '');
         return fd
           ? '<a class="fd-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="im">' + (ph ? '<img loading="lazy" src="' + esc(img(ph, 500)) + '" alt="' + t + '">' : '') + '</div><div class="bd"><p class="t">' + t + '</p><div class="pr">' + pr + '</div></div></a>'
           : '<a class="bc-live-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="bc-live-img">' + (ph ? '<img loading="lazy" src="' + esc(img(ph, 750)) + '" alt="' + t + '">' : '') + '</div><div class="bc-live-body"><p class="bc-live-t">' + t + '</p><div class="bc-live-p">' + pr + '</div><span class="bc-live-cta">Book a time to sit on it &rarr;</span></div></a>';
@@ -111,7 +111,7 @@
       addCss(); box.style.display = 'block'; box.style.width = '100%';
       box.innerHTML = '<div class="bcf-grid">' + list.slice(0, 8).map(function(c){ var ph = (c.photos || [])[0];
         return '<a class="bcf-card" href="/currentinventory#couch-' + esc(c.id) + '"><div class="im">' + (ph ? '<img loading="lazy" src="' + esc(img(ph)) + '" alt="' + esc(c.title) + '">' : '') + '</div>'
-          + '<div class="bd"><div class="t">' + esc(c.title) + '</div><div class="p">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div></div></a>'; }).join('') + '</div>';
+          + '<div class="bd"><div class="t">' + esc(c.title) + '</div><div class="p">' + (c.was ? '<span style="color:#8f2b23">' + money(c.price) + '</span><s style="color:#8a8078">' + money(c.was) + '</s>' : money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '')) + '</div></div></a>'; }).join('') + '</div>';
     }
   }
   fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
@@ -119,5 +119,48 @@
     // also catch the message whenever the page's own script writes it
     var t, mo = new MutationObserver(function(){ clearTimeout(t); t = setTimeout(scan, 200); });
     mo.observe(document.body, { childList: true, subtree: true }); setTimeout(function(){ mo.disconnect(); }, 20000);
+  }).catch(function(){});
+})();
+
+// Visit Showroom: "I bought way too many couches" section at the top while the sale is on. Gone when it ends.
+(function(){
+  var path = location.pathname.replace(/\/$/, '');
+  if (path !== '/visitshowroom' || document.getElementById('bc-oops')) return;
+  Promise.all([
+    fetch('https://order.billyscouches.com/api/sale', { cache: 'no-store' }).then(function(r){ return r.json(); }),
+    fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).catch(function(){ return {}; })
+  ]).then(function(a){
+    var s = a[0], n = ((a[1] && a[1].couches) || []).length; if (!s || !s.on) return;
+    var st = document.createElement('style');
+    st.textContent = '#bc-oops{box-sizing:border-box;max-width:1100px;margin:24px auto 8px;padding:0 16px;font-family:inherit}'
+      + '#bc-oops .in{background:#1f1a17;color:#fff;border-radius:18px;padding:28px 30px}'
+      + '#bc-oops .k{font-size:12px;font-weight:800;letter-spacing:.16em;color:#e0a39d}'
+      + '#bc-oops h2{color:#fff!important;font-size:40px!important;line-height:1.05!important;margin:8px 0 12px!important;letter-spacing:-.02em;font-weight:800!important}'
+      + '#bc-oops p{margin:0 0 16px!important;font-size:16px!important;line-height:1.5!important;color:#d9cfc7!important;max-width:620px}'
+      + '#bc-oops .st{display:flex;gap:10px;margin:0 0 14px}#bc-oops .st div{flex:1;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}#bc-oops .st b{display:block;font-size:26px;color:#fff}#bc-oops .st small{font-size:12.5px;color:#cbbdb2}'
+      + '#bc-oops .dl{background:#8f2b23;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}#bc-oops .dl b{font-size:26px;color:#fff}#bc-oops .dl small{display:block;font-size:13px;color:#fff;opacity:.9}'
+      + '#bc-oops .cd{margin-left:auto;display:flex;gap:5px}#bc-oops .cd span{background:rgba(255,255,255,.18);border-radius:8px;padding:6px 9px;font-weight:800;text-align:center;font-size:18px;line-height:1;color:#fff;min-width:46px}#bc-oops .cd em{display:block;font-style:normal;font-size:9.5px;font-weight:600;opacity:.85;margin-top:3px}'
+      + '#bc-oops .bt{display:flex;gap:10px;margin-top:14px}#bc-oops .bt a{flex:1;text-align:center;border-radius:99px;padding:13px;font-weight:800;font-size:15px;border:2px solid #fff;color:#fff!important;text-decoration:none!important}#bc-oops .bt a.p{background:#fff;color:#8f2b23!important}'
+      + '@media(max-width:640px){#bc-oops .in{padding:22px 18px}#bc-oops h2{font-size:31px!important}#bc-oops .st b{font-size:22px}#bc-oops .cd{margin-left:0}#bc-oops .bt{flex-direction:column}}';
+    document.head.appendChild(st);
+    var el = document.createElement('section'); el.id = 'bc-oops';
+    el.innerHTML = '<div class="in"><div class="k">MY MISTAKE, YOUR DISCOUNT</div><h2>I bought way too many couches.</h2>'
+      + '<p>4 truckloads of couches are already on the road. 84 pallets. That’s way more than this showroom can hold, so everything on the floor has to go before they show up.</p>'
+      + '<div class="st"><div><b>4</b><small>trucks on the way</small></div><div><b>84</b><small>pallets incoming</small></div>' + (n ? '<div><b>' + n + '</b><small>couches on the floor now</small></div>' : '') + '</div>'
+      + '<div class="dl"><div><b>$' + s.big + ' OFF</b><small>every couch $' + s.min.toLocaleString() + '+ &middot; $' + s.small + ' off the rest</small></div><div class="cd" id="bc-oops-cd"></div></div>'
+      + '<div class="bt"><a class="p" href="#bc-book" id="bc-oops-book">Book a visit</a><a href="https://order.billyscouches.com">Shop online</a></div></div>';
+    var main = document.querySelector('main') || document.querySelector('#page') || document.body;
+    var first = main.querySelector('section') || main.firstElementChild;
+    if (first && first.parentNode) first.parentNode.insertBefore(el, first); else main.insertBefore(el, main.firstChild);
+    // "Book a visit" scrolls to the booking form on this page
+    document.getElementById('bc-oops-book').onclick = function(e){
+      var f = document.querySelector('iframe[src*="jotform"], form, [id*="jotform"]');
+      if (f) { e.preventDefault(); f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    };
+    var end = Date.parse(s.ends), cd = document.getElementById('bc-oops-cd'), t;
+    function tick(){ var ms = end - Date.now(); if (ms <= 0) { el.remove(); clearInterval(t); return; }
+      var h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), sec = Math.floor(ms % 6e4 / 1e3);
+      cd.innerHTML = [[h, 'HRS'], [m, 'MIN'], [sec, 'SEC']].map(function(x){ return '<span>' + (x[0] < 10 ? '0' : '') + x[0] + '<em>' + x[1] + '</em></span>'; }).join(''); }
+    tick(); t = setInterval(tick, 1000);
   }).catch(function(){});
 })();
