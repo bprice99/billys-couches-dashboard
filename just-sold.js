@@ -122,45 +122,28 @@
   }).catch(function(){});
 })();
 
-// Visit Showroom: "I bought way too many couches" section at the top while the sale is on. Gone when it ends.
+// Visit Showroom: small sale strip at the top while the sale is on (ad traffic still sees the form). Gone when it ends.
 (function(){
   var path = location.pathname.replace(/\/$/, '');
   if (path !== '/visitshowroom' || document.getElementById('bc-oops')) return;
-  Promise.all([
-    fetch('https://order.billyscouches.com/api/sale', { cache: 'no-store' }).then(function(r){ return r.json(); }),
-    fetch('https://hq.billyscouches.com/public/inventory', { cache: 'no-store' }).then(function(r){ return r.json(); }).catch(function(){ return {}; })
-  ]).then(function(a){
-    var s = a[0], n = ((a[1] && a[1].couches) || []).length; if (!s || !s.on) return;
+  fetch('https://order.billyscouches.com/api/sale', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(s){
+    if (!s || !s.on) return;
     var st = document.createElement('style');
-    st.textContent = '#bc-oops{box-sizing:border-box;max-width:1100px;margin:24px auto 8px;padding:0 16px;font-family:inherit}'
-      + '#bc-oops .in{background:#1f1a17;color:#fff;border-radius:18px;padding:28px 30px}'
-      + '#bc-oops .k{font-size:12px;font-weight:800;letter-spacing:.16em;color:#e0a39d}'
-      + '#bc-oops h2{color:#fff!important;font-size:40px!important;line-height:1.05!important;margin:8px 0 12px!important;letter-spacing:-.02em;font-weight:800!important}'
-      + '#bc-oops p{margin:0 0 16px!important;font-size:16px!important;line-height:1.5!important;color:#d9cfc7!important;max-width:620px}'
-      + '#bc-oops .st{display:flex;gap:10px;margin:0 0 14px}#bc-oops .st div{flex:1;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}#bc-oops .st b{display:block;font-size:26px;color:#fff}#bc-oops .st small{font-size:12.5px;color:#cbbdb2}'
-      + '#bc-oops .dl{background:#8f2b23;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}#bc-oops .dl b{font-size:26px;color:#fff}#bc-oops .dl small{display:block;font-size:13px;color:#fff;opacity:.9}'
-      + '#bc-oops .cd{margin-left:auto;display:flex;gap:5px}#bc-oops .cd span{background:rgba(255,255,255,.18);border-radius:8px;padding:6px 9px;font-weight:800;text-align:center;font-size:18px;line-height:1;color:#fff;min-width:46px}#bc-oops .cd em{display:block;font-style:normal;font-size:9.5px;font-weight:600;opacity:.85;margin-top:3px}'
-      + '#bc-oops .bt{display:flex;gap:10px;margin-top:14px}#bc-oops .bt a{flex:1;text-align:center;border-radius:99px;padding:13px;font-weight:800;font-size:15px;border:2px solid #fff;color:#fff!important;text-decoration:none!important}#bc-oops .bt a.p{background:#fff;color:#8f2b23!important}'
-      + '@media(max-width:640px){#bc-oops .in{padding:22px 18px}#bc-oops h2{font-size:31px!important}#bc-oops .st b{font-size:22px}#bc-oops .cd{margin-left:0}#bc-oops .bt{flex-direction:column}}';
+    st.textContent = '#bc-oops{box-sizing:border-box;max-width:1100px;margin:12px auto 0;padding:0 16px;font-family:inherit}'
+      + '#bc-oops .in{background:#1f1a17;color:#fff;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:12px}'
+      + '#bc-oops .tx{flex:1;min-width:0;font-size:14px;line-height:1.3;color:#d9cfc7}#bc-oops .tx b{color:#fff;font-weight:800}#bc-oops .tx em{font-style:normal;color:#fff;background:#8f2b23;border-radius:6px;padding:1px 6px;font-weight:800;white-space:nowrap}'
+      + '#bc-oops .cd{display:flex;gap:4px;flex:none}#bc-oops .cd span{background:#8f2b23;border-radius:7px;padding:4px 6px;font-weight:800;text-align:center;font-size:14px;line-height:1;color:#fff;min-width:34px}#bc-oops .cd i{display:block;font-style:normal;font-size:8px;font-weight:600;opacity:.85;margin-top:2px}'
+      + '@media(max-width:640px){#bc-oops{margin-top:8px;padding:0 10px}#bc-oops .in{padding:9px 10px;gap:8px}#bc-oops .tx{font-size:12.5px}#bc-oops .cd span{font-size:13px;min-width:30px;padding:4px 5px}}';
     document.head.appendChild(st);
     var el = document.createElement('section'); el.id = 'bc-oops';
-    el.innerHTML = '<div class="in"><div class="k">MY MISTAKE, YOUR DISCOUNT</div><h2>I bought way too many couches.</h2>'
-      + '<p>4 truckloads of couches are already on the road. 84 pallets. That’s way more than this showroom can hold, so everything on the floor has to go before they show up.</p>'
-      + '<div class="st"><div><b>4</b><small>trucks on the way</small></div><div><b>84</b><small>pallets incoming</small></div>' + (n ? '<div><b>' + n + '</b><small>couches on the floor now</small></div>' : '') + '</div>'
-      + '<div class="dl"><div><b>$' + s.big + ' OFF</b><small>every couch $' + s.min.toLocaleString() + '+ &middot; $' + s.small + ' off the rest</small></div><div class="cd" id="bc-oops-cd"></div></div>'
-      + '<div class="bt"><a class="p" href="#bc-book" id="bc-oops-book">Book a visit</a><a href="https://order.billyscouches.com">Shop online</a></div></div>';
+    el.innerHTML = '<div class="in"><div class="tx"><b>I bought way too many couches.</b> 84 pallets on the way, so the floor has to go: <em>$' + s.big + ' OFF</em> every couch $' + s.min.toLocaleString() + '+, $' + s.small + ' off the rest.</div><div class="cd" id="bc-oops-cd"></div></div>';
     var main = document.querySelector('main') || document.querySelector('#page') || document.body;
     var first = main.querySelector('section') || main.firstElementChild;
     if (first && first.parentNode) first.parentNode.insertBefore(el, first); else main.insertBefore(el, main.firstChild);
-    // "Book a visit" scrolls to the booking form on this page
-    document.getElementById('bc-oops-book').onclick = function(e){
-      var f = document.querySelector('iframe[src*="jotform"], form, [id*="jotform"]');
-      if (f) { e.preventDefault(); f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    };
     var end = Date.parse(s.ends), cd = document.getElementById('bc-oops-cd'), t;
     function tick(){ var ms = end - Date.now(); if (ms <= 0) { el.remove(); clearInterval(t); return; }
       var h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), sec = Math.floor(ms % 6e4 / 1e3);
-      cd.innerHTML = [[h, 'HRS'], [m, 'MIN'], [sec, 'SEC']].map(function(x){ return '<span>' + (x[0] < 10 ? '0' : '') + x[0] + '<em>' + x[1] + '</em></span>'; }).join(''); }
+      cd.innerHTML = [[h, 'HRS'], [m, 'MIN'], [sec, 'SEC']].map(function(x){ return '<span>' + (x[0] < 10 ? '0' : '') + x[0] + '<i>' + x[1] + '</i></span>'; }).join(''); }
     tick(); t = setInterval(tick, 1000);
   }).catch(function(){});
 })();
