@@ -1741,8 +1741,8 @@ function openCash(){
 let BANKS = null;
 const BANK_LABEL = { checking9926: 'Checking ··9926', taxReserve7229: 'Tax Reserve ··7229', personal5908: 'Free Checking ··5908', marcus6620: 'Marcus ··6620', marcus6569: 'Marcus ··6569',
   ink2078: 'Ink ··2078', ink1602: 'Ink ··1602', amex91000: 'Amex ··91000', capone8760: 'Capital One ··8760', discover6166: 'Discover ··6166' };
-async function loadBanks(fresh){
-  try { const r = await fetch('/api/plaid/balances' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' }); BANKS = await r.json(); }
+async function loadBanks(fresh, live){
+  try { const r = await fetch('/api/plaid/balances' + (live ? '?live=1' : fresh ? '?fresh=1' : ''), { cache: 'no-store' }); BANKS = await r.json(); }
   catch (e) { BANKS = { error: e.message, banks: [], fields: {} }; }
   renderBanks(); return BANKS;
 }
@@ -1752,11 +1752,11 @@ function renderBanks(){
   if (BANKS.error && !BANKS.banks) { el.innerHTML = `<div class="card"><h2>Bank connections</h2><div class="err" style="display:block">${esc(BANKS.error)}</div></div>`; return; }
   if (!BANKS.configured) { el.innerHTML = `<div class="card"><h2>Bank connections</h2><p class="empty">Add <b>PLAID_CLIENT_ID</b>, <b>PLAID_SECRET</b> and <b>PLAID_ENV</b> in Railway to pull balances automatically.</p></div>`; return; }
   const banks = BANKS.banks || [];
-  el.innerHTML = `<div class="card"><h2>Bank connections <small>${banks.length} linked${BANKS.at ? ' · updated ' + agoTxt(Date.parse(BANKS.at)) : ''}</small></h2>
+  el.innerHTML = `<div class="card"><h2>Bank connections <small>${banks.length} linked${BANKS.at ? ' · ' + (BANKS.live ? '<b style="color:var(--green)">live</b> ' : 'saved balances, ') + 'updated ' + agoTxt(Date.parse(BANKS.at)) : ''}</small></h2>${BANKS.liveNote ? `<p class="empty" style="font-size:12px;color:var(--bad);margin-top:-6px">${esc(BANKS.liveNote)}</p>` : ''}
     <p class="empty" style="font-size:12.5px;margin-top:-6px">Each morning at 7am an entry is saved from your banks if you haven't added one. Safe, Venmo and stocks carry over from your last entry.</p>
     ${banks.map(b => `<div style="border-top:1px solid var(--line);padding:10px 0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(b.institution)}</b><span style="white-space:nowrap">${b.relink ? `<button class="btn sm p" data-bankfix="${esc(b.item_id)}">Reconnect</button> ` : ''}<button class="btn sm" data-bankdel="${esc(b.item_id)}">Remove</button></span></div>
       ${b.error ? `<div style="color:var(--bad);font-size:12.5px">${esc(b.error)}</div>` : (b.accounts || []).map(a => `<div class="row" style="font-size:13px"><span>${esc(a.name)} ··${esc(a.mask || '')}<div style="font-size:12px;color:var(--muted)">${a.field ? '→ ' + BANK_LABEL[a.field] : 'not used in Daily Cash'}</div></span><b>${money(Math.abs(a.current ?? a.available ?? 0))}</b></div>`).join('')}</div>`).join('')}
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn p" id="btnBankAdd">+ Connect a bank</button><button class="btn" id="btnBankRefresh">Refresh</button></div></div>`;
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn p" id="btnBankAdd">+ Connect a bank</button><button class="btn" id="btnBankRefresh">↻ Live balances</button></div></div>`;
 }
 function plaidScript(){
   return window.Plaid ? Promise.resolve() : new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'; s.onload = ok; s.onerror = () => bad(new Error("Couldn't load Plaid")); document.head.appendChild(s); });
@@ -1774,7 +1774,7 @@ async function connectBank(itemId){
 }
 async function pullBanks(){
   const btn = $('btnBankPull'); btn.disabled = true; $('bankNow').textContent = 'Pulling…';
-  const d = await loadBanks(true); btn.disabled = false;
+  const d = await loadBanks(true, true); btn.disabled = false;
   const f = $('m-cash').querySelector('form').elements, keys = Object.keys(d.fields || {});
   keys.forEach(k => { if (f[k]) f[k].value = fmtMoney(d.fields[k]); });
   const errs = (d.banks || []).filter(b => b.error).length;
@@ -1785,7 +1785,7 @@ document.addEventListener('click', async e => {
   const t = e.target.closest('#btnBankAdd,#btnBankRefresh,#btnBankPull,[data-bankdel],[data-bankfix]'); if (!t) return;
   e.preventDefault();
   if (t.id === 'btnBankAdd') connectBank();
-  else if (t.id === 'btnBankRefresh') { t.disabled = true; await loadBanks(true); }
+  else if (t.id === 'btnBankRefresh') { t.disabled = true; t.textContent = 'Asking your banks…'; await loadBanks(true, true); }
   else if (t.id === 'btnBankPull') pullBanks();
   else if (t.dataset.bankfix) connectBank(t.dataset.bankfix);
   else if (t.dataset.bankdel && confirm('Remove this bank? Balances will stop pulling from it.')) {
