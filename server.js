@@ -1811,7 +1811,7 @@ app.post('/api/sched/delete', async (req, res) => {
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
 // ---------- Coaching (Billy Price Coaching): admin at /coach, client portal at /client ----------
-const COACH = { clients: 'bcd:coach:clients', leads: 'bcd:coach:leads', videos: 'bcd:coach:videos', settings: 'bcd:coach:settings' };
+const COACH = { clients: 'bcd:coach:clients', leads: 'bcd:coach:leads', videos: 'bcd:coach:videos', settings: 'bcd:coach:settings', reels: 'bcd:coach:reels', calendly: 'bcd:coach:calendly' };
 const cid = () => crypto.randomBytes(6).toString('hex');
 const weekKey = (d = new Date()) => { const t = new Date(d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
 async function getClients() {
@@ -1847,8 +1847,55 @@ const coachList = k => kget(COACH[k], []);
 // Marketplace posting helper (opened from a facebook.com tab; hands it the newest couches + photos).
 app.get('/bridge', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'bridge.html' : 'login.html')));
 app.get('/coach', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'coach.html' : 'login.html')));
+// ---------- Calendly: every qualification-call booking becomes a Pipeline lead ----------
+// Needs CALENDLY_TOKEN in Railway (Calendly > Integrations > API & Webhooks > Personal access token). Works on the free plan.
+// CALENDLY_EVENT (optional) = words in the event name to match; defaults to "qualification".
+let calLast = 0;
+async function calendlySync(force) {
+  const tok = process.env.CALENDLY_TOKEN; if (!tok) return { skipped: 'no token' };
+  if (!force && Date.now() - calLast < 3 * 60 * 1000) return { skipped: 'recent' }; calLast = Date.now();
+  const api = async u => { const r = await fetch(u.startsWith('http') ? u : 'https://api.calendly.com' + u, { headers: { Authorization: 'Bearer ' + tok } });
+    const j = await r.json(); if (!r.ok) throw new Error('Calendly: ' + (j.message || j.title || r.status)); return j; };
+  const st = (await kget(COACH.calendly, null)) || {};
+  if (!st.user) st.user = (await api('/users/me')).resource.uri;
+  const want = new RegExp(process.env.CALENDLY_EVENT || 'qualification', 'i');
+  const since = new Date(Date.now() - 45 * 864e5).toISOString();
+  let url = `/scheduled_events?user=${encodeURIComponent(st.user)}&min_start_time=${encodeURIComponent(since)}&count=100&sort=start_time:desc`, evs = [], g = 0;
+  while (url && g++ < 5) { const j = await api(url); evs.push(...(j.collection || [])); url = j.pagination && j.pagination.next_page; }
+  evs = evs.filter(e => want.test(e.name || ''));
+  const leads = await coachList('leads'); let added = 0, changed = 0;
+  for (const ev of evs) {
+    const evId = ev.uri.split('/').pop(), callDate = new Date(ev.start_time).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const callTime = new Date(ev.start_time).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+    let l = leads.find(x => x.calendlyId === evId);
+    if (l) {   // keep the date/cancel status current; never overwrite your stage or notes otherwise
+      const canceled = ev.status === 'canceled';
+      if (l.callDate !== callDate || !!l.canceled !== canceled) { l.callDate = callDate; l.callTime = callTime; l.canceled = canceled; changed++; }
+      continue;
+    }
+    const inv = ((await api(ev.uri + '/invitees?count=5')).collection || [])[0] || {};
+    const qa = (inv.questions_and_answers || []).map(q => `${q.question}: ${q.answer}`).join('\n');
+    const phone = inv.text_reminder_number || ((inv.questions_and_answers || []).find(q => /phone|number/i.test(q.question)) || {}).answer || '';
+    leads.unshift({ id: cid(), createdAt: Date.now(), calendlyId: evId, name: inv.name || 'Calendly booking', contact: [phone, inv.email].filter(Boolean).join(' · '),
+      source: 'Calendly', stage: 'Call booked', date: new Date(inv.created_at || ev.created_at || Date.now()).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }),
+      callDate, callTime, canceled: ev.status === 'canceled', value: '', notes: (qa ? qa + '\n' : '') + `Booked on Calendly for ${callDate} at ${callTime}` });
+    added++;
+  }
+  if (added || changed) await kset(COACH.leads, leads);
+  st.lastSync = new Date().toISOString(); await kset(COACH.calendly, st);
+  return { added, changed };
+}
+if (process.env.CALENDLY_TOKEN) setInterval(() => calendlySync(true).catch(e => console.log('Calendly sync failed', e.message)), 15 * 60 * 1000);
+app.post('/api/coach/calendly/sync', async (req, res) => { try { res.json({ ok: true, ...(await calendlySync(true)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+// IG Reels planner (same setup as the Billy's Couches Content tab), saved as one object.
+app.post('/api/coach/reels/save', async (req, res) => {
+  try { const d = req.body.data; if (!d || typeof d !== 'object' || JSON.stringify(d).length > 300000) return res.status(400).json({ error: 'Bad data' });
+    await kset(COACH.reels, d); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/coach', async (req, res) => {
-  try { const [clients, leads, videos, settings] = await Promise.all([getClients(), coachList('leads'), coachList('videos'), kget(COACH.settings, {})]); res.json({ ok: true, clients, leads, videos, settings: settings || {}, week: weekKey() }); }
+  try { await calendlySync().catch(e => console.log('Calendly sync failed', e.message));
+    const [clients, leads, videos, settings, reels] = await Promise.all([getClients(), coachList('leads'), coachList('videos'), kget(COACH.settings, {}), kget(COACH.reels, null)]);
+    res.json({ ok: true, clients, leads, videos, settings: settings || {}, reels, calendly: !!process.env.CALENDLY_TOKEN, week: weekKey() }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/coach/client/save', async (req, res) => {
