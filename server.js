@@ -109,6 +109,7 @@ const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
 app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
 ['favicon.png', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json', 'logo.png'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
 app.get('/sw.js', (req, res) => res.set('Cache-Control', 'no-cache').set('Service-Worker-Allowed', '/').type('application/javascript').sendFile(path.join(__dirname, 'sw.js')));
+app.get('/public/one-of-one.jpg', (req, res) => res.set('Cache-Control','public, max-age=86400').set('Access-Control-Allow-Origin','*').sendFile(path.join(__dirname,'one-of-one.jpg')));
 app.get('/public/logo.png', (req, res) => res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile(path.join(__dirname, 'logo.png')));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png'), longCache));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
