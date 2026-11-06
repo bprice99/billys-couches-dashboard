@@ -1943,9 +1943,9 @@ function renderTxPplList(){
   const l = all.filter(t => String(t.date || '').slice(0, 7) === PPLF.m && (!PPLF.c || t.cat === PPLF.c)).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
   const out = l.filter(t => !PPL_INC.includes(t.cat)).reduce((a, t) => a + (Number(t.amount) || 0), 0), inc = l.filter(t => PPL_INC.includes(t.cat)).reduce((a, t) => a - (Number(t.amount) || 0), 0);
   $('pplAllNote').textContent = `${l.length} transaction${l.length === 1 ? '' : 's'} · ${money(out)} spent${inc ? ' · ' + money(inc) + ' income' : ''}`;
-  $('pplAllTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Category</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
-    <td class="act"><select data-txpplcat="${esc(t.id)}">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}<option value="remove">Not mine / remove</option></select></td></tr>`).join('')
-    : `<tr><td colspan="4" class="empty">Nothing here${PPLF.c ? ' in this category' : ''} for this month.</td></tr>`);
+  $('pplAllTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Category</th><th>Note</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
+    <td class="act"><select data-txpplcat="${esc(t.id)}"><optgroup label="Personal">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}</optgroup>${(TX.bizCats || []).length ? '<optgroup label="Move to business expense">' + TX.bizCats.map(c => `<option value="biz:${c}">${c}</option>`).join('') + '</optgroup>' : ''}<option value="remove">Not mine / remove</option></select></td><td><input type="text" class="txnote" data-txpplnote="${esc(t.id)}" value="${esc(t.note || '')}" maxlength="120" placeholder="Add a note"></td></tr>`).join('')
+    : `<tr><td colspan="5" class="empty">Nothing here${PPLF.c ? ' in this category' : ''} for this month.</td></tr>`);
 }
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-pplfilt]'); if (!f || !TX) return;
@@ -1957,7 +1957,9 @@ document.addEventListener('change', e => {
   if (e.target.id === 'pplAllC') { PPLF.c = e.target.value; renderTxPplList(); }
 });
 document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.txpplcat) return;
-  try { await post('/api/txn/ppl', { id: t.dataset.txpplcat, cat: t.value }); const x = TX.ppl.find(y => y.id === t.dataset.txpplcat); if (t.value === 'remove') TX.ppl = TX.ppl.filter(y => y !== x); else if (x) x.cat = t.value; renderPpl(); } catch (err) { toast(err.message); } });
+  try { await post('/api/txn/ppl', { id: t.dataset.txpplcat, cat: t.value }); const x = TX.ppl.find(y => y.id === t.dataset.txpplcat); if (t.value === 'remove' || t.value.startsWith('biz:')) TX.ppl = TX.ppl.filter(y => y !== x); else if (x) x.cat = t.value; if (t.value.startsWith('biz:')) { toast('Moved to business: ' + t.value.slice(4)); load(); } renderPpl(); } catch (err) { toast(err.message); } });
+document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.txpplnote) return;
+  try { await post('/api/txn/ppl', { id: t.dataset.txpplnote, note: t.value }); const x = TX.ppl.find(y => y.id === t.dataset.txpplnote); if (x) x.note = t.value.trim(); toast('Note saved'); } catch (err) { toast(err.message); } });
 // Recompute totals, KPIs and charts without rebuilding the inputs (so typing and Tab keep working).
 function pplRefresh(){
   const d = pplData(), months = Array.from({ length: 12 }, (_, i) => PPLY + '-' + String(i + 1).padStart(2, '0'));
