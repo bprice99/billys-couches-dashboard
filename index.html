@@ -205,7 +205,7 @@ img.thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;cursor:zoom-
 .mlast.up{color:var(--green)}.mlast.dn{color:var(--bad)}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
-.obadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:99px;background:#b0524c;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
+table.pct{width:100%;font-size:13.5px}table.pct td,table.pct th{text-align:left;vertical-align:middle}table.pct .n{text-align:right}table.pct small{color:var(--muted);font-size:11.5px}.pcold{color:var(--muted);text-decoration:line-through;font-size:12.5px}.pcl{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px}.pcl span{background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;color:var(--muted)}input.pcdate{border:0;background:transparent;font:inherit;font-size:11.5px;color:var(--muted);padding:0;width:112px}.btn.r{background:#b5524a;border-color:#b5524a;color:#fff}.obadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:99px;background:#b0524c;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
 .ofilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.ofilters button{padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;font-weight:600;cursor:pointer}.ofilters button.on{background:var(--text);color:#fff;border-color:var(--text)}
 .olist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .tylist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
@@ -290,6 +290,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <div class="navh">Inventory</div>
     <a class="nav" data-tab="drops">Drops</a>
     <a class="nav" data-tab="bstock">B-Stock</a>
+    <a class="nav" data-tab="cuts">Price Cuts<span class="obadge" id="pcBadge" hidden></span></a>
     <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
     <div class="navh">Customers</div>
     <a class="nav" data-tab="showings">Showing Tracker</a>
@@ -526,6 +527,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
         <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
     </section>
     <section id="tab-drops" hidden><div id="drBody"></div></section>
+    <section id="tab-cuts" hidden><div id="pcBody"></div></section>
   </main>
 </div>
 
@@ -1880,7 +1882,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -1891,7 +1893,7 @@ function syncRangeBar(){
   $('prev').disabled = $('next').disabled = R.kind === 'all';
 }
 // ---------- Personal P&L (monthly personal income vs. spending, saved under store key 'ppl') ----------
-const PPL_INC = ['otherIn', 'ownerPay'];
+const PPL_INC = ['otherIn', 'ownerPay', 'coachIn'];
 // Through Oct 2026 this column is Billy's Couches net profit; from Nov 2026 on it's what you paid yourself.
 const PPL_PAY_FROM = '2026-11';
 const PPL_IN = [['couches', "Billy's Couches"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
@@ -1904,10 +1906,12 @@ let PPL_COACH = null;
 function pplAuto(k){
   const [y, m] = k.split('-').map(Number), nowK = new Date().toLocaleDateString('en-CA').slice(0, 7);
   if (k > nowK) return {};
-  const coaching = (PPL_COACH || []).flatMap(c => (c.program && c.program.payments) || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === k).reduce((a, p) => a + (Number(p.amount) || 0), 0);
+  let coaching = (PPL_COACH || []).flatMap(c => (c.program && c.program.payments) || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === k).reduce((a, p) => a + (Number(p.amount) || 0), 0);
   const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (PPL_INC.includes(t.cat) ? -1 : 1) * (Number(t.amount) || 0); });
-  [...PPL_OUT, ['otherIn'], ['ownerPay']].forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
+  [...PPL_OUT, ['otherIn'], ['ownerPay'], ['coachIn']].forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
   let couches = tx.ownerPay || 0; delete tx.ownerPay;
+  // Coaching: deposits sorted as "Coaching income" win for that month; otherwise payments marked paid in Coaching HQ.
+  if (tx.coachIn) { coaching = tx.coachIn; } delete tx.coachIn;
   if (k < PPL_PAY_FROM) { couches = 0; try { couches = Math.round(period({ from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59) }).net); } catch (e) {} }
   return { couches, coaching, ...tx };
 }
@@ -1956,7 +1960,7 @@ async function loadPplIgnored(){
   let l = []; try { const j = await (await fetch('/api/txn/all?month=' + m, { cache: 'no-store' })).json(); l = (j.list || []).filter(t => /^Ignored/.test(t.status)); } catch (e) { return; }
   if (m !== PPLF.m) return; card.hidden = false;
   $('pplIgnNote').textContent = `${l.length} in ${new Date(m + '-15').toLocaleDateString('en-US', { month: 'long' })}`;
-  const opts = `<option value="">Ignored</option><optgroup label="Personal income"><option value="personal|ownerPay">Owner's pay (from Billy's Couches)</option><option value="personal|otherIn">Other income</option></optgroup>`
+  const opts = `<option value="">Ignored</option><optgroup label="Personal income"><option value="personal|ownerPay">Owner's pay (from Billy's Couches)</option><option value="personal|coachIn">Coaching income</option><option value="personal|otherIn">Other income</option></optgroup>`
     + `<optgroup label="Personal spending">${Object.entries(TX.pplCats).filter(([k]) => !PPL_INC.includes(k)).map(([k, lb]) => `<option value="personal|${k}">${lb}</option>`).join('')}</optgroup>`
     + `<optgroup label="Business expense">${(TX.bizCats || []).map(c => `<option value="business|${c}">${c}</option>`).join('')}</optgroup>`;
   $('pplIgnTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Move to</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small><br><small>${esc(t.institution || '')}${t.mask ? ' ••' + esc(t.mask) : ''}${t.status === 'Ignored by rule' ? ' · ignored by a saved rule' : ''}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txunign="${esc(t.id)}">${opts}</select></td></tr>`).join('')
@@ -2031,8 +2035,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-pply
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'ppl' || tab === 'sched' || tab === 'content';
-  ({ sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'cuts' || tab === 'ppl' || tab === 'sched' || tab === 'content';
+  ({ cuts: renderCuts, sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
 }
 function setTab(t){
   tab = t;
@@ -2056,7 +2060,7 @@ async function load(fresh){
     if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
     render();
     // Load the other tabs' data in the background so switching tabs is instant.
-    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); if (!TY) loadThanks(); }, 400); }
+    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); if (!TY) loadThanks(); if (!DR) loadDrops(); }, 400); }
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
@@ -2249,10 +2253,90 @@ let DR = null, DRF = 'active', DRSEL = new Set(), DRPH = [];
 const DRST = { draft: 'Draft', emailed: 'First Dibs', live: 'On website', sold: 'Sold', hidden: 'Hidden' };
 const dPhoto = (ph, w) => /^https?:/.test(ph) ? ph + (w ? '?format=' + w + 'w' : '') : (DR && DR.base || location.origin) + '/public/dphoto/' + ph + '.jpg';
 const dLocalPhoto = ph => /^https?:/.test(ph) ? ph + '?format=300w' : '/public/dphoto/' + ph + '.jpg';
+
+// ---------- Price Cuts: markdown ladder on every couch that's on the website ----------
+// Day 14 −7%, day 28 −7%, day 42 −20%, day 56 pull it. New prices round to the nearest $10 and never go
+// below cost + $100 (cost comes from the matching couch in Couches in stock on the Sales Tracker).
+const PC_STEPS = [[14, 0.07, '1st cut'], [28, 0.07, '2nd cut'], [42, 0.20, '3rd cut']], PC_EXIT = 56;
+const PC_GEN = new Set('the a and with of in pc piece pieces sectional sofa couch set leather fabric power reclining recliner modular sleeper gray grey cream white black brown beige blue tan loveseat chaise 2pc 3pc 4pc 5pc 6pc 2 3 4 5 6 seater'.split(' '));
+const pcWords = n => String(n || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+function pcStock(){
+  if (!RAW) return []; const out = [];
+  (RAW.loads || []).forEach(l => (l.units || []).forEach(u => { if (u.status === 'in') out.push({ name: u.name, cost: Number(u.cost) || 0, src: 'B-Stock' }); }));
+  (RAW.purchases || []).forEach(p => { if (p.status !== 'sold') out.push({ name: p.item || '', cost: Number(p.cost) || 0, src: 'Used pickup' }); });
+  return out;
+}
+function pcMatch(title, stock){ const a = new Set(pcWords(title)); let best = null, bs = 0;
+  stock.forEach(c => { let s = 0, key = 0; pcWords(c.name).forEach(w => { if (a.has(w)) { if (PC_GEN.has(w)) s += 1; else { s += 3; key++; } } }); if (key && s > bs) { bs = s; best = c; } }); return best; }
+const pcListed = d => d.listedAt || d.liveAt || d.createdAt || Date.now();
+function pcRows(){
+  if (!DR || !DR.drops) return null;
+  const stock = pcStock(), now = day0(new Date());
+  return DR.drops.filter(d => d.status === 'live').map(d => {
+    const days = dayDiff(day0(new Date(pcListed(d))), now), done = Math.max(0, ...(d.cuts || []).map(c => c.step));
+    const due = PC_STEPS.reduce((a, s2, i) => days >= s2[0] ? i + 1 : a, 0), m = pcMatch(d.title, stock), cost = m ? m.cost : null;
+    const floor = cost != null ? Math.ceil((cost + 100) / 10) * 10 : 0;
+    const priceFor = step => { const p = Math.round(d.price * (1 - PC_STEPS[step - 1][1]) / 10) * 10; return Math.min(d.price, Math.max(p, floor)); };
+    const nextStep = PC_STEPS.findIndex((s2, i) => i + 1 > done && days < s2[0]);
+    return { d, days, done, due, cost, src: m ? m.src : '', floor, newPrice: due > done ? priceFor(due) : null,
+      next: nextStep > -1 ? { step: nextStep + 1, inDays: PC_STEPS[nextStep][0] - days, price: priceFor(nextStep + 1), label: PC_STEPS[nextStep][2], pct: PC_STEPS[nextStep][1] } : null };
+  });
+}
+function pcCounts(){ const r = pcRows(); if (!r) return null; return { due: r.filter(x => x.days < PC_EXIT && x.due > x.done).length, exit: r.filter(x => x.days >= PC_EXIT).length }; }
+function pcBadge(){ const b = $('pcBadge'); if (!b) return; const c = pcCounts(); const n = c ? c.due + c.exit : 0; b.hidden = !n; b.textContent = n; }
+function renderCuts(){
+  const el = $('pcBody'); if (!el) return;
+  if (!DR) { el.innerHTML = '<p class="empty">Loading couches…</p>'; loadDrops(); return; }
+  const rows = pcRows() || [], ymdD = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const due = rows.filter(x => x.days < PC_EXIT && x.due > x.done).sort((a, b) => b.days - a.days);
+  const exit = rows.filter(x => x.days >= PC_EXIT).sort((a, b) => b.days - a.days);
+  const soon = rows.filter(x => x.days < PC_EXIT && x.due <= x.done && x.next && x.next.inDays <= 7).sort((a, b) => a.next.inDays - b.next.inDays);
+  const fresh = rows.filter(x => x.days < 14 && !soon.includes(x)).sort((a, b) => b.days - a.days);
+  const avg = rows.length ? Math.round(rows.reduce((a, x) => a + x.days, 0) / rows.length) : 0;
+  const costCell = x => x.cost != null ? money(x.cost) : '<span title="No matching couch in Couches in stock, so no cost floor" style="color:var(--muted)">–</span>';
+  const sub = x => `<br><small>${x.src ? esc(x.src) + ' · ' : ''}listed <input type="date" class="pcdate" data-pclisted="${x.d.id}" value="${ymdD(pcListed(x.d))}"></small>`;
+  const dayN = d => new Date(Date.now() + d * 864e5).toLocaleDateString('en-US', { weekday: 'short' });
+  el.innerHTML = `<div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+      <div class="card kpi"><div class="l">Cuts due today</div><div class="v" style="color:${due.length ? 'var(--red)' : 'inherit'}">${due.length}</div></div>
+      <div class="card kpi"><div class="l">Past day ${PC_EXIT}: pull</div><div class="v" style="color:${exit.length ? 'var(--red)' : 'inherit'}">${exit.length}</div></div>
+      <div class="card kpi"><div class="l">On the website</div><div class="v">${rows.length}</div></div>
+      <div class="card kpi"><div class="l">Avg days listed</div><div class="v">${avg}</div></div></div>
+    <div class="card" style="margin-top:16px"><h2 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Due today <span class="pill ${due.length ? 'd' : ''}">${due.length}</span><span style="flex:1"></span>${due.length ? `<button class="btn g" data-pcall>✓ Apply all ${due.length}</button>` : ''}</h2>
+      <div class="pcl"><span>Day 14 · −7%</span><span>Day 28 · −7%</span><span>Day 42 · −20%</span><span>Day ${PC_EXIT} · pull to Marketplace/wholesale</span><span>Rounds to $10 · never below cost + $100</span></div>
+      <div style="overflow-x:auto"><table class="pct"><tr><th>Couch</th><th class="n">Days</th><th>Step</th><th class="n">Cost</th><th class="n">Price</th><th></th></tr>
+      ${due.length ? due.map(x => `<tr><td><b>${esc(x.d.title)}</b>${sub(x)}</td><td class="n"><b>${x.days}</b></td><td>${PC_STEPS[x.due - 1][2]} · −${Math.round(PC_STEPS[x.due - 1][1] * 100)}%${x.due - x.done > 1 ? '<br><small>skipped a step, taking this one</small>' : ''}</td><td class="n">${costCell(x)}</td>
+        <td class="n" style="white-space:nowrap"><span class="pcold">${money(x.d.price)}</span> <b>${money(x.newPrice)}</b>${x.newPrice >= x.d.price ? '<br><small>at floor</small>' : ''}</td><td class="n"><button class="btn sm" data-pccut="${x.d.id}">Done</button></td></tr>`).join('')
+        : '<tr><td colspan="6" class="empty">Nothing to cut today.</td></tr>'}</table></div></div>
+    <div class="card" style="margin-top:16px"><h2>Past day ${PC_EXIT}: pull these <span class="pill ${exit.length ? 'd' : ''}">${exit.length}</span></h2>
+      <div style="overflow-x:auto"><table class="pct"><tr><th>Couch</th><th class="n">Days</th><th class="n">Cost</th><th class="n">Price</th><th></th></tr>
+      ${exit.length ? exit.map(x => `<tr><td><b>${esc(x.d.title)}</b>${sub(x)}</td><td class="n"><b style="color:var(--red)">${x.days}</b></td><td class="n">${costCell(x)}</td><td class="n">${money(x.d.price)}</td>
+        <td class="n" style="white-space:nowrap"><button class="btn sm" data-pcexit="${x.d.id}" data-st="hidden" title="Takes it off the website">Moved to Marketplace</button> <button class="btn sm r" data-pcexit="${x.d.id}" data-st="sold">Sold / gone</button></td></tr>`).join('')
+        : '<tr><td colspan="5" class="empty">Nothing past day 56. 👏</td></tr>'}</table></div></div>
+    <div class="card" style="margin-top:16px"><h2>Coming up this week <span class="pill">${soon.length}</span></h2>
+      <div style="overflow-x:auto"><table class="pct"><tr><th>Couch</th><th class="n">Days</th><th>Next step</th><th class="n">Price</th></tr>
+      ${soon.length ? soon.map(x => `<tr><td><b>${esc(x.d.title)}</b>${sub(x)}</td><td class="n">${x.days}</td><td>${dayN(x.next.inDays)} · −${Math.round(x.next.pct * 100)}% → ${money(x.next.price)}</td><td class="n">${money(x.d.price)}</td></tr>`).join('')
+        : '<tr><td colspan="4" class="empty">No cuts coming up in the next 7 days.</td></tr>'}</table></div></div>
+    <details class="card" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700">Full price: under 14 days <span class="pill">${fresh.length}</span></summary>
+      <div style="overflow-x:auto;margin-top:10px"><table class="pct"><tr><th>Couch</th><th class="n">Days</th><th class="n">Price</th></tr>
+      ${fresh.map(x => `<tr><td><b>${esc(x.d.title)}</b>${sub(x)}</td><td class="n">${x.days}</td><td class="n">${money(x.d.price)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">None.</td></tr>'}</table></div></details>
+    <p class="empty" style="font-size:12.5px;margin-top:10px">Days count from when each couch went on the website. Wrong date? Change it on the couch. Done updates the price on the website and order app.</p>`;
+}
+document.addEventListener('click', async e => {
+  const one = e.target.closest('[data-pccut]'), all = e.target.closest('[data-pcall]'), ex = e.target.closest('[data-pcexit]');
+  if (!one && !all && !ex) return;
+  try {
+    if (ex) { ex.disabled = true; const j = await post('/api/drops/status', { ids: [ex.dataset.pcexit], status: ex.dataset.st }); DR.drops = j.drops; toast(ex.dataset.st === 'sold' ? 'Marked sold' : 'Off the website'); }
+    else { const rows = (pcRows() || []).filter(x => x.days < PC_EXIT && x.due > x.done && (all || x.d.id === one.dataset.pccut));
+      (one || all).disabled = true; const j = await post('/api/drops/cut', { items: rows.map(x => ({ id: x.d.id, step: x.due, price: x.newPrice })) }); DR.drops = j.drops; toast(`${j.done} price${j.done === 1 ? '' : 's'} updated on the website`); }
+  } catch (err) { toast(err.message); }
+  renderCuts(); pcBadge();
+});
+document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.pclisted) return;
+  try { const j = await post('/api/drops/listed', { id: t.dataset.pclisted, date: t.value }); DR.drops = j.drops; renderCuts(); pcBadge(); } catch (err) { toast(err.message); } });
 async function loadDrops(){
   try { const r = await fetch('/api/drops', { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); DR = d; }
   catch (e) { DR = { drops: [], error: e.message }; }
-  if (tab === 'drops') renderDrops();
+  if (tab === 'drops') renderDrops(); if (tab === 'cuts') renderCuts(); pcBadge();
 }
 function renderDrops(){
   const el = $('drBody'); if (!el) return;
@@ -2581,7 +2665,7 @@ const txAgo = iso => { if (!iso) return 'not yet'; const m = Math.round((Date.no
 function txOpts(t, scope){
   const biz = TX.bizCats.map(c => `<option value="business|${c}" ${scope === 'business' && t.suggest === c ? 'selected' : ''}>${c}</option>`).join('');
   const per = Object.entries(TX.pplCats).filter(([k]) => !PPL_INC.includes(k)).map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
-  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|ownerPay" ${scope === 'personal' && t.suggest === 'ownerPay' ? 'selected' : ''}>Owner's pay (from Billy's Couches)</option><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (moves between your own accounts, couch sales, coaching: already counted)</option>`;
+  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|ownerPay" ${scope === 'personal' && t.suggest === 'ownerPay' ? 'selected' : ''}>Owner's pay (from Billy's Couches)</option><option value="personal|coachIn" ${scope === 'personal' && t.suggest === 'coachIn' ? 'selected' : ''}>Coaching income</option><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (moves between your own accounts, couch sales)</option>`;
 }
 let TXALL_OPEN = false, TXALL = null, TXALL_M = '';
 async function loadTxAll(){
