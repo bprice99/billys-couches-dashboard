@@ -1918,6 +1918,28 @@ async function checkinTexts() {
   if (changed) await setSched(m);
 }
 setInterval(() => checkinTexts().catch(e => console.log('Check-in texts failed', e.message)), 60 * 60 * 1000);
+// No-show text: put "(No show)" in a showing's title on the calendar and HQ texts that customer (checks every 5 min,
+// 9am-8pm CT, once per showing). Only showings from the last 2 days count. NOSHOW_TEXT=off turns it off.
+async function noShowTexts() {
+  if ((process.env.NOSHOW_TEXT || '').toLowerCase() === 'off' || !cache.data) return;
+  const rows = (cache.data.showings || []).filter(r => /\(\s*no[\s-]?show/i.test(r[1] || '') && String(r[3] || '').replace(/\D/g, '').length >= 10);
+  const sent = (await kget('bcd:noShowSent', null)) || null, now = Date.now(), key = r => r[0] + '|' + String(r[3]).replace(/\D/g, '').slice(-10);
+  if (!sent) { await kset('bcd:noShowSent', rows.map(key)); return; }   // first run: don't text anyone already marked before this was turned on
+  const hr = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }));
+  if (hr < 9 || hr >= 20) return;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }); let changed = false;
+  for (const r of rows) {
+    const k = key(r), t = Date.parse(r[0]); if (sent.includes(k) || !t || t > now || now - t > 2 * 864e5) continue;
+    const raw = String(r[1] || '').replace(/\(.*?\)/g, '').replace(/^\s*showing\s*(for)?\s*/i, '').trim().split(/\s+/)[0] || '';
+    const name = raw && /^[a-z'-]+$/i.test(raw) ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : 'there';
+    const when = new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) === today ? 'today' : 'yesterday';
+    const ok = await sendText(r[3], `Hi ${name}, it's Billy with Billy's Couches. Looks like we missed you at the showroom ${when}, no worries! Want to pick another time to come check them out? You can grab a new time here: billyscouches.com/visitshowroom`);
+    sent.push(k); changed = true; if (!ok) console.log('No-show text failed for', k);
+  }
+  if (changed) await kset('bcd:noShowSent', sent.slice(-500));
+}
+setInterval(() => noShowTexts().catch(e => console.log('No-show texts failed', e.message)), 5 * 60 * 1000);
+setTimeout(() => noShowTexts().catch(() => {}), 90 * 1000);
 async function slotCfg() { const s = await kget('bcd:store:slots', null).catch(() => null); return s && s.delivery ? { ...SLOT_DEFAULT, ...s } : SLOT_DEFAULT; }
 const ctParts = d => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(d).map(x => [x.type, x.value])); return p; };
 const ctYmd = d => { const p = ctParts(d); return `${p.year}-${p.month}-${p.day}`; };
