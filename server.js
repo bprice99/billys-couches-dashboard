@@ -1148,11 +1148,11 @@ app.post('/api/txn/review', async (req, res) => {
     const todo = req.body.all ? inbox.filter(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
     let done = 0; const ign = (await kget(TXN.ignored, [])) || [];
     for (const q of todo) {
-      const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope;
+      const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope; const note = String(q.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
       if (scope === 'business') { const cat = BIZ_CATS.includes(q.cat) ? q.cat : ''; if (!cat) continue;
-        exp.push({ id: 'tx_' + t.id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `Auto · ${t.institution}${t.mask ? ' ••' + t.mask : ''}`, auto: true });
+        exp.push({ id: 'tx_' + t.id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `${note ? note + ' · ' : ''}Auto · ${t.institution}${t.mask ? ' ••' + t.mask : ''}`, auto: true });
         if (q.remember) r.vendors[t.key] = { scope, cat }; }
-      else if (scope === 'personal') { const cat = PPL_CATS[q.cat] ? q.cat : 'otherOut'; ppl.push({ id: t.id, date: t.date, amount: t.amount, name: t.name, cat });
+      else if (scope === 'personal') { const cat = PPL_CATS[q.cat] ? q.cat : 'otherOut'; ppl.push({ id: t.id, date: t.date, amount: t.amount, name: t.name, cat, ...(note ? { note } : {}) });
         if (q.remember) r.vendors[t.key] = { scope, cat }; }
       else if (scope === 'ignore') { if (q.remember) r.vendors[t.key] = 'ignore'; ign.push(t.id); }
       else continue;
@@ -1171,7 +1171,8 @@ app.get('/api/txn/all', async (req, res) => {
     const list = Object.values(all || {}).filter(t => t.date.startsWith(month)).map(t => {
       const x = e.get(t.id), y = p.get(t.id);
       const status = t.dupe ? 'Already on tracker' : x ? 'Business: ' + x.category : y ? 'Personal: ' + (PPL_CATS[y.cat] || y.cat) : q.has(t.id) ? 'In Review' : g.has(t.id) ? 'Ignored' : rules.vendors[vkey({ name: t.raw, merchant_name: t.name })] === 'ignore' ? 'Ignored by rule' : 'Not sorted';
-      return { ...t, status, canRedo: !x && !y && !q.has(t.id) };
+      const note = (y && y.note) || (x && x.notes && x.notes.includes(' · Auto') ? x.notes.split(' · Auto')[0] : '');
+      return { ...t, status, note, canRedo: !x && !y && !q.has(t.id) };
     }).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
     res.json({ ok: true, list });
   } catch (e) { res.status(500).json({ error: e.message }); }
