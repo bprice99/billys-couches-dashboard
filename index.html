@@ -140,7 +140,7 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 @media(max-width:700px){.dlv{display:block;padding:8px 12px}.dlv-r{border:0;padding:6px 0 0;justify-content:space-between}.dlv-n{flex:1;overflow:hidden;text-overflow:ellipsis}}
 .pill.r{background:#fbf0ee;color:var(--red)}.pplpie{display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:center}.pplpie .pw{height:200px;position:relative}@media(max-width:600px){.pplpie{grid-template-columns:1fr}}.pplpl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.pplpl:last-child{border:0}.pplpl i{width:10px;height:10px;border-radius:3px;flex:none}.pplpl span{flex:1}.pplpl em{font-style:normal;color:var(--muted);font-size:12px;width:38px;text-align:right}.txsync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-4px 0 12px}.txsync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .txrev{background:#fff8f6;border:2px solid var(--red);border-radius:14px;padding:12px 14px;margin-bottom:14px}.txrev-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.txrev-h small{color:var(--muted);font-size:12px}
-table.txtab{width:100%;font-size:13.5px}table.txtab td,table.txtab th{vertical-align:middle;text-align:left}table.txtab .n{text-align:right}table.txtab small{color:var(--muted);font-size:11.5px}table.txtab{table-layout:auto}table.txtab td:nth-child(2){word-break:break-word;min-width:140px}table.txtab .act{white-space:nowrap}table.txtab .md{display:none}#pplAllM,#pplAllC{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;font-weight:600;background:#fff}@media(max-width:640px){table.txtab tr:first-child{display:none}table.txtab tr{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line);padding:6px 0}table.txtab td{border:0!important;padding:4px 2px!important}table.txtab td:first-child{display:none}table.txtab .md{display:inline}table.txtab td.act{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}table.txtab td.act br{display:none}table.txtab td.act select{flex:1;max-width:none}}table.txtab input.txnote{margin-top:6px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;width:190px;box-sizing:border-box}@media(max-width:640px){table.txtab input.txnote{flex:1 1 100%;width:auto;margin-top:0}}table.txtab select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;max-width:190px}
+table.txtab{width:100%;font-size:13.5px}table.txtab td,table.txtab th{vertical-align:middle;text-align:left}table.txtab .n{text-align:right}table.txtab small{color:var(--muted);font-size:11.5px}table.txtab{table-layout:auto}table.txtab td:nth-child(2){word-break:break-word;min-width:140px}table.txtab .act{white-space:nowrap}table.txtab .md{display:none}#pplAllM,#pplAllC{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;font-weight:600;background:#fff}@media(max-width:640px){table.txtab tr:first-child{display:none}table.txtab tr{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line);padding:6px 0}table.txtab td{border:0!important;padding:4px 2px!important}table.txtab td:first-child{display:none}table.txtab .md{display:inline}table.txtab td.act{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}table.txtab td.act br{display:none}table.txtab td.act select{flex:1;max-width:none}}table.txtab input.txnote{margin-top:6px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;width:190px;box-sizing:border-box}@media(max-width:640px){table.txtab input.txnote{flex:1 1 100%;width:auto;margin-top:0}}tr.pplsplit td{border-top:2px solid var(--ink)!important;background:#f6f1ea;font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 10px!important;text-align:left;white-space:nowrap}table.txtab select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;max-width:190px}
 .txrem{font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}.btn.g{background:var(--green);border-color:var(--green);color:#fff}
 #txAccts .row select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
 .gday{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin-bottom:16px}.gday i{display:block;height:100%;background:var(--dark);border-radius:9px}
@@ -1888,20 +1888,24 @@ function syncRangeBar(){
   $('prev').disabled = $('next').disabled = R.kind === 'all';
 }
 // ---------- Personal P&L (monthly personal income vs. spending, saved under store key 'ppl') ----------
-const PPL_IN = [['couches', "Billy's Couches net profit"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
+const PPL_INC = ['otherIn', 'ownerPay'];
+// Through Oct 2026 this column is Billy's Couches net profit; from Nov 2026 on it's what you paid yourself.
+const PPL_PAY_FROM = '2026-11';
+const PPL_IN = [['couches', "Billy's Couches"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
 const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['eatingOut', 'Eating out'], ['subscriptions', 'Subscriptions'], ['needs', 'Needs'], ['education', 'Education'], ['travel', 'Travel'], ['otherOut', 'Other']];
 let PPLY = new Date().getFullYear(), pplT = null;
 const pplData = () => (RAW.store.ppl && typeof RAW.store.ppl === 'object' ? RAW.store.ppl : {});
-// Billy's Couches net profit comes from the Sales Tracker and coaching from payments marked paid in Coaching HQ,
+// Billy's Couches column: net profit from the Sales Tracker before PPL_PAY_FROM, then owner's pay (transfers sorted as "Owner's pay" in Review). Coaching from payments marked paid in Coaching HQ,
 // unless you type your own number in that cell (clear the cell to go back to the automatic number).
 let PPL_COACH = null;
 function pplAuto(k){
   const [y, m] = k.split('-').map(Number), nowK = new Date().toLocaleDateString('en-CA').slice(0, 7);
   if (k > nowK) return {};
-  let couches = 0; try { couches = Math.round(period({ from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59) }).net); } catch (e) {}
   const coaching = (PPL_COACH || []).flatMap(c => (c.program && c.program.payments) || []).filter(p => p.paid && String(p.paidAt || '').slice(0, 7) === k).reduce((a, p) => a + (Number(p.amount) || 0), 0);
-  const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (t.cat === 'otherIn' ? -1 : 1) * (Number(t.amount) || 0); });
-  [...PPL_OUT, ['otherIn']].forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
+  const tx = {}; ((TX && TX.ppl) || []).filter(t => String(t.date || '').slice(0, 7) === k).forEach(t => { tx[t.cat] = (tx[t.cat] || 0) + (PPL_INC.includes(t.cat) ? -1 : 1) * (Number(t.amount) || 0); });
+  [...PPL_OUT, ['otherIn'], ['ownerPay']].forEach(([c]) => { if (tx[c]) tx[c] = Math.round(tx[c] * 100) / 100; });
+  let couches = tx.ownerPay || 0; delete tx.ownerPay;
+  if (k < PPL_PAY_FROM) { couches = 0; try { couches = Math.round(period({ from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59) }).net); } catch (e) {} }
   return { couches, coaching, ...tx };
 }
 const pplRow = (d, k) => { const a = pplAuto(k), r = { ...d[k] }; ['couches', 'coaching', 'otherIn', ...PPL_OUT.map(([c]) => c)].forEach(c => { if ((r[c] == null || r[c] === '') && a[c]) r[c] = a[c]; });
@@ -1922,7 +1926,7 @@ function renderPpl(){
   $('pplYear').textContent = PPLY;
   const cell = (k, c, cls) => { const a = pplAuto(k)[c]; return `<td class="${cls}"><input inputmode="decimal" data-ppl="${k}|${c}" value="${pplFmt(d[k] && d[k][c])}" placeholder="${a ? pplFmt(a) : '–'}" ${a ? 'title="Automatic. Type to override."' : ''}></td>`; };
   $('pplTbl').innerHTML = `<thead><tr><th>Month</th>${PPL_IN.map(([, l]) => `<th class="n">${l}</th>`).join('')}<th class="n">Total income</th>${PPL_OUT.map(([, l]) => `<th class="n">${l}</th>`).join('')}<th class="n">Total spending</th><th class="n">Net profit</th></tr></thead><tbody>` +
-    months.map(k => `<tr data-pplrow="${k}" class="${k > nowK ? 'fut' : ''}"><td style="white-space:nowrap">${new Date(k + '-15').toLocaleDateString('en-US', { month: 'short' })} ${PPLY}</td>${PPL_IN.map(([c]) => cell(k, c, 'in')).join('')}<td class="n"><b data-pplc="inc"></b></td>${PPL_OUT.map(([c]) => cell(k, c, 'out')).join('')}<td class="n"><b data-pplc="out"></b></td><td class="n"><b data-pplc="net"></b></td></tr>`).join('') +
+    months.map(k => (k === PPL_PAY_FROM ? `<tr class="pplsplit"><td colspan="${PPL_IN.length + PPL_OUT.length + 4}">↑ Billy's Couches = net profit &nbsp;·&nbsp; ↓ Billy's Couches = owner's pay (what you paid yourself)</td></tr>` : '') + `<tr data-pplrow="${k}" class="${k > nowK ? 'fut' : ''}"><td style="white-space:nowrap">${new Date(k + '-15').toLocaleDateString('en-US', { month: 'short' })} ${PPLY}</td>${PPL_IN.map(([c]) => cell(k, c, 'in')).join('')}<td class="n"><b data-pplc="inc"></b></td>${PPL_OUT.map(([c]) => cell(k, c, 'out')).join('')}<td class="n"><b data-pplc="out"></b></td><td class="n"><b data-pplc="net"></b></td></tr>`).join('') +
     `</tbody><tfoot id="pplFoot"></tfoot>`;
   pplRefresh();
 }
@@ -1937,7 +1941,7 @@ function renderTxPplList(){
   $('pplAllM').innerHTML = months.map(k => `<option value="${k}" ${k === PPLF.m ? 'selected' : ''}>${new Date(k + '-15').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>`).join('');
   $('pplAllC').innerHTML = `<option value="">All categories</option>` + Object.entries(TX.pplCats).map(([c, l]) => `<option value="${c}" ${PPLF.c === c ? 'selected' : ''}>${l}</option>`).join('');
   const l = all.filter(t => String(t.date || '').slice(0, 7) === PPLF.m && (!PPLF.c || t.cat === PPLF.c)).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
-  const out = l.filter(t => t.cat !== 'otherIn').reduce((a, t) => a + (Number(t.amount) || 0), 0), inc = l.filter(t => t.cat === 'otherIn').reduce((a, t) => a - (Number(t.amount) || 0), 0);
+  const out = l.filter(t => !PPL_INC.includes(t.cat)).reduce((a, t) => a + (Number(t.amount) || 0), 0), inc = l.filter(t => PPL_INC.includes(t.cat)).reduce((a, t) => a - (Number(t.amount) || 0), 0);
   $('pplAllNote').textContent = `${l.length} transaction${l.length === 1 ? '' : 's'} · ${money(out)} spent${inc ? ' · ' + money(inc) + ' income' : ''}`;
   $('pplAllTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Category</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
     <td class="act"><select data-txpplcat="${esc(t.id)}">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}<option value="remove">Not mine / remove</option></select></td></tr>`).join('')
@@ -2555,8 +2559,8 @@ async function loadTx(sync){
 const txAgo = iso => { if (!iso) return 'not yet'; const m = Math.round((Date.now() - Date.parse(iso)) / 6e4); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
 function txOpts(t, scope){
   const biz = TX.bizCats.map(c => `<option value="business|${c}" ${scope === 'business' && t.suggest === c ? 'selected' : ''}>${c}</option>`).join('');
-  const per = Object.entries(TX.pplCats).filter(([k]) => k !== 'otherIn').map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
-  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (transfers, couch sales, coaching: already counted)</option>`;
+  const per = Object.entries(TX.pplCats).filter(([k]) => !PPL_INC.includes(k)).map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
+  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|ownerPay" ${scope === 'personal' && t.suggest === 'ownerPay' ? 'selected' : ''}>Owner's pay (from Billy's Couches)</option><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (moves between your own accounts, couch sales, coaching: already counted)</option>`;
 }
 let TXALL_OPEN = false, TXALL = null, TXALL_M = '';
 async function loadTxAll(){
