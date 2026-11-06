@@ -1145,7 +1145,7 @@ app.post('/api/txn/account', async (req, res) => {
 app.post('/api/txn/review', async (req, res) => {
   try {
     const inbox = (await kget(TXN.inbox, [])) || [], r = await txnRules(), exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [];
-    const todo = req.body.all ? inbox.filter(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
+    const todo = Array.isArray(req.body.items) ? req.body.items.slice(0, 300) : req.body.all ? inbox.filter(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
     let done = 0; const ign = (await kget(TXN.ignored, [])) || [];
     for (const q of todo) {
       const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope; const note = String(q.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
@@ -1175,6 +1175,22 @@ app.get('/api/txn/all', async (req, res) => {
       return { ...t, status, note, canRedo: !x && !y && !q.has(t.id) };
     }).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
     res.json({ ok: true, list });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Re-sort an ignored transaction straight into personal or business (and drop an "ignore" vendor rule so the next one shows up in Review).
+app.post('/api/txn/unignore', async (req, res) => {
+  try {
+    const { id, scope, cat } = req.body || {};
+    const [all, ign, rules, exp, ppl] = await Promise.all([kget(TXN.all, {}), kget(TXN.ignored, []), txnRules(), kget(KEYS.expenses, []), kget(TXN.ppl, [])]);
+    const t = (all || {})[id]; if (!t) return res.status(404).json({ error: 'not found' });
+    if (scope === 'business') { if (!BIZ_CATS.includes(cat)) return res.status(400).json({ error: 'bad category' });
+      if (!exp.some(e => e.id === 'tx_' + id)) exp.push({ id: 'tx_' + id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `Auto · ${t.institution || ''}${t.mask ? ' ••' + t.mask : ''}`, auto: true }); }
+    else if (scope === 'personal') { if (!PPL_CATS[cat]) return res.status(400).json({ error: 'bad category' });
+      if (!ppl.some(p => p.id === id)) ppl.push({ id, date: t.date, amount: t.amount, name: t.name, cat }); }
+    else return res.status(400).json({ error: 'bad scope' });
+    const key = vkey({ name: t.raw || t.name, merchant_name: t.name }); if (rules.vendors[key] === 'ignore') delete rules.vendors[key];
+    await Promise.all([kset(TXN.ignored, (ign || []).filter(x => x !== id)), kset(TXN.rules, rules), kset(KEYS.expenses, exp), kset(TXN.ppl, ppl)]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Send an ignored / unsorted transaction back to Review.
