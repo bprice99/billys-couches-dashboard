@@ -205,7 +205,7 @@ img.thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;cursor:zoom-
 .mlast.up{color:var(--green)}.mlast.dn{color:var(--bad)}
 input.cell{width:76px;padding:6px 8px;border:1px solid #d9d0c5;border-radius:8px;font-size:14px;text-align:right;font-family:inherit}
 .thumb{width:64px;height:48px;object-fit:cover;border-radius:8px;background:var(--cream);display:block}
-table.pct{width:100%;font-size:13.5px}table.pct td,table.pct th{text-align:left;vertical-align:middle}table.pct .n{text-align:right}table.pct small{color:var(--muted);font-size:11.5px}.pcold{color:var(--muted);text-decoration:line-through;font-size:12.5px}.pcl{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px}.pcl span{background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;color:var(--muted)}input.pcdate{border:0;background:transparent;font:inherit;font-size:11.5px;color:var(--muted);padding:0;width:112px}.btn.r{background:#b5524a;border-color:#b5524a;color:#fff}.obadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:99px;background:#b0524c;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
+table.pct{width:100%;font-size:13.5px}table.pct td,table.pct th{text-align:left;vertical-align:middle}table.pct .n{text-align:right}table.pct small{color:var(--muted);font-size:11.5px}.pcold{color:var(--muted);text-decoration:line-through;font-size:12.5px}.pcl{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px}.pcl span{background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;color:var(--muted)}input.pcdate{border:0;background:transparent;font:inherit;font-size:11.5px;color:var(--muted);padding:0;width:112px}.btn.r{background:#b5524a;border-color:#b5524a;color:#fff}.txguess{color:#2f5d8a!important;font-weight:600}.obadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:99px;background:#b0524c;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
 .ofilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.ofilters button{padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;font-weight:600;cursor:pointer}.ofilters button.on{background:var(--text);color:#fff;border-color:var(--text)}
 .olist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .tylist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
@@ -325,6 +325,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     </div>
     <div class="note" id="demo" hidden>Showing <b>demo data</b>. Connect your Google Sheet (SHEETS_API_URL in Railway) to see real numbers.</div>
     <div class="note" id="fileWarn" hidden>Purchases and expenses are being saved to a temporary file and will be erased on the next deploy. Add <b>UPSTASH_REDIS_REST_URL</b> and <b>UPSTASH_REDIS_REST_TOKEN</b> in Railway.</div>
+    <div id="pushBanner" hidden style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#eef4fb;border:1px solid #c9dbef;color:#2f5d8a;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13.5px;font-weight:600"><span style="flex:1" id="pushBannerT">Get phone alerts for new offers, sales to-dos and price cuts.</span><button class="btn sm g" id="pushBannerB">🔔 Turn on notifications</button><a href="#" id="pushBannerX" style="color:#2f5d8a;font-weight:500">Not now</a></div>
     <div class="err" id="err"></div>
 
     <!-- SALES -->
@@ -2662,11 +2663,26 @@ async function loadTx(sync){
   if (tab === 'sales') { renderTxReview('business'); } if (tab === 'ppl') { renderPpl(); }
 }
 const txAgo = iso => { if (!iso) return 'not yet'; const m = Math.round((Date.now() - Date.parse(iso)) / 6e4); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + 'h ago'; };
-function txOpts(t, scope){
-  const biz = TX.bizCats.map(c => `<option value="business|${c}" ${scope === 'business' && t.suggest === c ? 'selected' : ''}>${c}</option>`).join('');
-  const per = Object.entries(TX.pplCats).filter(([k]) => !PPL_INC.includes(k)).map(([k, l]) => `<option value="personal|${k}" ${scope === 'personal' && (t.suggest || 'otherOut') === k ? 'selected' : ''}>${l}</option>`).join('');
-  return `<option value="">Pick one…</option><optgroup label="Business expense">${biz}</optgroup><optgroup label="Personal">${per}</optgroup><optgroup label="Personal income"><option value="personal|ownerPay" ${scope === 'personal' && t.suggest === 'ownerPay' ? 'selected' : ''}>Owner's pay (from Billy's Couches)</option><option value="personal|coachIn" ${scope === 'personal' && t.suggest === 'coachIn' ? 'selected' : ''}>Coaching income</option><option value="personal|otherIn" ${scope === 'personal' && t.suggest === 'otherIn' ? 'selected' : ''}>Other income</option></optgroup><option value="ignore|">Ignore (moves between your own accounts, couch sales)</option>`;
+function txPick(t){
+  if (TXDRAFT[t.id] && TXDRAFT[t.id].v !== undefined) return TXDRAFT[t.id].v;
+  if (t.suggest && (t.scope === 'business' || t.scope === 'personal')) return t.scope + '|' + t.suggest;
+  if (t.guess) return t.guess.scope === 'ignore' ? 'ignore|' : t.guess.scope + '|' + t.guess.cat;
+  return '';
 }
+function txOpts(t){
+  const pk = txPick(t), o = (v, l) => `<option value="${v}" ${pk === v ? 'selected' : ''}>${l}</option>`;
+  return o('', 'Pick one…') + `<optgroup label="Business expense">${TX.bizCats.map(c => o('business|' + c, c)).join('')}</optgroup>`
+    + `<optgroup label="Personal">${Object.entries(TX.pplCats).filter(([k]) => !PPL_INC.includes(k)).map(([k, l]) => o('personal|' + k, l)).join('')}</optgroup>`
+    + `<optgroup label="Personal income">${o('personal|ownerPay', "Owner's pay (from Billy's Couches)")}${o('personal|coachIn', 'Coaching income')}${o('personal|otherIn', 'Other income')}</optgroup>`
+    + o('ignore|', 'Ignore (moves between your own accounts, couch sales)');
+}
+// Picks, notes and remember boxes you've changed but not saved yet survive refreshes (and a reload).
+let TXDRAFT = {}; try { TXDRAFT = JSON.parse(localStorage.getItem('bcdTxDraft') || '{}') || {}; } catch (e) {}
+const txDraftSave = () => { try { localStorage.setItem('bcdTxDraft', JSON.stringify(TXDRAFT)); } catch (e) {} };
+document.addEventListener('change', e => { const t = e.target, d = t.dataset || {}; const id = d.txpick || d.txnote || d.txrem; if (!id) return;
+  const x = TXDRAFT[id] = TXDRAFT[id] || {}; if (d.txpick) x.v = t.value; if (d.txnote) x.n = t.value; if (d.txrem) x.r = t.checked; txDraftSave(); });
+document.addEventListener('input', e => { const t = e.target; if (!t.dataset || !t.dataset.txnote) return; (TXDRAFT[t.dataset.txnote] = TXDRAFT[t.dataset.txnote] || {}).n = t.value; txDraftSave(); });
+
 let TXALL_OPEN = false, TXALL = null, TXALL_M = '';
 async function loadTxAll(){
   const box = $('txAllBox'); if (!box) return; box.hidden = false; box.innerHTML = '<p class="empty">Loading…</p>';
@@ -2694,8 +2710,8 @@ function renderTxReview(scope){
       <span style="flex:1"></span>${scope === 'business' ? '<button class="btn sm" data-txallv>All transactions</button>' : ''}<button class="btn sm" data-txsync>Sync now</button><button class="btn sm" data-txset>Banks &amp; rules</button></div>`
     + (scope === 'business' ? `<div id="txAllBox" hidden></div>` : '') + (list.length ? `<div class="txrev"><div class="txrev-h"><b>Review new</b><span class="pill r">${list.length}</span><small>Pick once and HQ remembers that vendor.</small><span style="flex:1"></span>${list.some(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')) ? '<button class="btn sm g" data-txall>Approve suggestions</button>' : ''}</div>
       <div style="overflow-x:auto"><table class="txtab"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Goes to</th></tr>${list.slice(0, 300).map(t => `<tr>
-        <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small>${t.raw && t.raw !== t.name ? `<br><small>${esc(t.raw)}</small>` : ''}<br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}${!t.scope ? ' · account not set up' : ''}</small>${t.note ? `<br><small style="color:var(--red);font-weight:700">${esc(t.note)}</small>` : ''}</td>
-        <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txpick="${esc(t.id)}">${txOpts(t, t.scope)}</select><br><input type="text" class="txnote" data-txnote="${esc(t.id)}" maxlength="120" placeholder="Note (optional)"><br><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" checked> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓ Save</button></td></tr>`).join('')}</table></div><div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px"><small style="color:var(--muted)" data-txpickedn></small><button class="btn g" data-txsaveall>✓ Save all</button></div></div>` : '');
+        <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small>${t.raw && t.raw !== t.name ? `<br><small>${esc(t.raw)}</small>` : ''}<br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}${!t.scope ? ' · account not set up' : ''}</small>${!t.suggest && t.guess ? `<br><small class="txguess">Best guess: ${esc(t.guess.why)}</small>` : ''}${t.note ? `<br><small style="color:var(--red);font-weight:700">${esc(t.note)}</small>` : ''}</td>
+        <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txpick="${esc(t.id)}">${txOpts(t)}</select><br><input type="text" class="txnote" data-txnote="${esc(t.id)}" maxlength="120" placeholder="Note (optional)" value="${esc((TXDRAFT[t.id] && TXDRAFT[t.id].n) || '')}"><br><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" ${TXDRAFT[t.id] && TXDRAFT[t.id].r === false ? '' : 'checked'}> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓ Save</button></td></tr>`).join('')}</table></div><div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px"><small style="color:var(--muted)" data-txpickedn></small><button class="btn g" data-txsaveall>✓ Save all</button></div></div>` : '');
   if (TXALL_OPEN && scope === 'business') loadTxAll();
 }
 
@@ -2723,13 +2739,13 @@ document.addEventListener('click', async e => {
   const ok = t.closest('[data-txok]');
   if (ok) { const id = ok.dataset.txok, v = (document.querySelector(`[data-txpick="${CSS.escape(id)}"]`) || {}).value || ''; if (!v) return toast('Pick where it goes');
     const [scope, cat] = v.split('|'), remember = !!(document.querySelector(`[data-txrem="${CSS.escape(id)}"]`) || {}).checked; const note = ((document.querySelector(`[data-txnote="${CSS.escape(id)}"]`) || {}).value || '').trim();
-    try { await post('/api/txn/review', { id, scope, cat, remember, note }); TX.inbox = TX.inbox.filter(x => x.id !== id); if (scope === 'personal') TX.ppl.push({ id, cat }); toast(scope === 'ignore' ? 'Ignored' : 'Added'); renderTxReview(tab === 'ppl' ? 'personal' : 'business'); if (scope === 'business') load(); loadTx(); } catch (err) { toast(err.message); } return; }
+    try { await post('/api/txn/review', { id, scope, cat, remember, note }); delete TXDRAFT[id]; txDraftSave(); TX.inbox = TX.inbox.filter(x => x.id !== id); if (scope === 'personal') TX.ppl.push({ id, cat }); toast(scope === 'ignore' ? 'Ignored' : 'Added'); renderTxReview(tab === 'ppl' ? 'personal' : 'business'); if (scope === 'business') load(); loadTx(); } catch (err) { toast(err.message); } return; }
   const sa = t.closest('[data-txsaveall]');
   if (sa) { const items = [...document.querySelectorAll('[data-txpick]')].filter(x => x.value && x.offsetParent !== null).map(x => { const id = x.dataset.txpick, [scope, cat] = x.value.split('|');
       return { id, scope, cat, remember: !!(document.querySelector(`[data-txrem="${CSS.escape(id)}"]`) || {}).checked, note: ((document.querySelector(`[data-txnote="${CSS.escape(id)}"]`) || {}).value || '').trim() }; });
     if (!items.length) return toast('Pick a category on at least one first');
     sa.disabled = true; sa.textContent = 'Saving…';
-    try { const j = await post('/api/txn/review', { items }); toast(`Saved ${j.done}`); await loadTx(); load(); } catch (err) { toast(err.message); }
+    try { const j = await post('/api/txn/review', { items }); items.forEach(x => delete TXDRAFT[x.id]); txDraftSave(); toast(`Saved ${j.done}`); await loadTx(); load(); } catch (err) { toast(err.message); }
     sa.disabled = false; sa.textContent = '✓ Save all'; return; }
   if (t.closest('[data-txall]')) { try { const j = await post('/api/txn/review', { all: true }); toast(`Approved ${j.done}`); await loadTx(); load(); } catch (err) { toast(err.message); } return; }
 });
@@ -3009,7 +3025,21 @@ async function pushSetup(){
     const t = await post('/api/push/test', {}); toast(t.sent ? 'Notifications on ✅ Test sent' : 'Saved, but the test did not send');
   } catch (e) { toast('Could not turn on notifications: ' + e.message); }
 }
-document.addEventListener('click', e => { if (e.target.id === 'pushBtn') { e.preventDefault(); pushSetup(); } });
+document.addEventListener('click', e => { if (e.target.id === 'pushBtn' || e.target.id === 'pushBannerB') { e.preventDefault(); pushSetup().then(pushBannerCheck); }
+  if (e.target.id === 'pushBannerX') { e.preventDefault(); try { localStorage.setItem('bcdPushNo', String(Date.now())); } catch (er) {} $('pushBanner').hidden = true; } });
+// Banner at the top (the sidebar button is hidden on phones): shows until notifications are on for this device.
+async function pushBannerCheck(){
+  const el = $('pushBanner'); if (!el) return; let no = 0; try { no = Number(localStorage.getItem('bcdPushNo') || 0); } catch (e) {}
+  if (Date.now() - no < 7 * 864e5) { el.hidden = true; return; }
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    if (ios && !standalone) { $('pushBannerT').textContent = 'For phone alerts: tap Share → Add to Home Screen, then open HQ from that icon.'; $('pushBannerB').hidden = true; el.hidden = false; }
+    else el.hidden = true; return; }
+  let subbed = false; try { const reg = await navigator.serviceWorker.getRegistration(); subbed = !!(reg && await reg.pushManager.getSubscription()); } catch (e) {}
+  if (Notification.permission === 'denied') { $('pushBannerT').textContent = 'Notifications are blocked for HQ. Turn them on in Settings → Notifications → Billy\'s HQ.'; $('pushBannerB').hidden = true; el.hidden = false; return; }
+  el.hidden = Notification.permission === 'granted' && subbed; $('pushBannerB').hidden = false;
+}
+setTimeout(pushBannerCheck, 1500);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
