@@ -995,12 +995,17 @@ app.post('/api/plaid/remove', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 let plaidCache = { at: 0, data: null };
-async function plaidBalances(force) {
-  if (!force && plaidCache.data && Date.now() - plaidCache.at < 10 * 60 * 1000) return plaidCache.data;
+// live = ask each bank right now (Plaid Balance, billed per call). Otherwise Plaid's saved balance (free, can be hours old).
+async function plaidBalances(force, live) {
+  if (!force && !live && plaidCache.data && Date.now() - plaidCache.at < 10 * 60 * 1000) return plaidCache.data;
   const items = await getPlaidItems(), banks = [], fields = {};
+  let liveNote = '';
   for (const it of items) {
     try {
-      const j = await plaid('/accounts/get', { access_token: it.access_token });
+      let j;
+      if (live) { try { j = await plaid('/accounts/balance/get', { access_token: it.access_token }); }
+        catch (e) { if (/ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message)) throw e; liveNote = 'Live balance not available for some banks (' + e.message.slice(0, 80) + '), showing saved balance'; j = await plaid('/accounts/get', { access_token: it.access_token }); } }
+      else j = await plaid('/accounts/get', { access_token: it.access_token });
       const accounts = j.accounts.map(a => {
         const field = MASK_FIELD[a.mask] || MASK_FIELD[String(a.mask || '').slice(-4)] || '';
         const bal = a.balances.current != null ? a.balances.current : a.balances.available;
@@ -1011,11 +1016,11 @@ async function plaidBalances(force) {
       banks.push({ item_id: it.item_id, institution: it.institution, accounts });
     } catch (e) { banks.push({ item_id: it.item_id, institution: it.institution, error: e.message, relink: /ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message) }); }
   }
-  plaidCache = { at: Date.now(), data: { banks, fields, at: new Date().toISOString(), configured: !!(PLAID.ID && PLAID.SECRET), env: PLAID.ENV } };
+  plaidCache = { at: Date.now(), data: { banks, fields, at: new Date().toISOString(), live: !!live && !liveNote, liveNote, configured: !!(PLAID.ID && PLAID.SECRET), env: PLAID.ENV } };
   return plaidCache.data;
 }
 app.get('/api/plaid/balances', async (req, res) => {
-  try { res.json({ ok: true, ...(await plaidBalances(req.query.fresh === '1')) }); }
+  try { res.json({ ok: true, ...(await plaidBalances(req.query.fresh === '1', req.query.live === '1')) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
