@@ -1372,6 +1372,23 @@ app.post('/api/push/subscribe', async (req, res) => {
 app.post('/api/push/test', async (req, res) => {
   try { const n = await pushAll("Billy's HQ", 'Notifications are working ✅', '/', 'test'); res.json({ ok: true, sent: n }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.post('/api/goals/snap', async (req, res) => {
+  try { const b = req.body || {}; if (!/^\d{4}-\d{2}$/.test(b.month || '')) return res.status(400).json({ error: 'bad month' });
+    await kset('bcd:goalSnap', { month: b.month, day: +b.day, days: +b.days, sales: b.sales, revenue: b.revenue, net: b.net, at: Date.now() }); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Goals nudge: every other day at 10am (from day 4 of the month) when you're behind pace on flips or revenue.
+async function goalNudge(today, sent) {
+  const g = await kget('bcd:goalSnap', null); if (!g || today.slice(0, 7) !== g.month || Date.now() - g.at > 2 * 864e5) return;
+  const day = +today.slice(8, 10), days = g.days || 30; if (day < 4 || day >= days) return;
+  if (sent.goal && (Date.parse(today) - Date.parse(sent.goal)) < 2 * 864e5) return;
+  const lines = [], left = days - day + 1, S = g.sales || {}, R = g.revenue || {};
+  if (S.t) { const should = S.t * (day - 1) / days, gap = Math.floor(should - S.a); if (gap >= 1) lines.push(`${gap} flip${gap === 1 ? '' : 's'} behind (${Math.round(S.a)} of ${S.t}). Need ${((S.t - S.a) / left).toFixed(1)}/day the rest of the month.`); }
+  if (R.t) { const should = R.t * (day - 1) / days, gap = should - R.a; if (gap >= R.t * 0.05) lines.push(`$${Math.round(gap).toLocaleString('en-US')} behind on revenue ($${Math.round(R.a).toLocaleString('en-US')} of $${Math.round(R.t).toLocaleString('en-US')}).`); }
+  if (!lines.length) return;
+  await pushAll("You're behind this month", lines.join(' ') + ' Lock in.', '/?tab=goals', 'goals');
+  sent.goal = today;
+}
 // Hourly checks (each once a day): 5+ thank-you cards waiting, 10+ transactions waiting in Review, price cuts / pulls due (9am).
 async function pushChecks() {
   if (!PUSH_ON || !webpush || !((await kget(PUSH_KEY, [])) || []).length) return;
@@ -1399,6 +1416,7 @@ async function pushChecks() {
     for (const t of big) { await pushAll('Big business charge', `$${t.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} · ${t.name} · ${t.institution || ''}${t.mask ? ' ••' + t.mask : ''}`, '/?tab=sales', 'big-' + t.id); seen.add(t.id); }
     if (big.length) await kset('bcd:pushBig', [...seen].slice(-500));
   } catch (e) { console.log('Big charge check failed', e.message); }
+  if (hour >= 10 && hour <= 20) { try { await goalNudge(today, sent); } catch (e) { console.log('Goal nudge failed', e.message); } }
   await kset('bcd:pushSent', sent);
 }
 setInterval(() => pushChecks().catch(e => console.log('Push checks failed', e.message)), 60 * 60 * 1000);
