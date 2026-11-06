@@ -108,6 +108,7 @@ app.get('/healthz', (req, res) => res.send('ok'));
 const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
 app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
 ['favicon.png', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json', 'logo.png'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
+app.get('/sw.js', (req, res) => res.set('Cache-Control', 'no-cache').set('Service-Worker-Allowed', '/').type('application/javascript').sendFile(path.join(__dirname, 'sw.js')));
 app.get('/public/logo.png', (req, res) => res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile(path.join(__dirname, 'logo.png')));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png'), longCache));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
@@ -1264,6 +1265,79 @@ function offerCors(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
+// ===================== PHONE PUSH NOTIFICATIONS =====================
+// Works on iPhone (iOS 16.4+, HQ added to the Home Screen) and Android/desktop Chrome. Keys are made once
+// and saved, so there's nothing to set up in Railway. PUSH=off turns every notification off.
+let webpush = null; try { webpush = require('web-push'); } catch (e) { console.log('web-push not installed; phone notifications off'); }
+const PUSH_KEY = 'bcd:push', PUSH_ON = (process.env.PUSH || 'on').toLowerCase() !== 'off';
+let vapidP = null;
+function vapid() {
+  if (!webpush) return Promise.resolve(null);
+  if (!vapidP) vapidP = (async () => {
+    let v = await kget('bcd:vapid', null);
+    if (!v || !v.publicKey) { v = webpush.generateVAPIDKeys(); await kset('bcd:vapid', v); }
+    webpush.setVapidDetails('mailto:' + (process.env.PUSH_EMAIL || 'info@billyscouches.com'), v.publicKey, v.privateKey);
+    return v;
+  })().catch(e => { vapidP = null; throw e; });
+  return vapidP;
+}
+async function pushAll(title, body, url, tag) {
+  if (!PUSH_ON || !webpush) return 0;
+  await vapid(); const subs = (await kget(PUSH_KEY, [])) || []; if (!subs.length) return 0;
+  const payload = JSON.stringify({ title, body, url: url || '/', tag }); let sent = 0; const keep = [];
+  for (const s of subs) {
+    try { await webpush.sendNotification(s.sub, payload, { TTL: 86400 }); sent++; keep.push(s); }
+    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) console.log('Dropped expired phone subscription'); else { keep.push(s); console.log('Push failed', e.statusCode || e.message); } }
+  }
+  if (keep.length !== subs.length) await kset(PUSH_KEY, keep);
+  return sent;
+}
+app.get('/api/push/key', async (req, res) => {
+  try { const v = await vapid(); res.json({ ok: !!v, key: v ? v.publicKey : null, count: ((await kget(PUSH_KEY, [])) || []).length }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const sub = req.body && req.body.sub; if (!sub || !sub.endpoint || !/^https:\/\//.test(sub.endpoint)) return res.status(400).json({ error: 'bad subscription' });
+    const subs = ((await kget(PUSH_KEY, [])) || []).filter(s => s.sub.endpoint !== sub.endpoint);
+    subs.push({ sub, device: String(req.body.device || '').slice(0, 80), at: Date.now() }); await kset(PUSH_KEY, subs.slice(-10));
+    res.json({ ok: true, count: subs.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/push/test', async (req, res) => {
+  try { const n = await pushAll("Billy's HQ", 'Notifications are working ✅', '/', 'test'); res.json({ ok: true, sent: n }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Hourly checks (each once a day): 5+ thank-you cards waiting, 10+ transactions waiting in Review, price cuts / pulls due (9am).
+async function pushChecks() {
+  if (!PUSH_ON || !webpush || !((await kget(PUSH_KEY, [])) || []).length) return;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), hour = ctHour(), sent = (await kget('bcd:pushSent', {})) || {};
+  if (hour >= 9 && hour <= 20 && sent.ty !== today) {
+    try { const d = await thankYouList(false), w = (await kget('bcd:thankyou', {})) || {}, n = d.cards.filter(c => !w[c.id]).length;
+      if (n >= 5) { await pushAll('Thank you cards', `${n} cards waiting to be written.`, '/?tab=thanks', 'thanks'); sent.ty = today; } } catch (e) {}
+  }
+  if (hour >= 9 && hour <= 20 && sent.tx !== today) {
+    try { const inbox = (await kget(TXN.inbox, [])) || [], n = inbox.length;
+      if (n >= 10) { const biz = inbox.filter(t => t.scope === 'business').length; await pushAll('Expenses to review', `${n} transactions waiting in Review${biz && biz < n ? ` (${biz} business, ${n - biz} personal)` : ''}.`, biz >= n - biz ? '/?tab=sales' : '/?tab=ppl', 'expenses'); sent.tx = today; } } catch (e) {}
+  }
+  if (hour >= 9 && sent.pc !== today) {
+    const drops = await getDrops(), now = Date.now(); let due = 0, pull = 0;
+    drops.filter(d => d.status === 'live').forEach(d => { const days = Math.floor((now - (d.listedAt || d.liveAt || d.createdAt || now)) / 864e5), done = Math.max(0, ...(d.cuts || []).map(c => c.step));
+      if (days >= 56) pull++; else { const step = days >= 42 ? 3 : days >= 28 ? 2 : days >= 14 ? 1 : 0; if (step > done) due++; } });
+    if (due || pull) await pushAll('Price cuts', [due ? `${due} price cut${due === 1 ? '' : 's'} due` : '', pull ? `${pull} couch${pull === 1 ? '' : 'es'} past day 56 to pull` : ''].filter(Boolean).join(' · '), '/?tab=cuts', 'cuts');
+    sent.pc = today;
+  }
+  // Any single business charge of $500+ (once per charge, last 3 days only).
+  try {
+    const BIG = Number(process.env.PUSH_BIG || 500), all = (await kget(TXN.all, {})) || {}, seen = new Set((await kget('bcd:pushBig', [])) || []);
+    const accs = await txnAccounts(), scope = new Map(accs.map(a => [`${a.item_id}:${a.mask}`, a.scope])), since = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+    const big = Object.values(all).filter(t => t.amount >= BIG && t.date >= since && !seen.has(t.id) && scope.get(`${t.item}:${t.mask}`) === 'business' && !/TRANSFER|LOAN_PAYMENTS/i.test(t.pfc || '') && !P2P.test((t.raw || '') + ' ' + (t.name || '')));
+    for (const t of big) { await pushAll('Big business charge', `$${t.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} · ${t.name} · ${t.institution || ''}${t.mask ? ' ••' + t.mask : ''}`, '/?tab=sales', 'big-' + t.id); seen.add(t.id); }
+    if (big.length) await kset('bcd:pushBig', [...seen].slice(-500));
+  } catch (e) { console.log('Big charge check failed', e.message); }
+  await kset('bcd:pushSent', sent);
+}
+setInterval(() => pushChecks().catch(e => console.log('Push checks failed', e.message)), 60 * 60 * 1000);
+setTimeout(() => pushChecks().catch(() => {}), 60 * 1000);
+// ===================== END PHONE PUSH =====================
 async function textAlert(msg) {
   const user = (process.env.TEXTMAGIC_USERNAME || '').trim(), key = (process.env.TEXTMAGIC_API_KEY || '').trim();
   const phones = (process.env.OFFER_ALERT_PHONES || '13148997503').replace(/[^\d,]/g, '');
@@ -1302,6 +1376,7 @@ app.post('/public/couch-offer', async (req, res) => {
     const list = await kget('bcd:offers', []);
     list.unshift(offer); await kset('bcd:offers', list.slice(0, 500));
     const host = (process.env.PUBLIC_URL || 'https://hq.billyscouches.com').replace(/\/$/, '');
+    pushAll('New couch offer', `${offer.brand} · asking ${offer.asking || '?'} · ${first} ${last}${offer.city ? ' · ' + offer.city : ''}`, '/?tab=offers', 'offer-' + id).catch(() => {});
     textAlert(`🛋️ New couch offer\n${offer.brand} · asking ${offer.asking || '?'}\n${offer.issues.length ? 'Issues: ' + offer.issues.join(', ') + '\n' : ''}${first} ${last} · ${phone}\n${offer.city || offer.zip}\n${photos.length} photo${photos.length > 1 ? 's' : ''}: ${host}/?offer=${id}`).catch(e => console.error('text failed', e.message));
     res.json({ ok: true });
   } catch (e) { console.error('offer failed', e); res.status(500).json({ error: 'Something went wrong. Please call (314) 899-7503.' }); }
