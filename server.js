@@ -1032,6 +1032,8 @@ app.get('/api/plaid/balances', async (req, res) => {
 // Transfers, card payments and money coming in are skipped. Anything unsure waits in "Review new".
 // ===================================================================
 const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta', all: 'bcd:txnAll' };
+// Business expenses before this date were tracked by hand (IvyFlip + typed in), so bank sync never auto-adds or asks about them.
+const BIZ_FROM = (process.env.BIZ_AUTO_FROM || '2026-11-01').trim();
 const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
 const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay", coachIn: 'Coaching income' };
 // Built-in guesses (your own "remember this" rules always win).
@@ -1099,6 +1101,7 @@ async function txnSync(){
             const scope = scopeOf(it.item_id, t), key = vkey(t), rule = rules.vendors[key], amount = Math.round(t.amount * 100) / 100, review = x => { inbox.push({ ...base, scope: scope === 'ignore' ? '' : scope, suggest: '', ...x }); queued++; };
             const base = { id: t.transaction_id, date, name: (P2P.test((t.name || '') + ' ' + (t.merchant_name || '')) ? t.name : t.merchant_name) || t.name, raw: t.name, amount, key, item: it.item_id, mask: t.account_mask || '', institution: it.institution, pfc: ((t.personal_finance_category || {}).detailed || '') };
             if (rule === 'ignore') { skipped++; continue; }   // only vendors YOU said to ignore
+            if (scope === 'business' && date < BIZ_FROM) { skipped++; continue; }   // already tracked by hand
             if (note) { review({ note }); continue; }
             // Venmo linked too? The bank line is just Venmo pulling money; the real payment (with the name) comes from the Venmo account.
             if (hasVenmo && !/venmo/i.test(it.institution || '') && /venmo/i.test(base.raw + ' ' + base.name)) { review({ note: 'Bank side of a Venmo payment. The Venmo account already has it, so Ignore this one' }); continue; }
@@ -1185,8 +1188,10 @@ async function txnHistory() {
 app.get('/api/txn', async (req, res) => {
   try { if (req.query.sync === '1') await txnSync(); else txnMaybeSync().catch(() => {});
     const [inbox, accounts, rules, meta, ppl] = await Promise.all([kget(TXN.inbox, []), txnAccounts(), txnRules(), kget(TXN.meta, null), kget(TXN.ppl, [])]);
+    { const keep = (inbox || []).filter(t => !(t.scope === 'business' && t.date < BIZ_FROM)); if (keep.length !== (inbox || []).length) { inbox.length = 0; inbox.push(...keep); await kset(TXN.inbox, keep); } }
+    const oldAuto = ((await kget(KEYS.expenses, [])) || []).filter(x => x.auto && String(x.id).startsWith('tx_') && String(x.date) < BIZ_FROM);
     const H = await txnHistory(); (inbox || []).forEach(t => { if (!t.suggest) { const g = txnGuess(t, H); if (g) t.guess = g; } });
-    res.json({ ok: true, inbox: inbox || [], accounts, vendors: rules.vendors, meta: meta || {}, ppl: ppl || [], bizCats: BIZ_CATS, pplCats: PPL_CATS, configured: !!(PLAID.ID && PLAID.SECRET) }); }
+    res.json({ ok: true, bizFrom: BIZ_FROM, oldAuto: { n: oldAuto.length, total: Math.round(oldAuto.reduce((t, x) => t + (Number(x.amount) || 0), 0) * 100) / 100 }, inbox: inbox || [], accounts, vendors: rules.vendors, meta: meta || {}, ppl: ppl || [], bizCats: BIZ_CATS, pplCats: PPL_CATS, configured: !!(PLAID.ID && PLAID.SECRET) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/txn/account', async (req, res) => {
@@ -1202,6 +1207,7 @@ app.post('/api/txn/review', async (req, res) => {
     let done = 0; const ign = (await kget(TXN.ignored, [])) || [];
     for (const q of todo) {
       const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope; const note = String(q.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      if (scope === 'business' && t.date < BIZ_FROM) { inbox.splice(i, 1); done++; continue; }   // before HQ tracked expenses: already on the tracker by hand
       if (scope === 'business') { const cat = BIZ_CATS.includes(q.cat) ? q.cat : ''; if (!cat) continue;
         exp.push({ id: 'tx_' + t.id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `${note ? note + ' · ' : ''}Auto · ${t.institution}${t.mask ? ' ••' + t.mask : ''}`, auto: true });
         if (q.remember) r.vendors[t.key] = { scope, cat }; }
@@ -1244,6 +1250,14 @@ app.post('/api/txn/unignore', async (req, res) => {
     const key = vkey({ name: t.raw || t.name, merchant_name: t.name }); if (rules.vendors[key] === 'ignore') delete rules.vendors[key];
     await Promise.all([kset(TXN.ignored, (ign || []).filter(x => x !== id)), kset(TXN.rules, rules), kset(KEYS.expenses, exp), kset(TXN.ppl, ppl)]);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Remove bank-synced business expenses dated before BIZ_FROM (those months were already tracked by hand).
+app.post('/api/txn/cleanup-old', async (req, res) => {
+  try {
+    const exp = (await kget(KEYS.expenses, [])) || [], old = x => x.auto && String(x.id).startsWith('tx_') && String(x.date) < BIZ_FROM;
+    const gone = exp.filter(old), keep = exp.filter(x => !old(x));
+    await kset(KEYS.expenses, keep); res.json({ ok: true, removed: gone.length, total: Math.round(gone.reduce((t, x) => t + (Number(x.amount) || 0), 0) * 100) / 100 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Send an ignored / unsorted transaction back to Review.
