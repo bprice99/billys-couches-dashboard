@@ -1202,7 +1202,19 @@ app.post('/api/txn/rule-delete', async (req, res) => {
 // Move one personal transaction to another bucket (or remove it).
 app.post('/api/txn/ppl', async (req, res) => {
   try { let l = (await kget(TXN.ppl, [])) || []; const x = l.find(t => t.id === req.body.id); if (!x) return res.status(404).json({ error: 'not found' });
-    if (req.body.cat === 'remove') l = l.filter(t => t.id !== x.id); else if (PPL_CATS[req.body.cat]) x.cat = req.body.cat; await kset(TXN.ppl, l); res.json({ ok: true }); }
+    if (req.body.note !== undefined) { const n = String(req.body.note || '').replace(/\s+/g, ' ').trim().slice(0, 120); if (n) x.note = n; else delete x.note; }
+    const cat = String(req.body.cat || '');
+    if (cat.startsWith('biz:')) {
+      // Move a personal charge over to the business side (and remember the vendor for next time).
+      const bc = cat.slice(4); if (!BIZ_CATS.includes(bc)) return res.status(400).json({ error: 'bad category' });
+      const [exp, all, r] = await Promise.all([kget(KEYS.expenses, []), kget(TXN.all, {}), txnRules()]);
+      if (!exp.some(e => e.id === 'tx_' + x.id)) exp.push({ id: 'tx_' + x.id, date: x.date, category: bc, amount: x.amount, vendor: x.name, notes: `${x.note ? x.note + ' · ' : ''}Auto · moved from personal`, auto: true });
+      const raw = all && all[x.id]; const key = vkey({ name: (raw && raw.raw) || x.name, merchant_name: x.name }); if (key) r.vendors[key] = { scope: 'business', cat: bc };
+      l = l.filter(t => t.id !== x.id);
+      await Promise.all([kset(KEYS.expenses, exp), kset(TXN.rules, r)]);
+    }
+    else if (cat === 'remove') l = l.filter(t => t.id !== x.id); else if (PPL_CATS[cat]) x.cat = cat;
+    await kset(TXN.ppl, l); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ===================== END AUTO EXPENSES =====================
