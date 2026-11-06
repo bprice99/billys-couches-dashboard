@@ -1032,7 +1032,7 @@ app.get('/api/plaid/balances', async (req, res) => {
 // ===================================================================
 const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta', all: 'bcd:txnAll' };
 const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
-const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay" };
+const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', education: 'Education', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay", coachIn: 'Coaching income' };
 // Built-in guesses (your own "remember this" rules always win).
 const BIZ_GUESS = [[/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
   [/shell|qt |quiktrip|bp |exxon|mobil|phillips 66|casey|speedway|marathon|circle k|\bgas\b|fuel/i, 'Fuel'], [/home depot|lowe|menards|uline|harbor freight|walmart|amazon|scotchgard|ace hardware/i, 'Supplies'],
@@ -1552,6 +1552,24 @@ app.post('/api/drops/status', async (req, res) => {
     list.forEach(d => { if (!ids.has(d.id)) return; d.status = st; d.updatedAt = now;
       if (st === 'emailed' && !d.emailedAt) d.emailedAt = now; if (st === 'live' && !d.liveAt) d.liveAt = now; if (st === 'sold') d.soldAt = now; if (st !== 'sold') delete d.soldAt; });
     await setDrops(list); dropsAt = now; recentCache.at = 0; res.json({ ok: true, drops: list });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Price Cuts: apply a markdown step to a website couch (price changes on the site + order app right away).
+app.post('/api/drops/cut', async (req, res) => {
+  try {
+    const items = Array.isArray(req.body.items) ? req.body.items : [req.body], list = await getDrops(), now = Date.now(); let n = 0;
+    items.forEach(it => { const d = list.find(x => x.id === String(it.id || '')); const step = Number(it.step), price = Math.round(Number(it.price) || 0);
+      if (!d || !(step >= 1 && step <= 3) || !(price > 0)) return;
+      d.cuts = (d.cuts || []).filter(c => c.step !== step); d.cuts.push({ step, from: d.price, to: price, at: now }); d.price = price; d.updatedAt = now; n++; });
+    await setDrops(list); dropsAt = now; res.json({ ok: true, done: n, drops: list });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Price Cuts: fix the date a couch went on the website (imported couches get the import date).
+app.post('/api/drops/listed', async (req, res) => {
+  try {
+    const list = await getDrops(), d = list.find(x => x.id === String(req.body.id || '')); if (!d) return res.status(404).json({ error: 'not found' });
+    const t = Date.parse(String(req.body.date || '') + 'T12:00:00-06:00'); if (!t) return res.status(400).json({ error: 'bad date' });
+    d.listedAt = t; d.updatedAt = Date.now(); await setDrops(list); dropsAt = Date.now(); res.json({ ok: true, drops: list });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/drops/delete', async (req, res) => {
