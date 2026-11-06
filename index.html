@@ -893,6 +893,15 @@ function renderUpsells(){
 
 // ---------- goals ----------
 const GOAL_FIELDS = [['sales', 'Sales', v => String(Math.round(v))], ['revenue', 'Revenue', money], ['net', 'Net profit', money], ['avg', 'Average sale', money]];
+// Sends this month's goal pace to HQ so it can nudge your phone when you're behind (same math as the Goals tab).
+function goalSnap(){
+  try {
+    const today = day0(new Date()), from = new Date(today.getFullYear(), today.getMonth(), 1), to = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+    const mk = from.getFullYear() + '-' + String(from.getMonth() + 1).padStart(2, '0'), G = (RAW.goals || {})[mk] || {}, A = period({ from, to });
+    const days = to.getDate(), day = today.getDate(), one = (a, t) => ({ a: Math.round(a * 100) / 100, t: Number(t) || 0 });
+    post('/api/goals/snap', { month: mk, day, days, sales: one(A.count, G.sales), revenue: one(A.gross, G.revenue), net: one(A.net, G.net) }).catch(() => {});
+  } catch (e) {}
+}
 function renderGoals(){
   const R = getR('goals'), mk = R.from.getFullYear() + '-' + String(R.from.getMonth() + 1).padStart(2, '0');
   const G = (RAW.goals || {})[mk] || {}, A = period(R), today = day0(new Date());
@@ -2059,7 +2068,7 @@ async function load(fresh){
     RAW = parse(d);
     $('synced').textContent = 'Synced ' + new Date(d.cachedAt || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
-    render();
+    render(); if (!d.demo) goalSnap();
     // Load the other tabs' data in the background so switching tabs is instant.
     if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); if (!TY) loadThanks(); if (!DR) loadDrops(); }, 400); }
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
