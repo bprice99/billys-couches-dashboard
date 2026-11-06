@@ -304,7 +304,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <a class="nav" data-tab="content">Content Plan</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" href="/coach" style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);border-radius:0;padding-top:14px">Coaching &rarr;</a>
-    <div class="foot"><span id="synced">Loading...</span><br><a href="/security">Security</a> &middot; <a href="/logout">Log out</a></div>
+    <div class="foot"><span id="synced">Loading...</span><br><a href="#" id="pushBtn">🔔 Notifications</a> &middot; <a href="/security">Security</a> &middot; <a href="/logout">Log out</a></div>
   </nav>
 
   <main class="main">
@@ -2995,11 +2995,28 @@ document.addEventListener('click', e => {
   if (e.target.id === 'goalTargets') return openGoals();
   const d = e.target.closest('[data-mvdel]'); if (d) { const { all, p } = gpPlan(); p.moves = p.moves.filter(x => x.id !== d.dataset.mvdel); gpSave(all); renderGamePlan(); }
 });
+// Phone notifications: turn on for this device, then send a test.
+const b64u = s => { const p = '='.repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...b].map(c => c.charCodeAt(0))); };
+async function pushSetup(){
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return toast(ios && !standalone ? 'On iPhone: Share → Add to Home Screen, open HQ from that icon, then tap 🔔 again.' : "This browser can't do notifications.");
+  try {
+    const k = await (await fetch('/api/push/key', { cache: 'no-store' })).json(); if (!k.key) return toast('Notifications are off on the server (web-push missing).');
+    if ((await Notification.requestPermission()) !== 'granted') return toast('Notifications blocked. Allow them for HQ in Settings.');
+    const reg = await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription(); if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k.key) });
+    await post('/api/push/subscribe', { sub: sub.toJSON(), device: ios ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'Computer' });
+    const t = await post('/api/push/test', {}); toast(t.sent ? 'Notifications on ✅ Test sent' : 'Saved, but the test did not send');
+  } catch (e) { toast('Could not turn on notifications: ' + e.message); }
+}
+document.addEventListener('click', e => { if (e.target.id === 'pushBtn') { e.preventDefault(); pushSetup(); } });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2800); }
 
 let saved = 'sales';
 const QS = new URLSearchParams(location.search), openId = QS.get('offer');
 if (openId || QS.get('tab') === 'offers') { saved = 'offers'; history.replaceState(null, '', '/'); }
+else if (QS.get('tab') && TITLES[QS.get('tab')]) { saved = QS.get('tab'); history.replaceState(null, '', '/'); }
 setTab(TITLES[saved] ? saved : 'sales');
 if (openId) loadOffers().then(() => openOffer(openId));
 load();
