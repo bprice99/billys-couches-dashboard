@@ -1131,9 +1131,61 @@ async function txnSync(){
 // Keep it fresh: every 3 hours, and when HQ is opened if it's been 30+ minutes.
 setInterval(() => txnSync().catch(e => console.log('Txn sync failed', e.message)), 3 * 3600e3);
 async function txnMaybeSync(){ const m = (await kget(TXN.meta, null)) || {}; if (!m.lastSync || Date.now() - Date.parse(m.lastSync) > 30 * 60e3) txnSync().catch(() => {}); }
+// Best guess for anything in Review with no suggestion yet. Your own past choices come first, then patterns.
+const TEAM_RX = new RegExp(process.env.TEAM_NAMES || 'zach pierce|luke peters|finley lotzin|joey menendez|collin comer|kelly nelson|gunnarr|gunnar', 'i');
+function txnGuess(t, H) {
+  const txt = `${t.name || ''} ${t.raw || ''}`, low = txt.toLowerCase(), amt = Number(t.amount) || 0, inn = amt < 0, venmo = /venmo/i.test(t.institution || '');
+  const G = (scope, cat, why) => ({ scope, cat: cat || '', why });
+  // Moves of money that aren't income or spending.
+  if (/standard transfer|instant transfer/i.test(txt) && venmo) return G('ignore', '', 'Venmo cash-out to your bank');
+  if (/thank you|epay|e-?payment|credit cr?d|autopay|card payment/i.test(txt)) return G('ignore', '', 'Credit card payment');
+  if (/stripe/i.test(txt) && inn) return G('ignore', '', 'Stripe payout (sales are already counted)');
+  if (/transfer to other|transfer from other|online transfer|internet transfer to/i.test(txt)) return G('ignore', '', 'Move between your accounts');
+  if (/transfer from commerce|transfer from .*dda/i.test(txt) && inn) {
+    const BIZ_ACCTS = (process.env.BIZ_ACCOUNTS || '9926').split(',').map(x => x.trim()).filter(Boolean);
+    return BIZ_ACCTS.some(m => txt.includes(m)) ? G('personal', 'ownerPay', 'Business account → you') : G('ignore', '', 'Move between your personal accounts'); }
+  if (/department of revenue|mo rev tax/i.test(txt)) return G('ignore', '', 'Sales tax payment (set-aside money)');
+  if (/internal revenue|irs usataxpymt|usataxpymt/i.test(txt)) return G('personal', 'otherOut', 'IRS tax payment');
+  if (/bstkmp|b-?stock/i.test(txt)) return G('ignore', '', 'B-Stock load (cost is on the load)');
+  if (inn && (/zelle payment received|deposit|couch|billyscouches|sectional|sofa|delivery|🛋/i.test(txt) || venmo)) return G('ignore', '', 'Customer payment (sale already counted)');
+  // Team pay through Venmo/Zelle: Payroll, unless it's already on the tracker.
+  if (!inn && TEAM_RX.test(low)) {
+    return G('ignore', '', 'Team pay (already logged on the Payroll tab)');
+  }
+  if (/keon|roane/i.test(low)) return G('business', 'Advertising', 'Facebook ads coaching');
+  if (/statement fee|bundled items|deposited cash charges|service charge|overdraft|wire fee/i.test(txt)) return G('business', 'Other', 'Bank fee');
+  // Your own past choices for this vendor.
+  const k = vkey({ name: t.raw || t.name, merchant_name: t.name }), h = H.byKey[k];
+  if (h) return G(h.scope, h.cat, 'Same as last time');
+  if (/hueffmeier|trucking/i.test(txt)) return G('business', 'Freight', 'Trucking');
+  if (/vistaprint|sign exp|signs?\b/i.test(txt)) return G('business', 'Advertising', 'Print / signs');
+  if (/shopify|puredocs/i.test(txt)) return G('business', 'Software', 'Software');
+  if (/fastlane|car wash/i.test(txt)) return G('business', 'Truck', 'Truck wash');
+  if (/lock ?& ?key|locksmith/i.test(txt)) return G('business', 'Supplies', 'Locks / keys');
+  if (/costco|michaels|dollar tree|home depot|lowe|menards/i.test(txt) && t.scope !== 'personal') return G('business', 'Supplies', 'Supplies');
+  if (t.scope === 'business' || !t.scope) { const b = BIZ_GUESS.find(([rx]) => rx.test(txt)); if (b) return G('business', b[1], 'Looks like ' + b[1].toLowerCase()); }
+  const p = PPL_GUESS.find(([rx]) => rx.test(txt)); if (p) return G('personal', p[1], 'Looks like ' + (PPL_CATS[p[1]] || p[1]).toLowerCase());
+  if (/bud'?s market/i.test(txt)) return G('personal', 'groceries', 'Grocery store');
+  const pfc = t.pfc || '';
+  if (/GROCERIES/.test(pfc)) return G('personal', 'groceries', 'Grocery store');
+  if (/RESTAURANT|FAST_FOOD|COFFEE/.test(pfc)) return G('personal', 'eatingOut', 'Restaurant');
+  if (/RENT_AND_UTILITIES_RENT/.test(pfc)) return G('personal', 'rent', 'Rent');
+  if (/^TRAVEL/.test(pfc)) return G('personal', 'travel', 'Travel');
+  if (/GAS/.test(pfc)) return G('business', 'Fuel', 'Gas');
+  return null;
+}
+async function txnHistory() {
+  const [exp, ppl] = await Promise.all([kget(KEYS.expenses, []), kget(TXN.ppl, [])]), byKey = {}, cnt = {};
+  const add = (name, scope, cat) => { const k = vkey({ name, merchant_name: name }); if (!k) return; const id = scope + '|' + cat; cnt[k] = cnt[k] || {}; cnt[k][id] = (cnt[k][id] || 0) + 1; };
+  (exp || []).filter(x => x.auto && x.vendor).forEach(x => add(x.vendor, 'business', x.category));
+  (ppl || []).filter(x => x.name).forEach(x => add(x.name, 'personal', x.cat));
+  Object.keys(cnt).forEach(k => { const [id] = Object.entries(cnt[k]).sort((a, b) => b[1] - a[1])[0]; const [scope, cat] = id.split('|'); byKey[k] = { scope, cat }; });
+  return { byKey, exp: exp || [] };
+}
 app.get('/api/txn', async (req, res) => {
   try { if (req.query.sync === '1') await txnSync(); else txnMaybeSync().catch(() => {});
     const [inbox, accounts, rules, meta, ppl] = await Promise.all([kget(TXN.inbox, []), txnAccounts(), txnRules(), kget(TXN.meta, null), kget(TXN.ppl, [])]);
+    const H = await txnHistory(); (inbox || []).forEach(t => { if (!t.suggest) { const g = txnGuess(t, H); if (g) t.guess = g; } });
     res.json({ ok: true, inbox: inbox || [], accounts, vendors: rules.vendors, meta: meta || {}, ppl: ppl || [], bizCats: BIZ_CATS, pplCats: PPL_CATS, configured: !!(PLAID.ID && PLAID.SECRET) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
