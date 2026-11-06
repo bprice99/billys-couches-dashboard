@@ -497,6 +497,9 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       </div>
       <div class="card" style="margin-top:16px" id="pplAllCard"><h2 style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">Every transaction that came through <small id="pplAllNote"></small><span style="flex:1"></span><select id="pplAllM"></select><select id="pplAllC"></select></h2>
         <div style="overflow:auto;max-height:520px"><table class="txtab" id="pplAllTbl"></table></div></div>
+      <div class="card" style="margin-top:16px" id="pplIgnCard" hidden><h2>Ignored transactions <small id="pplIgnNote"></small></h2>
+        <p style="margin:-4px 0 10px;font-size:12.5px;color:var(--muted)">Everything you marked Ignore this month. Pick a category to move one back in. For owner's pay, pick the one that landed in your personal account (shows +).</p>
+        <div style="overflow:auto;max-height:420px"><table class="txtab" id="pplIgnTbl"></table></div></div>
     </section>
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
@@ -1946,7 +1949,23 @@ function renderTxPplList(){
   $('pplAllTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Category</th><th>Note</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td>
     <td class="act"><select data-txpplcat="${esc(t.id)}"><optgroup label="Personal">${Object.entries(TX.pplCats).map(([c, lb]) => `<option value="${c}" ${t.cat === c ? 'selected' : ''}>${lb}</option>`).join('')}</optgroup>${(TX.bizCats || []).length ? '<optgroup label="Move to business expense">' + TX.bizCats.map(c => `<option value="biz:${c}">${c}</option>`).join('') + '</optgroup>' : ''}<option value="remove">Not mine / remove</option></select></td><td><input type="text" class="txnote" data-txpplnote="${esc(t.id)}" value="${esc(t.note || '')}" maxlength="120" placeholder="Add a note"></td></tr>`).join('')
     : `<tr><td colspan="5" class="empty">Nothing here${PPLF.c ? ' in this category' : ''} for this month.</td></tr>`);
+  loadPplIgnored();
 }
+async function loadPplIgnored(){
+  const card = $('pplIgnCard'); if (!card || !TX || !TX.configured) return; const m = PPLF.m;
+  let l = []; try { const j = await (await fetch('/api/txn/all?month=' + m, { cache: 'no-store' })).json(); l = (j.list || []).filter(t => /^Ignored/.test(t.status)); } catch (e) { return; }
+  if (m !== PPLF.m) return; card.hidden = false;
+  $('pplIgnNote').textContent = `${l.length} in ${new Date(m + '-15').toLocaleDateString('en-US', { month: 'long' })}`;
+  const opts = `<option value="">Ignored</option><optgroup label="Personal income"><option value="personal|ownerPay">Owner's pay (from Billy's Couches)</option><option value="personal|otherIn">Other income</option></optgroup>`
+    + `<optgroup label="Personal spending">${Object.entries(TX.pplCats).filter(([k]) => !PPL_INC.includes(k)).map(([k, lb]) => `<option value="personal|${k}">${lb}</option>`).join('')}</optgroup>`
+    + `<optgroup label="Business expense">${(TX.bizCats || []).map(c => `<option value="business|${c}">${c}</option>`).join('')}</optgroup>`;
+  $('pplIgnTbl').innerHTML = `<tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Move to</th></tr>` + (l.length ? l.map(t => `<tr><td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small><br><small>${esc(t.institution || '')}${t.mask ? ' ••' + esc(t.mask) : ''}${t.status === 'Ignored by rule' ? ' · ignored by a saved rule' : ''}</small></td><td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txunign="${esc(t.id)}">${opts}</select></td></tr>`).join('')
+    : `<tr><td colspan="4" class="empty">Nothing ignored this month.</td></tr>`);
+}
+document.addEventListener('change', e => { const t = e.target; if (!t.dataset || t.dataset.txpick === undefined) return; const n = [...document.querySelectorAll('[data-txpick]')].filter(x => x.value && x.offsetParent !== null).length; document.querySelectorAll('[data-txpickedn]').forEach(el => el.textContent = n ? n + ' picked' : ''); });
+document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.txunign || !t.value) return;
+  const [scope, cat] = t.value.split('|'); t.disabled = true;
+  try { await post('/api/txn/unignore', { id: t.dataset.txunign, scope, cat }); toast('Moved'); await loadTx(); if (scope === 'business') load(); renderPpl(); } catch (err) { toast(err.message); t.disabled = false; } });
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-pplfilt]'); if (!f || !TX) return;
   const c = Object.entries(TX.pplCats).find(([, l]) => l === f.dataset.pplfilt); PPLF.c = c ? c[0] : ''; if (f.dataset.pplm) PPLF.m = f.dataset.pplm;
@@ -2592,7 +2611,7 @@ function renderTxReview(scope){
     + (scope === 'business' ? `<div id="txAllBox" hidden></div>` : '') + (list.length ? `<div class="txrev"><div class="txrev-h"><b>Review new</b><span class="pill r">${list.length}</span><small>Pick once and HQ remembers that vendor.</small><span style="flex:1"></span>${list.some(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')) ? '<button class="btn sm g" data-txall>Approve suggestions</button>' : ''}</div>
       <div style="overflow-x:auto"><table class="txtab"><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Goes to</th></tr>${list.slice(0, 300).map(t => `<tr>
         <td>${fmtD(new Date(t.date + 'T12:00:00'))}</td><td><b>${esc(t.name)}</b> <small class="md">· ${fmtD(new Date(t.date + 'T12:00:00'))}</small>${t.raw && t.raw !== t.name ? `<br><small>${esc(t.raw)}</small>` : ''}<br><small>${esc(t.institution)}${t.mask ? ' ••' + esc(t.mask) : ''}${!t.scope ? ' · account not set up' : ''}</small>${t.note ? `<br><small style="color:var(--red);font-weight:700">${esc(t.note)}</small>` : ''}</td>
-        <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txpick="${esc(t.id)}">${txOpts(t, t.scope)}</select><br><input type="text" class="txnote" data-txnote="${esc(t.id)}" maxlength="120" placeholder="Note (optional)"><br><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" checked> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓ Save</button></td></tr>`).join('')}</table></div></div>` : '');
+        <td class="n"><b>${t.amount < 0 ? '+' + money(-t.amount) : money(t.amount)}</b></td><td class="act"><select data-txpick="${esc(t.id)}">${txOpts(t, t.scope)}</select><br><input type="text" class="txnote" data-txnote="${esc(t.id)}" maxlength="120" placeholder="Note (optional)"><br><label class="txrem" title="Use this for ${esc(t.name)} next time"><input type="checkbox" data-txrem="${esc(t.id)}" checked> remember</label> <button class="btn sm" data-txok="${esc(t.id)}">✓ Save</button></td></tr>`).join('')}</table></div><div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px"><small style="color:var(--muted)" data-txpickedn></small><button class="btn g" data-txsaveall>✓ Save all</button></div></div>` : '');
   if (TXALL_OPEN && scope === 'business') loadTxAll();
 }
 
@@ -2621,6 +2640,13 @@ document.addEventListener('click', async e => {
   if (ok) { const id = ok.dataset.txok, v = (document.querySelector(`[data-txpick="${CSS.escape(id)}"]`) || {}).value || ''; if (!v) return toast('Pick where it goes');
     const [scope, cat] = v.split('|'), remember = !!(document.querySelector(`[data-txrem="${CSS.escape(id)}"]`) || {}).checked; const note = ((document.querySelector(`[data-txnote="${CSS.escape(id)}"]`) || {}).value || '').trim();
     try { await post('/api/txn/review', { id, scope, cat, remember, note }); TX.inbox = TX.inbox.filter(x => x.id !== id); if (scope === 'personal') TX.ppl.push({ id, cat }); toast(scope === 'ignore' ? 'Ignored' : 'Added'); renderTxReview(tab === 'ppl' ? 'personal' : 'business'); if (scope === 'business') load(); loadTx(); } catch (err) { toast(err.message); } return; }
+  const sa = t.closest('[data-txsaveall]');
+  if (sa) { const items = [...document.querySelectorAll('[data-txpick]')].filter(x => x.value && x.offsetParent !== null).map(x => { const id = x.dataset.txpick, [scope, cat] = x.value.split('|');
+      return { id, scope, cat, remember: !!(document.querySelector(`[data-txrem="${CSS.escape(id)}"]`) || {}).checked, note: ((document.querySelector(`[data-txnote="${CSS.escape(id)}"]`) || {}).value || '').trim() }; });
+    if (!items.length) return toast('Pick a category on at least one first');
+    sa.disabled = true; sa.textContent = 'Saving…';
+    try { const j = await post('/api/txn/review', { items }); toast(`Saved ${j.done}`); await loadTx(); load(); } catch (err) { toast(err.message); }
+    sa.disabled = false; sa.textContent = '✓ Save all'; return; }
   if (t.closest('[data-txall]')) { try { const j = await post('/api/txn/review', { all: true }); toast(`Approved ${j.done}`); await loadTx(); load(); } catch (err) { toast(err.message); } return; }
 });
 
