@@ -959,7 +959,7 @@ async function plaid(pathname, body) {
     body: JSON.stringify({ client_id: PLAID.ID, secret: PLAID.SECRET, ...body }),
   });
   const j = await r.json();
-  if (j.error_code) throw new Error(`Plaid: ${j.display_message || j.error_message} (${j.error_code})`);
+  if (j.error_code) throw new Error(`Plaid: ${j.display_message || j.error_message} (${j.error_code}${j.request_id ? ', request_id ' + j.request_id : ''})`);
   return j;
 }
 app.post('/api/plaid/link-token', async (req, res) => {
@@ -1004,7 +1004,7 @@ async function plaidBalances(force, live) {
     try {
       let j;
       if (live) { try { j = await plaid('/accounts/balance/get', { access_token: it.access_token }); }
-        catch (e) { if (/ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message)) throw e; liveNote = 'Live balance not available for some banks (' + e.message.slice(0, 80) + '), showing saved balance'; j = await plaid('/accounts/get', { access_token: it.access_token }); } }
+        catch (e) { if (/ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message)) throw e; liveNote = 'Live balance not available for some banks (' + e.message.slice(0, 160) + '), showing saved balance'; j = await plaid('/accounts/get', { access_token: it.access_token }); } }
       else j = await plaid('/accounts/get', { access_token: it.access_token });
       const accounts = j.accounts.map(a => {
         const field = MASK_FIELD[a.mask] || MASK_FIELD[String(a.mask || '').slice(-4)] || '';
@@ -1678,6 +1678,32 @@ const SLOT_DEFAULT = {
 };
 const getSched = () => kget(SCHED_KEY, {});
 const setSched = m => kset(SCHED_KEY, m);
+// 30-day check-in: a text from Billy 30 days after the booked delivery / pick up date. Sent once, 10am-6pm Central. CHECKIN=off in Railway turns it off.
+async function sendText(phone, text) {
+  const user = (process.env.TEXTMAGIC_USERNAME || '').trim(), key = (process.env.TEXTMAGIC_API_KEY || '').trim();
+  let d = String(phone || '').replace(/\D/g, ''); if (d.length === 10) d = '1' + d;
+  if (!user || !key || d.length !== 11) return false;
+  const r = await fetch('https://rest.textmagic.com/api/v2/messages', { method: 'POST', headers: { 'X-TM-Username': user, 'X-TM-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, phones: d }) });
+  if (!r.ok) { console.error('TextMagic', r.status, await r.text()); return false; }
+  return true;
+}
+async function checkinTexts() {
+  if (process.env.CHECKIN === 'off') return;
+  const hr = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }));
+  if (hr < 10 || hr >= 18) return;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), m = await getSched(); let changed = false;
+  for (const o of Object.values(m)) {
+    const b = o.booking; if (!b || !b.date || o.checkinSent) continue;
+    const due = new Date(b.date + 'T12:00:00'); due.setDate(due.getDate() + 30); const dueStr = due.toLocaleDateString('en-CA');
+    if (dueStr > today) continue;
+    if ((Date.parse(today) - Date.parse(dueStr)) / 864e5 > 14) { o.checkinSent = 'skipped-old'; changed = true; continue; }   // never blast old orders
+    const first = String(o.name || '').trim().split(/\s+/)[0] || 'there', name = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+    const ok = await sendText(b.phone || o.phone, `Hi ${name}, it's Billy with Billy's Couches. Just wanted to check in and see how the couch has been! If there are any issues, don't hesitate to reach out.`);
+    if (ok) { o.checkinSent = new Date().toISOString(); changed = true; }
+  }
+  if (changed) await setSched(m);
+}
+setInterval(() => checkinTexts().catch(e => console.log('Check-in texts failed', e.message)), 60 * 60 * 1000);
 async function slotCfg() { const s = await kget('bcd:store:slots', null).catch(() => null); return s && s.delivery ? { ...SLOT_DEFAULT, ...s } : SLOT_DEFAULT; }
 const ctParts = d => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(d).map(x => [x.type, x.value])); return p; };
 const ctYmd = d => { const p = ctParts(d); return `${p.year}-${p.month}-${p.day}`; };
