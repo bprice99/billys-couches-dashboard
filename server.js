@@ -1881,9 +1881,9 @@ async function aiRender(job, problem) {
   // Short and simple works best: the room photo first, then ONE clean picture of the couch.
   const ref = job.cut ? [job.cut] : job.couch.slice(0, 2);
   const prompt = [
-    'Edit the first image (a photo of a customer\'s living room). Put the sofa shown in the ' + (ref.length > 1 ? 'other images' : 'second image') + ' into this room, in the spot where a couch naturally goes. If a couch is already there, replace it.',
+    'Edit the first image (a photo of a customer\'s living room). Put the main sofa shown in the ' + (ref.length > 1 ? 'other images (real photos of one sofa, different angles)' : 'second image') + ' into this room, in the spot where a couch naturally goes. If a couch is already there, replace it. Ignore everything around the sofa in the reference photos.',
     'Keep the first image exactly as it is everywhere else: same walls, windows, doors, floor, rug, tables, decor, lighting, camera angle and framing. Do not create a new room.',
-    'The sofa must match the reference exactly: same shape, same number of seats and pieces, same arms and chaise side, same color and material. Scale it realistically.',
+    'Copy the sofa exactly as photographed, like a cut-and-paste: same shape, number of seats and pieces, arms, base and legs (do not add a base or legs it does not have), recliners closed if closed, same exact color and material. Do not redesign it. Scale it realistically.',
     'Only add the sofa, nothing else from the reference ' + (ref.length > 1 ? 'photos' : 'photo') + '.',
     'Sofa details: ' + job.facts.replace(/\n/g, '; '),
     problem ? 'Last try was wrong: ' + problem + '. Fix that.' : ''
@@ -1924,7 +1924,7 @@ async function aiCheck(job, buf) {
 const cutKey = d => 'bcd:aiCut:' + d.id + ':' + crypto.createHash('md5').update(JSON.stringify(d.photos || [])).digest('hex').slice(0, 8);
 const cutBusy = new Map();
 async function couchCutout(d, couch) {
-  if ((process.env.AI_CUTOUT || '').toLowerCase() === 'off') return null;
+  if ((process.env.AI_CUTOUT || '').toLowerCase() !== 'on') return null;  // off by default: AI-made couch shots drifted from the real couch
   const key = cutKey(d), have = await kget(key, null);
   if (have) return have === 'bad' ? null : dataUrlParts(have);
   if (cutBusy.has(key)) return cutBusy.get(key);
@@ -1948,7 +1948,7 @@ async function couchCutout(d, couch) {
   cutBusy.set(key, job); return job;
 }
 // Use the cutout only if it's already made; otherwise start making it for next time and don't make the customer wait.
-async function cutoutIfReady(d) { const have = await kget(cutKey(d), null); if (have && have !== 'bad') return dataUrlParts(have); if (!have) couchCutout(d).catch(() => {}); return null; }
+async function cutoutIfReady(d) { if ((process.env.AI_CUTOUT || '').toLowerCase() !== 'on') return null; const have = await kget(cutKey(d), null); if (have && have !== 'bad') return dataUrlParts(have); if (!have) couchCutout(d).catch(() => {}); return null; }
 // HQ: see the clean couch shot the AI uses (hq.billyscouches.com/api/ai-cut/<couch id>)
 app.get('/api/ai-cut/:id', async (req, res) => {
   const d = (await getDrops()).find(x => x.id === req.params.id); if (!d) return res.sendStatus(404);
@@ -1957,7 +1957,7 @@ app.get('/api/ai-cut/:id', async (req, res) => {
 });
 // Make cutouts for new couches ahead of time, so customers never wait on it.
 async function warmCutouts() {
-  if (!(process.env.GEMINI_API_KEY || '').trim() || (process.env.AI_ROOM || '').toLowerCase() === 'off') return;
+  if (!(process.env.GEMINI_API_KEY || '').trim() || (process.env.AI_ROOM || '').toLowerCase() === 'off' || (process.env.AI_CUTOUT || '').toLowerCase() !== 'on') return;
   for (const d of (await getDrops()).filter(x => x.status === 'live')) { if (!(await kget(cutKey(d), null))) await couchCutout(d); }
 }
 setTimeout(() => warmCutouts().catch(() => {}), 60 * 1000);
