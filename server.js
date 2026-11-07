@@ -1878,23 +1878,17 @@ async function roomAspect(room) {
     return RATIOS.reduce((best, r) => { const [a, b] = r.split(':').map(Number); return Math.abs(Math.log(a / b / want)) < Math.abs(Math.log(best.v / want)) ? { r, v: a / b } : best; }, { r: '', v: 1e9 }).r; } catch (e) { return ''; }
 }
 async function aiRender(job, problem) {
+  // Short and simple works best: the room photo first, then ONE clean picture of the couch.
+  const ref = job.cut ? [job.cut] : job.couch.slice(0, 2);
   const prompt = [
-    'You are a photo editor for a furniture store. Image 1 is a photo of a customer\'s room. The other images are real photos of ONE specific sofa we have for sale, from different angles.',
-    'Edit image 1 so that this exact sofa is sitting in the room, as if photographed there.',
-    'Rules: Keep the room exactly the same (walls, floor, windows, decor, lighting, camera angle, framing). If there is already a couch in the main seating spot, replace it with ours; otherwise place ours where a couch would naturally go.',
-    'The sofa must be an exact copy of the one in the product photos: count its seats, cushions, recliners, consoles, arms and sections, and keep that exact count and layout (including which side any chaise or corner is on). Same color, material, stitching, legs and back style. Never add or remove seats or pieces, never restyle or "improve" it.',
-    'About this sofa:\n' + job.facts,
-    'Scale it realistically to the room using doors, windows and the floor as reference.',
-    problem ? `IMPORTANT: a previous attempt was wrong because: ${problem}. Fix that.` : '',
-    'Match the room\'s lighting, add natural contact shadows, keep it photorealistic. Add ONLY the sofa: no chairs, recliners, pillows, walls or anything else from the showroom photos, no people, text or watermarks. Everything outside the sofa must look exactly like the customer\'s original photo. Return only the edited photo.'
+    'Edit the first image (a photo of a customer\'s living room). Put the sofa shown in the ' + (ref.length > 1 ? 'other images' : 'second image') + ' into this room, in the spot where a couch naturally goes. If a couch is already there, replace it.',
+    'Keep the first image exactly as it is everywhere else: same walls, windows, doors, floor, rug, tables, decor, lighting, camera angle and framing. Do not create a new room.',
+    'The sofa must match the reference exactly: same shape, same number of seats and pieces, same arms and chaise side, same color and material. Scale it realistically.',
+    'Only add the sofa, nothing else from the reference ' + (ref.length > 1 ? 'photos' : 'photo') + '.',
+    'Sofa details: ' + job.facts.replace(/\n/g, '; '),
+    problem ? 'Last try was wrong: ' + problem + '. Fix that.' : ''
   ].filter(Boolean).join('\n');
-  const parts = [{ text: prompt }, { text: 'IMAGE 1 - THE CUSTOMER\'S ROOM. This is the photo you edit and return:' }, imgPart(job.room),
-    ...(job.cut ? [{ text: 'THE SOFA - clean catalog photo of the exact sofa to place (main reference):' }, imgPart(job.cut)] : []),
-    { text: 'REFERENCE ONLY - real photos of the same sofa in our showroom, for detail. Ignore everything around the sofa in these (other couches, chairs, walls, floor) and NEVER copy any of it into the room:' }, ...job.couch.slice(0, job.cut ? 2 : 4).map(imgPart),
-    { text: 'Now return image 1 (the customer\'s room, same framing) with this sofa placed in it.' }];
-  let j;
-  try { j = await gemini(AI_MODEL, parts, false, job.aspect); }
-  catch (e) { if (job.aspect && /aspect|imageConfig|image_config|Unknown name|Invalid JSON/i.test(e.message)) { job.aspect = ''; j = await gemini(AI_MODEL, parts, false); } else throw e; }
+  const j = await gemini(AI_MODEL, [imgPart(job.room), ...ref.map(imgPart), { text: prompt }]);
   const out = (((j.candidates || [])[0] || {}).content || {}).parts || [];
   const hit = out.find(p => (p.inlineData || p.inline_data) && (p.inlineData || p.inline_data).data);
   if (!hit) throw new Error('AI returned no picture' + (j.promptFeedback && j.promptFeedback.blockReason ? ' (' + j.promptFeedback.blockReason + ')' : ''));
@@ -1955,6 +1949,12 @@ async function couchCutout(d, couch) {
 }
 // Use the cutout only if it's already made; otherwise start making it for next time and don't make the customer wait.
 async function cutoutIfReady(d) { const have = await kget(cutKey(d), null); if (have && have !== 'bad') return dataUrlParts(have); if (!have) couchCutout(d).catch(() => {}); return null; }
+// HQ: see the clean couch shot the AI uses (hq.billyscouches.com/api/ai-cut/<couch id>)
+app.get('/api/ai-cut/:id', async (req, res) => {
+  const d = (await getDrops()).find(x => x.id === req.params.id); if (!d) return res.sendStatus(404);
+  const v = await kget(cutKey(d), null); if (!v || v === 'bad') return res.status(404).send(v === 'bad' ? 'Rejected by the check, using the real photos instead.' : 'Not made yet.');
+  const m = v.match(/^data:(image\/\w+);base64,(.+)$/); res.type(m[1]).send(Buffer.from(m[2], 'base64'));
+});
 // Make cutouts for new couches ahead of time, so customers never wait on it.
 async function warmCutouts() {
   if (!(process.env.GEMINI_API_KEY || '').trim() || (process.env.AI_ROOM || '').toLowerCase() === 'off') return;
@@ -1975,10 +1975,12 @@ async function aiRun(id, job) {
     let out = null, last = null;
     for (let i = 0; i < 2 && !out; i++) { try { out = await aiRender(job); } catch (e) { last = e; if (/not set up|API key|PERMISSION|billing/i.test(e.message)) break; } }
     if (!out) throw last || new Error('failed');
-    const chk = await aiCheck(job, out);
+    let chk = await aiCheck(job, out);
     if (!chk.ok) {
       console.log('AI check: redoing', job.title, '-', chk.problem);
-      try { out = await aiRender(job, chk.problem || 'the sofa did not match the product photos'); } catch (e) {}
+      try { const again = await aiRender(job, chk.problem || 'the sofa did not match the product photos'); const c2 = await aiCheck(job, again); if (c2.ok || /room/i.test(chk.problem)) { out = again; chk = c2; } } catch (e) {}
+      // Never show a picture of a different room.
+      if (!chk.ok && /room|showroom|different (space|place)/i.test(chk.problem)) throw new Error('bad result: ' + chk.problem);
     }
     const { buf, mime } = await shrink(out, 1600);
     await kset('bcd:aiImg:' + id, `data:${mime};base64,${buf.toString('base64')}`);
