@@ -53,15 +53,18 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
 .c.load b{position:absolute;z-index:2;left:0;right:0;top:30%;text-align:center;font-size:11px;font-weight:800;color:#b0524c}
 .empty{grid-column:1/-1;text-align:center;color:#8a7f76;font-size:14px;padding:30px 0}
 .err{margin:0 16px 8px;color:#b0524c;font-weight:600;font-size:14px;min-height:0}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:20;max-width:calc(100% - 32px);width:max-content;background:#2b1d16;color:#fff;font-size:14px;font-weight:600;line-height:1.4;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);text-align:center}
+.toast[hidden]{display:none}
 .foot{padding:12px 16px;border-top:1px solid #efe9e2;font-size:12px;color:#8a7f76;display:flex;justify-content:space-between;gap:10px}
 .foot a{color:#b0524c;font-weight:700;white-space:nowrap}
 .gone{max-width:460px;margin:80px auto;text-align:center;padding:0 20px}.gone a{display:inline-block;margin-top:16px}
 @media(max-width:800px){
   .app{display:block;height:auto}
-  .stage{position:sticky;top:52px;z-index:4;background:#F7F3EE;padding:10px 12px;gap:8px;box-shadow:0 6px 12px -10px rgba(0,0,0,.25)}
-  .wrap{flex:none;height:40vh;height:40svh}
+  .top{position:static}
+  .stage{padding:10px 12px;gap:8px}
+  .wrap{flex:none;height:auto;display:block}.ba{height:auto;width:100%}
   .info{gap:6px}.info h2{font-size:15px;min-width:0}.info h2 small{display:none}.price{font-size:17px}
-  .btns{width:100%}.b{flex:1;padding:9px 6px;font-size:13px}
+  .btns{width:100%}.b{flex:1;padding:9px 4px;font-size:13px}
   .side{border:0}
   .side h3{font-size:15px;padding:12px 12px 2px}.side p{margin:0 12px 8px;font-size:12px}.tabs{margin:0 12px 8px}.err{margin:0 12px 8px}
   .grid{grid-template-columns:repeat(4,1fr);gap:6px;padding:2px 12px 16px;overflow:visible}.c em{font-size:11px;padding:3px 4px}
@@ -71,6 +74,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
 </head>
 <body>
 <div class="top"><a href="https://www.billyscouches.com"><img src="/logo.png" alt="Billy's Couches"></a><label>&#8635; New room photo<input type="file" accept="image/*" id="file" hidden></label></div>
+<div class="toast" id="toast" hidden></div>
 <div class="app" id="app">
   <div class="stage">
     <div class="wrap"><div class="ba solo" id="ba">
@@ -87,6 +91,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
         <a class="b p" id="buy" href="https://order.billyscouches.com" target="_blank" rel="noopener">Buy it</a>
         <a class="b" href="https://www.billyscouches.com/visitshowroom" target="_blank" rel="noopener">Sit on it</a>
         <button class="b" id="share" type="button">Send</button>
+        <button class="b" id="save" type="button">Save</button>
       </div>
     </div>
   </div>
@@ -109,7 +114,8 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
   var money = function(n){ return '$' + Math.round(Number(n) || 0).toLocaleString(); };
   var couch = function(id){ return S.couches.filter(function(c){ return c.id === id; })[0] || null; };
   var tryOf = function(id){ return S.tries.filter(function(t){ return t.couchId === id; })[0] || null; };
-  function err(t){ $('err').textContent = t || ''; }
+  var tt = null;
+  function err(t){ $('err').textContent = t || ''; var x = $('toast'); clearTimeout(tt); if (!t) { x.hidden = true; return; } x.textContent = t; x.hidden = false; tt = setTimeout(function(){ x.hidden = true; }, 6000); }
 
   Promise.all([
     fetch(API + '?open=1', { cache: 'no-store' }).then(function(r){ if (r.status === 404) throw new Error('gone'); return r.json(); }),
@@ -235,19 +241,34 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
     location.href = 'sms:?&body=' + encodeURIComponent(msg);
   });
 
+  // ---- save picture: opens the iPhone share sheet (tap "Save Image"); computers download it. No new tab. ----
+  $('save').addEventListener('click', function(){
+    var t = S.cur && S.cur.status === 'done' ? S.cur : null; if (!t) return err('Tap a couch first, then save its picture.');
+    var btn = this; btn.textContent = '...';
+    fetch(t.url).then(function(r){ return r.blob(); }).then(function(blob){
+      btn.textContent = 'Save';
+      var name = (t.title || 'couch').replace(/[^\w]+/g, '-').toLowerCase() + '-in-my-room.jpg';
+      var file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file] }).catch(function(){});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }).catch(function(){ btn.textContent = 'Save'; err('Couldn\'t save that one. Try again in a second.'); });
+  });
+
   // ---- new room photo ----
   $('file').addEventListener('change', function(){
     var f = this.files && this.files[0]; if (!f) return;
     var img = new Image(), url = URL.createObjectURL(f);
     img.onload = function(){
+      if (img.naturalHeight > img.naturalWidth * 1.05) { URL.revokeObjectURL(url); $('file').value = ''; return err('Turn your phone sideways and take a wide photo. Couches need the whole wall in the shot.'); }
       var s = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
       c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
       var data = c.toDataURL('image/jpeg', 0.86);
       $('ba').classList.add('solo'); $('aft').src = data; $('busy').hidden = false; $('busyT').textContent = 'Saving your new room...'; $('busyS').textContent = '';
       fetch(API + '/room', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room: data }) })
-        .then(function(r){ if (!r.ok) throw new Error(); location.reload(); })
-        .catch(function(){ $('busy').hidden = true; err('That photo didn\'t save. Try again.'); });
+        .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'That photo didn\'t save. Try again.'); location.reload(); }); })
+        .catch(function(e){ $('busy').hidden = true; $('aft').src = S.room; err(e.message); });
     };
     img.onerror = function(){ err('That photo type didn\'t work. Try a regular photo.'); };
     img.src = url;
