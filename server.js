@@ -1859,17 +1859,24 @@ function couchFacts(d) {
   const det = (d.details || []).filter(l => !/^condition|^grade|price|deliver/i.test(l)).slice(0, 8);
   return [`Name: ${d.title}`, d.dimensions ? `Real size: ${d.dimensions}` : '', det.length ? 'Listing details: ' + det.join('; ') : ''].filter(Boolean).join('\n');
 }
-async function gemini(model, parts, json) {
+async function gemini(model, parts, json, aspect) {
   const key = (process.env.GEMINI_API_KEY || '').trim(); if (!key) throw new Error('not set up');
   const r = await fetch(`${AI_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: json ? { responseMimeType: 'application/json' } : { responseModalities: ['TEXT', 'IMAGE'] } })
+    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: json ? { responseMimeType: 'application/json' } : { responseModalities: ['TEXT', 'IMAGE'], ...(aspect ? { imageConfig: { aspectRatio: aspect } } : {}) } })
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j.error && j.error.message) || ('AI ' + r.status));
   return j;
 }
 const imgPart = p => ({ inline_data: { mime_type: p.mime, data: p.b64 } });
+// Keep the picture the same shape as their room photo
+const RATIOS = ['21:9', '16:9', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16'];
+async function roomAspect(room) {
+  if (!sharp) return '';
+  try { const m = await sharp(Buffer.from(room.b64, 'base64')).metadata(); const want = m.width / m.height;
+    return RATIOS.reduce((best, r) => { const [a, b] = r.split(':').map(Number); return Math.abs(Math.log(a / b / want)) < Math.abs(Math.log(best.v / want)) ? { r, v: a / b } : best; }, { r: '', v: 1e9 }).r; } catch (e) { return ''; }
+}
 async function aiRender(job, problem) {
   const prompt = [
     'You are a photo editor for a furniture store. Image 1 is a photo of a customer\'s room. The other images are real photos of ONE specific sofa we have for sale, from different angles.',
@@ -1881,9 +1888,14 @@ async function aiRender(job, problem) {
     problem ? `IMPORTANT: a previous attempt was wrong because: ${problem}. Fix that.` : '',
     'Match the room\'s lighting, add natural contact shadows, keep it photorealistic. No other furniture, people, text or watermarks. Return only the edited photo.'
   ].filter(Boolean).join('\n');
-  const j = await gemini(AI_MODEL, [{ text: prompt }, imgPart(job.room), ...job.couch.map(imgPart)]);
-  const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
-  const hit = parts.find(p => (p.inlineData || p.inline_data) && (p.inlineData || p.inline_data).data);
+  const parts = [{ text: prompt }, { text: 'IMAGE 1 - THE CUSTOMER\'S ROOM. This is the photo you edit and return:' }, imgPart(job.room),
+    { text: 'REFERENCE ONLY - photos of the sofa taken in our showroom. Do NOT return or copy these backgrounds:' }, ...job.couch.map(imgPart),
+    { text: 'Now return image 1 (the customer\'s room, same framing) with this sofa placed in it.' }];
+  let j;
+  try { j = await gemini(AI_MODEL, parts, false, job.aspect); }
+  catch (e) { if (job.aspect && /aspect|imageConfig|image_config|Unknown name|Invalid JSON/i.test(e.message)) { job.aspect = ''; j = await gemini(AI_MODEL, parts, false); } else throw e; }
+  const out = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+  const hit = out.find(p => (p.inlineData || p.inline_data) && (p.inlineData || p.inline_data).data);
   if (!hit) throw new Error('AI returned no picture' + (j.promptFeedback && j.promptFeedback.blockReason ? ' (' + j.promptFeedback.blockReason + ')' : ''));
   return Buffer.from((hit.inlineData || hit.inline_data).data, 'base64');
 }
@@ -1894,10 +1906,12 @@ async function aiCheck(job, buf) {
   try {
     let p = { mime: 'image/png', b64: buf.toString('base64') };
     if (sharp) { const s = await shrink(buf, 1000); p = { mime: s.mime, b64: s.buf.toString('base64') }; }
-    const prompt = 'Image 1 is an AI-edited room photo that should contain one specific sofa. Images 2+ are real photos of that sofa.\n' + job.facts +
+    const prompt = 'Image 1 is an AI-edited photo that should show the customer\'s room (image 2) with one specific sofa added. Images 3+ are real showroom photos of that sofa.\n' + job.facts +
+      '\nFirst: is image 1 clearly the same room as image 2 (same walls, floor, windows, angle)? If image 1 looks like the showroom instead, that is NOT a match.' +
       '\nCompare the sofa in image 1 to the real sofa. Ignore camera angle, lighting and the room. Is it the same sofa: same number of seats/sections/recliners, same arms, same chaise or corner layout, same color and material? Small differences are fine; extra or missing seats, a different shape, or a different color are not.' +
       '\nReply only JSON: {"match": true or false, "problem": "one short sentence if not a match"}';
-    const j = await gemini(AI_CHECK_MODEL, [{ text: prompt }, imgPart(p), ...job.couch.slice(0, 3).map(imgPart)], true);
+    let rm = job.room; if (sharp) { try { const s = await shrink(Buffer.from(rm.b64, 'base64'), 800); rm = { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
+    const j = await gemini(AI_CHECK_MODEL, [{ text: prompt }, imgPart(p), imgPart(rm), ...job.couch.slice(0, 3).map(imgPart)], true);
     const t = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text || '').join('');
     const r = JSON.parse(t.replace(/^```(json)?|```$/g, '').trim());
     return { ok: r.match !== false, problem: String(r.problem || '').slice(0, 200) };
@@ -1958,7 +1972,8 @@ async function saveLeadToSheet(l) {
   } catch (e) { console.log('First Dibs sheet save failed:', e.message); }
 }
 // Limits: 12 pictures per phone and 16 per device a day, plus the daily total (AI_DAILY_CAP).
-async function aiLimit(phone, ip) {
+async function aiLimit(phone, ip, vip) {
+  if (vip || (process.env.AI_VIP_PHONES || '').split(',').map(x => x.replace(/\D/g, '').slice(-10)).includes(phone)) return '';
   const day = aiDay(), lim = (await kget('bcd:aiLimit', {})) || {}; if (lim.day !== day) { lim.day = day; lim.total = 0; lim.by = {}; }
   if ((lim.by[phone] || 0) >= 12 || (lim.by[ip] || 0) >= 16) return "That's the max for today. Text Billy at (314) 899-7503 and he'll make more for you.";
   if (lim.total >= AI_CAP) return "We're getting a lot of requests today. Text Billy at (314) 899-7503 and he'll send yours.";
@@ -1968,11 +1983,15 @@ async function aiLimit(phone, ip) {
 async function roomPart(dataUrl) {
   const room = dataUrlParts(dataUrl); if (!room) return null;
   if (room.b64.length > 9e6) throw Object.assign(new Error('That photo is too big. Try another one.'), { user: true });
-  if (sharp) { try { const s = await shrink(Buffer.from(room.b64, 'base64'), 1536); return { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
+  if (sharp) {
+    let out = null; try { const s = await shrink(Buffer.from(room.b64, 'base64'), 1536); out = { mime: s.mime, buf: s.buf }; } catch (e) {}
+    if (out) { const m = await sharp(out.buf).metadata(); if (m.height > m.width * 1.05) throw Object.assign(new Error('Turn your phone sideways and take a wide photo. Couches need the whole wall in the shot.'), { user: true });
+      return { mime: out.mime, b64: out.buf.toString('base64') }; }
+  }
   return room;
 }
-async function startTry(s, d, ip) {
-  const msg = await aiLimit(s.phone, ip); if (msg) throw Object.assign(new Error(msg), { user: true, code: 429 });
+async function startTry(s, d, ip, vip) {
+  const msg = await aiLimit(s.phone, ip, vip); if (msg) throw Object.assign(new Error(msg), { user: true, code: 429 });
   const couch = await couchPhotoParts(d); if (!couch.length) throw Object.assign(new Error('That couch has no photo yet. Pick another one.'), { user: true });
   const room = dataUrlParts(await kget('bcd:aiRoomImg:' + s.sid, '')); if (!room) throw Object.assign(new Error('Add your room photo again.'), { user: true, code: 409 });
   const id = crypto.randomBytes(8).toString('hex');
@@ -1980,7 +1999,7 @@ async function startTry(s, d, ip) {
   s.tries.push({ id, couchId: d.id, title: d.title, status: 'working', at: Date.now() });
   await kset(sessKey(s.sid), s);
   aiJobs.set(id, { status: 'working', at: Date.now() });
-  aiRun(id, { sid: s.sid, room, couch, facts: couchFacts(d), title: d.title });
+  aiRun(id, { sid: s.sid, room, couch, facts: couchFacts(d), title: d.title, aspect: await roomAspect(room) });
   return id;
 }
 const liveCouch = async id => (await getDrops()).find(x => x.id === String(id || '') && x.status === 'live');
@@ -2002,7 +2021,7 @@ app.post('/public/ai-room', async (req, res) => {
     const emailOk = !!b.emailOk && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), smsOk = !!b.smsOk;
     await kset('bcd:aiRoomImg:' + sid, `data:${room.mime};base64,${room.b64}`);
     const s = { sid, at: new Date().toISOString(), name, first, phone, email, emailOk, smsOk, tries: [], opens: 0, texted: false };
-    const id = await startTry(s, d, clientIp(req));
+    const id = await startTry(s, d, clientIp(req), authed(req));
     const leads = (await kget('bcd:aiLeads', [])) || [], isNew = !leads.some(x => x.phone === phone);
     leads.push({ sid, at: s.at, name, phone, email, emailOk, smsOk, couch: d.title });
     await kset('bcd:aiLeads', leads.slice(-2000));
@@ -2029,7 +2048,7 @@ app.post('/public/ai-sess/:sid/try', async (req, res) => {
     const s = await kget(sessKey(sidOf(req)), null); if (!s) return res.status(404).json({ error: 'This link expired. Start a new one at billyscouches.com/see-it-in-your-room' });
     if ((s.tries || []).filter(t => t.status === 'working').length >= 2) return res.status(429).json({ error: 'Hang on, still working on your last one.' });
     const d = await liveCouch((req.body || {}).couchId); if (!d) return res.status(400).json({ error: 'That couch just sold. Pick another one.' });
-    res.json({ ok: true, id: await startTry(s, d, clientIp(req)) });
+    res.json({ ok: true, id: await startTry(s, d, clientIp(req), authed(req)) });
   } catch (e) { aiErr(res, e); }
 });
 app.post('/public/ai-sess/:sid/room', async (req, res) => {
