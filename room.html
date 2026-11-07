@@ -85,7 +85,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
       <div class="busy" id="busy" hidden><div class="spin"></div><b id="busyT">Loading your room...</b><span id="busyS"></span></div>
     </div></div>
     <div class="info">
-      <h2 id="name">Tap any couch below<small id="dims">We'll put it in your room in about 30 seconds.</small></h2>
+      <h2 id="name">Tap any couch below<small id="dims">We'll put it in your room in seconds.</small></h2>
       <div class="price" id="price"></div>
       <div class="btns">
         <a class="b p" id="buy" href="https://order.billyscouches.com" target="_blank" rel="noopener">Buy it</a>
@@ -97,7 +97,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
   </div>
   <div class="side">
     <h3 id="hi">Tap any couch to see it in your room</h3>
-    <p>About 30 seconds each. Everything you try stays saved on this link.</p>
+    <p><span id="secs">Takes a few seconds</span> each. Everything you try stays saved on this link.</p>
     <div class="tabs" id="tabs"></div>
     <p class="err" id="err"></p>
     <div class="grid" id="grid"><div class="empty">Loading couches...</div></div>
@@ -109,7 +109,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
   var $ = function(id){ return document.getElementById(id); };
   var sid = location.pathname.split('/').pop().replace(/[^a-f0-9]/g, '');
   var API = '/public/ai-sess/' + sid;
-  var S = { couches: [], tries: [], cur: null, tab: 'all', room: '', first: '' };
+  var S = { avg: 20, couches: [], tries: [], cur: null, tab: 'all', room: '', first: '' };
   var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var money = function(n){ return '$' + Math.round(Number(n) || 0).toLocaleString(); };
   var couch = function(id){ return S.couches.filter(function(c){ return c.id === id; })[0] || null; };
@@ -121,7 +121,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
     fetch(API + '?open=1', { cache: 'no-store' }).then(function(r){ if (r.status === 404) throw new Error('gone'); return r.json(); }),
     fetch('/public/inventory').then(function(r){ return r.json(); })
   ]).then(function(a){
-    var s = a[0]; S.first = s.first; S.room = s.room; S.tries = s.tries || [];
+    var s = a[0]; S.first = s.first; S.avg = s.avgSec || 20; $('secs').textContent = 'About ' + S.avg + ' seconds'; S.room = s.room; S.tries = s.tries || [];
     S.couches = (a[1].couches || []).filter(function(c){ return c.photos && c.photos.length; });
     $('hi').textContent = 'Hi ' + s.first + '! Tap any couch to see it in your room';
     $('bef').src = S.room; $('aft').src = S.room;
@@ -185,7 +185,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
     var c = t ? couch(t.couchId) : null;
     if (!t) {
       $('ba').classList.add('solo'); $('aft').src = S.room; $('busy').hidden = true;
-      $('name').innerHTML = 'Tap any couch below<small>We\'ll put it in your room in about 30 seconds.</small>'; $('price').innerHTML = ''; return;
+      $('name').innerHTML = 'Tap any couch below<small>We\'ll put it in your room in seconds.</small>'; $('price').innerHTML = ''; return;
     }
     $('name').innerHTML = esc(t.title) + '<small>' + esc(c && c.dimensions || '') + '</small>';
     $('price').innerHTML = c ? (c.was ? '<s>' + money(c.was) + '</s> ' : '') + money(c.price) : 'Sold';
@@ -197,7 +197,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
       $('ba').classList.add('solo'); $('aft').src = S.room; $('busy').hidden = false;
       $('busyT').textContent = 'Putting the ' + t.title + ' in your room...';
       var t0 = t.t0 || Date.now(); t.t0 = t0;
-      var tick = function(){ var s = Math.round((Date.now() - t0) / 1000); $('busyS').textContent = s < 35 ? 'About ' + Math.max(5, 35 - s) + ' seconds. Keep browsing while you wait.' : 'Almost there...'; };
+      var tick = function(){ var left = Math.round(S.avg - (Date.now() - t0) / 1000); $('busyS').textContent = left > 2 ? 'About ' + left + ' seconds left' : 'Almost there...'; };
       tick(); timer = setInterval(tick, 1000);
     }
   }
