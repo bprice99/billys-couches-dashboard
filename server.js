@@ -1886,10 +1886,11 @@ async function aiRender(job, problem) {
     'About this sofa:\n' + job.facts,
     'Scale it realistically to the room using doors, windows and the floor as reference.',
     problem ? `IMPORTANT: a previous attempt was wrong because: ${problem}. Fix that.` : '',
-    'Match the room\'s lighting, add natural contact shadows, keep it photorealistic. No other furniture, people, text or watermarks. Return only the edited photo.'
+    'Match the room\'s lighting, add natural contact shadows, keep it photorealistic. Add ONLY the sofa: no chairs, recliners, pillows, walls or anything else from the showroom photos, no people, text or watermarks. Everything outside the sofa must look exactly like the customer\'s original photo. Return only the edited photo.'
   ].filter(Boolean).join('\n');
   const parts = [{ text: prompt }, { text: 'IMAGE 1 - THE CUSTOMER\'S ROOM. This is the photo you edit and return:' }, imgPart(job.room),
-    { text: 'REFERENCE ONLY - photos of the sofa taken in our showroom. Do NOT return or copy these backgrounds:' }, ...job.couch.map(imgPart),
+    ...(job.cut ? [{ text: 'THE SOFA - clean catalog photo of the exact sofa to place (main reference):' }, imgPart(job.cut)] : []),
+    { text: 'REFERENCE ONLY - real photos of the same sofa in our showroom, for detail. Ignore everything around the sofa in these (other couches, chairs, walls, floor) and NEVER copy any of it into the room:' }, ...job.couch.slice(0, job.cut ? 2 : 4).map(imgPart),
     { text: 'Now return image 1 (the customer\'s room, same framing) with this sofa placed in it.' }];
   let j;
   try { j = await gemini(AI_MODEL, parts, false, job.aspect); }
@@ -1910,13 +1911,57 @@ async function aiCheck(job, buf) {
       '\nFirst: is image 1 clearly the same room as image 2 (same walls, floor, windows, angle)? If image 1 looks like the showroom instead, that is NOT a match.' +
       '\nCompare the sofa in image 1 to the real sofa. Ignore camera angle, lighting and the room. Is it the same sofa: same number of seats/sections/recliners, same arms, same chaise or corner layout, same color and material? Small differences are fine; extra or missing seats, a different shape, or a different color are not.' +
       '\nReply only JSON: {"match": true or false, "problem": "one short sentence if not a match"}';
-    let rm = job.room; if (sharp) { try { const s = await shrink(Buffer.from(rm.b64, 'base64'), 800); rm = { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
+    let rm = job.room;
+    if (!rm) {
+      const pc = 'Image 1 should be a clean catalog photo of the sofa shown in the other images (real showroom photos).\n' + job.facts + '\nIs image 1 the same sofa: same number of seats/sections/recliners, same arms, same chaise or corner layout, same color and material? Ignore background and angle. Reply only JSON: {"match": true or false, "problem": "one short sentence if not"}';
+      const jc = await gemini(AI_CHECK_MODEL, [{ text: pc }, imgPart(p), ...job.couch.slice(0, 3).map(imgPart)], true);
+      const tc = ((((jc.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text || '').join('');
+      const rc = JSON.parse(tc.replace(/^```(json)?|```$/g, '').trim()); return { ok: rc.match !== false, problem: String(rc.problem || '').slice(0, 200) };
+    }
+    if (sharp) { try { const s = await shrink(Buffer.from(rm.b64, 'base64'), 800); rm = { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
     const j = await gemini(AI_CHECK_MODEL, [{ text: prompt }, imgPart(p), imgPart(rm), ...job.couch.slice(0, 3).map(imgPart)], true);
     const t = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text || '').join('');
     const r = JSON.parse(t.replace(/^```(json)?|```$/g, '').trim());
     return { ok: r.match !== false, problem: String(r.problem || '').slice(0, 200) };
   } catch (e) { console.log('AI check skipped:', e.message); return { ok: true }; }
 }
+// Clean "studio" shot of each couch (showroom removed), made once per couch and reused for every customer.
+// This stops showroom chairs/walls leaking into pictures and keeps the couch consistent. Checked against the real photos first.
+const cutKey = d => 'bcd:aiCut:' + d.id + ':' + crypto.createHash('md5').update(JSON.stringify(d.photos || [])).digest('hex').slice(0, 8);
+const cutBusy = new Map();
+async function couchCutout(d, couch) {
+  if ((process.env.AI_CUTOUT || '').toLowerCase() === 'off') return null;
+  const key = cutKey(d), have = await kget(key, null);
+  if (have) return have === 'bad' ? null : dataUrlParts(have);
+  if (cutBusy.has(key)) return cutBusy.get(key);
+  const job = (async () => {
+    try {
+      couch = couch || await couchPhotoParts(d); if (!couch.length) return null;
+      const prompt = ['These are real photos of ONE sofa in our showroom.', 'About it:\n' + couchFacts(d),
+        'Make a clean catalog photo of this exact sofa alone on a plain white background, seen from the front at a slight angle so every seat and piece is visible.',
+        'Copy it exactly: same number of seats, cushions, recliners, consoles, arms and sections, same layout (which side any chaise or corner is on), same color, material, stitching and legs.',
+        'Remove EVERYTHING else: other couches, chairs, pillows that are not part of it, price tags, floor, walls. No text. Return only the photo.'].join('\n');
+      const j = await gemini(AI_MODEL, [{ text: prompt }, ...couch.map(imgPart)], false, '16:9');
+      const hit = ((((j.candidates || [])[0] || {}).content || {}).parts || []).find(p => (p.inlineData || p.inline_data) && (p.inlineData || p.inline_data).data);
+      if (!hit) return null;
+      let buf = Buffer.from((hit.inlineData || hit.inline_data).data, 'base64');
+      const chk = await aiCheck({ facts: couchFacts(d), couch, room: null }, buf);
+      if (!chk.ok) { console.log('Cutout rejected for', d.title, '-', chk.problem); await kset(key, 'bad'); return null; }
+      const sm = await shrink(buf, 1200); const v = `data:${sm.mime};base64,${sm.buf.toString('base64')}`;
+      await kset(key, v); return dataUrlParts(v);
+    } catch (e) { console.log('Cutout failed for', d.title, e.message); return null; } finally { cutBusy.delete(key); }
+  })();
+  cutBusy.set(key, job); return job;
+}
+// Use the cutout only if it's already made; otherwise start making it for next time and don't make the customer wait.
+async function cutoutIfReady(d) { const have = await kget(cutKey(d), null); if (have && have !== 'bad') return dataUrlParts(have); if (!have) couchCutout(d).catch(() => {}); return null; }
+// Make cutouts for new couches ahead of time, so customers never wait on it.
+async function warmCutouts() {
+  if (!(process.env.GEMINI_API_KEY || '').trim() || (process.env.AI_ROOM || '').toLowerCase() === 'off') return;
+  for (const d of (await getDrops()).filter(x => x.status === 'live')) { if (!(await kget(cutKey(d), null))) await couchCutout(d); }
+}
+setTimeout(() => warmCutouts().catch(() => {}), 60 * 1000);
+setInterval(() => warmCutouts().catch(() => {}), 60 * 60 * 1000);
 const sessKey = sid => 'bcd:aiSess:' + sid;
 const roomLink = sid => `${PUBLIC_BASE}/room/${sid}`;
 async function sessTry(sid, id, patch) {
@@ -1939,6 +1984,7 @@ async function aiRun(id, job) {
     await kset('bcd:aiImg:' + id, `data:${mime};base64,${buf.toString('base64')}`);
     const url = `${PUBLIC_BASE}/public/ai-room/img/${id}.jpg`;
     await set({ status: 'done', url });
+    if (job.t0) { const a = (await kget('bcd:aiAvg', null)) || { ms: 25000 }; a.ms = Math.round(a.ms * 0.8 + (Date.now() - job.t0) * 0.2); await kset('bcd:aiAvg', a).catch(() => {}); }
     const s = await sessTry(job.sid, id, { status: 'done', url, redo: !chk.ok });
     if (s && !s.texted) {
       s.texted = true; await kset(sessKey(job.sid), s);
@@ -1999,7 +2045,7 @@ async function startTry(s, d, ip, vip) {
   s.tries.push({ id, couchId: d.id, title: d.title, status: 'working', at: Date.now() });
   await kset(sessKey(s.sid), s);
   aiJobs.set(id, { status: 'working', at: Date.now() });
-  aiRun(id, { sid: s.sid, room, couch, facts: couchFacts(d), title: d.title, aspect: await roomAspect(room) });
+  aiRun(id, { sid: s.sid, room, couch, cut: await cutoutIfReady(d), facts: couchFacts(d), title: d.title, aspect: await roomAspect(room), t0: Date.now() });
   return id;
 }
 const liveCouch = async id => (await getDrops()).find(x => x.id === String(id || '') && x.status === 'live');
@@ -2036,7 +2082,8 @@ app.get('/public/ai-sess/:sid', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const s = await kget(sessKey(sidOf(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
   if (req.query.open) { s.opens = (s.opens || 0) + 1; s.lastOpen = new Date().toISOString(); await kset(sessKey(s.sid), s); }
-  res.json({ first: s.first, room: `/public/ai-sess/${s.sid}/room.jpg?v=${s.roomV || 0}`, tries: (s.tries || []).map(t => ({ id: t.id, couchId: t.couchId, title: t.title, status: t.status, url: t.url || '' })) });
+  const avg = (await kget('bcd:aiAvg', null)) || { ms: 25000 };
+  res.json({ avgSec: Math.max(8, Math.round(avg.ms / 1000)), first: s.first, room: `/public/ai-sess/${s.sid}/room.jpg?v=${s.roomV || 0}`, tries: (s.tries || []).map(t => ({ id: t.id, couchId: t.couchId, title: t.title, status: t.status, url: t.url || '' })) });
 });
 app.get('/public/ai-sess/:sid/room.jpg', async (req, res) => {
   const m = String(await kget('bcd:aiRoomImg:' + sidOf(req), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
