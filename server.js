@@ -1828,7 +1828,8 @@ app.get('/public/dphoto/:id', async (req, res) => {
 let sharp = null; try { sharp = require('sharp'); } catch (e) { console.log('sharp not installed; AI previews saved as-is'); }
 const AI_MODEL = (process.env.AI_MODEL || 'gemini-3-pro-image-preview').trim();
 const AI_BASE = (process.env.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/$/, '');
-const AI_CAP = Number(process.env.AI_DAILY_CAP || 60);
+const AI_CAP = Number(process.env.AI_DAILY_CAP || 120);
+const aiRooms = new Map();  // roomKey -> { rm, at }  so 'try another couch' doesn't re-upload the room photo
 const aiJobs = new Map();   // id -> { status, url, error, at }  (status survives a redeploy via bcd:aiJob:<id>)
 const aiDay = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 const dataUrlParts = s => { const m = String(s || '').match(/^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+/=]+)$/); return m ? { mime: m[1], b64: m[2] } : null; };
@@ -1884,37 +1885,70 @@ async function aiRun(id, job) {
     const url = `${PUBLIC_BASE}/public/ai-room/img/${id}.jpg`;
     await set({ status: 'done', url });
     const leads = (await kget('bcd:aiLeads', [])) || [], L = leads.find(x => x.id === id); if (L) { L.status = 'done'; L.url = url; await kset('bcd:aiLeads', leads); }
-    sendText(job.phone, `Hi ${job.first}, it's Billy with Billy's Couches! Here's the ${job.title} in your room: ${url}\n\nWant to see it in person? Book a visit: billyscouches.com/visitshowroom or grab it online: order.billyscouches.com`).catch(() => {});
+    // Only the first picture gets texted (one text per phone per 24h), so comparing couches doesn't blow up their phone.
+    if (L && !leads.some(x => x.phone === job.phone && x.texted && Date.now() - Date.parse(x.at) < 864e5)) {
+      L.texted = true; await kset('bcd:aiLeads', leads);
+      sendText(job.phone, `Hi ${job.first}, it's Billy with Billy's Couches! Here's the ${job.title} in your room: ${url}\n\nWant to try a few more in your room? billyscouches.com/see-it-in-your-room\nCome sit on it: billyscouches.com/visitshowroom`).catch(() => {});
+    }
   } catch (e) {
     console.log('AI room preview failed:', e.message);
     await set({ status: 'error', error: /not set up/.test(e.message) ? 'setup' : 'failed' });
     const leads = (await kget('bcd:aiLeads', [])) || [], L = leads.find(x => x.id === id); if (L) { L.status = 'failed: ' + e.message.slice(0, 120); await kset('bcd:aiLeads', leads); }
   }
 }
+// Every AI preview lead also goes to the "First Dibs Email List" Google Sheet (same script as billyscouches.com/firstdibs):
+// phone + name always go to the "Phone Leads" tab; the email joins First Dibs only if they checked "Email me First Dibs".
+// The script's address is read from the /firstdibs page (FIRSTDIBS_SCRIPT_URL overrides).
+let fdUrlCache = { at: 0, url: '' };
+async function firstDibsScriptUrl() {
+  if (process.env.FIRSTDIBS_SCRIPT_URL) return process.env.FIRSTDIBS_SCRIPT_URL.trim();
+  if (fdUrlCache.url && Date.now() - fdUrlCache.at < 6 * 3600 * 1000) return fdUrlCache.url;
+  const html = await (await fetch('https://www.billyscouches.com/firstdibs', { headers: { 'User-Agent': 'BillysHQ/1.0' } })).text();
+  const m = html.match(/https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec/);
+  if (m) fdUrlCache = { at: Date.now(), url: m[0] };
+  return fdUrlCache.url;
+}
+async function saveLeadToSheet(l) {
+  try {
+    const url = await firstDibsScriptUrl(); if (!url) return console.log('First Dibs sheet: script address not found');
+    const body = new URLSearchParams({ phone: l.phone, name: l.name, contactEmail: l.email || '', page: '/see-it-in-your-room (AI preview)', couch: l.couch || '' });
+    if (l.emailOk && l.email) body.set('email', l.email);
+    if (l.smsOk) body.set('smsOk', '1');
+    await fetch(url, { method: 'POST', body });
+  } catch (e) { console.log('First Dibs sheet save failed:', e.message); }
+}
 app.options('/public/ai-room', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.post('/public/ai-room', async (req, res) => {
   offerCors(req, res);
   try {
     if ((process.env.AI_ROOM || '').toLowerCase() === 'off') return res.status(503).json({ error: 'paused' });
-    const b = req.body || {}, room = dataUrlParts(b.room);
+    const b = req.body || {}; let room = dataUrlParts(b.room);
+    const key0 = String(b.roomKey || '').replace(/[^a-f0-9]/g, '').slice(0, 32), saved = key0 && aiRooms.get(key0);
+    if (!room && key0 && !saved) return res.status(409).json({ error: 'room', code: 'room' });
     const phone = String(b.phone || '').replace(/\D/g, '').slice(-10), name = String(b.name || '').trim().slice(0, 60), email = String(b.email || '').trim().slice(0, 120);
-    if (!room) return res.status(400).json({ error: 'Add a photo of your room.' });
-    if (room.b64.length > 9e6) return res.status(400).json({ error: 'That photo is too big. Try another one.' });
+    if (!room && !saved) return res.status(400).json({ error: 'Add a photo of your room.' });
+    if (room && room.b64.length > 9e6) return res.status(400).json({ error: 'That photo is too big. Try another one.' });
     if (!name || phone.length !== 10) return res.status(400).json({ error: 'Add your name and a 10-digit phone number.' });
     const d = (await getDrops()).find(x => x.id === String(b.couchId || '') && x.status === 'live'); if (!d) return res.status(400).json({ error: 'Pick a couch first.' });
     const day = aiDay(), lim = (await kget('bcd:aiLimit', {})) || {}; if (lim.day !== day) { lim.day = day; lim.total = 0; lim.by = {}; }
     const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
-    if ((lim.by[phone] || 0) >= 5 || (lim.by[ip] || 0) >= 8) return res.status(429).json({ error: "That's the max for today. Text Billy at (314) 899-7503 and he'll make more for you." });
+    if ((lim.by[phone] || 0) >= 12 || (lim.by[ip] || 0) >= 16) return res.status(429).json({ error: "That's the max for today. Text Billy at (314) 899-7503 and he'll make more for you." });
     if (lim.total >= AI_CAP) return res.status(429).json({ error: "We're getting a lot of requests today. Text Billy at (314) 899-7503 and he'll send yours." });
     lim.total++; lim.by[phone] = (lim.by[phone] || 0) + 1; lim.by[ip] = (lim.by[ip] || 0) + 1; await kset('bcd:aiLimit', lim);
     const couch = await couchPhotoParts(d); if (!couch.length) return res.status(400).json({ error: 'That couch has no photo yet. Pick another one.' });
-    let rm = room; if (sharp) { try { const s = await shrink(Buffer.from(room.b64, 'base64'), 1536); rm = { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
+    let rm = saved ? saved.rm : room;
+    if (!saved && sharp) { try { const s = await shrink(Buffer.from(room.b64, 'base64'), 1536); rm = { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
+    const roomKey = saved ? key0 : crypto.randomBytes(12).toString('hex');
+    aiRooms.set(roomKey, { rm, at: Date.now() });
+    for (const [k, v] of aiRooms) if (Date.now() - v.at > 3 * 3600 * 1000) aiRooms.delete(k);
     const id = crypto.randomBytes(8).toString('hex'), first = (name.split(/\s+/)[0] || 'there').replace(/^./, c => c.toUpperCase());
     const leads = (await kget('bcd:aiLeads', [])) || [], isNew = !leads.some(x => x.phone === phone);
-    leads.push({ id, at: new Date().toISOString(), name, phone, email, consent: !!b.consent, couch: d.title, couchId: d.id, status: 'working' });
+    const emailOk = !!b.emailOk && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), smsOk = !!b.smsOk;
+    leads.push({ id, at: new Date().toISOString(), name, phone, email, emailOk, smsOk, couch: d.title, couchId: d.id, status: 'working' });
     await kset('bcd:aiLeads', leads.slice(-2000));
     aiJobs.set(id, { status: 'working', at: Date.now() });
-    res.json({ ok: true, id });
+    res.json({ ok: true, id, roomKey });
+    if (isNew) saveLeadToSheet({ name, phone, email, emailOk, smsOk, couch: d.title });
     if (isNew) pushAll('New AI preview lead', `${name} · ${d.title}`, '/', 'ai-' + id).catch(() => {});
     aiRun(id, { room: rm, couch, dims: d.dimensions || '', title: d.title, phone, first });
   } catch (e) { console.log('ai-room error', e.message); res.status(500).json({ error: 'Something went wrong. Try again in a minute.' }); }
@@ -1934,8 +1968,8 @@ app.get('/public/ai-room/img/:id', async (req, res) => {
 // HQ: download every AI preview lead as a spreadsheet (name, phone, email, texting OK, couch, picture link).
 app.get('/api/ai-leads.csv', async (req, res) => {
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = ((await kget('bcd:aiLeads', [])) || []).map(l => [l.at, l.name, l.phone, l.email, l.consent ? 'yes' : 'no', l.couch, l.status, l.url || ''].map(q).join(','));
-  res.type('text/csv').set('Content-Disposition', 'attachment; filename="ai-preview-leads.csv"').send(['When,Name,Phone,Email,OK to text,Couch,Status,Picture'].concat(rows).join('\n'));
+  const rows = ((await kget('bcd:aiLeads', [])) || []).map(l => [l.at, l.name, l.phone, l.email, l.emailOk ? 'yes' : 'no', l.smsOk ? 'yes' : 'no', l.couch, l.status, l.url || ''].map(q).join(','));
+  res.type('text/csv').set('Content-Disposition', 'attachment; filename="ai-preview-leads.csv"').send(['When,Name,Phone,Email,Joined First Dibs,OK to text sales,Couch,Status,Picture'].concat(rows).join('\n'));
 });
 // ===================== END AI ROOM PREVIEW =====================
 
