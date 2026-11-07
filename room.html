@@ -207,7 +207,7 @@ button,a,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent
       if (j.status === 'done') { var im = new Image(); im.onload = im.onerror = function(){ t.status = 'done'; t.url = j.url; if (S.cur === t) show(t); render(); }; im.src = j.url; return; }
       if (j.status === 'error' || Date.now() - t0 > 200000) {
         t.status = 'failed'; S.tries.splice(S.tries.indexOf(t), 1);
-        if (S.cur === t) { err('The ' + t.title + ' didn\'t come out right. Tap it to try again.'); show(S.tries.filter(function(x){ return x.status === 'done'; }).pop() || null); }
+        if (S.cur === t) { err('We couldn\'t get an accurate picture of the ' + t.title + ' in this room. Try another couch, or a wider photo of your room.'); show(S.tries.filter(function(x){ return x.status === 'done'; }).pop() || null); }
         render(); return;
       }
       setTimeout(function(){ poll(t, t0); }, 2500);
