@@ -31,6 +31,7 @@ app.use('/api/justsold/pick', express.json({ limit: '4mb' }));
 app.use('/api/drops/photo', express.json({ limit: '6mb' }));
 app.use('/public/couch-offer', express.json({ limit: '15mb' }));
 app.use('/public/ai-room', express.json({ limit: '14mb' }));
+app.use('/public/ai-sess', express.json({ limit: '14mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -1829,19 +1830,20 @@ let sharp = null; try { sharp = require('sharp'); } catch (e) { console.log('sha
 const AI_MODEL = (process.env.AI_MODEL || 'gemini-3-pro-image-preview').trim();
 const AI_BASE = (process.env.GEMINI_BASE || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/$/, '');
 const AI_CAP = Number(process.env.AI_DAILY_CAP || 120);
-const aiRooms = new Map();  // roomKey -> { rm, at }  so 'try another couch' doesn't re-upload the room photo
 const aiJobs = new Map();   // id -> { status, url, error, at }  (status survives a redeploy via bcd:aiJob:<id>)
 const aiDay = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 const dataUrlParts = s => { const m = String(s || '').match(/^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+/=]+)$/); return m ? { mime: m[1], b64: m[2] } : null; };
-async function couchPhotoParts(d) {
+async function couchPhotoParts(d, n) {
   const out = [];
-  for (const ph of (d.photos || []).slice(0, 2)) {
+  for (const ph of (d.photos || []).slice(0, n || 4)) {
     try {
       if (/^[a-f0-9]{16}$/.test(ph)) { const p = dataUrlParts(await kget('bcd:dphoto:' + ph, '')); if (p) out.push(p); }
       else if (/^https:\/\//.test(ph)) {
-        const u = /squarespace-cdn/.test(ph) ? ph.split('?')[0] + '?format=1500w' : ph;
+        const u = /squarespace-cdn/.test(ph) ? ph.split('?')[0] + '?format=1000w' : ph;
         const r = await fetch(u); if (!r.ok) continue;
-        const buf = Buffer.from(await r.arrayBuffer()); out.push({ mime: (r.headers.get('content-type') || 'image/jpeg').split(';')[0], b64: buf.toString('base64') });
+        let buf = Buffer.from(await r.arrayBuffer()), mime = (r.headers.get('content-type') || 'image/jpeg').split(';')[0];
+        if (sharp) { try { const s = await shrink(buf, 1000); buf = s.buf; mime = s.mime; } catch (e) {} }
+        out.push({ mime, b64: buf.toString('base64') });
       }
     } catch (e) {}
   }
@@ -1852,27 +1854,61 @@ async function shrink(buf, max) {
   const out = await sharp(buf).rotate().resize({ width: max, height: max, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 84, mozjpeg: true }).toBuffer();
   return { buf: out, mime: 'image/jpeg' };
 }
-async function aiRender(job) {
+// What the listing says about the couch, so the AI doesn't add or drop seats.
+function couchFacts(d) {
+  const det = (d.details || []).filter(l => !/^condition|^grade|price|deliver/i.test(l)).slice(0, 8);
+  return [`Name: ${d.title}`, d.dimensions ? `Real size: ${d.dimensions}` : '', det.length ? 'Listing details: ' + det.join('; ') : ''].filter(Boolean).join('\n');
+}
+async function gemini(model, parts, json) {
   const key = (process.env.GEMINI_API_KEY || '').trim(); if (!key) throw new Error('not set up');
-  const prompt = [
-    'You are a photo editor for a furniture store. Image 1 is a photo of a customer\'s room. The other image(s) show ONE specific used sectional sofa we have for sale.',
-    'Edit image 1 so that this exact sofa is sitting in the room, as if photographed there.',
-    'Rules: Keep the room exactly the same (walls, floor, windows, decor, lighting, camera angle, framing). If there is already a couch in the main seating spot, replace it with ours; otherwise place ours where a couch would naturally go.',
-    'Keep the sofa exactly as shown: same color, fabric or leather, stitching, cushions, arms, legs, number of pieces and configuration. Do not restyle, recolor, or "improve" it.',
-    job.dims ? `Its real size is: ${job.dims}. Scale it realistically to the room using doors, windows and the floor as reference.` : 'Scale it realistically to the room using doors, windows and the floor as reference.',
-    'Match the room\'s lighting, add natural contact shadows, and keep it photorealistic. Do not add any other furniture, people, text, or watermarks. Return only the edited photo.'
-  ].join('\n');
-  const parts = [{ text: prompt }, { inline_data: { mime_type: job.room.mime, data: job.room.b64 } }, ...job.couch.map(p => ({ inline_data: { mime_type: p.mime, data: p.b64 } }))];
-  const r = await fetch(`${AI_BASE}/models/${encodeURIComponent(AI_MODEL)}:generateContent`, {
+  const r = await fetch(`${AI_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } })
+    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: json ? { responseMimeType: 'application/json' } : { responseModalities: ['TEXT', 'IMAGE'] } })
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j.error && j.error.message) || ('AI ' + r.status));
-  const img = (((j.candidates || [])[0] || {}).content || {}).parts || [];
-  const hit = img.find(p => (p.inlineData || p.inline_data) && (p.inlineData || p.inline_data).data);
+  return j;
+}
+const imgPart = p => ({ inline_data: { mime_type: p.mime, data: p.b64 } });
+async function aiRender(job, problem) {
+  const prompt = [
+    'You are a photo editor for a furniture store. Image 1 is a photo of a customer\'s room. The other images are real photos of ONE specific sofa we have for sale, from different angles.',
+    'Edit image 1 so that this exact sofa is sitting in the room, as if photographed there.',
+    'Rules: Keep the room exactly the same (walls, floor, windows, decor, lighting, camera angle, framing). If there is already a couch in the main seating spot, replace it with ours; otherwise place ours where a couch would naturally go.',
+    'The sofa must be an exact copy of the one in the product photos: count its seats, cushions, recliners, consoles, arms and sections, and keep that exact count and layout (including which side any chaise or corner is on). Same color, material, stitching, legs and back style. Never add or remove seats or pieces, never restyle or "improve" it.',
+    'About this sofa:\n' + job.facts,
+    'Scale it realistically to the room using doors, windows and the floor as reference.',
+    problem ? `IMPORTANT: a previous attempt was wrong because: ${problem}. Fix that.` : '',
+    'Match the room\'s lighting, add natural contact shadows, keep it photorealistic. No other furniture, people, text or watermarks. Return only the edited photo.'
+  ].filter(Boolean).join('\n');
+  const j = await gemini(AI_MODEL, [{ text: prompt }, imgPart(job.room), ...job.couch.map(imgPart)]);
+  const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+  const hit = parts.find(p => (p.inlineData || p.inline_data) && (p.inlineData || p.inline_data).data);
   if (!hit) throw new Error('AI returned no picture' + (j.promptFeedback && j.promptFeedback.blockReason ? ' (' + j.promptFeedback.blockReason + ')' : ''));
   return Buffer.from((hit.inlineData || hit.inline_data).data, 'base64');
+}
+// Second look: a quick, cheap AI pass compares the picture to the real couch photos. AI_CHECK=off skips it.
+const AI_CHECK_MODEL = (process.env.AI_CHECK_MODEL || 'gemini-2.5-flash').trim();
+async function aiCheck(job, buf) {
+  if ((process.env.AI_CHECK || '').toLowerCase() === 'off') return { ok: true };
+  try {
+    let p = { mime: 'image/png', b64: buf.toString('base64') };
+    if (sharp) { const s = await shrink(buf, 1000); p = { mime: s.mime, b64: s.buf.toString('base64') }; }
+    const prompt = 'Image 1 is an AI-edited room photo that should contain one specific sofa. Images 2+ are real photos of that sofa.\n' + job.facts +
+      '\nCompare the sofa in image 1 to the real sofa. Ignore camera angle, lighting and the room. Is it the same sofa: same number of seats/sections/recliners, same arms, same chaise or corner layout, same color and material? Small differences are fine; extra or missing seats, a different shape, or a different color are not.' +
+      '\nReply only JSON: {"match": true or false, "problem": "one short sentence if not a match"}';
+    const j = await gemini(AI_CHECK_MODEL, [{ text: prompt }, imgPart(p), ...job.couch.slice(0, 3).map(imgPart)], true);
+    const t = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text || '').join('');
+    const r = JSON.parse(t.replace(/^```(json)?|```$/g, '').trim());
+    return { ok: r.match !== false, problem: String(r.problem || '').slice(0, 200) };
+  } catch (e) { console.log('AI check skipped:', e.message); return { ok: true }; }
+}
+const sessKey = sid => 'bcd:aiSess:' + sid;
+const roomLink = sid => `${PUBLIC_BASE}/room/${sid}`;
+async function sessTry(sid, id, patch) {
+  const s = await kget(sessKey(sid), null); if (!s) return null;
+  const t = (s.tries || []).find(x => x.id === id); if (t) Object.assign(t, patch);
+  await kset(sessKey(sid), s); return s;
 }
 async function aiRun(id, job) {
   const set = async st => { const v = { ...st, at: Date.now() }; aiJobs.set(id, v); await kset('bcd:aiJob:' + id, v).catch(() => {}); };
@@ -1880,20 +1916,24 @@ async function aiRun(id, job) {
     let out = null, last = null;
     for (let i = 0; i < 2 && !out; i++) { try { out = await aiRender(job); } catch (e) { last = e; if (/not set up|API key|PERMISSION|billing/i.test(e.message)) break; } }
     if (!out) throw last || new Error('failed');
+    const chk = await aiCheck(job, out);
+    if (!chk.ok) {
+      console.log('AI check: redoing', job.title, '-', chk.problem);
+      try { out = await aiRender(job, chk.problem || 'the sofa did not match the product photos'); } catch (e) {}
+    }
     const { buf, mime } = await shrink(out, 1600);
     await kset('bcd:aiImg:' + id, `data:${mime};base64,${buf.toString('base64')}`);
     const url = `${PUBLIC_BASE}/public/ai-room/img/${id}.jpg`;
     await set({ status: 'done', url });
-    const leads = (await kget('bcd:aiLeads', [])) || [], L = leads.find(x => x.id === id); if (L) { L.status = 'done'; L.url = url; await kset('bcd:aiLeads', leads); }
-    // Only the first picture gets texted (one text per phone per 24h), so comparing couches doesn't blow up their phone.
-    if (L && !leads.some(x => x.phone === job.phone && x.texted && Date.now() - Date.parse(x.at) < 864e5)) {
-      L.texted = true; await kset('bcd:aiLeads', leads);
-      sendText(job.phone, `Hi ${job.first}, it's Billy with Billy's Couches! Here's the ${job.title} in your room: ${url}\n\nWant to try a few more in your room? billyscouches.com/see-it-in-your-room\nCome sit on it: billyscouches.com/visitshowroom`).catch(() => {});
+    const s = await sessTry(job.sid, id, { status: 'done', url, redo: !chk.ok });
+    if (s && !s.texted) {
+      s.texted = true; await kset(sessKey(job.sid), s);
+      sendText(s.phone, `Hi ${s.first}, it's Billy with Billy's Couches! Your room is ready. Tap here to see the ${job.title} in your space, and try any of our other couches in it too:\n${roomLink(job.sid)}`).catch(() => {});
     }
   } catch (e) {
     console.log('AI room preview failed:', e.message);
     await set({ status: 'error', error: /not set up/.test(e.message) ? 'setup' : 'failed' });
-    const leads = (await kget('bcd:aiLeads', [])) || [], L = leads.find(x => x.id === id); if (L) { L.status = 'failed: ' + e.message.slice(0, 120); await kset('bcd:aiLeads', leads); }
+    await sessTry(job.sid, id, { status: 'failed' }).catch(() => {});
   }
 }
 // Every AI preview lead also goes to the "First Dibs Email List" Google Sheet (same script as billyscouches.com/firstdibs):
@@ -1917,41 +1957,89 @@ async function saveLeadToSheet(l) {
     await fetch(url, { method: 'POST', body });
   } catch (e) { console.log('First Dibs sheet save failed:', e.message); }
 }
+// Limits: 12 pictures per phone and 16 per device a day, plus the daily total (AI_DAILY_CAP).
+async function aiLimit(phone, ip) {
+  const day = aiDay(), lim = (await kget('bcd:aiLimit', {})) || {}; if (lim.day !== day) { lim.day = day; lim.total = 0; lim.by = {}; }
+  if ((lim.by[phone] || 0) >= 12 || (lim.by[ip] || 0) >= 16) return "That's the max for today. Text Billy at (314) 899-7503 and he'll make more for you.";
+  if (lim.total >= AI_CAP) return "We're getting a lot of requests today. Text Billy at (314) 899-7503 and he'll send yours.";
+  lim.total++; lim.by[phone] = (lim.by[phone] || 0) + 1; lim.by[ip] = (lim.by[ip] || 0) + 1; await kset('bcd:aiLimit', lim);
+  return '';
+}
+async function roomPart(dataUrl) {
+  const room = dataUrlParts(dataUrl); if (!room) return null;
+  if (room.b64.length > 9e6) throw Object.assign(new Error('That photo is too big. Try another one.'), { user: true });
+  if (sharp) { try { const s = await shrink(Buffer.from(room.b64, 'base64'), 1536); return { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
+  return room;
+}
+async function startTry(s, d, ip) {
+  const msg = await aiLimit(s.phone, ip); if (msg) throw Object.assign(new Error(msg), { user: true, code: 429 });
+  const couch = await couchPhotoParts(d); if (!couch.length) throw Object.assign(new Error('That couch has no photo yet. Pick another one.'), { user: true });
+  const room = dataUrlParts(await kget('bcd:aiRoomImg:' + s.sid, '')); if (!room) throw Object.assign(new Error('Add your room photo again.'), { user: true, code: 409 });
+  const id = crypto.randomBytes(8).toString('hex');
+  s.tries = (s.tries || []).filter(t => t.couchId !== d.id || t.status === 'working');
+  s.tries.push({ id, couchId: d.id, title: d.title, status: 'working', at: Date.now() });
+  await kset(sessKey(s.sid), s);
+  aiJobs.set(id, { status: 'working', at: Date.now() });
+  aiRun(id, { sid: s.sid, room, couch, facts: couchFacts(d), title: d.title });
+  return id;
+}
+const liveCouch = async id => (await getDrops()).find(x => x.id === String(id || '') && x.status === 'live');
+const sidOf = req => String(req.params.sid || '').replace(/[^a-f0-9]/g, '').slice(0, 32);
+const aiErr = (res, e) => { if (e.user) return res.status(e.code || 400).json({ error: e.message, code: e.code }); console.log('ai-room error', e.message); res.status(500).json({ error: 'Something went wrong. Try again in a minute.' }); };
+
+// Landing page (Squarespace): first picture + their info. Creates their own room page and texts them the link.
 app.options('/public/ai-room', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.post('/public/ai-room', async (req, res) => {
   offerCors(req, res);
   try {
     if ((process.env.AI_ROOM || '').toLowerCase() === 'off') return res.status(503).json({ error: 'paused' });
-    const b = req.body || {}; let room = dataUrlParts(b.room);
-    const key0 = String(b.roomKey || '').replace(/[^a-f0-9]/g, '').slice(0, 32), saved = key0 && aiRooms.get(key0);
-    if (!room && key0 && !saved) return res.status(409).json({ error: 'room', code: 'room' });
+    const b = req.body || {};
     const phone = String(b.phone || '').replace(/\D/g, '').slice(-10), name = String(b.name || '').trim().slice(0, 60), email = String(b.email || '').trim().slice(0, 120);
-    if (!room && !saved) return res.status(400).json({ error: 'Add a photo of your room.' });
-    if (room && room.b64.length > 9e6) return res.status(400).json({ error: 'That photo is too big. Try another one.' });
+    const room = await roomPart(b.room); if (!room) return res.status(400).json({ error: 'Add a photo of your room.' });
     if (!name || phone.length !== 10) return res.status(400).json({ error: 'Add your name and a 10-digit phone number.' });
-    const d = (await getDrops()).find(x => x.id === String(b.couchId || '') && x.status === 'live'); if (!d) return res.status(400).json({ error: 'Pick a couch first.' });
-    const day = aiDay(), lim = (await kget('bcd:aiLimit', {})) || {}; if (lim.day !== day) { lim.day = day; lim.total = 0; lim.by = {}; }
-    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
-    if ((lim.by[phone] || 0) >= 12 || (lim.by[ip] || 0) >= 16) return res.status(429).json({ error: "That's the max for today. Text Billy at (314) 899-7503 and he'll make more for you." });
-    if (lim.total >= AI_CAP) return res.status(429).json({ error: "We're getting a lot of requests today. Text Billy at (314) 899-7503 and he'll send yours." });
-    lim.total++; lim.by[phone] = (lim.by[phone] || 0) + 1; lim.by[ip] = (lim.by[ip] || 0) + 1; await kset('bcd:aiLimit', lim);
-    const couch = await couchPhotoParts(d); if (!couch.length) return res.status(400).json({ error: 'That couch has no photo yet. Pick another one.' });
-    let rm = saved ? saved.rm : room;
-    if (!saved && sharp) { try { const s = await shrink(Buffer.from(room.b64, 'base64'), 1536); rm = { mime: s.mime, b64: s.buf.toString('base64') }; } catch (e) {} }
-    const roomKey = saved ? key0 : crypto.randomBytes(12).toString('hex');
-    aiRooms.set(roomKey, { rm, at: Date.now() });
-    for (const [k, v] of aiRooms) if (Date.now() - v.at > 3 * 3600 * 1000) aiRooms.delete(k);
-    const id = crypto.randomBytes(8).toString('hex'), first = (name.split(/\s+/)[0] || 'there').replace(/^./, c => c.toUpperCase());
-    const leads = (await kget('bcd:aiLeads', [])) || [], isNew = !leads.some(x => x.phone === phone);
+    const d = await liveCouch(b.couchId); if (!d) return res.status(400).json({ error: 'Pick a couch first.' });
+    const sid = crypto.randomBytes(10).toString('hex'), first = (name.split(/\s+/)[0] || 'there').replace(/^./, c => c.toUpperCase());
     const emailOk = !!b.emailOk && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), smsOk = !!b.smsOk;
-    leads.push({ id, at: new Date().toISOString(), name, phone, email, emailOk, smsOk, couch: d.title, couchId: d.id, status: 'working' });
+    await kset('bcd:aiRoomImg:' + sid, `data:${room.mime};base64,${room.b64}`);
+    const s = { sid, at: new Date().toISOString(), name, first, phone, email, emailOk, smsOk, tries: [], opens: 0, texted: false };
+    const id = await startTry(s, d, clientIp(req));
+    const leads = (await kget('bcd:aiLeads', [])) || [], isNew = !leads.some(x => x.phone === phone);
+    leads.push({ sid, at: s.at, name, phone, email, emailOk, smsOk, couch: d.title });
     await kset('bcd:aiLeads', leads.slice(-2000));
-    aiJobs.set(id, { status: 'working', at: Date.now() });
-    res.json({ ok: true, id, roomKey });
+    res.json({ ok: true, id, sid, url: roomLink(sid) });
     if (isNew) saveLeadToSheet({ name, phone, email, emailOk, smsOk, couch: d.title });
-    if (isNew) pushAll('New AI preview lead', `${name} · ${d.title}`, '/', 'ai-' + id).catch(() => {});
-    aiRun(id, { room: rm, couch, dims: d.dimensions || '', title: d.title, phone, first });
-  } catch (e) { console.log('ai-room error', e.message); res.status(500).json({ error: 'Something went wrong. Try again in a minute.' }); }
+    if (isNew) pushAll('New AI preview lead', `${name} · ${d.title}`, '/', 'ai-' + sid).catch(() => {});
+  } catch (e) { aiErr(res, e); }
+});
+// Their own room page (the link we text them)
+app.get('/room/:sid', (req, res) => res.set('X-Robots-Tag', 'noindex').set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'room.html')));
+app.get('/public/ai-sess/:sid', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const s = await kget(sessKey(sidOf(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
+  if (req.query.open) { s.opens = (s.opens || 0) + 1; s.lastOpen = new Date().toISOString(); await kset(sessKey(s.sid), s); }
+  res.json({ first: s.first, room: `/public/ai-sess/${s.sid}/room.jpg?v=${s.roomV || 0}`, tries: (s.tries || []).map(t => ({ id: t.id, couchId: t.couchId, title: t.title, status: t.status, url: t.url || '' })) });
+});
+app.get('/public/ai-sess/:sid/room.jpg', async (req, res) => {
+  const m = String(await kget('bcd:aiRoomImg:' + sidOf(req), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
+  res.set('Cache-Control', 'public, max-age=86400').type(m[1]).send(Buffer.from(m[2], 'base64'));
+});
+app.post('/public/ai-sess/:sid/try', async (req, res) => {
+  try {
+    if ((process.env.AI_ROOM || '').toLowerCase() === 'off') return res.status(503).json({ error: 'The room preview is paused right now.' });
+    const s = await kget(sessKey(sidOf(req)), null); if (!s) return res.status(404).json({ error: 'This link expired. Start a new one at billyscouches.com/see-it-in-your-room' });
+    if ((s.tries || []).filter(t => t.status === 'working').length >= 2) return res.status(429).json({ error: 'Hang on, still working on your last one.' });
+    const d = await liveCouch((req.body || {}).couchId); if (!d) return res.status(400).json({ error: 'That couch just sold. Pick another one.' });
+    res.json({ ok: true, id: await startTry(s, d, clientIp(req)) });
+  } catch (e) { aiErr(res, e); }
+});
+app.post('/public/ai-sess/:sid/room', async (req, res) => {
+  try {
+    const s = await kget(sessKey(sidOf(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
+    const room = await roomPart((req.body || {}).room); if (!room) return res.status(400).json({ error: 'That photo type didn\'t work. Try a regular photo.' });
+    await kset('bcd:aiRoomImg:' + s.sid, `data:${room.mime};base64,${room.b64}`);
+    s.roomV = (s.roomV || 0) + 1; s.tries = []; await kset(sessKey(s.sid), s);
+    res.json({ ok: true });
+  } catch (e) { aiErr(res, e); }
 });
 app.get('/public/ai-room/status/:id', async (req, res) => {
   dropCors(res); res.set('Cache-Control', 'no-store');
@@ -1965,11 +2053,15 @@ app.get('/public/ai-room/img/:id', async (req, res) => {
   try { const m = String(await kget('bcd:aiImg:' + String(req.params.id).replace(/\.jpg$/, '').replace(/[^a-f0-9]/g, ''), '')).match(/^data:(image\/\w+);base64,(.+)$/); if (!m) return res.sendStatus(404);
     dropCors(res); res.set('Cache-Control', 'public, max-age=604800, immutable').type(m[1]).send(Buffer.from(m[2], 'base64')); } catch (e) { res.sendStatus(404); }
 });
-// HQ: download every AI preview lead as a spreadsheet (name, phone, email, texting OK, couch, picture link).
+// HQ: every AI preview lead as a spreadsheet: who, which couches they tried, whether they opened their link.
 app.get('/api/ai-leads.csv', async (req, res) => {
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = ((await kget('bcd:aiLeads', [])) || []).map(l => [l.at, l.name, l.phone, l.email, l.emailOk ? 'yes' : 'no', l.smsOk ? 'yes' : 'no', l.couch, l.status, l.url || ''].map(q).join(','));
-  res.type('text/csv').set('Content-Disposition', 'attachment; filename="ai-preview-leads.csv"').send(['When,Name,Phone,Email,Joined First Dibs,OK to text sales,Couch,Status,Picture'].concat(rows).join('\n'));
+  const rows = [];
+  for (const l of ((await kget('bcd:aiLeads', [])) || []).slice(-500).reverse()) {
+    const s = l.sid ? await kget(sessKey(l.sid), null) : null, tr = s ? (s.tries || []).filter(t => t.status === 'done') : [];
+    rows.push([l.at, l.name, l.phone, l.email, l.emailOk ? 'yes' : 'no', l.smsOk ? 'yes' : 'no', l.couch, tr.length, tr.map(t => t.title).join(' | '), s ? (s.opens || 0) : '', s && s.lastOpen || '', l.sid ? roomLink(l.sid) : (l.url || '')].map(q).join(','));
+  }
+  res.type('text/csv').set('Content-Disposition', 'attachment; filename="ai-preview-leads.csv"').send(['When,Name,Phone,Email,Joined First Dibs,OK to text sales,First couch,Couches tried,Which couches,Times opened link,Last opened,Their room page'].concat(rows).join('\n'));
 });
 // ===================== END AI ROOM PREVIEW =====================
 
