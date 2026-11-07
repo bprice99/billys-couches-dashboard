@@ -399,7 +399,8 @@ app.post('/api/loads/unit', async (req, res) => {
     u.soldAt = status === 'sold' ? (u.soldAt || new Date().toISOString()) : '';
     saleDetails(u, req.body || {}, status);
     await kset(KEYS.loads, loads);
-    res.json({ ok: true });
+    const off = status === 'sold' ? await soldOffWebsite(u.name, u.soldCustomer) : '';
+    res.json({ ok: true, offWebsite: off });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -436,6 +437,20 @@ app.post('/api/couch/rename', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// When a couch is marked sold in the Sales Tracker, take its listing off the website too.
+// Matches by the couch's name (e.g. "Ellendale"); only acts when exactly one live listing matches.
+const DROP_GENERIC = new Set('the and with set sectional sectionals couch sofa sofas fabric leather power reclining recliner modular piece pc pcs 2pc 3pc 4pc 5pc 6pc 7pc convertible sleeper loveseat chaise ottoman left right facing raf laf gray grey cream brown black white beige tan blue green new'.split(' '));
+const dropWords = t => String(t || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 2 && !DROP_GENERIC.has(w) && !/^\d+$/.test(w));
+async function soldOffWebsite(name, who) {
+  try {
+    const want = dropWords(name); if (!want.length) return '';
+    const list = await getDrops(), live = list.filter(d => ['live', 'emailed'].includes(d.status));
+    const hits = live.filter(d => { const w = dropWords(d.title); return w.length && w[0] && want.includes(w[0]); });
+    if (hits.length !== 1) return '';
+    const d = hits[0], now = Date.now(); d.status = 'sold'; d.soldAt = now; d.updatedAt = now; d.soldVia = 'sales tracker'; if (who) d.soldCustomer = who;
+    await setDrops(list); dropsAt = now; recentCache.at = 0; return d.title;
+  } catch (e) { console.log('Sold-off-website failed', e.message); return ''; }
+}
 // Couch price, delivery fee and upsells recorded when a couch is marked sold.
 function saleDetails(target, body, status) {
   const sold = status === 'sold';
@@ -458,7 +473,8 @@ app.post('/api/purchases/sale', async (req, res) => {
     p.soldDate = p.status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
     saleDetails(p, req.body || {}, p.status);
     await kset(KEYS.purchases, list);
-    res.json({ ok: true });
+    const off = p.status === 'sold' ? await soldOffWebsite(p.item, p.soldCustomer) : '';
+    res.json({ ok: true, offWebsite: off });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1895,7 +1911,7 @@ async function aiRender(job, problem) {
   return Buffer.from((hit.inlineData || hit.inline_data).data, 'base64');
 }
 // Second look: a quick, cheap AI pass compares the picture to the real couch photos. AI_CHECK=off skips it.
-const AI_CHECK_MODEL = (process.env.AI_CHECK_MODEL || 'gemini-2.5-flash').trim();
+const AI_CHECK_MODEL = (process.env.AI_CHECK_MODEL || 'gemini-2.5-pro').trim();  // the careful checker; set gemini-2.5-flash for faster/looser
 async function aiCheck(job, buf) {
   if ((process.env.AI_CHECK || '').toLowerCase() === 'off') return { ok: true };
   try {
@@ -1980,7 +1996,8 @@ async function aiRun(id, job) {
       console.log('AI check: redoing', job.title, '-', chk.problem);
       try { const again = await aiRender(job, chk.problem || 'the sofa did not match the product photos'); const c2 = await aiCheck(job, again); if (c2.ok || /room/i.test(chk.problem)) { out = again; chk = c2; } } catch (e) {}
       // Never show a picture of a different room.
-      if (!chk.ok && /room|showroom|different (space|place)/i.test(chk.problem)) throw new Error('bad result: ' + chk.problem);
+      // Never show a different room or a different couch. AI_STRICT=off shows the best try anyway.
+      if (!chk.ok && ((process.env.AI_STRICT || '').toLowerCase() !== 'off' || /room|showroom|different (space|place)/i.test(chk.problem))) throw new Error('bad result: ' + chk.problem);
     }
     const { buf, mime } = await shrink(out, 1600);
     await kset('bcd:aiImg:' + id, `data:${mime};base64,${buf.toString('base64')}`);
