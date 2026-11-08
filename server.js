@@ -63,7 +63,9 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
-  if (!req.path.startsWith('/public/')) res.setHeader('X-Frame-Options', 'DENY');
+  // The sizing tool's "Arrange pieces" screen opens inside HQ itself, so /fit may be framed by HQ (same site only).
+  if (req.path === '/fit') res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  else if (!req.path.startsWith('/public/')) res.setHeader('X-Frame-Options', 'DENY');
   next();
 });
 // "Will it fit?" on its own address (e.g. fit.billyscouches.com). Set FIT_BASE in Railway after adding the
