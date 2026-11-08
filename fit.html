@@ -126,7 +126,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   }
   function couchItems(c){
     var out = [];
-    (c.pieces || []).forEach(function(p, i){ for (var n = 0; n < (p.qty || 1); n++) out.push({ kind: 'couch', k: i + '-' + n, name: p.name + ((p.qty || 1) > 1 ? ' ' + (n + 1) : ''), w: p.w, d: p.d, ret: p.ret || 0, ch: p.ch || 0, cw: p.cw || 0, x: 0, y: 0, r: 0, f: false }); });
+    (c.pieces || []).forEach(function(p, i){ for (var n = 0; n < (p.qty || 1); n++) out.push({ kind: 'couch', k: i + '-' + n, name: p.name + ((p.qty || 1) > 1 ? ' ' + (n + 1) : ''), w: p.w, d: p.d, ret: p.ret || 0, ch: p.ch || 0, cw: p.cw || 0, side: p.side || '', fixed: p.side === 'L' || p.side === 'R', x: 0, y: 0, r: 0, f: p.side === 'L' }); });
     return out;
   }
   // First layout: biggest piece on the back wall (L-shapes in the corner), the next ones along the side walls.
@@ -285,13 +285,13 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     else if (c) { st.className = 'status'; st.textContent = '✓ The ' + c.title.split(/\s+/)[0] + ' fits your room'; }
     var it = S.items[S.sel], lk = S.locked && S.modular && it && it.kind === 'couch'; $('tRot').disabled = !it || it.kind === 'door';
     $('tRot').textContent = lk ? '↻ Rotate sectional' : S.modular && it && it.kind === 'couch' ? '↻ Rotate piece' : '↻ Rotate';
-    $('tFlip').hidden = !(it && (it.ret || it.ch)) || lk; $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1)) || lk; lockUI();
+    $('tFlip').hidden = !(it && (it.ret || it.ch)) || !!(it && it.fixed) || lk; $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1)) || lk; lockUI();
     $('tDel').textContent = it && it.kind === 'couch' ? 'Hide ' + it.name.toLowerCase() : 'Remove';
     if (B.bad === 0 && S.modular && !S.locked && R.real && c) { st.className = 'status'; st.textContent = '✓ Pieces unlocked: drag any piece'; }
     if (c) {
       $('buy').textContent = 'Buy · ' + money(c.price);
       var ps = c.pieces || [], hidden = S.items.filter(function(i){ return i.kind === 'couch' && i.h; });
-      $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"') + (p.ch ? ', chaise ' + Math.round(p.ch) + '"' : ''); }).join(', ') +
+      $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"') + (p.ch ? ', chaise ' + Math.round(p.ch) + '"' : '') + (p.side === 'rev' ? ' (reversible)' : p.side === 'L' ? ' (left side)' : p.side === 'R' ? ' (right side)' : ''); }).join(', ') +
         (hidden.length ? ' · <a href="#" id="showAll" style="color:var(--red)">Show hidden pieces</a>' : '');
     }
   }
@@ -302,7 +302,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     $('strip').innerHTML = S.couches.map(function(c){ var p = c.pieces, np = p.reduce(function(a, x){ return a + (x.qty || 1); }, 0), sz = np === 1 ? Math.round(p[0].w) + '"' + (p[0].ret ? ' × ' + Math.round(p[0].ret) + '"' : ' wide') : np + ' pieces' + (c.shape ? ' · modular' : '');
       return '<button class="c' + (S.couch === c ? ' on' : '') + '" data-id="' + esc(c.id) + '"><img loading="lazy" src="' + esc(photo(c)) + '" alt=""><b>' + esc(c.title) + '</b><span>' + sz + ' · ' + money(c.price) + '</span></button>'; }).join('') || '<div class="empty">No couches listed right now. Check back soon!</div>';
   }
-  function sigOf(c){ return 'v3|' + (c.pieces || []).map(function(p){ return [p.name, p.w, p.d, p.ret || 0, p.ch || 0, p.qty || 1].join(','); }).join(';') + '|' + JSON.stringify(c.shape || ''); }
+  function sigOf(c){ return 'v3|' + (c.pieces || []).map(function(p){ return [p.name, p.w, p.d, p.ret || 0, p.ch || 0, p.side || '', p.qty || 1].join(','); }).join(';') + '|' + JSON.stringify(c.shape || ''); }
   function pick(id, keepLayout){
     var c = S.couches.filter(function(x){ return x.id === id; })[0] || S.couches[0]; if (!c) return;
     var extras = S.items.filter(function(i){ return i.kind !== 'couch'; });
@@ -312,7 +312,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     S.locked = S.modular && !ARR; if (keepLayout && S.saved && S.saved.couch === c.id && S.saved.locked === false) S.locked = false;
     // Only reuse a saved layout if it was made with this exact set of pieces (new sizes in Drops = fresh setup).
     var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id && S.saved.sig === sigOf(c) ? S.saved.layout : null;
-    if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = m.f; it.h = m.h; clamp(it, R); } });
+    if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = it.fixed ? it.side === 'L' : m.f; it.h = m.h; clamp(it, R); } });
     else autoLayout(R);
     strip(); draw(); save();
   }
@@ -340,13 +340,13 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     if (S.locked && S.modular && it.kind === 'couch') { var G = gbox(grp()), cx0 = G.x + G.w / 2, cy0 = G.y + G.h / 2;
       grp().forEach(function(p){ var b0 = box(p), px = p.x + b0.w / 2, py = p.y + b0.h / 2, nx = cx0 - (py - cy0), ny = cy0 + (px - cx0); p.r = (p.r + 90) % 360; var b1 = box(p); p.x = nx - b1.w / 2; p.y = ny - b1.h / 2; });
       shiftGroup(0, 0, room()); draw(); save(); return; } var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = (it.r + 90) % 360; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; clamp(it, room()); if (it.kind === 'couch') { snapPieces(it); clamp(it, room()); } draw(); save(); };
-  $('tFlip').onclick = function(){ var it = S.items[S.sel]; if (!it) return; it.f = !it.f; draw(); save(); };
+  $('tFlip').onclick = function(){ var it = S.items[S.sel]; if (!it || it.fixed) return; it.f = !it.f; draw(); save(); };
   $('tDel').onclick = function(){ var it = S.items[S.sel]; if (!it) return; if (it.kind === 'couch') it.h = true; else S.items.splice(S.sel, 1); S.sel = -1; draw(); save(); };
   $('tTv').onclick = function(){ var R = room(), ex = S.items.map(function(i){ return i.kind; }).indexOf('tv'); if (ex > -1) { S.sel = ex; draw(); return; } var it = { kind: 'tv', k: 'tv' + Date.now() % 1e5, name: 'TV', w: 60, d: 4, x: (R.W - 60) / 2, y: R.D - 4, r: 0 }; clamp(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tDoor').onclick = function(){ var R = room(); var it = { kind: 'door', k: 'door' + Date.now() % 1e5, name: 'Door', w: 36, d: 36, x: 0, y: R.D - 60, r: 270 }; doorSnap(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tLock').onclick = function(){ S.locked = !S.locked; if (S.locked) S.sel = S.items.map(function(i){ return i.kind; }).indexOf('couch'); draw(); save(); };
   $('tReset').onclick = function(){ if (S.modular) { S.items.forEach(function(i){ if (i.kind === 'couch') i.h = false; }); var G1 = gbox(grp()); if (!applyShape(room())) { buildSectional(room()); var G2 = gbox(grp()); shiftGroup(G1.x - G2.x, G1.y - G2.y, room()); } S.locked = !ARR; S.sel = 0; draw(); save(); return; }
-    S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = false; }); autoLayout(room()); S.sel = 0; draw(); save(); };
+    S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = i.side === 'L'; }); autoLayout(room()); S.sel = 0; draw(); save(); };
   $('pcs').addEventListener('click', function(e){ if (e.target.id === 'showAll') { e.preventDefault(); S.items.forEach(function(i){ i.h = false; }); draw(); save(); } });
   $('strip').addEventListener('click', function(e){ var b = e.target.closest('.c'); if (b) pick(b.getAttribute('data-id')); });
   ['wFt', 'wIn', 'dFt', 'dIn'].forEach(function(id){ $(id).addEventListener('input', function(){ var R = room(); S.items.forEach(function(it){ if (it.kind === 'door') doorSnap(it, R); else clamp(it, R); }); if (R.real && !S.didLayout) { S.didLayout = true; autoLayout(R); } draw(); save(); }); });
