@@ -661,12 +661,16 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   <label class="drl">Dimensions<input id="drDims" placeholder="L: 128 x 115 in. | H: 42 in." maxlength="200"></label>
   <div class="drl">Will it fit? pieces <small>inches · one row per piece · "Other side" only for L-shaped pieces (chaise / corner)</small></div>
   <div id="fitPieces" style="margin-bottom:6px"></div>
-  <button type="button" class="btn sm" id="fitAdd" style="margin-bottom:12px">+ Add piece</button>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><button type="button" class="btn sm" id="fitAdd">+ Add piece</button>
+    <button type="button" class="btn sm p" id="fitArr">Arrange pieces like the showroom</button><small id="fitArrNote" style="color:var(--muted)"></small></div>
   <div class="drl">Photos <small>first photo is the main one</small></div>
   <div id="drPhotos" class="drph"></div>
   <label class="btn" style="display:inline-block;cursor:pointer;margin:8px 0 14px">+ Add photos<input type="file" id="drFiles" accept="image/*" multiple hidden></label>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn p" id="drSave">Save</button></div>
 </div></div>
+<div class="mask" id="m-arr"><div class="modal" style="max-width:720px;width:96vw;padding:10px">
+  <div style="display:flex;align-items:center;gap:10px;padding:4px 6px 8px"><b style="flex:1">Arrange pieces like the showroom</b><button type="button" class="btn sm" data-close>Done</button></div>
+  <iframe id="arrFrame" style="width:100%;height:78vh;border:0;border-radius:10px;background:#f6f2ee"></iframe></div></div>
 <div class="mask" id="m-dropmail"><div class="modal" style="max-width:760px;max-height:94vh;overflow:auto">
   <h3 style="margin:0 40px 6px 0">First Dibs email</h3>
   <p class="empty" style="font-size:13px;margin:0 0 10px">Copy the HTML into TextMagic. Photos are hosted by HQ, no image converter needed.</p>
@@ -2527,9 +2531,11 @@ function openDrop(id){
   $('drName').value = d ? d.title : ''; $('drPrice').value = d ? d.price || '' : ''; $('drRetail').value = d && d.retail ? d.retail : '';
   $('drGrade').value = d ? d.grade || '' : ''; $('drDetails').value = d ? (d.details || []).join('\n') : ''; $('drImp').value = d ? (d.imperfections || []).join('\n') : '';
   $('drDims').value = d ? d.dimensions || '' : '';
-  FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces(); DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
+  FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces();
+  $('fitArrNote').textContent = d && d.fitShape ? '✓ Showroom shape saved (modular)' : 'For modular sectionals'; DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
   $('m-drop').classList.add('on');
 }
+window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.fitShapeSaved) { $('fitArrNote').textContent = '✓ Showroom shape saved (modular)'; toast('Shape saved'); loadDrops(); } });
 // "Will it fit?" pieces editor (sofa, loveseat, each modular section)
 let FITP = [];
 function drawFitPieces(){
@@ -2547,11 +2553,12 @@ document.addEventListener('click', e => {
 function drawDropPhotos(){
   $('drPhotos').innerHTML = DRPH.map((p, i) => `<div class="ph ${i ? '' : 'main'}" style="background-image:url('${esc(dLocalPhoto(p))}')">${i ? `<button class="lf" data-phl="${i}" title="Make earlier">&#8592;</button>` : ''}<button class="x" data-phx="${i}" title="Remove">&times;</button></div>`).join('') || '<p class="empty" style="font-size:13px;margin:0">No photos yet.</p>';
 }
-async function saveDrop(){
+async function saveDrop(keepOpen){
   const body = { id: $('drId').value || undefined, title: $('drName').value, price: $('drPrice').value, retail: $('drRetail').value, grade: $('drGrade').value,
     details: $('drDetails').value, imperfections: $('drImp').value, dimensions: $('drDims').value, photos: DRPH,
     pieces: readFitPieces() };
   if (!body.title.trim()) return toast('Add a title'); if (!(Number(body.price) > 0)) return toast('Add a price');
+  if (keepOpen === true) { const j = await post('/api/drops/save', body); return j.drop; }
   try { await post('/api/drops/save', body); $('m-drop').classList.remove('on'); toast('Saved'); if (!body.id) DRF = DRF === 'active' ? 'active' : 'draft'; loadDrops(); } catch (e) { toast(e.message); }
 }
 async function setDropStatus(ids, status){
@@ -2671,6 +2678,9 @@ document.addEventListener('click', async e => {
   if (t.id === 'drImport' || t.id === 'drImport2') { e.preventDefault(); toast('Pulling couches from billyscouches.com…');
     try { const j = await post('/api/drops/import', {}); toast(`Found ${j.found}, added ${j.added}`); DRF = 'active'; loadDrops(); } catch (err) { toast(err.message); } return; }
   if (t.id === 'drSave') return saveDrop();
+  if (t.id === 'fitArr') { const id = $('drId').value; if (!id) return toast('Save the couch first, then arrange its pieces');
+    if (readFitPieces().reduce((a, p) => a + (parseInt(p.qty, 10) || 1), 0) < 2) return toast('Add the pieces first (at least 2)');
+    saveDrop(true).then(() => { $('arrFrame').src = '/fit?arrange=' + encodeURIComponent(id) + '&t=' + Date.now(); $('m-arr').classList.add('on'); }).catch(e => toast(e.message)); return; }
   const px = t.closest('[data-phx]'); if (px) { DRPH.splice(+px.dataset.phx, 1); drawDropPhotos(); return; }
   const pl = t.closest('[data-phl]'); if (pl) { const i = +pl.dataset.phl; [DRPH[i - 1], DRPH[i]] = [DRPH[i], DRPH[i - 1]]; drawDropPhotos(); return; }
   if (t.id === 'dmCopy') return copyText(dropEmailHtml(DMSEL, dropMailOpts()), 'Email HTML copied - paste into TextMagic');
