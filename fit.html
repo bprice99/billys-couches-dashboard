@@ -96,10 +96,14 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   // ---------- pieces ----------
   // A piece's outline before rotation: rectangle w x d, or an L (w across the back, ret down the side, arm depth d).
   function local(it){
-    if (it.kind === 'couch' && it.ret) {
-      var w = it.w, r = it.ret, d = it.d, pts = [[0,0],[w,0],[w,d],[d,d],[d,r],[0,r]];
+    // Sectional outline: back (w) along the wall, the side (ret) down one end, and a chaise (ch long, cw wide) at the other end.
+    if (it.kind === 'couch' && (it.ret || it.ch)) {
+      var w = it.w, r = it.ret || 0, d = it.d, ch = it.ch || 0, cw = Math.min(it.cw || 34, w / 2), pts;
+      if (r && ch) pts = [[0,0],[w,0],[w,ch],[w - cw,ch],[w - cw,d],[d,d],[d,r],[0,r]];
+      else if (r) pts = [[0,0],[w,0],[w,d],[d,d],[d,r],[0,r]];
+      else pts = [[0,0],[w,0],[w,ch],[w - cw,ch],[w - cw,d],[0,d]];
       if (it.f) pts = pts.map(function(p){ return [w - p[0], p[1]]; });
-      return { pts: pts, bw: w, bh: r };
+      return { pts: pts, bw: w, bh: Math.max(r, ch, d) };
     }
     return { pts: [[0,0],[it.w,0],[it.w,it.d],[0,it.d]], bw: it.w, bh: it.d };
   }
@@ -122,7 +126,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   }
   function couchItems(c){
     var out = [];
-    (c.pieces || []).forEach(function(p, i){ for (var n = 0; n < (p.qty || 1); n++) out.push({ kind: 'couch', k: i + '-' + n, name: p.name + ((p.qty || 1) > 1 ? ' ' + (n + 1) : ''), w: p.w, d: p.d, ret: p.ret || 0, x: 0, y: 0, r: 0, f: false }); });
+    (c.pieces || []).forEach(function(p, i){ for (var n = 0; n < (p.qty || 1); n++) out.push({ kind: 'couch', k: i + '-' + n, name: p.name + ((p.qty || 1) > 1 ? ' ' + (n + 1) : ''), w: p.w, d: p.d, ret: p.ret || 0, ch: p.ch || 0, cw: p.cw || 0, x: 0, y: 0, r: 0, f: false }); });
     return out;
   }
   // First layout: biggest piece on the back wall (L-shapes in the corner), the next ones along the side walls.
@@ -130,7 +134,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
     if (S.modular) { cs.forEach(function(it){ it.x = 0; it.y = 0; }); if (applyShape(R)) { var G0 = gbox(grp()); shiftGroup(-G0.x, -G0.y, R); return; } }
     cs.forEach(function(it, n){
-      if (n === 0) { it.r = 0; var b = box(it); it.x = it.ret ? 0 : (R.W - b.w) / 2; it.y = 0; }
+      if (n === 0) { it.r = 0; var b = box(it); it.x = it.ret ? 0 : (R.W - b.w) / 2; if (it.ch && !it.ret) it.x = Math.max(0, R.W - b.w); it.y = 0; }
       else if (n === 1) { it.r = 90; var b1 = box(it); it.x = R.W - b1.w; it.y = Math.min(box(cs[0]).h + 12, Math.max(0, R.D - b1.h)); }
       else if (n === 2) { it.r = 270; var b2 = box(it); it.x = 0; it.y = Math.min(box(cs[0]).h + 12, Math.max(0, R.D - b2.h)); }
       else { it.r = 180; var b3 = box(it); it.x = Math.min(R.W - b3.w, (n - 3) * (b3.w + 6)); it.y = R.D - b3.h; }
@@ -205,8 +209,8 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
       var stroke = bad[i] ? '#b0524c' : sel ? '#b0524c' : '#6e5240';
       out.push('<g data-i="' + i + '" style="cursor:grab"><path d="' + pathOf(shape(it)) + '" fill="' + (bad[i] ? '#c99a8a' : '#b48f74') + '" stroke="' + stroke + '" stroke-width="' + sw * (sel || bad[i] ? 2.4 : 1.2) + '"/>' + (/ottoman/i.test(it.name) ? '' : '<path d="' + pathOf(backStrip(it)) + '" fill="#9a7660"/>') + '');
       var cx = it.x + b.w / 2, cy = it.y + b.h / 2;
-      if (it.ret) { var L = local(it), arm = rot([L.bw / 2, it.d / 2], it.r, L.bw, L.bh); cx = arm[0] + it.x; cy = arm[1] + it.y; }
-      var vert = it.r % 180 && !it.ret, size = Math.round(it.w) + '"' + (it.ret ? ' × ' + Math.round(it.ret) + '"' : '');
+      if (it.ret || it.ch) { var L = local(it), arm = rot([L.bw / 2, it.d / 2], it.r, L.bw, L.bh); cx = arm[0] + it.x; cy = arm[1] + it.y; }
+      var vert = it.r % 180 && !it.ret && !it.ch, size = Math.round(it.w) + '"' + (it.ret ? ' × ' + Math.round(it.ret) + '"' : '') + (it.ch ? ' · chaise ' + Math.round(it.ch) + '"' : '');
       out.push('<text x="' + cx + '" y="' + cy + '" font-size="' + fs * 0.82 + '" text-anchor="middle" fill="#fff" font-weight="700"' + (vert ? ' transform="rotate(90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(it.name) +
         '<tspan x="' + cx + '" dy="' + fs * 0.95 + '" font-weight="400" font-size="' + fs * 0.7 + '">' + size + '</tspan></text></g>');
     });
@@ -239,13 +243,13 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     else if (c) { st.className = 'status'; st.textContent = '✓ The ' + c.title.split(/\s+/)[0] + ' fits your room'; }
     var it = S.items[S.sel], lk = S.locked && S.modular && it && it.kind === 'couch'; $('tRot').disabled = !it || it.kind === 'door';
     $('tRot').textContent = lk ? '↻ Rotate sectional' : S.modular && it && it.kind === 'couch' ? '↻ Rotate piece' : '↻ Rotate';
-    $('tFlip').hidden = !(it && it.ret) || lk; $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1)) || lk; lockUI();
+    $('tFlip').hidden = !(it && (it.ret || it.ch)) || lk; $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1)) || lk; lockUI();
     $('tDel').textContent = it && it.kind === 'couch' ? 'Hide ' + it.name.toLowerCase() : 'Remove';
     if (B.bad === 0 && S.modular && !S.locked && R.real && c) { st.className = 'status'; st.textContent = '✓ Pieces unlocked: drag any piece'; }
     if (c) {
       $('buy').textContent = 'Buy · ' + money(c.price);
       var ps = c.pieces || [], hidden = S.items.filter(function(i){ return i.kind === 'couch' && i.h; });
-      $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"'); }).join(', ') +
+      $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"') + (p.ch ? ', chaise ' + Math.round(p.ch) + '"' : ''); }).join(', ') +
         (hidden.length ? ' · <a href="#" id="showAll" style="color:var(--red)">Show hidden pieces</a>' : '');
     }
   }
