@@ -302,6 +302,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <a class="nav" data-tab="meta">Ad Performance</a>
     <a class="nav" data-tab="ads">Ad Library</a>
     <a class="nav" data-tab="content">Content Plan</a>
+    <a class="nav" data-tab="fit">Will It Fit</a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" href="/coach" style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);border-radius:0;padding-top:14px">Coaching &rarr;</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="#" id="pushBtn">🔔 Notifications</a> &middot; <a href="/security">Security</a> &middot; <a href="/logout">Log out</a></div>
@@ -319,7 +320,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
       <button class="btn p" id="upAddBtn" data-only="upsells">+ Upsell after sale</button>
-      <a class="btn" href="/api/fit-leads.csv" data-only="drops" style="text-decoration:none">Sizing tool leads</a>
+      <a class="btn" href="/api/fit-leads.csv" data-only="fit" style="text-decoration:none">Download leads</a>
       <button class="btn p" id="dropNew" data-only="drops">+ New couch</button>
       <button class="btn p" id="goalEdit" data-only="never" hidden>Set goals</button>
     </div>
@@ -529,6 +530,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
         <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
     </section>
     <section id="tab-drops" hidden><div id="drBody"></div></section>
+    <section id="tab-fit" hidden><div id="fitBody"></div></section>
     <section id="tab-cuts" hidden><div id="pcBody"></div></section>
   </main>
 </div>
@@ -1982,7 +1984,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -2135,9 +2137,56 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-pply
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'cuts' || tab === 'ppl' || tab === 'cash' || tab === 'sched' || tab === 'content';
-  ({ cuts: renderCuts, sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'cuts' || tab === 'ppl' || tab === 'cash' || tab === 'sched' || tab === 'content' || tab === 'fit';
+  ({ fit: renderFit, cuts: renderCuts, sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
 }
+// ---------- Will It Fit (sizing tool leads + usage) ----------
+let FIT = null, FITF = 'all';
+async function loadFit(){
+  $('fitBody').innerHTML = '<div class="card"><p class="empty">Loading...</p></div>';
+  try { const j = await (await fetch('/api/fit', { cache: 'no-store' })).json(); if (j.error) throw new Error(j.error); FIT = j; renderFit(); }
+  catch (e) { $('fitBody').innerHTML = `<div class="err" style="display:block">Couldn't load: ${esc(e.message)}</div>`; }
+}
+function renderFit(){
+  if (!FIT) return loadFit();
+  const L = FIT.leads, n = L.length, pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '–';
+  const since = ymd(addDays(new Date(), -29)), D = FIT.days || {}, sum = k => Object.entries(D).filter(([d]) => d >= since).reduce((a, [, v]) => a + (v[k] || 0), 0);
+  const opened = L.filter(l => l.opens).length, roomed = L.filter(l => l.room).length, hot = L.filter(l => l.score === 'Hot').length, bought = L.filter(l => l.bought).length, saved = L.filter(l => l.saves).length;
+  const v30 = sum('views'), s30 = sum('signups');
+  const tried = {}; L.forEach(l => l.tried.forEach(t => tried[t] = (tried[t] || 0) + 1)); const top = Object.entries(tried).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const ft = x => Math.floor(x / 12) + "'" + (Math.round(x % 12) ? ' ' + Math.round(x % 12) + '"' : '');
+  const pill = sc => `<span class="pill ${sc === 'Hot' ? 'd' : sc === 'Warm' ? 'u' : ''}">${sc}</span>`;
+  const list = L.filter(l => FITF === 'all' || (FITF === 'bought' ? l.bought : l.score === FITF));
+  $('fitBody').innerHTML = `
+    <div class="kpis">${kpiHtml([
+      ['Sign-ups', n, `<div class="c flat">${s30} in the last 30 days</div>`],
+      ['Page → sign-up (30 days)', pct(s30, v30), `<div class="c flat">${v30} visits to the sign-up page</div>`],
+      ['Opened their link', pct(opened, n), `<div class="c flat">${opened} of ${n}</div>`],
+      ['Typed their room', pct(roomed, n), `<div class="c flat">${roomed} actually used it</div>`],
+      ['Hot leads', hot, `<div class="c flat">${saved} saved a picture</div>`],
+      ['Bought', bought, `<div class="c flat">${pct(bought, n)} of sign-ups</div>`]])}</div>
+    <div class="grid2" style="margin-top:0">
+      <div class="card"><h2>Last 30 days</h2><div class="chartwrap" style="height:220px"><canvas id="fitChart"></canvas></div></div>
+      <div class="card"><h2>Couches people try most</h2>${top.length ? top.map(([t, c]) => `<div class="row"><span>${esc(t)}</span><b>${c}</b></div>`).join('') : '<p class="empty">No one has tried a couch yet.</p>'}
+        <p class="empty" style="font-size:12px;margin-top:10px">Tool link: <a href="${esc(FIT.base)}/fit" target="_blank">${esc(FIT.base.replace(/^https?:\/\//, ''))}/fit</a></p></div>
+    </div>
+    <div class="card" style="margin-top:16px"><h2 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Leads <small>Hot = typed their room + tried 2 couches or saved a picture · Warm = opened · Cold = never opened</small><span style="flex:1"></span>
+      ${['all', 'Hot', 'Warm', 'Cold', 'bought'].map(f => `<button class="btn sm ${FITF === f ? 'p' : ''}" data-fitf="${f}">${f === 'all' ? 'All' : f === 'bought' ? 'Bought' : f}</button>`).join('')}</h2>
+      <div style="overflow-x:auto"><table>
+      <tr><th>Signed up</th><th>Name</th><th>Score</th><th class="hide-m">Room</th><th>Couches tried</th><th class="n hide-m">Opens</th><th class="hide-m">Last open</th><th></th></tr>
+      ${list.map(l => `<tr><td>${fmtD(new Date(l.at))}</td><td><b>${esc(l.name)}</b><br><a href="sms:+1${esc(l.phone)}" style="font-size:12px">${esc(l.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'))}</a>${l.smsOk ? '' : ' <small style="color:var(--bad)">no texts</small>'}</td>
+        <td>${pill(l.score)}${l.bought ? ' <span class="pill g">Bought</span>' : ''}${l.saves ? ` <small style="color:var(--muted)">${l.saves} pic${l.saves > 1 ? 's' : ''}</small>` : ''}</td>
+        <td class="hide-m">${l.room ? ft(l.room[0]) + ' × ' + ft(l.room[1]) : '–'}</td><td style="font-size:12.5px;max-width:260px">${l.tried.map(esc).join(', ') || (l.from ? '<span style="color:var(--muted)">came from ' + esc(l.from) + '</span>' : '–')}</td>
+        <td class="n hide-m">${l.opens}</td><td class="hide-m" style="font-size:12.5px">${l.lastOpen ? agoTxt(Date.parse(l.lastOpen)) : 'never'}</td><td class="n"><a class="btn sm" href="${esc(l.link)}" target="_blank" rel="noopener">Their room</a></td></tr>`).join('') || '<tr><td colspan="8" class="empty">No leads here yet.</td></tr>'}
+      </table></div></div>`;
+  const days = Array.from({ length: 30 }, (_, i) => ymd(addDays(new Date(), i - 29)));
+  chartIn('fitChart', { type: 'bar', data: { labels: days.map(d => fmtD(toDate(d))), datasets: [
+    { label: 'Page visits', data: days.map(d => (D[d] || {}).views || 0), backgroundColor: '#d9c4b8', borderRadius: 3 },
+    { label: 'Sign-ups', data: days.map(d => (D[d] || {}).signups || 0), backgroundColor: '#b0524c', borderRadius: 3 },
+    { label: 'Link opens', data: days.map(d => (D[d] || {}).opens || 0), backgroundColor: '#2e7d4f', borderRadius: 3 }] },
+    options: { animation: false, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
+}
+document.addEventListener('click', e => { const f = e.target.closest && e.target.closest('[data-fitf]'); if (f) { FITF = f.dataset.fitf; renderFit(); } });
 function setTab(t){
   tab = t;
   document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
@@ -2172,7 +2221,7 @@ const customChange = () => { const f = toDate($('rFrom').value), t2 = toDate($('
 $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
 $('goalEdit').onclick = () => openGoals();
-$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else if (tab === 'thanks') loadThanks(true); else if (tab === 'drops') loadDrops(); else { toast('Pulling the latest from Google...'); load(true); } };
+$('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else if (tab === 'fit') loadFit(); else if (tab === 'thanks') loadThanks(true); else if (tab === 'drops') loadDrops(); else { toast('Pulling the latest from Google...'); load(true); } };
 
 $('payBtn').onclick = async () => {
   const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
