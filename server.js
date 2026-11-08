@@ -1750,11 +1750,13 @@ function cleanDrop(b, old) {
   if (b.imperfections !== undefined) d.imperfections = arr(b.imperfections, 8);
   if (b.dimensions !== undefined) d.dimensions = clean(b.dimensions, 200);
   if (b.notes !== undefined) d.notes = clean(b.notes, 300);
+  if (b.pieces !== undefined) { const n = v => { const x = parseFloat(v); return x > 0 && x < 400 ? Math.round(x * 10) / 10 : null; };
+    d.pieces = (Array.isArray(b.pieces) ? b.pieces : []).slice(0, 12).map(p => ({ name: clean(p.name, 40) || 'Piece', w: n(p.w), d: n(p.d), ret: n(p.ret), qty: Math.min(8, Math.max(1, parseInt(p.qty, 10) || 1)) })).filter(p => p.w && p.d); }
   if (b.photos !== undefined) d.photos = (Array.isArray(b.photos) ? b.photos : []).map(x => String(x)).filter(x => /^[a-f0-9]{16}$/.test(x) || /^https:\/\/images\.squarespace-cdn\.com\//.test(x)).slice(0, 12);
   return d;
 }
 app.get('/api/drops', async (req, res) => {
-  try { res.json({ ok: true, drops: await getDrops(), base: PUBLIC_BASE }); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json({ ok: true, drops: (await getDrops()).map(d => ({ ...d, guessPieces: d.pieces && d.pieces.length ? undefined : piecesOf(d) })), base: PUBLIC_BASE }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/drops/save', async (req, res) => {
   try {
@@ -2110,6 +2112,73 @@ const liveCouch = async id => (await getDrops()).find(x => x.id === String(id ||
 const sidOf = req => String(req.params.sid || '').replace(/[^a-f0-9]/g, '').slice(0, 32);
 const aiErr = (res, e) => { if (e.user) return res.status(e.code || 400).json({ error: e.message, code: e.code }); console.log('ai-room error', e.message); res.status(500).json({ error: 'Something went wrong. Try again in a minute.' }); };
 
+// ---------- Will it fit? sizing tool ----------
+// Website form: name + phone -> we text them their own link (hq.../fit/<id>). Measurements save on that link.
+const fitKey = id => 'bcd:fitSess:' + id;
+const fitLink = id => `${PUBLIC_BASE}/fit/${id}`;
+const fitHits = new Map();
+app.options('/public/fit', (req, res) => { offerCors(req, res); res.sendStatus(204); });
+app.post('/public/fit', async (req, res) => {
+  offerCors(req, res);
+  try {
+    const b = req.body || {}, ip = clientIp(req), now = Date.now();
+    if (b.bc_hp_fld) return res.json({ ok: true });
+    const phone = String(b.phone || '').replace(/\D/g, '').slice(-10), name = String(b.name || '').trim().slice(0, 60);
+    if (!name || phone.length !== 10) return res.status(400).json({ error: 'Add your first name and a 10-digit phone number.' });
+    const hits = (fitHits.get(ip) || []).filter(t => now - t < 3600e3); if (hits.length >= 6) return res.status(429).json({ error: 'Too many tries. Try again in an hour.' });
+    hits.push(now); fitHits.set(ip, hits);
+    const leads = (await kget('bcd:fitLeads', [])) || [], old = leads.find(x => x.phone === phone);
+    const first = (name.split(/\s+/)[0] || 'there').replace(/^./, c => c.toUpperCase());
+    let id = old && old.id && await kget(fitKey(old.id), null) ? old.id : crypto.randomBytes(9).toString('hex');
+    const sess = (await kget(fitKey(id), null)) || { id, at: new Date().toISOString(), meas: {}, opens: 0 };
+    Object.assign(sess, { name, first, phone, smsOk: b.smsOk !== false });
+    await kset(fitKey(id), sess);
+    if (!old) { leads.push({ id, at: sess.at, name, phone, smsOk: sess.smsOk, page: clean(b.page, 120) }); await kset('bcd:fitLeads', leads.slice(-3000)); }
+    const sent = await sendText(phone, `Hi ${first}, it's Billy with Billy's Couches! Here's your free sizing tool. Tap any couch we have and see if it fits your space:\n${fitLink(id)}\n\nYour measurements save on that link, so come back when new couches land.`);
+    if (!sent) { console.log('fit text failed', phone); return res.status(502).json({ error: "We couldn't text that number. Double-check it, or text Billy at (314) 899-7503." }); }
+    res.json({ ok: true });
+    if (!old) {
+      const body = new URLSearchParams({ phone, name, page: '/will-it-fit (sizing tool)' }); if (sess.smsOk) body.set('smsOk', '1');
+      firstDibsScriptUrl().then(u => u && fetch(u, { method: 'POST', body })).catch(() => {});
+      pushAll('New sizing tool lead', name, '/', 'fit-' + id).catch(() => {});
+    }
+  } catch (e) { console.log('fit lead error', e.message); res.status(500).json({ error: "Couldn't send the text. Try again in a minute." }); }
+});
+app.get('/fit', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'fit.html')));
+app.get('/fit/:id', (req, res) => res.set('X-Robots-Tag', 'noindex').set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'fit.html')));
+const fitId = req => String(req.params.id || '').replace(/[^a-f0-9]/g, '').slice(0, 24);
+app.get('/public/fit-sess/:id', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const s = await kget(fitKey(fitId(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
+  if (req.query.open) { s.opens = (s.opens || 0) + 1; s.lastOpen = new Date().toISOString(); await kset(fitKey(s.id), s); }
+  res.json({ first: s.first, meas: s.meas || {} });
+});
+app.post('/public/fit-sess/:id', async (req, res) => {
+  try {
+    const s = await kget(fitKey(fitId(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
+    const m = (req.body || {}).meas || {}, n = (v, max) => { const x = parseFloat(v); return x >= -50 && x < (max || 2000) ? Math.round(x * 10) / 10 : null; };
+    const items = (arr, max) => (Array.isArray(arr) ? arr : []).slice(0, max).map(o => ({ k: String(o.k || '').replace(/[^a-z0-9-]/gi, '').slice(0, 20), x: n(o.x), y: n(o.y), r: [0, 90, 180, 270].includes(o.r) ? o.r : 0, f: !!o.f, h: !!o.h }));
+    s.meas = { roomW: n(m.roomW), roomD: n(m.roomD), couch: String(m.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20), layout: items(m.layout, 20), extras: items(m.extras, 6) };
+    if (s.meas.couch) s.tried = [...new Set([...(s.tried || []), s.meas.couch])].slice(-40);
+    await kset(fitKey(s.id), s); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'save failed' }); }
+});
+app.post('/public/fit-sess/:id/saved', async (req, res) => {
+  const s = await kget(fitKey(fitId(req)), null); if (!s) return res.sendStatus(404);
+  s.saves = (s.saves || 0) + 1; await kset(fitKey(s.id), s); res.json({ ok: true });
+});
+// HQ: sizing tool leads as a spreadsheet. Hot = typed their room and tried 2+ couches or saved a picture, Warm = opened the link, Cold = never opened.
+const fitScore = s => !s.opens ? 'Cold' : (s.meas && s.meas.roomW && ((s.tried || []).length >= 2 || s.saves)) ? 'Hot' : 'Warm';
+app.get('/api/fit-leads.csv', async (req, res) => {
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', drops = await getDrops(), title = id => (drops.find(d => d.id === id) || {}).title || id;
+  const rows = [];
+  for (const l of ((await kget('bcd:fitLeads', [])) || []).slice(-1000).reverse()) {
+    const s = await kget(fitKey(l.id), null) || {}, m = s.meas || {}, ft = x => x ? Math.floor(x / 12) + "' " + Math.round(x % 12) + '"' : '';
+    rows.push([l.at, l.name, l.phone, fitScore(s), l.bought ? 'yes ' + String(l.bought).slice(0, 10) : '', l.smsOk ? 'yes' : 'no', s.opens || 0, s.lastOpen || '', m.roomW ? ft(m.roomW) + ' x ' + ft(m.roomD) : '', (s.tried || []).map(title).join(' | '), fitLink(l.id)].map(q).join(','));
+  }
+  res.type('text/csv').set('Content-Disposition', 'attachment; filename="sizing-tool-leads.csv"').send(['When,Name,Phone,Score,Bought,OK to text,Times opened,Last opened,Room,Couches tried,Their link'].concat(rows).join('\n'));
+});
+
 // Landing page (Squarespace): first picture + their info. Creates their own room page and texts them the link.
 app.options('/public/ai-room', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.post('/public/ai-room', async (req, res) => {
@@ -2193,12 +2262,41 @@ app.get('/api/ai-leads.csv', async (req, res) => {
 // Website prices during the sale: sale price + the old price + how much off. Back to normal when it ends.
 // (Only the website feed. The public order app applies the sale itself, so /public/orderable stays at full price.)
 function salePrice(p) { const price = Number(p) || 0; if (!saleLive() || !price) return { price }; const off = saleSaved(0, price); return { price: Math.max(price - off, 0), was: price, saleOff: off, saleEnds: new Date(SALE_WIN.end).toISOString() }; }
+// Will it fit?: every piece of the couch (sofa, loveseat, each modular section). Uses the pieces typed in Drops,
+// else a best guess from the Dimensions line. ret = the other side of an L-shaped piece (chaise / corner).
+const NUM = '(\\d+(?:\\.\\d+)?)';
+function guessPiece(name, t, title) {
+  const lab = re => { const m = t.match(new RegExp(re + '\\s*:\\s*' + NUM, 'i')); return m ? parseFloat(m[1]) : null; };
+  let w = null, ret = null, dep = lab('\\bD(?:epth)?');
+  let pair = t.match(new RegExp(NUM + '\\s*(?:in\\.?)?\\s*[x×]\\s*' + NUM + '(?:\\s*(?:in\\.?)?\\s*[x×]\\s*' + NUM + ')?', 'i'));
+  const lw = t.match(new RegExp('\\b(?:L|W|Length|Width)\\s*:\\s*' + NUM, 'i')), sect = /sectional|chaise/i.test(title + ' ' + name);
+  if (lw && pair && lw.index < pair.index && Number(lw[1]) !== Number(pair[1])) pair = null;
+  if (pair) {
+    const nums = [pair[1], pair[2], pair[3]].filter(Boolean).map(Number).sort((a, b) => b - a);
+    w = nums[0];
+    if (nums.length === 3) { if (sect || /chaise/i.test(t)) ret = nums[1]; else if (!dep) dep = nums[1]; }
+    else if (nums[1] >= 55 && sect) ret = nums[1]; else if (!dep) dep = nums[1];
+  } else if (lw) w = parseFloat(lw[1]);
+  const cd = lab('chaise depth'); if (cd && !ret) ret = cd;
+  if (!w) return null;
+  return { name, w, d: dep && dep < 70 ? dep : 38, ret: ret || null, qty: /\beach\b/i.test(name) ? 2 : 1, guess: true };
+}
+function piecesOf(d) {
+  if (Array.isArray(d.pieces) && d.pieces.length) return d.pieces.map(p => ({ ...p, guess: false }));
+  const t = String(d.dimensions || ''), title = String(d.title || '');
+  // "Sofa: L: 80 | D: 40 Loveseat: L: 58 ..." -> one piece per label
+  const parts = t.split(/(?:^|\s)((?!(?:Length|Width|Height|Depth|Chaise|Seat|Arm)\b)(?:[A-Z][a-z]+)(?:\s\(each\))?|Each \w+):\s*(?=(?:L|W|Length|Width)\s*:|\d)/).filter(x => x != null);
+  const out = [];
+  if (parts.length > 2) for (let i = 1; i < parts.length; i += 2) { const p = guessPiece(parts[i].replace(/\s*\(each\)/i, ' (each)'), parts[i + 1] || '', title); if (p) out.push(p); }
+  if (!out.length) { const p = guessPiece(/sectional/i.test(title) ? 'Sectional' : /sofa/i.test(title) ? 'Sofa' : 'Couch', t, title); if (p) out.push(p); }
+  return out.map(p => ({ ...p, name: p.name.replace(/\s*\(each\)|^Each\s+/i, '').replace(/s$/, '').replace(/^./, c => c.toUpperCase()) }));
+}
 app.get('/public/inventory', async (req, res) => {
   dropCors(res);
   try {
     const list = (await getDrops()).filter(d => d.status === 'live');
     res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
-      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', photos: (d.photos || []).map(dropPhotoUrl) })) });
+      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), photos: (d.photos || []).map(dropPhotoUrl) })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Public order app (order.billyscouches.com) reads this: everything a customer can buy right now,
@@ -2366,6 +2464,8 @@ app.post('/public/order-create', async (req, res) => {
     m[token] = { token, created: Date.now(), name, phone: String(b.phone || '').replace(/\D/g, '').slice(-10), type, couches,
       addons: (Array.isArray(b.addons) ? b.addons : []).map(a => clean(a && a.label || a, 40)).filter(Boolean), total: Number(b.total) || 0, payment: clean(b.payment, 30), zip: clean(b.zip, 10), from: clean(b.from, 20) };
     await setSched(m); res.json({ ok: true, token, url: schedLink(token) });
+    // Sizing tool lead bought? Mark it so the leads sheet shows which signups turned into sales.
+    const ph = m[token].phone; if (ph.length === 10) kget('bcd:fitLeads', []).then(async L => { const l = (L || []).find(x => x.phone === ph && !x.bought); if (l) { l.bought = new Date().toISOString(); await kset('bcd:fitLeads', L); } }).catch(() => {});
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, 'schedule.html')));
