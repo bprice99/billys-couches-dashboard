@@ -1141,7 +1141,7 @@ document.addEventListener('click', async e => { const b = e.target.closest('[dat
       const j = await r.json(); if (!j.url) throw new Error(j.error || 'failed');
       const ph = $('snPhone').value.replace(/\D/g, '').slice(-10); if (ph && ph.length !== 10) return toast('Phone should be 10 digits');
       const first = name.split(/\s+/)[0];
-      const msg = `Hi ${first}! Here's the link to schedule your ${$('snType').value === 'delivery' ? 'delivery' : 'pick up'}: ${j.url}`;
+      const msg = `Hi ${first}! Here's the link to schedule your ${$('snType').value === 'delivery' ? 'delivery' : 'pick up'}: ${j.url}\nFree hold for 5 days. Please schedule within 5 days, after that there's a $20/day holding fee.`;
       $('snOut').innerHTML = `<a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.url)}</a> <button class="btn sm" data-sccopy="${esc(j.url)}">Copy</button>${ph.length === 10 ? ` <a class="btn sm" href="sms:+1${ph}?&body=${encodeURIComponent(msg)}">Text it</a>` : ''}`;
       copyText(j.url, 'Link copied'); SC = null; }
     catch (err) { toast('Could not make a link: ' + err.message); } return; }
