@@ -133,6 +133,19 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   function autoLayout(R){
     var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
     if (S.modular) { cs.forEach(function(it){ it.x = 0; it.y = 0; }); if (applyShape(R)) { var G0 = gbox(grp()); shiftGroup(-G0.x, -G0.y, R); return; } }
+    // 3+ pieces with no saved shape: line them up flush along the back wall, wrap down the side wall, ottomans in front.
+    if (cs.length > 2) {
+      var all = cs.filter(function(i){ return !/ottoman/i.test(i.name); }), cor = all.filter(function(i){ return /corner/i.test(i.name); }), mid = all.filter(function(i){ return !/corner/i.test(i.name); });
+      var seats = cor.length ? [cor[0]].concat(mid, cor.slice(1)) : all, otts = cs.filter(function(i){ return /ottoman/i.test(i.name); }), x = 0, y = 0, side = false, deep = 0;
+      seats.forEach(function(it){
+        it.r = 0; var b = box(it);
+        if (!side && x + b.w <= R.W) { it.x = x; it.y = 0; x += b.w; deep = Math.max(deep, b.h); return; }
+        if (!side) { side = true; y = deep; }
+        it.r = 270; b = box(it); it.x = 0; it.y = Math.min(y, Math.max(0, R.D - b.h)); y += b.h;
+      });
+      otts.forEach(function(it, n){ it.r = 0; var b = box(it); it.x = Math.max(0, Math.min(R.W - b.w, x - b.w * (n + 1))); it.y = Math.min(deep, R.D - b.h); });
+      return;
+    }
     cs.forEach(function(it, n){
       if (n === 0) { it.r = 0; var b = box(it); it.x = it.ret ? 0 : (R.W - b.w) / 2; if (it.ch && !it.ret) it.x = Math.max(0, R.W - b.w); it.y = 0; }
       else if (n === 1) { it.r = 90; var b1 = box(it); it.x = R.W - b1.w; it.y = Math.min(box(cs[0]).h + 12, Math.max(0, R.D - b1.h)); }
