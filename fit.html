@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Will it fit? · Billy's Couches</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#2b1d16;--mut:#7a6c64;--line:#e6dcd5;--bg:#f6f2ee;--red:#b0524c;--g:#2e7d4f}
+*{box-sizing:border-box}html,body{overflow-x:clip}
+body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink);-webkit-text-size-adjust:100%}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+.logo{display:block;margin-bottom:12px}.logo img{height:34px}
+.k{color:var(--red);font-weight:800;font-size:12px;letter-spacing:.06em}
+h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
+.g{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}.g>*{min-width:0}
+@media(max-width:860px){.g{grid-template-columns:minmax(0,1fr)}}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}
+.lab{font-size:13.5px;font-weight:700;margin-bottom:8px}
+.room{display:flex;gap:8px;align-items:center}
+.f{flex:1;display:flex;align-items:center;gap:2px;border:1.5px solid #d9cdc4;border-radius:10px;padding:0 10px;background:#fff;min-width:0}
+.f:focus-within{border-color:var(--red)}
+.f input{border:0;outline:0;font:inherit;font-size:17px;font-weight:700;width:100%;min-width:0;padding:10px 0;background:transparent;color:var(--ink)}
+.f span{color:var(--mut);font-size:13px;margin-right:4px}
+.hint{font-size:12px;color:var(--mut);margin-top:6px;line-height:1.4}
+.strip{display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x mandatory}
+@media(min-width:861px){.strip{flex-wrap:wrap;overflow:visible}.c{width:calc(50% - 5px)!important}}
+.c{flex:none;width:128px;background:#fff;border:2px solid var(--line);border-radius:12px;padding:6px;font-size:11.5px;cursor:pointer;scroll-snap-align:start;text-align:left;font-family:inherit;color:inherit}
+.c.on{border-color:var(--red);box-shadow:0 0 0 3px #f4d6cf}
+.c img{width:100%;height:74px;object-fit:cover;border-radius:8px;display:block;margin-bottom:5px;background:#eee}
+.c b{display:block;font-size:12px;line-height:1.25;max-height:30px;overflow:hidden}.c span{color:var(--mut)}
+.status{border-radius:12px;padding:10px 13px;font-size:14px;font-weight:700;margin-bottom:10px;background:#eef6f0;color:var(--g)}
+.status.bad{background:#fdeeea;color:var(--red)}.status.idle{background:#f3eee9;color:var(--mut);font-weight:600}
+#plan{width:100%;height:auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+.dims{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:4px}
+.tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.tools button{flex:1 1 auto;border:1.5px solid #d9cdc4;background:#fff;border-radius:10px;padding:10px 8px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap}
+.tools button:disabled{opacity:.4}
+.tools button.sel{border-color:var(--red)}
+.btn{display:block;text-align:center;border-radius:12px;padding:14px;font-weight:700;text-decoration:none;font-size:15px;border:0;font-family:inherit;cursor:pointer;width:100%}
+.btn.dark{background:var(--ink);color:#fff;margin-top:12px}
+.cta{display:flex;gap:10px;margin-top:10px}.cta a{flex:1}
+.btn.red{background:var(--red);color:#fff}.btn.o{background:#fff;color:var(--ink);border:1.5px solid #d9cdc4}
+.pcs{font-size:12.5px;color:var(--mut);margin-top:10px;line-height:1.5}
+.empty{color:var(--mut);font-size:14px;padding:24px 0;text-align:center;width:100%}
+</style></head><body><div class="wrap">
+<a class="logo" href="https://www.billyscouches.com"><img src="/logo.png" alt="Billy's Couches"></a>
+<div class="k">BILLY'S COUCHES · WILL IT FIT?</div>
+<h1 id="hi">Draw your room, try any couch.</h1>
+<div class="g">
+  <div>
+    <div class="card" style="margin-bottom:14px"><div class="lab">1 · Your room</div>
+      <div class="room"><div class="f"><input id="wFt" inputmode="numeric" placeholder="14"><span>ft</span><input id="wIn" inputmode="numeric" placeholder="0"><span>in</span></div><b style="color:var(--mut)">×</b>
+        <div class="f"><input id="dFt" inputmode="numeric" placeholder="12"><span>ft</span><input id="dIn" inputmode="numeric" placeholder="0"><span>in</span></div></div>
+      <div class="hint">Wall to wall, like the sketch in your notebook. Width first, then depth.</div></div>
+    <div class="card"><div class="lab">2 · Pick a couch</div><div class="strip" id="strip"><div class="empty">Loading couches...</div></div></div>
+  </div>
+  <div class="card">
+    <div class="status idle" id="status">Type your room size to start.</div>
+    <svg id="plan" viewBox="0 0 168 144"></svg>
+    <div class="dims"><span id="dimW"></span><span id="dimD"></span></div>
+    <div class="tools">
+      <button id="tRot" type="button">↻ Rotate</button><button id="tFlip" type="button" hidden>⇄ Flip</button><button id="tDel" type="button" hidden>Remove</button>
+      <button id="tTv" type="button">+ TV</button><button id="tDoor" type="button">+ Doorway</button><button id="tReset" type="button">Reset</button>
+    </div>
+    <div class="hint" id="tip">Drag any piece. It snaps to the walls. Tap a piece, then Rotate.</div>
+    <button class="btn dark" id="save" type="button">⤓ Save picture of my room</button>
+    <div class="cta"><a class="btn red" id="buy" href="https://order.billyscouches.com" target="_blank" rel="noopener">Buy it</a><a class="btn o" href="https://www.billyscouches.com/visitshowroom" target="_blank" rel="noopener">Sit on it</a></div>
+    <div class="pcs" id="pcs"></div>
+  </div>
+</div></div>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var sid = (location.pathname.match(/\/fit\/([a-f0-9]+)/) || [])[1] || '';
+  var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var money = function(n){ return '$' + Math.round(Number(n) || 0).toLocaleString(); };
+  var ftin = function(x){ x = Math.round(Math.abs(x)); var f = Math.floor(x / 12), i = x % 12; return (f ? f + "' " : '') + i + '"'; };
+  var SNAP = 8, EX_W = 168, EX_D = 144;
+  var S = { couches: [], couch: null, items: [], sel: -1, first: '', saved: null };
+
+  // ---------- room ----------
+  function val(id){ var v = parseFloat($(id).value); return isNaN(v) ? 0 : v; }
+  function room(){
+    var W = val('wFt') * 12 + val('wIn'), D = val('dFt') * 12 + val('dIn'), real = W >= 36 && D >= 36;
+    return { W: real ? W : EX_W, D: real ? D : EX_D, real: real };
+  }
+  function setRoom(W, D){ if (!W || !D) return; $('wFt').value = Math.floor(W / 12); $('wIn').value = Math.round(W % 12); $('dFt').value = Math.floor(D / 12); $('dIn').value = Math.round(D % 12); }
+
+  // ---------- pieces ----------
+  // A piece's outline before rotation: rectangle w x d, or an L (w across the back, ret down the side, arm depth d).
+  function local(it){
+    if (it.kind === 'couch' && it.ret) {
+      var w = it.w, r = it.ret, d = it.d, pts = [[0,0],[w,0],[w,d],[d,d],[d,r],[0,r]];
+      if (it.f) pts = pts.map(function(p){ return [w - p[0], p[1]]; });
+      return { pts: pts, bw: w, bh: r };
+    }
+    return { pts: [[0,0],[it.w,0],[it.w,it.d],[0,it.d]], bw: it.w, bh: it.d };
+  }
+  function rot(p, r, bw, bh){ return r === 90 ? [bh - p[1], p[0]] : r === 180 ? [bw - p[0], bh - p[1]] : r === 270 ? [p[1], bw - p[0]] : p; }
+  function box(it){ var L = local(it), sw = it.r % 180 ? 1 : 0; return { w: sw ? L.bh : L.bw, h: sw ? L.bw : L.bh }; }
+  function shape(it){ var L = local(it); return L.pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
+  function backStrip(it){ var L = local(it), b = Math.min(9, it.d * 0.25), pts = [[0,0],[L.bw,0],[L.bw,b],[0,b]]; return pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
+  function clamp(it, R){ var b = box(it);
+    it.x = Math.max(0, Math.min(R.W - b.w, it.x)); it.y = Math.max(0, Math.min(R.D - b.h, it.y));
+    if (it.x < SNAP) it.x = 0; if (R.W - b.w - it.x < SNAP) it.x = Math.max(0, R.W - b.w);
+    if (it.y < SNAP) it.y = 0; if (R.D - b.h - it.y < SNAP) it.y = Math.max(0, R.D - b.h); }
+  // Doorways live on a wall: pick the nearest wall and face into the room.
+  function doorSnap(it, R){
+    var b = { w: 36, h: 36 }, cx = it.x + 18, cy = it.y + 18, dists = [cy, R.W - cx, R.D - cy, cx], m = dists.indexOf(Math.min.apply(null, dists));
+    it.r = [0, 90, 180, 270][m];
+    if (m === 0) { it.y = 0; it.x = Math.max(0, Math.min(R.W - 36, it.x)); }
+    if (m === 2) { it.y = R.D - 36; it.x = Math.max(0, Math.min(R.W - 36, it.x)); }
+    if (m === 1) { it.x = R.W - 36; it.y = Math.max(0, Math.min(R.D - 36, it.y)); }
+    if (m === 3) { it.x = 0; it.y = Math.max(0, Math.min(R.D - 36, it.y)); }
+  }
+  function couchItems(c){
+    var out = [];
+    (c.pieces || []).forEach(function(p, i){ for (var n = 0; n < (p.qty || 1); n++) out.push({ kind: 'couch', k: i + '-' + n, name: p.name + ((p.qty || 1) > 1 ? ' ' + (n + 1) : ''), w: p.w, d: p.d, ret: p.ret || 0, x: 0, y: 0, r: 0, f: false }); });
+    return out;
+  }
+  // First layout: biggest piece on the back wall (L-shapes in the corner), the next ones along the side walls.
+  function autoLayout(R){
+    var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
+    cs.forEach(function(it, n){
+      if (n === 0) { it.r = 0; var b = box(it); it.x = it.ret ? 0 : (R.W - b.w) / 2; it.y = 0; }
+      else if (n === 1) { it.r = 90; var b1 = box(it); it.x = R.W - b1.w; it.y = Math.min(box(cs[0]).h + 12, Math.max(0, R.D - b1.h)); }
+      else if (n === 2) { it.r = 270; var b2 = box(it); it.x = 0; it.y = Math.min(box(cs[0]).h + 12, Math.max(0, R.D - b2.h)); }
+      else { it.r = 180; var b3 = box(it); it.x = Math.min(R.W - b3.w, (n - 3) * (b3.w + 6)); it.y = R.D - b3.h; }
+      clamp(it, R);
+    });
+  }
+  function overlap(a, b){ var A = box(a), B = box(b); return a.x < b.x + B.w - 0.5 && b.x < a.x + A.w - 0.5 && a.y < b.y + B.h - 0.5 && b.y < a.y + A.h - 0.5; }
+
+  // ---------- drawing ----------
+  var pathOf = function(pts){ return 'M' + pts.map(function(p){ return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + ' Z'; };
+  function svgBody(R, opts){
+    var sw = Math.max(R.W, R.D) / 220, fs = Math.max(R.W, R.D) / 32, out = [], green = '#2e7d4f';
+    var grid = ''; for (var gx = 12; gx < R.W; gx += 12) grid += 'M' + gx + ' 0 V' + R.D; for (var gy = 12; gy < R.D; gy += 12) grid += 'M0 ' + gy + ' H' + R.W;
+    out.push('<rect x="0" y="0" width="' + R.W + '" height="' + R.D + '" fill="#fbf8f5"/><path d="' + grid + '" stroke="#efe6df" stroke-width="' + sw * 0.8 + '"/>');
+    out.push('<rect x="0" y="0" width="' + R.W + '" height="' + R.D + '" fill="none" stroke="' + (R.real ? '#2b1d16' : '#b9aba0') + '" stroke-width="' + sw * 3 + '"' + (R.real ? '' : ' stroke-dasharray="' + sw * 8 + ' ' + sw * 5 + '"') + '/>');
+    var bad = {};
+    S.items.forEach(function(a, i){ if (a.h) return; S.items.forEach(function(b, j){ if (j <= i || b.h) return; if (overlap(a, b) && !(a.kind === 'tv' || b.kind === 'tv')) { bad[i] = bad[j] = 1; } }); });
+    S.items.forEach(function(it, i){
+      if (it.h) return; var sel = opts.sel && i === S.sel, b = box(it);
+      if (it.kind === 'door') {
+        var ox = it.x, oy = it.y, arc, gap;
+        if (it.r === 0) { gap = [ox, 0, ox + 36, 0]; arc = 'M' + ox + ' 0 L' + ox + ' 36 A36 36 0 0 0 ' + (ox + 36) + ' 0'; }
+        else if (it.r === 180) { gap = [ox, R.D, ox + 36, R.D]; arc = 'M' + ox + ' ' + R.D + ' L' + ox + ' ' + (R.D - 36) + ' A36 36 0 0 1 ' + (ox + 36) + ' ' + R.D; }
+        else if (it.r === 90) { gap = [R.W, oy, R.W, oy + 36]; arc = 'M' + R.W + ' ' + oy + ' L' + (R.W - 36) + ' ' + oy + ' A36 36 0 0 0 ' + R.W + ' ' + (oy + 36); }
+        else { gap = [0, oy, 0, oy + 36]; arc = 'M0 ' + oy + ' L36 ' + oy + ' A36 36 0 0 1 0 ' + (oy + 36); }
+        out.push('<g data-i="' + i + '" style="cursor:grab"><rect x="' + it.x + '" y="' + it.y + '" width="36" height="36" fill="' + (bad[i] ? 'rgba(176,82,76,.15)' : 'rgba(0,0,0,0)') + '"/><line x1="' + gap[0] + '" y1="' + gap[1] + '" x2="' + gap[2] + '" y2="' + gap[3] + '" stroke="#fbf8f5" stroke-width="' + sw * 4 + '"/><path d="' + arc + '" fill="none" stroke="' + (sel ? '#b0524c' : '#8a7a70') + '" stroke-width="' + sw * 1.4 + '" stroke-dasharray="' + sw * 3 + ' ' + sw * 2 + '"/>' +
+          '<text x="' + (it.x + 18) + '" y="' + (it.y + 18 + fs * 0.35) + '" font-size="' + fs * 0.75 + '" text-anchor="middle" fill="#8a7a70" font-weight="700">Door</text></g>');
+        return;
+      }
+      if (it.kind === 'tv') {
+        out.push('<g data-i="' + i + '" style="cursor:grab"><rect x="' + it.x + '" y="' + it.y + '" width="' + b.w + '" height="' + b.h + '" rx="1" fill="#2b1d16" stroke="' + (sel ? '#b0524c' : 'none') + '" stroke-width="' + sw * 2 + '"/>' +
+          '<text x="' + (it.x + b.w / 2 + (it.r % 180 ? (it.x > R.W / 2 ? -fs * 0.9 : fs * 0.9) : 0)) + '" y="' + (it.y + b.h / 2 + (it.r % 180 ? fs * 0.3 : (it.y > R.D / 2 ? -fs * 0.6 : fs * 1.1))) + '" font-size="' + fs * 0.75 + '" text-anchor="middle" fill="#2b1d16" font-weight="700">TV</text></g>');
+        return;
+      }
+      var stroke = bad[i] ? '#b0524c' : sel ? '#b0524c' : '#6e5240';
+      out.push('<g data-i="' + i + '" style="cursor:grab"><path d="' + pathOf(shape(it)) + '" fill="' + (bad[i] ? '#c99a8a' : '#b48f74') + '" stroke="' + stroke + '" stroke-width="' + sw * (sel || bad[i] ? 2.4 : 1.2) + '"/>' + (/ottoman/i.test(it.name) ? '' : '<path d="' + pathOf(backStrip(it)) + '" fill="#9a7660"/>') + '');
+      var cx = it.x + b.w / 2, cy = it.y + b.h / 2;
+      if (it.ret) { var L = local(it), arm = rot([L.bw / 2, it.d / 2], it.r, L.bw, L.bh); cx = arm[0] + it.x; cy = arm[1] + it.y; }
+      var vert = it.r % 180 && !it.ret, size = Math.round(it.w) + '"' + (it.ret ? ' × ' + Math.round(it.ret) + '"' : '');
+      out.push('<text x="' + cx + '" y="' + cy + '" font-size="' + fs * 0.82 + '" text-anchor="middle" fill="#fff" font-weight="700"' + (vert ? ' transform="rotate(90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(it.name) +
+        '<tspan x="' + cx + '" dy="' + fs * 0.95 + '" font-weight="400" font-size="' + fs * 0.7 + '">' + size + '</tspan></text></g>');
+    });
+    // Space to each wall for the selected piece
+    if (opts.sel && S.sel > -1 && S.items[S.sel] && !S.items[S.sel].h && S.items[S.sel].kind !== 'door' && R.real) {
+      var it = S.items[S.sel], b = box(it), mx = it.x + b.w / 2, my = it.y + b.h / 2, dash = ' stroke="' + green + '" stroke-width="' + sw * 1.3 + '" stroke-dasharray="' + sw * 3 + ' ' + sw * 2 + '"';
+      var gaps = [[it.x, 'l'], [R.W - it.x - b.w, 'r'], [it.y, 't'], [R.D - it.y - b.h, 'b']];
+      gaps.forEach(function(g){ var v = g[0]; if (v < 3) return;
+        if (g[1] === 'l') out.push('<line x1="0" y1="' + my + '" x2="' + it.x + '" y2="' + my + '"' + dash + '/><text x="' + it.x / 2 + '" y="' + (my - fs * 0.4) + '" font-size="' + fs * 0.8 + '" text-anchor="middle" fill="' + green + '" font-weight="700">' + ftin(v) + '</text>');
+        if (g[1] === 'r') out.push('<line x1="' + (it.x + b.w) + '" y1="' + my + '" x2="' + R.W + '" y2="' + my + '"' + dash + '/><text x="' + (it.x + b.w + v / 2) + '" y="' + (my - fs * 0.4) + '" font-size="' + fs * 0.8 + '" text-anchor="middle" fill="' + green + '" font-weight="700">' + ftin(v) + '</text>');
+        if (g[1] === 't') out.push('<line x1="' + mx + '" y1="0" x2="' + mx + '" y2="' + it.y + '"' + dash + '/><text x="' + (mx + fs * 0.3) + '" y="' + (it.y / 2 + fs * 0.3) + '" font-size="' + fs * 0.8 + '" fill="' + green + '" font-weight="700">' + ftin(v) + '</text>');
+        if (g[1] === 'b') out.push('<line x1="' + mx + '" y1="' + (it.y + b.h) + '" x2="' + mx + '" y2="' + R.D + '"' + dash + '/><text x="' + (mx + fs * 0.3) + '" y="' + (it.y + b.h + v / 2 + fs * 0.3) + '" font-size="' + fs * 0.8 + '" fill="' + green + '" font-weight="700">' + ftin(v) + ' open</text>');
+      });
+    }
+    if (!R.real) out.push('<text x="' + R.W / 2 + '" y="' + (R.D - fs * 0.8) + '" font-size="' + fs * 0.8 + '" text-anchor="middle" fill="#a8988c">Example room · type your size above</text>');
+    return { body: out.join(''), bad: Object.keys(bad).length };
+  }
+  function draw(){
+    var R = room(), pad = Math.max(R.W, R.D) / 40, B = svgBody(R, { sel: true }), c = S.couch;
+    $('plan').setAttribute('viewBox', (-pad) + ' ' + (-pad) + ' ' + (R.W + pad * 2) + ' ' + (R.D + pad * 2));
+    $('plan').innerHTML = B.body;
+    $('dimW').textContent = R.real ? ftin(R.W) + ' wide' : ''; $('dimD').textContent = R.real ? ftin(R.D) + ' deep' : '';
+    var st = $('status'), cs = S.items.filter(function(i){ return i.kind === 'couch' && !i.h; });
+    var tooBig = cs.some(function(it){ var b = box(it), lo = Math.min(b.w, b.h), hi = Math.max(b.w, b.h); return hi > Math.max(R.W, R.D) + 0.5 || lo > Math.min(R.W, R.D) + 0.5; });
+    if (!R.real) { st.className = 'status idle'; st.textContent = 'Type your room size to see it in your space.'; }
+    else if (tooBig) { st.className = 'status bad'; st.textContent = 'Too big for this room. Try another couch or rotate it.'; }
+    else if (B.bad) { st.className = 'status bad'; st.textContent = 'Pieces are overlapping' + (S.items.some(function(i){ return i.kind === 'door' && !i.h; }) ? ' or blocking the doorway' : '') + '. Drag them apart.'; }
+    else if (c) { st.className = 'status'; st.textContent = '✓ The ' + c.title.split(/\s+/)[0] + ' fits your room'; }
+    var it = S.items[S.sel]; $('tRot').disabled = !it || it.kind === 'door';
+    $('tFlip').hidden = !(it && it.ret); $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1));
+    $('tDel').textContent = it && it.kind === 'couch' ? 'Hide ' + it.name.toLowerCase() : 'Remove';
+    if (c) {
+      $('buy').textContent = 'Buy · ' + money(c.price);
+      var ps = c.pieces || [], hidden = S.items.filter(function(i){ return i.kind === 'couch' && i.h; });
+      $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"'); }).join(', ') +
+        (hidden.length ? ' · <a href="#" id="showAll" style="color:var(--red)">Show hidden pieces</a>' : '');
+    }
+  }
+
+  // ---------- couches ----------
+  function photo(c){ var p = (c.photos || [])[0] || ''; return p.indexOf('squarespace-cdn') > -1 ? p.split('?')[0] + '?format=300w' : p; }
+  function strip(){
+    $('strip').innerHTML = S.couches.map(function(c){ var p = c.pieces, sz = p.length === 1 ? Math.round(p[0].w) + '"' + (p[0].ret ? ' × ' + Math.round(p[0].ret) + '"' : ' wide') : p.length + ' pieces';
+      return '<button class="c' + (S.couch === c ? ' on' : '') + '" data-id="' + esc(c.id) + '"><img loading="lazy" src="' + esc(photo(c)) + '" alt=""><b>' + esc(c.title) + '</b><span>' + sz + ' · ' + money(c.price) + '</span></button>'; }).join('') || '<div class="empty">No couches listed right now. Check back soon!</div>';
+  }
+  function pick(id, keepLayout){
+    var c = S.couches.filter(function(x){ return x.id === id; })[0] || S.couches[0]; if (!c) return;
+    var extras = S.items.filter(function(i){ return i.kind !== 'couch'; });
+    S.couch = c; S.items = couchItems(c).concat(extras); S.sel = 0;
+    var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id ? S.saved.layout : null;
+    if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = m.f; it.h = m.h; clamp(it, R); } });
+    else autoLayout(R);
+    strip(); draw(); save();
+  }
+
+  // ---------- drag ----------
+  var drag = null;
+  function pt(e){ var s = $('plan'), p = s.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(s.getScreenCTM().inverse()); }
+  $('plan').addEventListener('pointerdown', function(e){
+    var g = e.target.closest('[data-i]'); if (!g) { S.sel = -1; draw(); return; }
+    var i = +g.getAttribute('data-i'), it = S.items[i], p = pt(e); S.sel = i;
+    drag = { i: i, ox: p.x - it.x, oy: p.y - it.y, id: e.pointerId }; $('plan').setPointerCapture(e.pointerId); draw(); e.preventDefault();
+  });
+  $('plan').addEventListener('pointermove', function(e){
+    if (!drag || e.pointerId !== drag.id) return; var it = S.items[drag.i], p = pt(e), R = room();
+    it.x = p.x - drag.ox; it.y = p.y - drag.oy;
+    if (it.kind === 'door') doorSnap(it, R); else clamp(it, R);
+    draw();
+  });
+  var end = function(){ if (drag) { drag = null; save(); } };
+  $('plan').addEventListener('pointerup', end); $('plan').addEventListener('pointercancel', end);
+
+  // ---------- tools ----------
+  $('tRot').onclick = function(){ var it = S.items[S.sel]; if (!it || it.kind === 'door') return; var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = (it.r + 90) % 360; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; clamp(it, room()); draw(); save(); };
+  $('tFlip').onclick = function(){ var it = S.items[S.sel]; if (!it) return; it.f = !it.f; draw(); save(); };
+  $('tDel').onclick = function(){ var it = S.items[S.sel]; if (!it) return; if (it.kind === 'couch') it.h = true; else S.items.splice(S.sel, 1); S.sel = -1; draw(); save(); };
+  $('tTv').onclick = function(){ var R = room(), ex = S.items.map(function(i){ return i.kind; }).indexOf('tv'); if (ex > -1) { S.sel = ex; draw(); return; } var it = { kind: 'tv', k: 'tv' + Date.now() % 1e5, name: 'TV', w: 60, d: 4, x: (R.W - 60) / 2, y: R.D - 4, r: 0 }; clamp(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
+  $('tDoor').onclick = function(){ var R = room(); var it = { kind: 'door', k: 'door' + Date.now() % 1e5, name: 'Door', w: 36, d: 36, x: 0, y: R.D - 60, r: 270 }; doorSnap(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
+  $('tReset').onclick = function(){ S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = false; }); autoLayout(room()); S.sel = 0; draw(); save(); };
+  $('pcs').addEventListener('click', function(e){ if (e.target.id === 'showAll') { e.preventDefault(); S.items.forEach(function(i){ i.h = false; }); draw(); save(); } });
+  $('strip').addEventListener('click', function(e){ var b = e.target.closest('.c'); if (b) pick(b.getAttribute('data-id')); });
+  ['wFt', 'wIn', 'dFt', 'dIn'].forEach(function(id){ $(id).addEventListener('input', function(){ var R = room(); S.items.forEach(function(it){ if (it.kind === 'door') doorSnap(it, R); else clamp(it, R); }); if (R.real && !S.didLayout) { S.didLayout = true; autoLayout(R); } draw(); save(); }); });
+
+  // ---------- save picture (just the grid) ----------
+  $('save').onclick = function(){
+    var R = room(), c = S.couch, pad = Math.max(R.W, R.D) / 14, head = Math.max(R.W, R.D) / 5.5, fs = Math.max(R.W, R.D) / 26;
+    var W = R.W + pad * 2, H = R.D + pad * 2 + head;
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" font-family="Helvetica, Arial, sans-serif"><rect width="' + W + '" height="' + H + '" fill="#ffffff"/>' +
+      '<text x="' + pad + '" y="' + (pad + fs) + '" font-size="' + fs * 1.15 + '" font-weight="700" fill="#2b1d16">' + esc(c ? c.title : 'My room') + (c ? ' · ' + money(c.price) : '') + '</text>' +
+      '<text x="' + pad + '" y="' + (pad + fs * 2.3) + '" font-size="' + fs * 0.85 + '" fill="#7a6c64">' + (R.real ? 'Room ' + ftin(R.W) + ' wide × ' + ftin(R.D) + ' deep · 1 square = 1 foot' : 'Example room') + '</text>' +
+      '<g transform="translate(' + pad + ',' + (pad + head - pad * 0.4) + ')">' + svgBody(R, { sel: false }).body + '</g>' +
+      '<text x="' + (W - pad) + '" y="' + (H - pad * 0.35) + '" font-size="' + fs * 0.7 + '" text-anchor="end" fill="#b0524c" font-weight="700">billyscouches.com</text></svg>';
+    var img = new Image(), scale = 1600 / W;
+    img.onload = function(){
+      var cv = document.createElement('canvas'); cv.width = 1600; cv.height = Math.round(H * scale);
+      var ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(function(blob){
+        var name = 'my-room-' + (c ? c.title.split(/\s+/)[0].toLowerCase() : 'layout') + '.png', file = new File([blob], name, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'My room' }).catch(function(){}); return; }
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    if (sid) fetch('/public/fit-sess/' + sid + '/saved', { method: 'POST' }).catch(function(){});
+  };
+
+  // ---------- remember ----------
+  var tm = null;
+  function save(){
+    var R = room(), m = { roomW: R.real ? R.W : 0, roomD: R.real ? R.D : 0, couch: S.couch ? S.couch.id : '',
+      layout: S.items.filter(function(i){ return i.kind === 'couch'; }).map(function(i){ return { k: i.k, x: Math.round(i.x * 10) / 10, y: Math.round(i.y * 10) / 10, r: i.r, f: !!i.f, h: !!i.h }; }),
+      extras: S.items.filter(function(i){ return i.kind !== 'couch'; }).map(function(i){ return { k: i.kind, x: Math.round(i.x), y: Math.round(i.y), r: i.r }; }) };
+    S.saved = m; try { localStorage.setItem('bcFit2', JSON.stringify(m)); } catch (e) {}
+    if (!sid) return; clearTimeout(tm);
+    tm = setTimeout(function(){ fetch('/public/fit-sess/' + sid, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ meas: m }) }).catch(function(){}); }, 800);
+  }
+
+  var local0 = null; try { local0 = JSON.parse(localStorage.getItem('bcFit2') || 'null'); } catch (e) {}
+  var sess = sid ? fetch('/public/fit-sess/' + sid + '?open=1').then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }) : Promise.resolve(null);
+  Promise.all([fetch('/public/inventory').then(function(r){ return r.json(); }), sess]).then(function(a){
+    S.couches = (a[0].couches || []).filter(function(c){ return c.pieces && c.pieces.length; });
+    var s = a[1]; if (s && s.first) $('hi').textContent = 'Hi ' + s.first + '! Draw your room, try any couch.';
+    var m = s && s.meas && (s.meas.roomW || s.meas.couch) ? s.meas : local0;
+    if (m) { setRoom(m.roomW, m.roomD); S.didLayout = !!m.roomW; S.saved = m;
+      S.items = (m.extras || []).map(function(x){ return x.k === 'tv' ? { kind: 'tv', k: 'tv', name: 'TV', w: 60, d: 4, x: x.x, y: x.y, r: x.r } : { kind: 'door', k: 'door', name: 'Door', w: 36, d: 36, x: x.x, y: x.y, r: x.r }; }); }
+    pick((m && m.couch) || new URLSearchParams(location.search).get('couch'), true);
+  }).catch(function(){ $('strip').innerHTML = '<div class="empty">Couldn\'t load couches. Refresh to try again.</div>'; });
+})();
+</script>
+</body></html>
