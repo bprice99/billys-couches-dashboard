@@ -785,6 +785,23 @@ app.post('/api/cash', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Daily Cash plan: cushion to keep, what a load costs, rent day, and bills/orders already committed (Behold, Peak Living, B-Stock won-not-paid).
+const CASH_PLAN_DEFAULT = { cushion: 5000, loadCost: 9500, rentDay: 1, commitments: [] };
+app.get('/api/cash/plan', async (req, res) => res.json({ ok: true, plan: { ...CASH_PLAN_DEFAULT, ...((await kget('bcd:cashPlan', null)) || {}) } }));
+app.post('/api/cash/plan', async (req, res) => {
+  try {
+    const b = req.body || {}, n = (v, d) => { const x = Math.abs(numOf(v)); return isFinite(x) && x > 0 ? Math.round(x * 100) / 100 : d; };
+    const plan = { ...CASH_PLAN_DEFAULT, ...((await kget('bcd:cashPlan', null)) || {}) };
+    if (b.cushion != null) plan.cushion = n(b.cushion, 0);
+    if (b.loadCost != null) plan.loadCost = n(b.loadCost, plan.loadCost);
+    if (b.rentDay != null) plan.rentDay = Math.min(28, Math.max(1, parseInt(b.rentDay, 10) || 1));
+    if (Array.isArray(b.commitments)) plan.commitments = b.commitments.slice(0, 50).map(c => ({
+      id: String(c.id || crypto.randomBytes(5).toString('hex')).replace(/[^a-z0-9]/gi, '').slice(0, 16),
+      label: clean(c.label, 80) || 'Bill', amount: n(c.amount, 0),
+      due: /^\d{4}-\d{2}-\d{2}$/.test(c.due || '') ? c.due : '', paid: !!c.paid })).filter(c => c.amount > 0);
+    await kset('bcd:cashPlan', plan); res.json({ ok: true, plan });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/cash/delete', async (req, res) => {
   try {
     const snaps = (await kget(KEYS.cash, [])).filter(x => x.date !== req.body.date);
