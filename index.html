@@ -2539,15 +2539,16 @@ window.addEventListener('message', e => { if (e.origin === location.origin && e.
 // "Will it fit?" pieces editor (sofa, loveseat, each modular section)
 let FITP = [];
 function drawFitPieces(){
-  const inp = (i, k, ph) => `<input data-fp="${i}|${k}" value="${esc(FITP[i][k] ?? '')}" placeholder="${ph}" ${k === 'name' ? '' : 'inputmode="decimal"'} style="width:100%;min-width:0;padding:7px 6px">`;
-  const cols = 'display:grid;grid-template-columns:1.5fr repeat(5,minmax(0,1fr)) .7fr auto;gap:5px';
-  $('fitPieces').innerHTML = FITP.length ? `<div style="${cols};font-size:11px;color:var(--muted);margin-bottom:4px;line-height:1.2"><span>Piece</span><span>Back length</span><span>Seat depth</span><span>Side length</span><span>Chaise length</span><span>Chaise width</span><span>How many</span><span></span></div>` +
-    FITP.map((p, i) => `<div style="${cols};margin-bottom:6px">${inp(i, 'name', 'Sofa')}${inp(i, 'w', '137')}${inp(i, 'd', '37')}${inp(i, 'ret', '')}${inp(i, 'ch', '')}${inp(i, 'cw', '')}${inp(i, 'qty', '1')}<button type="button" class="btn sm" data-fpx="${i}">&times;</button></div>`).join('') +
-    `<p class="empty" style="font-size:11.5px;margin:2px 0 6px;text-align:left">Back length = along the wall. Side length = the other end that turns the corner (L). Chaise = the lounge end, measured from the back. Leave blank what it doesn't have.</p>`
+  const inp = (i, k, ph) => `<input data-fp="${i}|${k}" value="${esc(FITP[i][k] ?? '')}" placeholder="${ph}" ${k === 'name' ? '' : 'inputmode="decimal"'} style="width:100%;min-width:0;padding:7px 5px">`;
+  const sel = i => `<select data-fp="${i}|side" style="width:100%;min-width:0;padding:7px 2px;font-size:12px">${[['', '–'], ['rev', 'Reversible'], ['L', 'Left'], ['R', 'Right']].map(([v, l]) => `<option value="${v}"${(FITP[i].side || '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  const cols = 'display:grid;grid-template-columns:1.4fr repeat(5,minmax(0,.9fr)) minmax(0,1.25fr) .6fr auto;gap:4px';
+  $('fitPieces').innerHTML = FITP.length ? `<div style="${cols};font-size:10.5px;color:var(--muted);margin-bottom:4px;line-height:1.2"><span>Piece</span><span>Back length</span><span>Seat depth</span><span>Side length</span><span>Chaise length</span><span>Chaise width</span><span>Chaise / L side</span><span>How many</span><span></span></div>` +
+    FITP.map((p, i) => `<div style="${cols};margin-bottom:6px">${inp(i, 'name', 'Sofa')}${inp(i, 'w', '137')}${inp(i, 'd', '37')}${inp(i, 'ret', '')}${inp(i, 'ch', '')}${inp(i, 'cw', '')}${sel(i)}${inp(i, 'qty', '1')}<button type="button" class="btn sm" data-fpx="${i}">&times;</button></div>`).join('') +
+    `<p class="empty" style="font-size:11.5px;margin:2px 0 6px;text-align:left">Back length = along the wall. Side length = the end that turns the corner (L). Chaise = the lounge end, measured from the back. Chaise / L side = which side it's on when you face the couch, or Reversible if customers can switch it. Leave blank what it doesn't have.</p>`
     : '<p class="empty" style="font-size:12.5px;margin:0 0 6px">No pieces yet. The tool will guess from Dimensions. Add pieces to make it exact.</p>';
 }
-function readFitPieces(){ return FITP.filter(p => parseFloat(p.w) > 0 && parseFloat(p.d) > 0).map(p => ({ name: p.name || 'Piece', w: p.w, d: p.d, ret: p.ret || '', ch: p.ch || '', cw: p.cw || '', qty: p.qty || 1 })); }
-document.addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.fp; if (!k) return; const [i, f] = k.split('|'); FITP[i][f] = e.target.value; });
+function readFitPieces(){ return FITP.filter(p => parseFloat(p.w) > 0 && parseFloat(p.d) > 0).map(p => ({ name: p.name || 'Piece', w: p.w, d: p.d, ret: p.ret || '', ch: p.ch || '', cw: p.cw || '', side: p.side || '', qty: p.qty || 1 })); }
+['input', 'change'].forEach(ev => document.addEventListener(ev, e => { const k = e.target.dataset && e.target.dataset.fp; if (!k) return; const [i, f] = k.split('|'); FITP[i][f] = e.target.value; }));
 document.addEventListener('click', e => {
   if (e.target.id === 'fitAdd') { FITP.push({ name: FITP.length ? '' : 'Sofa', w: '', d: '', ret: '', ch: '', cw: '', qty: 1 }); drawFitPieces(); }
   const x = e.target.closest && e.target.closest('[data-fpx]'); if (x) { FITP.splice(+x.dataset.fpx, 1); drawFitPieces(); }
