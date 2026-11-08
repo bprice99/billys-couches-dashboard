@@ -24,6 +24,9 @@ body{font-family:Inter,-apple-system,Segoe UI,Arial,sans-serif;background:var(--
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.days::-webkit-scrollbar{display:none}
 .day{flex:0 0 62px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:9px 0;text-align:center;cursor:pointer;font:inherit;color:inherit}
 .day small{display:block;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}.day b{font-size:20px}.day.on{border-color:var(--red);background:#fbf0ee}.day.full{opacity:.4}
+.day em{display:block;font-style:normal;font-size:9.5px;font-weight:800;color:#b45309;margin-top:1px}.day.free em{color:#2e7d4f}
+.hold{background:#eef6f0;color:#1f5f3a;border-radius:12px;padding:11px 14px;font-size:13.5px;margin:12px 0 4px;text-align:left;line-height:1.45}.hold b{color:#1f5f3a}
+.hold.fee{background:#fff7ed;color:#9a3412}.hold.fee b{color:#9a3412}
 .slots{display:grid;gap:8px}
 .slot{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;color:inherit;text-align:left;width:100%}
 .slot span{font-size:12.5px;color:var(--muted);font-weight:600}.slot.on{border-color:var(--red);background:#fbf0ee}.slot:disabled{opacity:.4;text-decoration:line-through;cursor:default}
@@ -94,17 +97,23 @@ function step1(){
     <div class="h">Hi ${esc(cap(D.first))}! Pick your ${isDel() ? 'delivery' : 'pick up'} time</div>
     <p class="p">${ST.reschedule ? 'Choose a new time. Your old one is released once you confirm.' : `Your couch is paid for and set aside. Choose when ${isDel() ? 'we bring it' : 'you grab it'}.`}</p>
     ${couchCard()}
+    ${H().applies ? `<div class="hold">📦 <b>Free hold through ${esc(H().freeLabel)}.</b> Please ${isDel() ? 'schedule delivery' : 'pick up'} within 5 days of purchase. After that, there's a $${H().rate}/day holding fee.</div>` : ''}
     ${days.length ? `<div class="lbl">Day</div><div class="days">${days.map(d => { const full = !d.slots.some(s => s.left > 0);
-        return `<button class="day ${d.date === ST.date ? 'on' : ''} ${full ? 'full' : ''}" ${full ? 'disabled' : ''} onclick="ST.date='${d.date}';ST.win='';step1()"><small>${d.dow}</small><b>${d.day}</b></button>`; }).join('')}</div>
+        return `<button class="day ${d.date === ST.date ? 'on' : ''} ${full ? 'full' : ''} ${H().applies && !holdDays(d.date) ? 'free' : ''}" ${full ? 'disabled' : ''} onclick="ST.date='${d.date}';ST.win='';step1()"><small>${d.dow}</small><b>${d.day}</b>${H().applies ? `<em>${holdDays(d.date) ? '+$' + holdDays(d.date) * H().rate : 'Free'}</em>` : ''}</button>`; }).join('')}</div>
+      ${holdOwed(ST.date) ? `<div class="hold fee">⚠️ <b>${esc(day ? day.label : '')} is ${holdDays(ST.date)} day${holdDays(ST.date) > 1 ? 's' : ''} past your free hold.</b> Holding fee: $${holdOwed(ST.date)} ($${H().rate}/day), paid by card when you confirm. Pick a day marked <b>Free</b> to skip it.</div>` : ''}
       <div class="lbl">Time window${day ? ' · ' + esc(day.label) : ''}</div>
       <div class="slots">${day ? day.slots.map(s => `<button class="slot ${s.win === ST.win ? 'on' : ''}" ${s.left < 1 ? 'disabled' : ''} onclick="ST.win='${s.win}';step1()">${esc(s.label)} <span>${s.left < 1 ? 'Booked' : s.left === 1 ? '1 spot left' : 'Open'}</span></button>`).join('') : ''}</div>`
       : '<p class="empty">No open times right now. Text us at (314) 899-7503 and we\'ll fit you in.</p>'}
     <button class="btn" ${ST.win ? '' : 'disabled'} onclick="step2()">Continue →</button>
     <p class="foot">Questions? Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
 }
+// Holding: free for 5 days after purchase, then $20 a day.
+const H = () => D.hold || {};
+const holdDays = date => { const h = H(); if (!h.applies || !date) return 0; return Math.max(0, Math.round((Date.parse(date + 'T12:00:00Z') - Date.parse(h.freeUntil + 'T12:00:00Z')) / 864e5)); };
+const holdOwed = date => Math.max(0, holdDays(date) - (H().paidDays || 0)) * (H().rate || 20);
 function dueFor(){
   const sub = D.upsells.filter(a => ST.extras.has(a.id)).reduce((s, a) => s + a.price, 0);
-  return Math.round(sub * (1 + D.taxRate / 100) * (1 + D.feeRate) * 100) / 100;
+  return Math.round((sub * (1 + D.taxRate / 100) + holdOwed(ST.date)) * (1 + D.feeRate) * 100) / 100;
 }
 function step2(){
   steps(2); ST.step = 2;
@@ -123,6 +132,7 @@ function step2(){
     ${D.upsells.length ? `<div class="up"><div class="uph">✨ Add before ${isDel() ? 'delivery' : 'pick up'} day</div>
       ${D.upsells.map(a => `<div class="ui ${ST.extras.has(a.id) ? 'on' : ''}" onclick="tog('${a.id}')"><span class="bx">${ST.extras.has(a.id) ? '✓' : ''}</span><div><b>${esc(a.label)}</b><small>${esc(a.pitch)}</small></div><em>+$${a.price}</em></div>`).join('')}
       ${D.addons.length ? `<p>${esc(D.addons.join(' and '))} ${D.addons.length > 1 ? 'are' : 'is'} already on your order ✓</p>` : '<p>Optional. Paid by card once you confirm.</p>'}</div>` : ''}
+    ${holdOwed(ST.date) ? `<div class="hold fee">Holding fee: <b>$${holdOwed(ST.date)}</b> (${holdDays(ST.date) - (H().paidDays || 0)} day${holdDays(ST.date) - (H().paidDays || 0) > 1 ? 's' : ''} × $${H().rate}) + 3% card fee, paid when you confirm.</div>` : ''}
     <div class="err" id="err"></div>
     <button class="btn" id="go" onclick="submit()">${btnText()}</button>
     <p class="foot">Questions? Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
