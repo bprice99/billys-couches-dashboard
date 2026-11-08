@@ -319,6 +319,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
       <button class="btn p" id="upAddBtn" data-only="upsells">+ Upsell after sale</button>
+      <a class="btn" href="/api/fit-leads.csv" data-only="drops" style="text-decoration:none">Sizing tool leads</a>
       <button class="btn p" id="dropNew" data-only="drops">+ New couch</button>
       <button class="btn p" id="goalEdit" data-only="never" hidden>Set goals</button>
     </div>
@@ -656,6 +657,9 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   <label class="drl">Details <small>one per line (color, power recline, pieces, smoke/pet free...)</small><textarea id="drDetails" rows="4"></textarea></label>
   <label class="drl">Imperfections <small>one per line, leave blank for none</small><textarea id="drImp" rows="2"></textarea></label>
   <label class="drl">Dimensions<input id="drDims" placeholder="L: 128 x 115 in. | H: 42 in." maxlength="200"></label>
+  <div class="drl">Will it fit? pieces <small>inches · one row per piece · "Other side" only for L-shaped pieces (chaise / corner)</small></div>
+  <div id="fitPieces" style="margin-bottom:6px"></div>
+  <button type="button" class="btn sm" id="fitAdd" style="margin-bottom:12px">+ Add piece</button>
   <div class="drl">Photos <small>first photo is the main one</small></div>
   <div id="drPhotos" class="drph"></div>
   <label class="btn" style="display:inline-block;cursor:pointer;margin:8px 0 14px">+ Add photos<input type="file" id="drFiles" accept="image/*" multiple hidden></label>
@@ -2473,15 +2477,31 @@ function openDrop(id){
   $('drTitle').textContent = d ? 'Edit couch' : 'New couch'; $('drId').value = d ? d.id : '';
   $('drName').value = d ? d.title : ''; $('drPrice').value = d ? d.price || '' : ''; $('drRetail').value = d && d.retail ? d.retail : '';
   $('drGrade').value = d ? d.grade || '' : ''; $('drDetails').value = d ? (d.details || []).join('\n') : ''; $('drImp').value = d ? (d.imperfections || []).join('\n') : '';
-  $('drDims').value = d ? d.dimensions || '' : ''; DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
+  $('drDims').value = d ? d.dimensions || '' : '';
+  FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces(); DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
   $('m-drop').classList.add('on');
 }
+// "Will it fit?" pieces editor (sofa, loveseat, each modular section)
+let FITP = [];
+function drawFitPieces(){
+  const inp = (i, k, ph, w) => `<input data-fp="${i}|${k}" value="${esc(FITP[i][k] ?? '')}" placeholder="${ph}" ${k === 'name' ? '' : 'inputmode="decimal"'} style="width:${w}">`;
+  $('fitPieces').innerHTML = FITP.length ? `<div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr .6fr auto;gap:6px;font-size:11.5px;color:var(--muted);margin-bottom:4px"><span>Piece</span><span>Length</span><span>Depth</span><span>Other side</span><span>How many</span><span></span></div>` +
+    FITP.map((p, i) => `<div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr .6fr auto;gap:6px;margin-bottom:6px">${inp(i, 'name', 'Sofa', '100%')}${inp(i, 'w', '80', '100%')}${inp(i, 'd', '38', '100%')}${inp(i, 'ret', '', '100%')}${inp(i, 'qty', '1', '100%')}<button type="button" class="btn sm" data-fpx="${i}">&times;</button></div>`).join('')
+    : '<p class="empty" style="font-size:12.5px;margin:0 0 6px">No pieces yet. The tool will guess from Dimensions. Add pieces to make it exact.</p>';
+}
+function readFitPieces(){ return FITP.filter(p => parseFloat(p.w) > 0 && parseFloat(p.d) > 0).map(p => ({ name: p.name || 'Piece', w: p.w, d: p.d, ret: p.ret || '', qty: p.qty || 1 })); }
+document.addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.fp; if (!k) return; const [i, f] = k.split('|'); FITP[i][f] = e.target.value; });
+document.addEventListener('click', e => {
+  if (e.target.id === 'fitAdd') { FITP.push({ name: FITP.length ? '' : 'Sofa', w: '', d: '', ret: '', qty: 1 }); drawFitPieces(); }
+  const x = e.target.closest && e.target.closest('[data-fpx]'); if (x) { FITP.splice(+x.dataset.fpx, 1); drawFitPieces(); }
+});
 function drawDropPhotos(){
   $('drPhotos').innerHTML = DRPH.map((p, i) => `<div class="ph ${i ? '' : 'main'}" style="background-image:url('${esc(dLocalPhoto(p))}')">${i ? `<button class="lf" data-phl="${i}" title="Make earlier">&#8592;</button>` : ''}<button class="x" data-phx="${i}" title="Remove">&times;</button></div>`).join('') || '<p class="empty" style="font-size:13px;margin:0">No photos yet.</p>';
 }
 async function saveDrop(){
   const body = { id: $('drId').value || undefined, title: $('drName').value, price: $('drPrice').value, retail: $('drRetail').value, grade: $('drGrade').value,
-    details: $('drDetails').value, imperfections: $('drImp').value, dimensions: $('drDims').value, photos: DRPH };
+    details: $('drDetails').value, imperfections: $('drImp').value, dimensions: $('drDims').value, photos: DRPH,
+    pieces: readFitPieces() };
   if (!body.title.trim()) return toast('Add a title'); if (!(Number(body.price) > 0)) return toast('Add a price');
   try { await post('/api/drops/save', body); $('m-drop').classList.remove('on'); toast('Saved'); if (!body.id) DRF = DRF === 'active' ? 'active' : 'draft'; loadDrops(); } catch (e) { toast(e.message); }
 }
