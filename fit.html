@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#2b1d16;--mut:#7a6c64;--line:#e6dcd5;--bg:#f6f2ee;--red:#b0524c;--g:#2e7d4f}
-*{box-sizing:border-box}html,body{overflow-x:clip}
+*{box-sizing:border-box}[hidden]{display:none!important}html,body{overflow-x:clip}
 body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink);-webkit-text-size-adjust:100%}
 .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
 .logo{display:block;margin-bottom:12px}.logo img{height:34px}
@@ -31,12 +31,15 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
 .c b{display:block;font-size:12px;line-height:1.25;max-height:30px;overflow:hidden}.c span{color:var(--mut)}
 .status{border-radius:12px;padding:10px 13px;font-size:14px;font-weight:700;margin-bottom:10px;background:#eef6f0;color:var(--g)}
 .status.bad{background:#fdeeea;color:var(--red)}.status.idle{background:#f3eee9;color:var(--mut);font-weight:600}
+#plan line,#plan text,#plan .nohit{pointer-events:none}
 #plan{width:100%;height:auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
 .dims{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:4px}
 .tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .tools button{flex:1 1 auto;border:1.5px solid #d9cdc4;background:#fff;border-radius:10px;padding:10px 8px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap}
 .tools button:disabled{opacity:.4}
 .tools button.sel{border-color:var(--red)}
+#tLock.on{background:var(--ink);color:#fff;border-color:var(--ink)}#tLock.off{background:#fff4ef;color:var(--red);border-color:var(--red)}
+body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.arr #save,body.arr .cta,body.arr #tTv,body.arr #tDoor,body.arr #status,body.arr .dims{display:none!important}body.arr .g{grid-template-columns:minmax(0,1fr)}
 .btn{display:block;text-align:center;border-radius:12px;padding:14px;font-weight:700;text-decoration:none;font-size:15px;border:0;font-family:inherit;cursor:pointer;width:100%}
 .btn.dark{background:var(--ink);color:#fff;margin-top:12px}
 .cta{display:flex;gap:10px;margin-top:10px}.cta a{flex:1}
@@ -60,10 +63,11 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
     <svg id="plan" viewBox="0 0 168 144"></svg>
     <div class="dims"><span id="dimW"></span><span id="dimD"></span></div>
     <div class="tools">
-      <button id="tRot" type="button">↻ Rotate</button><button id="tFlip" type="button" hidden>⇄ Flip</button><button id="tDel" type="button" hidden>Remove</button>
+      <button id="tLock" type="button" hidden>🔒 Locked</button><button id="tRot" type="button">↻ Rotate</button><button id="tFlip" type="button" hidden>⇄ Flip</button><button id="tDel" type="button" hidden>Remove</button>
       <button id="tTv" type="button">+ TV</button><button id="tDoor" type="button">+ Doorway</button><button id="tReset" type="button">Reset</button>
     </div>
     <div class="hint" id="tip">Drag any piece. It snaps to the walls. Tap a piece, then Rotate.</div>
+    <button class="btn red" id="arrSave" type="button" hidden style="margin-top:12px">Save shape</button>
     <button class="btn dark" id="save" type="button">⤓ Save picture of my room</button>
     <div class="cta"><a class="btn red" id="buy" href="https://order.billyscouches.com" target="_blank" rel="noopener">Buy it</a><a class="btn o" href="https://www.billyscouches.com/visitshowroom" target="_blank" rel="noopener">Sit on it</a></div>
     <div class="pcs" id="pcs"></div>
@@ -77,11 +81,13 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
   var money = function(n){ return '$' + Math.round(Number(n) || 0).toLocaleString(); };
   var ftin = function(x){ x = Math.round(Math.abs(x)); var f = Math.floor(x / 12), i = x % 12; return (f ? f + "' " : '') + i + '"'; };
   var SNAP = 8, EX_W = 168, EX_D = 144;
-  var S = { couches: [], couch: null, items: [], sel: -1, first: '', saved: null };
+  var S = { couches: [], couch: null, items: [], sel: -1, first: '', saved: null, locked: false, modular: false, fixed: null };
+  var ARR = new URLSearchParams(location.search).get('arrange') || '';
 
   // ---------- room ----------
   function val(id){ var v = parseFloat($(id).value); return isNaN(v) ? 0 : v; }
   function room(){
+    if (S.fixed) return S.fixed;
     var W = val('wFt') * 12 + val('wIn'), D = val('dFt') * 12 + val('dIn'), real = W >= 36 && D >= 36;
     return { W: real ? W : EX_W, D: real ? D : EX_D, real: real };
   }
@@ -122,6 +128,7 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
   // First layout: biggest piece on the back wall (L-shapes in the corner), the next ones along the side walls.
   function autoLayout(R){
     var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
+    if (S.modular) { cs.forEach(function(it){ it.x = 0; it.y = 0; }); if (applyShape(R)) { var G0 = gbox(grp()); shiftGroup(-G0.x, -G0.y, R); return; } }
     cs.forEach(function(it, n){
       if (n === 0) { it.r = 0; var b = box(it); it.x = it.ret ? 0 : (R.W - b.w) / 2; it.y = 0; }
       else if (n === 1) { it.r = 90; var b1 = box(it); it.x = R.W - b1.w; it.y = Math.min(box(cs[0]).h + 12, Math.max(0, R.D - b1.h)); }
@@ -130,6 +137,43 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
       clamp(it, R);
     });
   }
+  // ---------- modular sectionals: locked = the pieces move and turn as one couch ----------
+  function grp(){ return S.items.filter(function(i){ return i.kind === 'couch' && !i.h; }); }
+  function gbox(list){ var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; list.forEach(function(it){ var b = box(it); x0 = Math.min(x0, it.x); y0 = Math.min(y0, it.y); x1 = Math.max(x1, it.x + b.w); y1 = Math.max(y1, it.y + b.h); }); return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; }
+  function shiftGroup(dx, dy, R){
+    var G = gbox(grp());
+    dx = Math.max(-G.x, Math.min(R.W - G.w - G.x, dx)); dy = Math.max(-G.y, Math.min(R.D - G.h - G.y, dy));
+    var nx = G.x + dx, ny = G.y + dy;
+    if (nx < SNAP) dx -= nx; if (R.W - G.w - nx < SNAP) dx += R.W - G.w - nx;
+    if (ny < SNAP) dy -= ny; if (R.D - G.h - ny < SNAP) dy += R.D - G.h - ny;
+    if (G.w > R.W) dx = -G.x; if (G.h > R.D) dy = -G.y;
+    grp().forEach(function(it){ it.x += dx; it.y += dy; });
+  }
+  function applyShape(R){
+    var sh = S.couch && S.couch.shape, at = grp().length ? gbox(grp()) : { x: 0, y: 0 }, placed = 0;
+    if (!sh) return false;
+    S.items.forEach(function(it){ if (it.kind !== 'couch') return; var m = sh.filter(function(o){ return o.k === it.k; })[0];
+      if (m) { it.x = m.x; it.y = m.y; it.r = m.r; it.f = m.f; it.h = false; placed++; } });
+    if (placed < 2) return false;
+    var G = gbox(grp()); grp().forEach(function(it){ it.x += at.x - G.x; it.y += at.y - G.y; });
+    shiftGroup(0, 0, R); return true;
+  }
+  function snapPieces(it){
+    var b = box(it);
+    grp().forEach(function(o){ if (o === it) return; var ob = box(o);
+      var vOver = it.y < o.y + ob.h + SNAP && o.y < it.y + b.h + SNAP, hOver = it.x < o.x + ob.w + SNAP && o.x < it.x + b.w + SNAP;
+      if (vOver) { if (Math.abs(it.x - (o.x + ob.w)) < SNAP) it.x = o.x + ob.w; else if (Math.abs(it.x + b.w - o.x) < SNAP) it.x = o.x - b.w; }
+      if (hOver) { if (Math.abs(it.y - (o.y + ob.h)) < SNAP) it.y = o.y + ob.h; else if (Math.abs(it.y + b.h - o.y) < SNAP) it.y = o.y - b.h; }
+      if (vOver && Math.abs(it.y - o.y) < SNAP) it.y = o.y; if (hOver && Math.abs(it.x - o.x) < SNAP) it.x = o.x;
+    });
+    // Never let a piece sit on top of another: push it out the short way, flush against it.
+    for (var pass = 0; pass < 6; pass++) grp().forEach(function(o){ if (o === it || !overlap(it, o)) return; var ob = box(o);
+      var L = it.x + b.w - o.x, Rr = o.x + ob.w - it.x, T = it.y + b.h - o.y, Bm = o.y + ob.h - it.y, m = Math.min(L, Rr, T, Bm);
+      if (m === L) it.x = o.x - b.w; else if (m === Rr) it.x = o.x + ob.w; else if (m === T) it.y = o.y - b.h; else it.y = o.y + ob.h; });
+  }
+  function lockUI(){ var b = $('tLock'); b.hidden = !S.modular; b.className = S.locked ? 'on' : 'off'; b.textContent = S.locked ? '🔒 Locked' : '🔓 Unlocked';
+    $('tReset').textContent = S.modular ? 'Reset shape' : 'Reset';
+    $('tip').innerHTML = S.modular ? (S.locked ? 'Drag anywhere on it to move the whole sectional. Tap <b>Locked</b> to rearrange the pieces.' : 'Each piece moves on its own and snaps to the others. Tap <b>Unlocked</b> to lock them back together.') : 'Drag any piece. It snaps to the walls. Tap a piece, then Rotate.'; }
   function overlap(a, b){ var A = box(a), B = box(b); return a.x < b.x + B.w - 0.5 && b.x < a.x + A.w - 0.5 && a.y < b.y + B.h - 0.5 && b.y < a.y + A.h - 0.5; }
 
   // ---------- drawing ----------
@@ -142,7 +186,7 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
     var bad = {};
     S.items.forEach(function(a, i){ if (a.h) return; S.items.forEach(function(b, j){ if (j <= i || b.h) return; if (overlap(a, b) && !(a.kind === 'tv' || b.kind === 'tv')) { bad[i] = bad[j] = 1; } }); });
     S.items.forEach(function(it, i){
-      if (it.h) return; var sel = opts.sel && i === S.sel, b = box(it);
+      if (it.h) return; var sel = opts.sel && i === S.sel && !(S.locked && it.kind === 'couch'), b = box(it);
       if (it.kind === 'door') {
         var ox = it.x, oy = it.y, arc, gap;
         if (it.r === 0) { gap = [ox, 0, ox + 36, 0]; arc = 'M' + ox + ' 0 L' + ox + ' 36 A36 36 0 0 0 ' + (ox + 36) + ' 0'; }
@@ -167,8 +211,10 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
         '<tspan x="' + cx + '" dy="' + fs * 0.95 + '" font-weight="400" font-size="' + fs * 0.7 + '">' + size + '</tspan></text></g>');
     });
     // Space to each wall for the selected piece
-    if (opts.sel && S.sel > -1 && S.items[S.sel] && !S.items[S.sel].h && S.items[S.sel].kind !== 'door' && R.real) {
-      var it = S.items[S.sel], b = box(it), mx = it.x + b.w / 2, my = it.y + b.h / 2, dash = ' stroke="' + green + '" stroke-width="' + sw * 1.3 + '" stroke-dasharray="' + sw * 3 + ' ' + sw * 2 + '"';
+    var selIt = S.items[S.sel], lockedSel = selIt && selIt.kind === 'couch' && S.locked && S.modular;
+    if (opts.sel && lockedSel) { var GG = gbox(grp()); out.push('<rect class="nohit" x="' + (GG.x - sw) + '" y="' + (GG.y - sw) + '" width="' + (GG.w + sw * 2) + '" height="' + (GG.h + sw * 2) + '" fill="none" stroke="#b0524c" stroke-width="' + sw * 2 + '" stroke-dasharray="' + sw * 5 + ' ' + sw * 3 + '"/>'); }
+    if (opts.sel && S.sel > -1 && selIt && !selIt.h && selIt.kind !== 'door' && R.real) {
+      var it = lockedSel ? (function(){ var G = gbox(grp()); return { x: G.x, y: G.y, w: G.w, d: G.h, r: 0, kind: 'grp' }; })() : selIt, b = box(it), mx = it.x + b.w / 2, my = it.y + b.h / 2, dash = ' stroke="' + green + '" stroke-width="' + sw * 1.3 + '" stroke-dasharray="' + sw * 3 + ' ' + sw * 2 + '"';
       var gaps = [[it.x, 'l'], [R.W - it.x - b.w, 'r'], [it.y, 't'], [R.D - it.y - b.h, 'b']];
       gaps.forEach(function(g){ var v = g[0]; if (v < 3) return;
         if (g[1] === 'l') out.push('<line x1="0" y1="' + my + '" x2="' + it.x + '" y2="' + my + '"' + dash + '/><text x="' + it.x / 2 + '" y="' + (my - fs * 0.4) + '" font-size="' + fs * 0.8 + '" text-anchor="middle" fill="' + green + '" font-weight="700">' + ftin(v) + '</text>');
@@ -191,9 +237,11 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
     else if (tooBig) { st.className = 'status bad'; st.textContent = 'Too big for this room. Try another couch or rotate it.'; }
     else if (B.bad) { st.className = 'status bad'; st.textContent = 'Pieces are overlapping' + (S.items.some(function(i){ return i.kind === 'door' && !i.h; }) ? ' or blocking the doorway' : '') + '. Drag them apart.'; }
     else if (c) { st.className = 'status'; st.textContent = '✓ The ' + c.title.split(/\s+/)[0] + ' fits your room'; }
-    var it = S.items[S.sel]; $('tRot').disabled = !it || it.kind === 'door';
-    $('tFlip').hidden = !(it && it.ret); $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1));
+    var it = S.items[S.sel], lk = S.locked && S.modular && it && it.kind === 'couch'; $('tRot').disabled = !it || it.kind === 'door';
+    $('tRot').textContent = lk ? '↻ Rotate sectional' : S.modular && it && it.kind === 'couch' ? '↻ Rotate piece' : '↻ Rotate';
+    $('tFlip').hidden = !(it && it.ret) || lk; $('tDel').hidden = !(it && (it.kind !== 'couch' || cs.length > 1)) || lk; lockUI();
     $('tDel').textContent = it && it.kind === 'couch' ? 'Hide ' + it.name.toLowerCase() : 'Remove';
+    if (B.bad === 0 && S.modular && !S.locked && R.real && c) { st.className = 'status'; st.textContent = '✓ Pieces unlocked: drag any piece'; }
     if (c) {
       $('buy').textContent = 'Buy · ' + money(c.price);
       var ps = c.pieces || [], hidden = S.items.filter(function(i){ return i.kind === 'couch' && i.h; });
@@ -205,13 +253,15 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
   // ---------- couches ----------
   function photo(c){ var p = (c.photos || [])[0] || ''; return p.indexOf('squarespace-cdn') > -1 ? p.split('?')[0] + '?format=300w' : p; }
   function strip(){
-    $('strip').innerHTML = S.couches.map(function(c){ var p = c.pieces, sz = p.length === 1 ? Math.round(p[0].w) + '"' + (p[0].ret ? ' × ' + Math.round(p[0].ret) + '"' : ' wide') : p.length + ' pieces';
+    $('strip').innerHTML = S.couches.map(function(c){ var p = c.pieces, np = p.reduce(function(a, x){ return a + (x.qty || 1); }, 0), sz = np === 1 ? Math.round(p[0].w) + '"' + (p[0].ret ? ' × ' + Math.round(p[0].ret) + '"' : ' wide') : np + ' pieces' + (c.shape ? ' · modular' : '');
       return '<button class="c' + (S.couch === c ? ' on' : '') + '" data-id="' + esc(c.id) + '"><img loading="lazy" src="' + esc(photo(c)) + '" alt=""><b>' + esc(c.title) + '</b><span>' + sz + ' · ' + money(c.price) + '</span></button>'; }).join('') || '<div class="empty">No couches listed right now. Check back soon!</div>';
   }
   function pick(id, keepLayout){
     var c = S.couches.filter(function(x){ return x.id === id; })[0] || S.couches[0]; if (!c) return;
     var extras = S.items.filter(function(i){ return i.kind !== 'couch'; });
     S.couch = c; S.items = couchItems(c).concat(extras); S.sel = 0;
+    S.modular = !!(c.shape && c.shape.length > 1 && S.items.filter(function(i){ return i.kind === 'couch'; }).length > 1);
+    S.locked = S.modular && !ARR; if (keepLayout && S.saved && S.saved.couch === c.id && S.saved.locked === false) S.locked = false;
     var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id ? S.saved.layout : null;
     if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = m.f; it.h = m.h; clamp(it, R); } });
     else autoLayout(R);
@@ -224,24 +274,30 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
   $('plan').addEventListener('pointerdown', function(e){
     var g = e.target.closest('[data-i]'); if (!g) { S.sel = -1; draw(); return; }
     var i = +g.getAttribute('data-i'), it = S.items[i], p = pt(e); S.sel = i;
-    drag = { i: i, ox: p.x - it.x, oy: p.y - it.y, id: e.pointerId }; $('plan').setPointerCapture(e.pointerId); draw(); e.preventDefault();
+    drag = { i: i, ox: p.x - it.x, oy: p.y - it.y, id: e.pointerId, grp: S.locked && S.modular && it.kind === 'couch', px: p.x, py: p.y }; $('plan').setPointerCapture(e.pointerId); draw(); e.preventDefault();
   });
   $('plan').addEventListener('pointermove', function(e){
     if (!drag || e.pointerId !== drag.id) return; var it = S.items[drag.i], p = pt(e), R = room();
+    if (drag.grp) { shiftGroup(p.x - drag.px, p.y - drag.py, R); drag.px = p.x; drag.py = p.y; draw(); return; }
     it.x = p.x - drag.ox; it.y = p.y - drag.oy;
-    if (it.kind === 'door') doorSnap(it, R); else clamp(it, R);
+    if (it.kind === 'door') doorSnap(it, R); else { clamp(it, R); if (S.modular && it.kind === 'couch') { snapPieces(it); clamp(it, R); } }
     draw();
   });
   var end = function(){ if (drag) { drag = null; save(); } };
   $('plan').addEventListener('pointerup', end); $('plan').addEventListener('pointercancel', end);
 
   // ---------- tools ----------
-  $('tRot').onclick = function(){ var it = S.items[S.sel]; if (!it || it.kind === 'door') return; var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = (it.r + 90) % 360; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; clamp(it, room()); draw(); save(); };
+  $('tRot').onclick = function(){ var it = S.items[S.sel]; if (!it || it.kind === 'door') return;
+    if (S.locked && S.modular && it.kind === 'couch') { var G = gbox(grp()), cx0 = G.x + G.w / 2, cy0 = G.y + G.h / 2;
+      grp().forEach(function(p){ var b0 = box(p), px = p.x + b0.w / 2, py = p.y + b0.h / 2, nx = cx0 - (py - cy0), ny = cy0 + (px - cx0); p.r = (p.r + 90) % 360; var b1 = box(p); p.x = nx - b1.w / 2; p.y = ny - b1.h / 2; });
+      shiftGroup(0, 0, room()); draw(); save(); return; } var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = (it.r + 90) % 360; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; clamp(it, room()); draw(); save(); };
   $('tFlip').onclick = function(){ var it = S.items[S.sel]; if (!it) return; it.f = !it.f; draw(); save(); };
   $('tDel').onclick = function(){ var it = S.items[S.sel]; if (!it) return; if (it.kind === 'couch') it.h = true; else S.items.splice(S.sel, 1); S.sel = -1; draw(); save(); };
   $('tTv').onclick = function(){ var R = room(), ex = S.items.map(function(i){ return i.kind; }).indexOf('tv'); if (ex > -1) { S.sel = ex; draw(); return; } var it = { kind: 'tv', k: 'tv' + Date.now() % 1e5, name: 'TV', w: 60, d: 4, x: (R.W - 60) / 2, y: R.D - 4, r: 0 }; clamp(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tDoor').onclick = function(){ var R = room(); var it = { kind: 'door', k: 'door' + Date.now() % 1e5, name: 'Door', w: 36, d: 36, x: 0, y: R.D - 60, r: 270 }; doorSnap(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
-  $('tReset').onclick = function(){ S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = false; }); autoLayout(room()); S.sel = 0; draw(); save(); };
+  $('tLock').onclick = function(){ S.locked = !S.locked; if (S.locked) S.sel = S.items.map(function(i){ return i.kind; }).indexOf('couch'); draw(); save(); };
+  $('tReset').onclick = function(){ if (S.modular) { S.items.forEach(function(i){ if (i.kind === 'couch') i.h = false; }); applyShape(room()); S.locked = !ARR; S.sel = 0; draw(); save(); return; }
+    S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = false; }); autoLayout(room()); S.sel = 0; draw(); save(); };
   $('pcs').addEventListener('click', function(e){ if (e.target.id === 'showAll') { e.preventDefault(); S.items.forEach(function(i){ i.h = false; }); draw(); save(); } });
   $('strip').addEventListener('click', function(e){ var b = e.target.closest('.c'); if (b) pick(b.getAttribute('data-id')); });
   ['wFt', 'wIn', 'dFt', 'dIn'].forEach(function(id){ $(id).addEventListener('input', function(){ var R = room(); S.items.forEach(function(it){ if (it.kind === 'door') doorSnap(it, R); else clamp(it, R); }); if (R.real && !S.didLayout) { S.didLayout = true; autoLayout(R); } draw(); save(); }); });
@@ -272,7 +328,8 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
   // ---------- remember ----------
   var tm = null;
   function save(){
-    var R = room(), m = { roomW: R.real ? R.W : 0, roomD: R.real ? R.D : 0, couch: S.couch ? S.couch.id : '',
+    if (ARR) return;
+    var R = room(), m = { roomW: R.real ? R.W : 0, roomD: R.real ? R.D : 0, couch: S.couch ? S.couch.id : '', locked: S.locked,
       layout: S.items.filter(function(i){ return i.kind === 'couch'; }).map(function(i){ return { k: i.k, x: Math.round(i.x * 10) / 10, y: Math.round(i.y * 10) / 10, r: i.r, f: !!i.f, h: !!i.h }; }),
       extras: S.items.filter(function(i){ return i.kind !== 'couch'; }).map(function(i){ return { k: i.kind, x: Math.round(i.x), y: Math.round(i.y), r: i.r }; }) };
     S.saved = m; try { localStorage.setItem('bcFit2', JSON.stringify(m)); } catch (e) {}
@@ -280,6 +337,37 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
     tm = setTimeout(function(){ fetch('/public/fit-sess/' + sid, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ meas: m }) }).catch(function(){}); }, 800);
   }
 
+  // ---------- HQ: arrange a modular sectional's showroom shape (Drops -> Arrange pieces) ----------
+  if (ARR) {
+    document.body.classList.add('arr');
+    fetch('/api/drops/' + encodeURIComponent(ARR) + '/fit', { credentials: 'same-origin' }).then(function(r){ return r.json(); }).then(function(j){
+      if (!j.ok) throw new Error(j.error || 'Could not load');
+      var c = j.couch, tot = (c.pieces || []).reduce(function(a, p){ return a + Math.max(p.w, p.ret || p.d) * (p.qty || 1); }, 0), side = Math.max(140, Math.round(tot * 0.9 + 30));
+      S.fixed = { W: side, D: side, real: true }; S.couches = [c]; S.items = [];
+      S.couch = c; S.items = couchItems(c); S.modular = true; S.locked = false; S.sel = 0;
+      if (!applyShape(S.fixed)) { var cx = 0, cy = side; S.items.forEach(function(it){ var b = box(it); if (cx + b.w > side) { cx = 0; cy -= b.h + 8; } it.x = cx; it.y = cy - b.h; cx += b.w + 8; }); }
+      $('arrSave').hidden = false; $('tLock').style.display = 'none'; draw();
+      $('tip').innerHTML = 'Drag the pieces into the shape it\'s set up in at the showroom. They snap together. Then tap <b>Save shape</b>.';
+    }).catch(function(e){ document.body.innerHTML = '<p style="padding:30px;font-family:sans-serif">' + esc(e.message) + '. Log in to HQ first.</p>'; });
+    $('arrSave').onclick = function(){
+      var vis = grp(); if (vis.length < 2) return alert('Add at least 2 pieces.');
+      // Tidy: close tiny gaps (under 3") between pieces so the saved shape sits flush.
+      for (var pass = 0; pass < 3; pass++) {
+        vis.slice().sort(function(a, b){ return a.x - b.x; }).forEach(function(it){ var b = box(it); vis.forEach(function(o){ if (o === it) return; var ob = box(o), g = it.x - (o.x + ob.w);
+          if (g > 0 && g < 3 && it.y < o.y + ob.h && o.y < it.y + b.h) it.x -= g; }); });
+        vis.slice().sort(function(a, b){ return a.y - b.y; }).forEach(function(it){ var b = box(it); vis.forEach(function(o){ if (o === it) return; var ob = box(o), g = it.y - (o.y + ob.h);
+          if (g > 0 && g < 3 && it.x < o.x + ob.w && o.x < it.x + b.w) it.y -= g; }); });
+        var G0 = gbox(vis); vis.forEach(function(it){ if (Math.abs(it.x - G0.x) < 3) it.x = G0.x; if (Math.abs(it.y - G0.y) < 3) it.y = G0.y; });
+      }
+      draw();
+      var G = gbox(vis), shape = vis.map(function(it){ return { k: it.k, x: Math.round((it.x - G.x) * 10) / 10, y: Math.round((it.y - G.y) * 10) / 10, r: it.r, f: !!it.f }; });
+      var b = $('arrSave'); b.disabled = true; b.textContent = 'Saving...';
+      fetch('/api/drops/' + encodeURIComponent(ARR) + '/shape', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shape: shape }) })
+        .then(function(r){ return r.json(); }).then(function(j){ if (!j.ok) throw new Error(j.error); b.textContent = '✓ Saved'; try { parent.postMessage({ fitShapeSaved: ARR }, location.origin); } catch (e) {} })
+        .catch(function(e){ b.disabled = false; b.textContent = 'Save shape'; alert(e.message); });
+    };
+    return;
+  }
   var local0 = null; try { local0 = JSON.parse(localStorage.getItem('bcFit2') || 'null'); } catch (e) {}
   var sess = sid ? fetch('/public/fit-sess/' + sid + '?open=1').then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }) : Promise.resolve(null);
   Promise.all([fetch('/public/inventory').then(function(r){ return r.json(); }), sess]).then(function(a){
