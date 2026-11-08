@@ -1763,7 +1763,7 @@ function cleanDrop(b, old) {
   if (b.dimensions !== undefined) d.dimensions = clean(b.dimensions, 200);
   if (b.notes !== undefined) d.notes = clean(b.notes, 300);
   if (b.pieces !== undefined) { const n = v => { const x = parseFloat(v); return x > 0 && x < 400 ? Math.round(x * 10) / 10 : null; };
-    d.pieces = (Array.isArray(b.pieces) ? b.pieces : []).slice(0, 12).map(p => ({ name: clean(p.name, 40) || 'Piece', w: n(p.w), d: n(p.d), ret: n(p.ret), ch: n(p.ch), cw: n(p.cw), qty: Math.min(8, Math.max(1, parseInt(p.qty, 10) || 1)) })).filter(p => p.w && p.d); }
+    d.pieces = (Array.isArray(b.pieces) ? b.pieces : []).slice(0, 12).map(p => ({ name: clean(p.name, 40) || 'Piece', w: n(p.w), d: n(p.d), ret: n(p.ret), ch: n(p.ch), cw: n(p.cw), side: ['L', 'R', 'rev'].includes(p.side) ? p.side : '', qty: Math.min(8, Math.max(1, parseInt(p.qty, 10) || 1)) })).filter(p => p.w && p.d); }
   if (b.photos !== undefined) d.photos = (Array.isArray(b.photos) ? b.photos : []).map(x => String(x)).filter(x => /^[a-f0-9]{16}$/.test(x) || /^https:\/\/images\.squarespace-cdn\.com\//.test(x)).slice(0, 12);
   return d;
 }
@@ -2323,7 +2323,7 @@ function guessPiece(name, t, title) {
   } else if (lw) w = parseFloat(lw[1]);
   const cd = lab('chaise (?:depth|length)'); let ch = null; if (cd && !ret) ret = cd; else if (cd && cd !== ret) ch = cd;
   if (!w) return null;
-  return { name, w, d: dep && dep < 70 ? dep : 38, ret: ret || null, ch: ch || null, cw: ch ? 34 : null, qty: /\beach\b/i.test(name) ? 2 : 1, guess: true };
+  return { name, w, d: dep && dep < 70 ? dep : 38, ret: ret || null, ch: ch || null, cw: ch ? 34 : null, side: /reversible/i.test(title + ' ' + t) ? 'rev' : '', qty: /\beach\b/i.test(name) ? 2 : 1, guess: true };
 }
 function piecesOf(d) {
   if (Array.isArray(d.pieces) && d.pieces.length) return d.pieces.map(p => ({ ...p, guess: false }));
@@ -2340,7 +2340,7 @@ app.get('/public/inventory', async (req, res) => {
   try {
     const list = (await getDrops()).filter(d => d.status === 'live');
     res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
-      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: d.fitShape || null, photos: (d.photos || []).map(dropPhotoUrl) })) });
+      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: null, photos: (d.photos || []).map(dropPhotoUrl) })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Public order app (order.billyscouches.com) reads this: everything a customer can buy right now,
