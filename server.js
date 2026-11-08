@@ -66,6 +66,16 @@ app.use((req, res, next) => {
   if (!req.path.startsWith('/public/')) res.setHeader('X-Frame-Options', 'DENY');
   next();
 });
+// "Will it fit?" on its own address (e.g. fit.billyscouches.com). Set FIT_BASE in Railway after adding the
+// custom domain; that address only serves the sizing tool, never HQ.
+const FIT_BASE = (process.env.FIT_BASE || '').trim().replace(/\/$/, '');
+const FIT_HOST = FIT_BASE ? FIT_BASE.replace(/^https?:\/\//, '').toLowerCase() : '';
+app.use((req, res, next) => {
+  if (!FIT_HOST || String(req.headers.host || '').toLowerCase() !== FIT_HOST) return next();
+  if (req.path === '/' || req.path === '/fit') return res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'fit.html'));
+  if (/^\/fit\/[a-f0-9]+$/.test(req.path) || req.path.startsWith('/public/') || ['/logo.png', '/favicon.png', '/favicon.ico'].includes(req.path)) return next();
+  res.redirect('/');
+});
 const cookieTok = req => { const c = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('bcd=')); return c ? c.slice(4) : ''; };
 function authed(req) {
   const t = cookieTok(req), s = t && SESS && SESS[t];
@@ -2115,7 +2125,14 @@ const aiErr = (res, e) => { if (e.user) return res.status(e.code || 400).json({ 
 // ---------- Will it fit? sizing tool ----------
 // Website form: name + phone -> we text them their own link (hq.../fit/<id>). Measurements save on that link.
 const fitKey = id => 'bcd:fitSess:' + id;
-const fitLink = id => `${PUBLIC_BASE}/fit/${id}`;
+// Daily counts for the Will It Fit tab: page views (website sign-up page), sign-ups, link opens, pictures saved.
+async function fitCount(k) { try { const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), c = (await kget('bcd:fitDays', {})) || {}; c[day] = c[day] || {}; c[day][k] = (c[day][k] || 0) + 1;
+  const keys = Object.keys(c).sort(); keys.slice(0, Math.max(0, keys.length - 120)).forEach(x => delete c[x]); await kset('bcd:fitDays', c); } catch (e) {} }
+const fitViewHits = new Map();
+app.options('/public/fit-view', (req, res) => { offerCors(req, res); res.sendStatus(204); });
+app.post('/public/fit-view', async (req, res) => { offerCors(req, res); const ip = clientIp(req), now = Date.now();
+  if (now - (fitViewHits.get(ip) || 0) > 30 * 60e3) { fitViewHits.set(ip, now); fitCount('views'); } res.json({ ok: true }); });
+const fitLink = id => `${FIT_BASE || PUBLIC_BASE}/fit/${id}`;
 const fitHits = new Map();
 app.options('/public/fit', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.post('/public/fit', async (req, res) => {
@@ -2131,9 +2148,10 @@ app.post('/public/fit', async (req, res) => {
     const first = (name.split(/\s+/)[0] || 'there').replace(/^./, c => c.toUpperCase());
     let id = old && old.id && await kget(fitKey(old.id), null) ? old.id : crypto.randomBytes(9).toString('hex');
     const sess = (await kget(fitKey(id), null)) || { id, at: new Date().toISOString(), meas: {}, opens: 0 };
+    const pre = String(b.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20); if (pre && !sess.meas.couch) sess.meas.couch = pre;
     Object.assign(sess, { name, first, phone, smsOk: b.smsOk !== false });
     await kset(fitKey(id), sess);
-    if (!old) { leads.push({ id, at: sess.at, name, phone, smsOk: sess.smsOk, page: clean(b.page, 120) }); await kset('bcd:fitLeads', leads.slice(-3000)); }
+    if (!old) { leads.push({ id, at: sess.at, name, phone, smsOk: sess.smsOk, page: clean(b.page, 120), couch: pre }); fitCount('signups'); await kset('bcd:fitLeads', leads.slice(-3000)); }
     const sent = await sendText(phone, `Hi ${first}, it's Billy with Billy's Couches! Here's your free sizing tool. Tap any couch we have and see if it fits your space:\n${fitLink(id)}\n\nYour measurements save on that link, so come back when new couches land.`);
     if (!sent) { console.log('fit text failed', phone); return res.status(502).json({ error: "We couldn't text that number. Double-check it, or text Billy at (314) 899-7503." }); }
     res.json({ ok: true });
@@ -2150,7 +2168,7 @@ const fitId = req => String(req.params.id || '').replace(/[^a-f0-9]/g, '').slice
 app.get('/public/fit-sess/:id', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const s = await kget(fitKey(fitId(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
-  if (req.query.open) { s.opens = (s.opens || 0) + 1; s.lastOpen = new Date().toISOString(); await kset(fitKey(s.id), s); }
+  if (req.query.open) { s.opens = (s.opens || 0) + 1; s.lastOpen = new Date().toISOString(); await kset(fitKey(s.id), s); fitCount('opens'); }
   res.json({ first: s.first, meas: s.meas || {} });
 });
 app.post('/public/fit-sess/:id', async (req, res) => {
@@ -2165,9 +2183,19 @@ app.post('/public/fit-sess/:id', async (req, res) => {
 });
 app.post('/public/fit-sess/:id/saved', async (req, res) => {
   const s = await kget(fitKey(fitId(req)), null); if (!s) return res.sendStatus(404);
-  s.saves = (s.saves || 0) + 1; await kset(fitKey(s.id), s); res.json({ ok: true });
+  s.saves = (s.saves || 0) + 1; s.lastSave = new Date().toISOString(); await kset(fitKey(s.id), s); fitCount('saves'); res.json({ ok: true });
 });
 // HQ: sizing tool leads as a spreadsheet. Hot = typed their room and tried 2+ couches or saved a picture, Warm = opened the link, Cold = never opened.
+app.get('/api/fit', async (req, res) => {
+  try {
+    const drops = await getDrops(), title = id => (drops.find(d => d.id === id) || {}).title || '', L = ((await kget('bcd:fitLeads', [])) || []).slice(-600);
+    const sess = await Promise.all(L.map(l => kget(fitKey(l.id), null).catch(() => null)));
+    const leads = L.map((l, i) => { const s = sess[i] || {}, m = s.meas || {};
+      return { at: l.at, name: l.name, phone: l.phone, smsOk: !!l.smsOk, score: fitScore(s), bought: l.bought || '', opens: s.opens || 0, lastOpen: s.lastOpen || '', saves: s.saves || 0,
+        room: m.roomW ? [m.roomW, m.roomD] : null, tried: (s.tried || []).map(title).filter(Boolean), from: l.couch ? title(l.couch) : '', page: l.page || '', link: fitLink(l.id) }; }).reverse();
+    res.json({ ok: true, leads, days: (await kget('bcd:fitDays', {})) || {}, base: FIT_BASE || PUBLIC_BASE });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 const fitScore = s => !s.opens ? 'Cold' : (s.meas && s.meas.roomW && ((s.tried || []).length >= 2 || s.saves)) ? 'Hot' : 'Warm';
 app.get('/api/fit-leads.csv', async (req, res) => {
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', drops = await getDrops(), title = id => (drops.find(d => d.id === id) || {}).title || id;
