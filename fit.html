@@ -302,6 +302,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     $('strip').innerHTML = S.couches.map(function(c){ var p = c.pieces, np = p.reduce(function(a, x){ return a + (x.qty || 1); }, 0), sz = np === 1 ? Math.round(p[0].w) + '"' + (p[0].ret ? ' × ' + Math.round(p[0].ret) + '"' : ' wide') : np + ' pieces' + (c.shape ? ' · modular' : '');
       return '<button class="c' + (S.couch === c ? ' on' : '') + '" data-id="' + esc(c.id) + '"><img loading="lazy" src="' + esc(photo(c)) + '" alt=""><b>' + esc(c.title) + '</b><span>' + sz + ' · ' + money(c.price) + '</span></button>'; }).join('') || '<div class="empty">No couches listed right now. Check back soon!</div>';
   }
+  function sigOf(c){ return 'v3|' + (c.pieces || []).map(function(p){ return [p.name, p.w, p.d, p.ret || 0, p.ch || 0, p.qty || 1].join(','); }).join(';') + '|' + JSON.stringify(c.shape || ''); }
   function pick(id, keepLayout){
     var c = S.couches.filter(function(x){ return x.id === id; })[0] || S.couches[0]; if (!c) return;
     var extras = S.items.filter(function(i){ return i.kind !== 'couch'; });
@@ -309,7 +310,8 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     var nPieces = S.items.filter(function(i){ return i.kind === 'couch'; }).length;
     S.modular = nPieces > 1 && (!!(c.shape && c.shape.length > 1) || (nPieces >= 3 && /modular|sectional/i.test(c.title)));
     S.locked = S.modular && !ARR; if (keepLayout && S.saved && S.saved.couch === c.id && S.saved.locked === false) S.locked = false;
-    var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id ? S.saved.layout : null;
+    // Only reuse a saved layout if it was made with this exact set of pieces (new sizes in Drops = fresh setup).
+    var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id && S.saved.sig === sigOf(c) ? S.saved.layout : null;
     if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = m.f; it.h = m.h; clamp(it, R); } });
     else autoLayout(R);
     strip(); draw(); save();
@@ -376,7 +378,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   var tm = null;
   function save(){
     if (ARR) return;
-    var R = room(), m = { roomW: R.real ? R.W : 0, roomD: R.real ? R.D : 0, couch: S.couch ? S.couch.id : '', locked: S.locked,
+    var R = room(), m = { roomW: R.real ? R.W : 0, roomD: R.real ? R.D : 0, couch: S.couch ? S.couch.id : '', sig: S.couch ? sigOf(S.couch) : '', locked: S.locked,
       layout: S.items.filter(function(i){ return i.kind === 'couch'; }).map(function(i){ return { k: i.k, x: Math.round(i.x * 10) / 10, y: Math.round(i.y * 10) / 10, r: i.r, f: !!i.f, h: !!i.h }; }),
       extras: S.items.filter(function(i){ return i.kind !== 'couch'; }).map(function(i){ return { k: i.kind, x: Math.round(i.x), y: Math.round(i.y), r: i.r }; }) };
     S.saved = m; try { localStorage.setItem('bcFit2', JSON.stringify(m)); } catch (e) {}
