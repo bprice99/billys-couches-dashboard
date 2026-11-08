@@ -786,7 +786,7 @@ app.post('/api/cash', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Daily Cash plan: cushion to keep, what a load costs, rent day, and bills/orders already committed (Behold, Peak Living, B-Stock won-not-paid).
-const CASH_PLAN_DEFAULT = { cushion: 5000, loadCost: 9500, rentDay: 1, commitments: [] };
+const CASH_PLAN_DEFAULT = { cushion: 5000, loadCost: 9500, rentDay: 1, rent: 2700, utilities: null, commitments: [] };
 app.get('/api/cash/plan', async (req, res) => res.json({ ok: true, plan: { ...CASH_PLAN_DEFAULT, ...((await kget('bcd:cashPlan', null)) || {}) } }));
 app.post('/api/cash/plan', async (req, res) => {
   try {
@@ -794,6 +794,8 @@ app.post('/api/cash/plan', async (req, res) => {
     const plan = { ...CASH_PLAN_DEFAULT, ...((await kget('bcd:cashPlan', null)) || {}) };
     if (b.cushion != null) plan.cushion = n(b.cushion, 0);
     if (b.loadCost != null) plan.loadCost = n(b.loadCost, plan.loadCost);
+    if (b.rent != null) plan.rent = n(b.rent, 0);
+    if ('utilities' in b) plan.utilities = b.utilities === '' || b.utilities == null ? null : n(b.utilities, 0);
     if (b.rentDay != null) plan.rentDay = Math.min(28, Math.max(1, parseInt(b.rentDay, 10) || 1));
     if (Array.isArray(b.commitments)) plan.commitments = b.commitments.slice(0, 50).map(c => ({
       id: String(c.id || crypto.randomBytes(5).toString('hex')).replace(/[^a-z0-9]/gi, '').slice(0, 16),
@@ -1346,20 +1348,40 @@ app.post('/api/txn/ppl', async (req, res) => {
 
 // Every morning at 7am Central: if no entry exists for today, save one from the banks
 // (safe, Venmo, stocks and rent carry over from your last entry; Stripe is pulled live).
-async function autoCashSnapshot() {
+async function bankSnapshot(live) {
   const items = await getPlaidItems();
-  if (!items.length) return;
+  if (!items.length) return null;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
   const snaps = await getCash();
-  if (snaps.some(s => s.date === today)) return;
-  const pb = await plaidBalances(true), last = snaps[snaps.length - 1] || {};
-  if (!Object.keys(pb.fields).length) return;
-  const snap = { ...last, date: today, savedAt: new Date().toISOString(), note: 'Auto from banks', auto: true, score: undefined, imported: undefined };
+  if (!live && snaps.some(s => s.date === today)) return null;
+  const pb = await plaidBalances(true, !!live), last = snaps[snaps.length - 1] || {};
+  if (!Object.keys(pb.fields).length) return null;
+  // Today's entry keeps what you typed (safe, Venmo); banks + Stripe get the newest numbers.
+  const snap = { ...last, date: today, savedAt: new Date().toISOString(), note: last.date === today ? (last.note || '') : 'Auto from banks', auto: true, score: undefined, imported: undefined };
   Object.assign(snap, pb.fields);
   const sb = await stripeBalance(true).catch(() => ({}));
   if (!sb.error) { snap.stripe = sb.total || 0; snap.stripeAuto = true; }
-  await kset(KEYS.cash, snaps.concat(snap).sort((a, b) => a.date.localeCompare(b.date)));
+  await kset(KEYS.cash, snaps.filter(s => s.date !== today).concat(snap).sort((a, b) => a.date.localeCompare(b.date)));
+  return snap;
 }
+const autoCashSnapshot = () => bankSnapshot(false);
+// Buying Power tab: "Refresh from banks" pulls live balances into today's entry.
+app.post('/api/cash/refresh', async (req, res) => {
+  try { const snap = await bankSnapshot(true); if (!snap) return res.status(400).json({ error: 'No linked banks returned balances. Check Bank connections below.' }); res.json({ ok: true, snap }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Buying Power tab: type the safe or Venmo right on the page. Updates today's entry (made from the last one if needed).
+app.post('/api/cash/quick', async (req, res) => {
+  try {
+    const b = req.body || {}, today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const snaps = await getCash(), last = snaps[snaps.length - 1] || {};
+    const snap = last.date === today ? { ...last } : { ...last, date: today, note: '', auto: false, score: undefined, imported: undefined };
+    ['safe', 'venmo'].forEach(k => { if (b[k] != null && b[k] !== '') snap[k] = Math.round(Math.abs(numOf(b[k])) * 100) / 100; });
+    snap.savedAt = new Date().toISOString();
+    await kset(KEYS.cash, snaps.filter(s => s.date !== today).concat(snap).sort((a, b) => a.date.localeCompare(b.date)));
+    res.json({ ok: true, snap });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 setInterval(() => { if (ctHour() === 7) autoCashSnapshot().catch(e => console.error('Auto cash failed:', e.message)); }, 15 * 60 * 1000);
 
 
