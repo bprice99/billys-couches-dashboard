@@ -2392,6 +2392,16 @@ app.post('/public/order-sold', async (req, res) => {
 const SCHED_KEY = 'bcd:sched';
 const SCHED_PROXY = (process.env.ORDER_PROXY_URL || 'https://billys-couches-proxy-production.up.railway.app').replace(/\/$/, '');
 const SCHED_TAX = Number(process.env.SCHED_TAX_RATE || 9.738), SCHED_FEE = 0.03;
+// Holding: free for 5 days after purchase, then $20 a day. Orders placed before this went live keep the old free hold.
+const HOLD_FREE_DAYS = 5, HOLD_RATE = 20, HOLD_START = Date.parse('2026-11-08T12:00:00-06:00');
+const dayDiff = (a, b) => Math.round((Date.parse(a + 'T12:00:00Z') - Date.parse(b + 'T12:00:00Z')) / 864e5);
+function holdInfo(o) {
+  if (!o.created || o.created < HOLD_START) return { applies: false };
+  const freeUntil = ctYmd(new Date(o.created + HOLD_FREE_DAYS * 864e5));
+  return { applies: true, freeUntil, rate: HOLD_RATE, freeDays: HOLD_FREE_DAYS,
+    freeLabel: new Date(freeUntil + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }) };
+}
+const holdDaysFor = (o, date) => { const h = holdInfo(o); return h.applies ? Math.max(0, dayDiff(date, h.freeUntil)) : 0; };
 const SCHED_ADDONS = [
   { id: 'scotchgard', label: 'Scotchgard', price: 49, pitch: 'Stain and spill protection, applied before it leaves', match: /scotch/i },
   { id: 'wrap', label: 'Plastic Wrap', price: 99, pitch: 'Wrapped and protected for the ride', match: /wrap/i },
@@ -2516,7 +2526,7 @@ app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, 'schedule.h
 const schedPublic = (o, days) => ({ name: o.name, first: o.name.split(/\s+/)[0], phone: o.phone, type: o.type, couches: o.couches, addons: o.addons, zip: o.zip,
   booking: o.booking ? { date: o.booking.date, win: o.booking.win, label: o.booking.label, address: o.booking.address, city: o.booking.city, zip: o.booking.zip, room: o.booking.room, notes: o.booking.notes, extras: o.booking.extras || [] } : null,
   upsells: SCHED_ADDONS.filter(a => !(a.deliveryOnly && o.type !== 'delivery') && !o.addons.some(x => a.match.test(x)) && !((o.booking && o.booking.extras) || []).some(x => a.match.test(x))).map(({ id, label, price, pitch }) => ({ id, label, price, pitch })),
-  days, taxRate: SCHED_TAX, feeRate: SCHED_FEE });
+  days, taxRate: SCHED_TAX, feeRate: SCHED_FEE, hold: { ...holdInfo(o), paidDays: o.holdPaidDays || 0 } });
 app.get('/public/sched/:token', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try { const o = (await getSched())[String(req.params.token)]; if (!o) return res.status(404).json({ error: 'This link has expired. Text us at (314) 899-7503 and we\'ll get you scheduled.' });
@@ -2543,25 +2553,28 @@ app.post('/public/sched/:token', async (req, res) => {
     const extras = [...(prev.extras || []), ...extrasNew.map(a => a.label)];
     const room = clean(b.room, 80), notes = clean(b.notes, 300), couch = o.couches.map(c => c.title).join(' + ');
     const allAdds = [...o.addons, ...extras];
+    const holdDays = holdDaysFor(o, date), holdNew = Math.max(0, holdDays - (o.holdPaidDays || 0)), holdFee = holdNew * HOLD_RATE;
     const desc = [`Phone Number:`, fmtPhone(phone), `Address:`, isDel ? `${address}, ${city}, MO, ${zip}` : 'Pickup at warehouse', `Pick up or Delivery? :`, isDel ? 'Delivery' : 'Pick up', '',
       `Couch: ${couch}`, `Add-ons: ${allAdds.length ? allAdds.join(', ') : 'None'}`, room ? `Room: ${room}` : '', notes ? `Notes: ${notes}` : '',
       extrasNew.length ? `Added when scheduling: ${extrasNew.map(a => a.label).join(', ')} (paid by card link)` : '',
+      holdDays ? `Holding fee: ${holdDays} day${holdDays > 1 ? 's' : ''} past the free ${HOLD_FREE_DAYS} ($${holdDays * HOLD_RATE})${holdFee ? ' - paid by card link' : ''}` : '',
       o.couches[0] && o.couches[0].photo ? `Photo: ${o.couches[0].photo}` : ''].filter(x => x !== '').join('\n');
     const row = [new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago' }), o.name, fmtPhone(phone), isDel ? address : '', isDel ? city : '', isDel ? zip : '', isDel ? 'Delivery' : 'Pickup', couch, allAdds.join(', '), `${date} ${winLabel(win)}`, o.from || 'Order app'];
     const j = await sheetsBook({ eventId: prev.eventId || '', title: `${isDel ? 'Delivery' : 'Pick up'} for ${o.name}`, start: start.toISOString(), end: end.toISOString(),
       location: isDel ? `${address}, ${city}, MO ${zip}` : '126 E Orleans St, Pacific, MO 63069', desc, photo: (o.couches[0] && o.couches[0].photo) || '', photoName: (couch || 'couch').replace(/[^\w -]/g, '').slice(0, 60) + '.jpg', row: JSON.stringify(row) });
     // Card link for anything they added now (couch + tax + 3% card fee), made by the order proxy like the team app does.
     let payUrl = '', due = 0;
-    if (extrasNew.length) {
-      const sub = extrasNew.reduce((a, x) => a + x.price, 0), tax = Math.round(sub * SCHED_TAX) / 100; due = Math.round((sub + tax) * (1 + SCHED_FEE) * 100) / 100;
-      try { const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: o.name, orderType: 'Add-ons: ' + extrasNew.map(a => a.label).join(', '), totalCents: Math.round(due * 100), totalDisplay: '$' + due.toFixed(2), redirectUrl: schedLink(o.token) + '?paid=1' }) });
+    if (extrasNew.length || holdFee) {
+      const sub = extrasNew.reduce((a, x) => a + x.price, 0), tax = Math.round(sub * SCHED_TAX) / 100; due = Math.round((sub + tax + holdFee) * (1 + SCHED_FEE) * 100) / 100;
+      try { const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: o.name, orderType: [extrasNew.length ? 'Add-ons: ' + extrasNew.map(a => a.label).join(', ') : '', holdFee ? `Holding fee (${holdNew} day${holdNew > 1 ? 's' : ''} x $${HOLD_RATE})` : ''].filter(Boolean).join(' + '), totalCents: Math.round(due * 100), totalDisplay: '$' + due.toFixed(2), redirectUrl: schedLink(o.token) + '?paid=1' }) });
         const d = await r.json(); payUrl = d.url || ''; } catch (e) { console.log('Add-on pay link failed', e.message); }
     }
     o.booking = { date, win, label: `${day.label} · ${slot.label}`, address, city, zip, room, notes, phone, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
-    if (extrasNew.length) o.extraDue = (o.extraDue || 0) + due;
+    if (extrasNew.length || holdFee) o.extraDue = (o.extraDue || 0) + due;
+    if (holdFee) o.holdPaidDays = holdDays;
     m[o.token] = o; await setSched(m);
     cache.at = 0;   // so the next HQ load re-reads the calendar
-    textAlert(`${prev.date ? 'RESCHEDULED' : 'BOOKED'}: ${isDel ? 'Delivery' : 'Pickup'} ${o.booking.label}\n${o.name} ${fmtPhone(phone)}\n${couch}${allAdds.length ? '\nAdd-ons: ' + allAdds.join(', ') : ''}${extrasNew.length ? `\nNEW ADD-ONS: ${extrasNew.map(a => a.label).join(', ')} ($${due.toFixed(2)} link sent)` : ''}${isDel ? '\n' + address + ', ' + city : ''}`).catch(() => {});
+    textAlert(`${prev.date ? 'RESCHEDULED' : 'BOOKED'}: ${holdDays ? '[HOLD ' + holdDays + 'd = $' + holdDays * HOLD_RATE + '] ' : ''}${isDel ? 'Delivery' : 'Pickup'} ${o.booking.label}\n${o.name} ${fmtPhone(phone)}\n${couch}${allAdds.length ? '\nAdd-ons: ' + allAdds.join(', ') : ''}${extrasNew.length ? `\nNEW ADD-ONS: ${extrasNew.map(a => a.label).join(', ')} ($${due.toFixed(2)} link sent)` : ''}${isDel ? '\n' + address + ', ' + city : ''}`).catch(() => {});
     res.json({ ok: true, payUrl, due, ...schedPublic(o, []) });
   } catch (e) { console.log('Schedule failed', e.message); res.status(500).json({ error: 'Could not book that time. Please text us at (314) 899-7503.' }); }
 });
