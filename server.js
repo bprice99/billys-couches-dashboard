@@ -1768,6 +1768,20 @@ function cleanDrop(b, old) {
 app.get('/api/drops', async (req, res) => {
   try { res.json({ ok: true, drops: (await getDrops()).map(d => ({ ...d, guessPieces: d.pieces && d.pieces.length ? undefined : piecesOf(d) })), base: PUBLIC_BASE }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Will it fit?: the showroom shape of a modular sectional (where each piece sits), saved from "Arrange pieces" in Drops.
+app.get('/api/drops/:id/fit', async (req, res) => {
+  const d = (await getDrops()).find(x => x.id === req.params.id); if (!d) return res.status(404).json({ error: 'Couch not found' });
+  res.json({ ok: true, couch: { id: d.id, title: d.title, price: d.price, photos: [], pieces: piecesOf(d), shape: d.fitShape || null } });
+});
+app.post('/api/drops/:id/shape', async (req, res) => {
+  try {
+    const list = await getDrops(), d = list.find(x => x.id === req.params.id); if (!d) return res.status(404).json({ error: 'Couch not found' });
+    const n = v => { const x = parseFloat(v); return isFinite(x) && Math.abs(x) < 2000 ? Math.round(x * 10) / 10 : 0; };
+    const sh = (Array.isArray((req.body || {}).shape) ? req.body.shape : []).slice(0, 30).map(o => ({ k: String(o.k || '').replace(/[^0-9-]/g, '').slice(0, 8), x: n(o.x), y: n(o.y), r: [0, 90, 180, 270].includes(o.r) ? o.r : 0, f: !!o.f })).filter(o => o.k);
+    d.fitShape = sh.length > 1 ? sh : null; d.updatedAt = Date.now(); await setDrops(list); dropsAt = Date.now();
+    res.json({ ok: true, shape: d.fitShape });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/drops/save', async (req, res) => {
   try {
     const list = await getDrops(), b = req.body || {};
@@ -2176,7 +2190,7 @@ app.post('/public/fit-sess/:id', async (req, res) => {
     const s = await kget(fitKey(fitId(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
     const m = (req.body || {}).meas || {}, n = (v, max) => { const x = parseFloat(v); return x >= -50 && x < (max || 2000) ? Math.round(x * 10) / 10 : null; };
     const items = (arr, max) => (Array.isArray(arr) ? arr : []).slice(0, max).map(o => ({ k: String(o.k || '').replace(/[^a-z0-9-]/gi, '').slice(0, 20), x: n(o.x), y: n(o.y), r: [0, 90, 180, 270].includes(o.r) ? o.r : 0, f: !!o.f, h: !!o.h }));
-    s.meas = { roomW: n(m.roomW), roomD: n(m.roomD), couch: String(m.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20), layout: items(m.layout, 20), extras: items(m.extras, 6) };
+    s.meas = { roomW: n(m.roomW), roomD: n(m.roomD), couch: String(m.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20), locked: m.locked !== false, layout: items(m.layout, 30), extras: items(m.extras, 6) };
     if (s.meas.couch) s.tried = [...new Set([...(s.tried || []), s.meas.couch])].slice(-40);
     await kset(fitKey(s.id), s); res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'save failed' }); }
@@ -2324,7 +2338,7 @@ app.get('/public/inventory', async (req, res) => {
   try {
     const list = (await getDrops()).filter(d => d.status === 'live');
     res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
-      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), photos: (d.photos || []).map(dropPhotoUrl) })) });
+      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: d.fitShape || null, photos: (d.photos || []).map(dropPhotoUrl) })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Public order app (order.billyscouches.com) reads this: everything a customer can buy right now,
