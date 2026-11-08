@@ -2192,7 +2192,7 @@ app.post('/public/fit-sess/:id', async (req, res) => {
     const s = await kget(fitKey(fitId(req)), null); if (!s) return res.status(404).json({ error: 'gone' });
     const m = (req.body || {}).meas || {}, n = (v, max) => { const x = parseFloat(v); return x >= -50 && x < (max || 2000) ? Math.round(x * 10) / 10 : null; };
     const items = (arr, max) => (Array.isArray(arr) ? arr : []).slice(0, max).map(o => ({ k: String(o.k || '').replace(/[^a-z0-9-]/gi, '').slice(0, 20), x: n(o.x), y: n(o.y), r: [0, 90, 180, 270].includes(o.r) ? o.r : 0, f: !!o.f, h: !!o.h }));
-    s.meas = { roomW: n(m.roomW), roomD: n(m.roomD), couch: String(m.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20), locked: m.locked !== false, layout: items(m.layout, 30), extras: items(m.extras, 6) };
+    s.meas = { roomW: n(m.roomW), roomD: n(m.roomD), couch: String(m.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20), sig: String(m.sig || '').slice(0, 600), locked: m.locked !== false, layout: items(m.layout, 30), extras: items(m.extras, 6) };
     if (s.meas.couch) s.tried = [...new Set([...(s.tried || []), s.meas.couch])].slice(-40);
     await kset(fitKey(s.id), s); res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'save failed' }); }
