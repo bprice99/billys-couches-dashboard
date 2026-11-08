@@ -283,7 +283,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
     <div class="navh">Money</div>
     <a class="nav on" data-tab="sales">Sales Tracker</a>
-    <a class="nav" data-tab="cash">Daily Cash</a>
+    <a class="nav" data-tab="cash">Buying Power</a>
     <a class="nav" data-tab="ppl">Personal P&amp;L</a>
     <a class="nav" data-tab="goals">Goals</a>
     <a class="nav" data-tab="payroll">Payroll</a>
@@ -317,7 +317,6 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       <button class="btn p" data-open="purchase" data-only="sales">+ Used pickup</button>
       <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
-      <button class="btn p" id="cashAdd" data-only="cash">+ Today's balances</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
       <button class="btn p" id="upAddBtn" data-only="upsells">+ Upsell after sale</button>
       <button class="btn p" id="dropNew" data-only="drops">+ New couch</button>
@@ -613,7 +612,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
 <div class="mask" id="m-txset"><div class="modal" style="max-width:640px">
   <button type="button" class="xbtn" data-close>&times;</button>
   <h3>Banks &amp; rules</h3>
-  <p class="empty" style="font-size:13px;margin-top:-6px">Business accounts fill the Sales Tracker's expenses. Personal accounts fill your Personal P&amp;L. Ignore savings and accounts that just move money around. Link new banks on the Daily Cash tab.</p>
+  <p class="empty" style="font-size:13px;margin-top:-6px">Business accounts fill the Sales Tracker's expenses. Personal accounts fill your Personal P&amp;L. Ignore savings and accounts that just move money around. Link new banks on the Buying Power tab.</p>
   <h4 style="margin:14px 0 4px;font-size:13px">Accounts</h4><div id="txAccts"></div>
   <h4 style="margin:18px 0 4px;font-size:13px">Remembered vendors <small style="font-weight:500;color:var(--muted)">(Venmo/Zelle remember each person separately)</small></h4><div id="txRules"></div>
   <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><button class="btn sm" data-txrescan>Re-check this month</button><small style="color:var(--muted);font-size:12px">Looks through this month again for anything missed. Nothing gets added twice.</small></div>
@@ -1676,7 +1675,7 @@ function cashPayroll(){
 }
 function cashOutlook(last){
   const P = CPLAN, today = day0(new Date()), end = addDays(today, 14), pr = cashPayroll(), B = bizCash(last), ev = [];
-  const bills = last.bills == null || last.bills === '' ? 3000 : Number(last.bills) || 0;
+  const U = utilAuto(), util = P.utilities != null ? P.utilities : (U.avg || 300), bills = (P.rent || 0) + util;
   // Rent: next rent day on or after today
   let rent = new Date(today.getFullYear(), today.getMonth(), P.rentDay); if (rent < today) rent = new Date(today.getFullYear(), today.getMonth() + 1, P.rentDay);
   const rentIn = rent <= end;
@@ -1703,7 +1702,15 @@ function cashOutlook(last){
   const committed = open.reduce((a, c) => a + c.amount, 0);
   const payDue = owedNow + (cur ? Math.max(cur.total, pr.weekly) : 0);
   const power = B.cash + B.stripe - B.cards - (rentIn ? bills : 0) - payDue - committed - P.cushion;
-  return { ev, low, B, bills, rentIn, rent, payDue, committed, later, power, pr, perDay: rev28 / 28 };
+  return { ev, low, B, bills, util, U, rentIn, rent, payDue, committed, later, power, pr, perDay: rev28 / 28 };
+}
+// Utilities: average of the last 3 full months of "Utilities" expenses.
+function utilAuto(){
+  if (!RAW) return { avg: 0, n: 0 };
+  const now = new Date(), from = new Date(now.getFullYear(), now.getMonth() - 3, 1), to = new Date(now.getFullYear(), now.getMonth(), 1);
+  const all = (RAW.hExp || []).filter(x => isHistDay(x.date)).concat((RAW.expenses || []).filter(x => !isHistDay(x.date)));
+  const l = all.filter(x => x.cat === 'Utilities' && x.date >= from && x.date < to);
+  return { avg: l.length ? l.reduce((a, x) => a + x.amt, 0) / 3 : 0, n: l.length };
 }
 async function loadCash(fresh){
   try {
@@ -1725,7 +1732,12 @@ function renderCash(){
   const row = (l, v, note, bold) => `<div class="row"><span>${bold ? '<b>' + l + '</b>' : l}${note ? `<div style="font-size:12px;color:var(--muted)">${note}</div>` : ''}</span><b style="${v < 0 ? 'color:var(--bad)' : ''}">${v < 0 ? '−' : ''}${money(Math.abs(v))}</b></div>`;
   const prN = O.pr.ready ? '' : 'loading payroll...';
   const open = (P.commitments || []).filter(c => !c.paid).sort((a, b) => (a.due || '9').localeCompare(b.due || '9'));
+  const bk = BANKS && BANKS.at ? Date.parse(BANKS.at) : Date.parse(last.savedAt || last.date);
+  const ed = (k, v) => `<input class="cashed" data-cashq="${k}" inputmode="decimal" value="${money(v)}" style="width:110px;text-align:right;font-weight:700;border:1.5px solid var(--accent,#b0524c);border-radius:8px;padding:5px 9px;font:inherit;font-weight:700">`;
   $('cashBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:var(--muted)">
+      <span>Balances from ${last.date === ymd(new Date()) ? 'today' : dshort(toDate(last.date))}${last.savedAt ? ', updated ' + agoTxt(Date.parse(last.savedAt)) : ''}</span>
+      <button class="btn sm" id="cashRefresh">Refresh from banks</button></div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px">
       ${hero('Buying power', money(O.power), tone, `Safe to spend after everything owed and a ${money(P.cushion)} cushion`)}
       ${hero('Next load (' + money(P.loadCost) + ')', ok ? 'Yes' : 'Not yet', ok ? 'var(--green)' : 'var(--bad)', ok ? `${money(O.power - P.loadCost)} left over after buying it` : `${money(short)} short${eta ? ` &middot; about ${dshort(eta)} at your recent sales pace` : ''}`)}
@@ -1734,8 +1746,8 @@ function renderCash(){
     <div class="grid2" style="margin-top:0">
       <div class="card"><h2>How buying power adds up <small>as of ${dshort(toDate(last.date))}</small></h2>
         ${row('Checking ··9926', Number(last.checking9926) || 0)}
-        ${row('Cash in safe', Number(last.safe) || 0)}
-        ${row('Venmo in transit', Number(last.venmo) || 0)}
+        <div class="row"><span>Cash in safe<div style="font-size:12px;color:var(--muted)">you count this · type to update</div></span>${ed('safe', Number(last.safe) || 0)}</div>
+        <div class="row"><span>Venmo in transit<div style="font-size:12px;color:var(--muted)">not in 9926 yet · type to update</div></span>${ed('venmo', Number(last.venmo) || 0)}</div>
         ${row('Stripe on the way', O.B.stripe, last.stripeAuto ? 'pulled from Stripe' : 'typed in')}
         ${row('Business cards (Ink ×2, Amex)', -O.B.cards)}
         ${O.rentIn ? row('Rent + utilities', -O.bills, 'due ' + dshort(O.rent)) : ''}
@@ -1756,12 +1768,12 @@ function renderCash(){
       ${open.map(c => `<tr><td>${esc(c.label)}</td><td class="n"><b>${money(c.amount)}</b></td><td>${c.due ? dshort(toDate(c.due)) : 'Now'}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-cpay="${c.id}">Paid</button> <button class="btn sm" data-cdel="${c.id}">Remove</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nothing owed. Add an order when you place one.</td></tr>'}
       <tr><td><input id="cpLabel" placeholder="Peak Living order" style="width:100%"></td><td class="n"><input id="cpAmt" inputmode="decimal" placeholder="$0" style="width:100px"></td><td><input id="cpDue" type="date"></td><td class="n"><button class="btn sm p" id="cpAdd">Add</button></td></tr>
       </table></div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:13px;align-items:center">
-        <label>Cushion $<input id="cpCush" inputmode="decimal" value="${P.cushion}" style="width:80px"></label>
-        <label>A load costs $<input id="cpLoad" inputmode="decimal" value="${P.loadCost}" style="width:80px"></label>
-        <label>Rent due day <input id="cpRent" inputmode="numeric" value="${P.rentDay}" style="width:44px"></label>
-        <button class="btn sm" id="cpSave">Save settings</button>
-      </div></div>
+      </div>
+    <div class="card" style="margin-top:16px"><h2>Settings <small>set once</small></h2>
+      ${[['Rent', 'cpRent2', P.rent, 'fixed, every month', ''], ['Utilities', 'cpUtil', P.utilities == null ? '' : P.utilities, O.U.n ? `blank = your 3-month average (${money(O.U.avg)})` : 'blank = $300 estimate until utility bills are in your expenses', O.U.n ? money(O.U.avg) : '$300'],
+         ['Rent due day', 'cpRent', P.rentDay, 'day of the month', ''], ['Cushion', 'cpCush', P.cushion, 'never spend below this', ''], ['A load costs', 'cpLoad', P.loadCost, 'for the Next load card', '']]
+        .map(([l, id, v, note, ph]) => `<div class="row"><span>${l}<div style="font-size:12px;color:var(--muted)">${note}</div></span><input id="${id}" inputmode="decimal" value="${v}" placeholder="${ph}" style="width:110px;text-align:right;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font:inherit"></div>`).join('')}
+      <div style="text-align:right;margin-top:10px"><button class="btn sm p" id="cpSave">Save settings</button></div></div>
     <div class="card" style="margin-top:16px"><h2>Business cash trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
     <div class="card" style="margin-top:16px"><h2>Entries</h2><div style="overflow-x:auto"><table>
       <tr><th>Date</th><th class="n">Business cash</th><th class="n">Cards</th><th class="n">Net business</th><th class="hide-m">Note</th><th></th></tr>
@@ -1780,8 +1792,14 @@ document.addEventListener('click', e => {
     saveCPlan({ commitments: [...CPLAN.commitments, { label, amount: amt, due: $('cpDue').value }] }); }
   if (t.dataset && t.dataset.cpay) saveCPlan({ commitments: CPLAN.commitments.map(c => c.id === t.dataset.cpay ? { ...c, paid: true } : c) });
   if (t.dataset && t.dataset.cdel) saveCPlan({ commitments: CPLAN.commitments.filter(c => c.id !== t.dataset.cdel) });
-  if (t.id === 'cpSave') saveCPlan({ cushion: parseMoney($('cpCush').value) ?? 0, loadCost: parseMoney($('cpLoad').value) || CPLAN.loadCost, rentDay: parseInt($('cpRent').value, 10) || 1 });
+  if (t.id === 'cpSave') saveCPlan({ cushion: parseMoney($('cpCush').value) ?? 0, loadCost: parseMoney($('cpLoad').value) || CPLAN.loadCost, rentDay: parseInt($('cpRent').value, 10) || 1, rent: parseMoney($('cpRent2').value) ?? 0, utilities: $('cpUtil').value.trim() === '' ? '' : parseMoney($('cpUtil').value) });
+  if (t.id === 'cashRefresh') { t.disabled = true; t.textContent = 'Pulling...';
+    fetch('/api/cash/refresh', { method: 'POST' }).then(r => r.json()).then(j => { if (!j.ok) throw new Error(j.error || 'Failed'); toast('Updated from banks'); loadBanks(true); loadCash(true); }).catch(err => { toast(err.message); t.disabled = false; t.textContent = 'Refresh from banks'; }); }
 });
+document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.cashq) e.target.select(); });
+document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.cashq) return;
+  const v = parseMoney(t.value); if (v == null) return toast('Type a dollar amount');
+  try { const j = await post('/api/cash/quick', { [t.dataset.cashq]: v }); CASH.snaps = CASH.snaps.filter(x => x.date !== j.snap.date).concat(j.snap); toast('Saved'); renderCash(); } catch (err) { toast(err.message); } });
 // Personal accounts card on Personal P&L
 function renderPplCash(){
   const el = $('pplCash'); if (!el) return;
@@ -1815,7 +1833,7 @@ function openCash(){
   f.date.value = todayStr(); f.stripe.value = ''; f.note.value = '';
   const sb = (CASH && CASH.stripe) || {};
   $('stripeNow').textContent = sb.error ? 'Not connected. Type the Stripe balance in.' : 'Leave blank to pull automatically (now ' + money(sb.total || 0) + ').';
-  $('bankNow').textContent = BANKS && BANKS.banks && BANKS.banks.length ? 'Fills every linked account with today\'s balance.' : 'Connect banks on the Daily Cash tab first.';
+  $('bankNow').textContent = BANKS && BANKS.banks && BANKS.banks.length ? 'Fills every linked account with today\'s balance.' : 'Connect banks on the Buying Power tab first.';
   cashHints(); m.classList.add('on');
 }
 
@@ -1838,7 +1856,7 @@ function renderBanks(){
   el.innerHTML = `<div class="card"><h2>Bank connections <small>${banks.length} linked${BANKS.at ? ' · ' + (BANKS.live ? '<b style="color:var(--green)">live</b> ' : 'saved balances, ') + 'updated ' + agoTxt(Date.parse(BANKS.at)) : ''}</small></h2>${BANKS.liveNote ? `<p class="empty" style="font-size:12px;color:var(--bad);margin:-6px 0 10px">${esc(BANKS.liveNote)}</p>` : ''}
     <p class="empty" style="font-size:12.5px;margin-top:-6px">Each morning at 7am an entry is saved from your banks if you haven't added one. Safe, Venmo and stocks carry over from your last entry.</p>
     ${banks.map(b => `<div style="border-top:1px solid var(--line);padding:10px 0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(b.institution)}</b><span style="white-space:nowrap">${b.relink ? `<button class="btn sm p" data-bankfix="${esc(b.item_id)}">Reconnect</button> ` : ''}<button class="btn sm" data-bankdel="${esc(b.item_id)}">Remove</button></span></div>
-      ${b.error ? `<div style="color:var(--bad);font-size:12.5px">${esc(b.error)}</div>` : (b.accounts || []).map(a => `<div class="row" style="font-size:13px"><span>${esc(a.name)} ··${esc(a.mask || '')}<div style="font-size:12px;color:var(--muted)">${a.field ? '→ ' + BANK_LABEL[a.field] : 'not used in Daily Cash'}</div></span><b>${money(Math.abs(a.current ?? a.available ?? 0))}</b></div>`).join('')}</div>`).join('')}
+      ${b.error ? `<div style="color:var(--bad);font-size:12.5px">${esc(b.error)}</div>` : (b.accounts || []).map(a => `<div class="row" style="font-size:13px"><span>${esc(a.name)} ··${esc(a.mask || '')}<div style="font-size:12px;color:var(--muted)">${a.field ? '→ ' + BANK_LABEL[a.field] : 'not used in Buying Power'}</div></span><b>${money(Math.abs(a.current ?? a.available ?? 0))}</b></div>`).join('')}</div>`).join('')}
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn p" id="btnBankAdd">+ Connect a bank</button><button class="btn" id="btnBankRefresh">↻ Live balances</button></div></div>`;
 }
 function plaidScript(){
@@ -1861,7 +1879,7 @@ async function pullBanks(){
   const f = $('m-cash').querySelector('form').elements, keys = Object.keys(d.fields || {});
   keys.forEach(k => { if (f[k]) f[k].value = fmtMoney(d.fields[k]); });
   const errs = (d.banks || []).filter(b => b.error).length;
-  $('bankNow').textContent = keys.length ? `Filled ${keys.length} accounts from your banks${errs ? ` · ${errs} bank needs reconnecting` : ''}.` : (d.error || 'No linked accounts yet. Connect banks on the Daily Cash tab.');
+  $('bankNow').textContent = keys.length ? `Filled ${keys.length} accounts from your banks${errs ? ` · ${errs} bank needs reconnecting` : ''}.` : (d.error || 'No linked accounts yet. Connect banks on the Buying Power tab.');
   if (keys.length) { cashDraft = true; cashHints(); }
 }
 document.addEventListener('click', async e => {
@@ -1960,7 +1978,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Daily Cash', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts' };
+const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -2113,7 +2131,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-pply
 function render(){
   if (!RAW) return;
   syncRangeBar();
-  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'cuts' || tab === 'ppl' || tab === 'sched' || tab === 'content';
+  $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'cuts' || tab === 'ppl' || tab === 'cash' || tab === 'sched' || tab === 'content';
   ({ cuts: renderCuts, sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
 }
 function setTab(t){
@@ -2151,7 +2169,7 @@ $('rFrom').onchange = customChange; $('rTo').onchange = customChange;
 $('ohAdd').onclick = () => openOH();
 $('goalEdit').onclick = () => openGoals();
 $('refresh').onclick = () => { if (tab === 'ads') loadAds(); else if (tab === 'payroll') loadPayroll(true); else if (tab === 'cash') loadCash(true); else if (tab === 'offers') loadOffers(); else if (tab === 'thanks') loadThanks(true); else if (tab === 'drops') loadDrops(); else { toast('Pulling the latest from Google...'); load(true); } };
-$('cashAdd').onclick = () => { if (!CASH) loadCash().then(openCash); else openCash(); };
+
 $('payBtn').onclick = async () => {
   const R = getR('payroll'), W = payRange(R), paid = !!(PAY.paid || {})[W.wkey];
   try { await post('/api/payroll/paid', { week: W.wkey, undo: paid, lines: W.lines.map(l => ({ name: l.name, total: l.total })) });
@@ -2796,7 +2814,7 @@ function renderTxReview(scope){
 function openTxSettings(){
   const m = $('m-txset'); if (!TX) return;
   const sc = a => ['business', 'personal', 'ignore'].map(s => `<option value="${s}" ${a.scope === s ? 'selected' : ''}>${s === 'business' ? 'Business (Sales Tracker)' : s === 'personal' ? 'Personal (P&L)' : 'Ignore (savings, moving money)'}</option>`).join('');
-  $('txAccts').innerHTML = TX.accounts.length ? TX.accounts.map(a => `<div class="row"><span><b>${esc(a.institution)}</b> · ${esc(a.name)}${a.mask ? ' ••' + esc(a.mask) : ''}${a.guessed ? ' <small style="color:var(--muted)">(guessed)</small>' : ''}</span><select data-txacct="${esc(a.id)}"><option value="">Not set up</option>${sc(a)}</select></div>`).join('') : '<p class="empty">No banks linked yet. Link them on the Daily Cash tab.</p>';
+  $('txAccts').innerHTML = TX.accounts.length ? TX.accounts.map(a => `<div class="row"><span><b>${esc(a.institution)}</b> · ${esc(a.name)}${a.mask ? ' ••' + esc(a.mask) : ''}${a.guessed ? ' <small style="color:var(--muted)">(guessed)</small>' : ''}</span><select data-txacct="${esc(a.id)}"><option value="">Not set up</option>${sc(a)}</select></div>`).join('') : '<p class="empty">No banks linked yet. Link them on the Buying Power tab.</p>';
   const v = Object.entries(TX.vendors || {});
   $('txRules').innerHTML = v.length ? v.sort((a, b) => a[0].localeCompare(b[0])).map(([k, r]) => `<div class="row"><span><b>${esc(k)}</b> → ${r === 'ignore' ? 'Ignore' : r.scope === 'business' ? esc(r.cat) : 'Personal: ' + esc(TX.pplCats[r.cat] || r.cat)}</span><button class="xs" data-txrdel="${esc(k)}">&times;</button></div>`).join('') : '<p class="empty">No rules yet. They get made when you approve something with "remember" checked.</p>';
   m.classList.add('on');
