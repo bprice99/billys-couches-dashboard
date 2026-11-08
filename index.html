@@ -487,6 +487,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <section id="tab-ppl" hidden>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><button class="btn" data-pply="-1">&larr;</button><b id="pplYear" style="font-size:15px;min-width:50px;text-align:center"></b><button class="btn" data-pply="1">&rarr;</button><small style="color:var(--muted);margin-left:6px">Type in any cell. Saves automatically. Billy's Couches profit and coaching fill in on their own.</small></div>
       <div class="kpis" id="pplKpis"></div>
+      <div class="card" id="pplCash" hidden style="margin-bottom:16px"></div>
       <div class="card" id="txPplCard"><h2>From your personal accounts</h2><div id="txPpl"></div><div id="txPplList"></div></div>
       <div class="card" style="margin-top:16px"><h2>Month by month</h2><div style="overflow-x:auto"><table id="pplTbl" class="ppl"></table></div></div>
       <div class="grid2" style="margin-top:16px">
@@ -1658,73 +1659,140 @@ function cashCalc(s){
   return { bizCards, persCards, netBiz, afterBills, netPers, combined, withStocks: combined + v('stocks'), health: h };
 }
 const delta = (a, b) => b == null ? '<div class="c flat">First entry</div>' : Math.abs(a - b) < 0.5 ? '<div class="c flat">No change vs last entry</div>' : `<div class="c ${a > b ? 'up' : 'dn'}">${a > b ? '&uarr; +' : '&darr; '}${money(a - b)} vs last entry</div>`;
+// Daily Cash = "can I buy the next load?" Business money only. Personal accounts live on Personal P&L.
+let CPLAN = null;
+const bizCash = s => { const v = k => Number(s[k]) || 0; return { cash: v('checking9926') + v('safe') + v('venmo'), stripe: v('stripe'), cards: v('ink2078') + v('ink1602') + v('amex91000') }; };
+// Payroll earned but not paid yet (weeks since the dashboard took over), plus what a normal week costs.
+function cashPayroll(){
+  if (!PAY || !PAY.entries) return { owed: 0, weekly: 0, weeks: [], ready: false };
+  const thisMon = mondayOf(new Date()), weeks = [];
+  for (let m = mondayOf(toDate(PAID_BEFORE)); m <= thisMon; m = addDays(m, 7)) {
+    const k = ymd(m), W = payWeekLines(m, k, ymd(addDays(m, 6))), t = W.lines.reduce((a, l) => a + l.total, 0);
+    weeks.push({ k, total: t, paid: !!weekPaid(k), cur: k === ymd(thisMon) });
+  }
+  const done = weeks.filter(w => !w.cur && w.total > 0).slice(-4);
+  const weekly = done.length ? done.reduce((a, w) => a + w.total, 0) / done.length : 0;
+  return { owed: weeks.filter(w => !w.paid).reduce((a, w) => a + w.total, 0), weekly, weeks, ready: true };
+}
+function cashOutlook(last){
+  const P = CPLAN, today = day0(new Date()), end = addDays(today, 14), pr = cashPayroll(), B = bizCash(last), ev = [];
+  const bills = last.bills == null || last.bills === '' ? 3000 : Number(last.bills) || 0;
+  // Rent: next rent day on or after today
+  let rent = new Date(today.getFullYear(), today.getMonth(), P.rentDay); if (rent < today) rent = new Date(today.getFullYear(), today.getMonth() + 1, P.rentDay);
+  const rentIn = rent <= end;
+  if (rentIn) ev.push({ d: rent, label: 'Rent + utilities', amt: -bills });
+  // Payroll goes out Mondays: what's owed now on the next Monday, then a normal week each Monday after.
+  let mon = addDays(mondayOf(today), 7);
+  const owedNow = pr.weeks.filter(w => !w.paid && !w.cur).reduce((a, w) => a + w.total, 0), cur = pr.weeks.find(w => w.cur);
+  if (owedNow > 0) ev.push({ d: today, label: 'Payroll not paid yet', amt: -owedNow });
+  for (let i = 0; mon <= end; i++, mon = addDays(mon, 7)) {
+    const amt = i === 0 && cur ? Math.max(cur.total, pr.weekly) : pr.weekly;
+    if (amt > 0) ev.push({ d: mon, label: i === 0 ? 'Payroll (this week)' : 'Payroll (avg week)', amt: -amt });
+  }
+  if (B.stripe > 0) ev.push({ d: addDays(today, 2), label: 'Stripe payout', amt: B.stripe, inc: true });
+  const open = (P.commitments || []).filter(c => !c.paid);
+  open.forEach(c => { const d = c.due ? toDate(c.due) : today; if (d <= end) ev.push({ d: d < today ? today : d, label: c.label, amt: -c.amount, cid: c.id }); });
+  // Cards: the statement gets paid from checking; count them today.
+  if (B.cards > 0) ev.push({ d: today, label: 'Business card balances', amt: -B.cards });
+  ev.sort((a, b) => a.d - b.d || a.amt - b.amt);
+  let run = B.cash, low = { v: B.cash, d: today };
+  ev.forEach(e => { run += e.amt; e.run = run; if (run < low.v) low = { v: run, d: e.d }; });
+  // Sales pace: average cash in per day over the last 28 days (shown, not counted).
+  const since = ymd(addDays(today, -28)), rev28 = RAW ? RAW.sales.filter(s => s.date >= since).reduce((t, s) => t + (s.rev || 0), 0) : 0;
+  const later = open.filter(c => c.due && toDate(c.due) > end).reduce((a, c) => a + c.amount, 0);
+  const committed = open.reduce((a, c) => a + c.amount, 0);
+  const payDue = owedNow + (cur ? Math.max(cur.total, pr.weekly) : 0);
+  const power = B.cash + B.stripe - B.cards - (rentIn ? bills : 0) - payDue - committed - P.cushion;
+  return { ev, low, B, bills, rentIn, rent, payDue, committed, later, power, pr, perDay: rev28 / 28 };
+}
 async function loadCash(fresh){
   try {
-    const r = await fetch('/api/cash' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
+    const [r, p] = await Promise.all([fetch('/api/cash' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' }), fetch('/api/cash/plan', { cache: 'no-store' })]);
     const d = await r.json(); if (d.error) throw new Error(d.error);
-    CASH = d; renderCash(); renderBanks();
+    CASH = d; CPLAN = (await p.json()).plan || { cushion: 5000, loadCost: 9500, rentDay: 1, commitments: [] };
+    if (!PAY) fetch('/api/payroll', { cache: 'no-store' }).then(x => x.json()).then(j => { if (j.entries) { PAY = j; if (tab === 'cash') renderCash(); } }).catch(() => {});
+    renderCash(); renderBanks();
   } catch (e) { $('cashBody').innerHTML = `<div class="err" style="display:block">Couldn't load cash: ${esc(e.message)}</div>`; }
 }
 function renderCash(){
-  if (!CASH) return loadCash();
-  const R = getR('cash'), allSnaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const snaps = allSnaps.filter(x => inR(toDate(x.date), R));
-  const last = snaps[snaps.length - 1] || (R.to >= day0(new Date()) ? allSnaps[allSnaps.length - 1] : null);
-  const prev = last ? allSnaps[allSnaps.findIndex(x => x.date === last.date) - 1] : null;
-  const sb = CASH.stripe || {};
-  if (!last) { $('cashBody').innerHTML = allSnaps.length ? `<div class="card"><h2>No entries in this range</h2><p class="empty">Pick another range.</p></div>` : `<div class="card"><h2>No balances yet</h2><p class="empty">Click <b>+ Today's balances</b> and type in your accounts. Takes about a minute; tomorrow it pre-fills with today's numbers so you only change what moved.</p></div>`; return; }
-  const C = cashCalc(last), Pv = prev ? cashCalc(prev) : null;
-  const now0 = new Date(); const mTax = RAW ? RAW.sales.filter(s => inMonth(s.date, now0.getFullYear(), now0.getMonth())).reduce((t, s) => t + (s.tax || 0), 0) : 0;
-  const row = (l, v, neg, note) => `<div class="row"><span>${l}${note ? `<div style="font-size:12px;color:var(--muted)">${note}</div>` : ''}</span><b style="${neg ? 'color:var(--bad)' : ''}">${neg ? '−' : ''}${money(v)}</b></div>`;
-  const stripeNote = last.stripeAuto ? 'pulled from Stripe when saved' : 'typed in';
+  if (!CASH || !CPLAN) return loadCash();
+  const allSnaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)), last = allSnaps[allSnaps.length - 1];
+  if (!last) { $('cashBody').innerHTML = `<div class="card"><h2>No balances yet</h2><p class="empty">Click <b>+ Today's balances</b> and type in your accounts.</p></div>`; return; }
+  const O = cashOutlook(last), P = CPLAN, short = P.loadCost - O.power, dshort = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const ok = O.power >= P.loadCost, eta = !ok && O.perDay > 0 ? addDays(day0(new Date()), Math.ceil(short / (O.perDay * 0.5))) : null;
+  const tone = O.power >= P.loadCost ? 'var(--green)' : O.power >= 0 ? '#b7791f' : 'var(--bad)';
+  const hero = (t, big, color, sub) => `<div class="card" style="flex:1 1 220px;margin:0"><div style="font-size:13px;color:var(--muted)">${t}</div><div style="font-size:30px;font-weight:700;margin:4px 0;color:${color || 'inherit'}">${big}</div><div style="font-size:13px;color:var(--muted)">${sub}</div></div>`;
+  const row = (l, v, note, bold) => `<div class="row"><span>${bold ? '<b>' + l + '</b>' : l}${note ? `<div style="font-size:12px;color:var(--muted)">${note}</div>` : ''}</span><b style="${v < 0 ? 'color:var(--bad)' : ''}">${v < 0 ? '−' : ''}${money(Math.abs(v))}</b></div>`;
+  const prN = O.pr.ready ? '' : 'loading payroll...';
+  const open = (P.commitments || []).filter(c => !c.paid).sort((a, b) => (a.due || '9').localeCompare(b.due || '9'));
   $('cashBody').innerHTML = `
-    <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <span class="pill ${C.health[2]}" style="font-size:15px;padding:6px 14px">${C.health[1]}</span>
-      <span style="font-size:14px;color:var(--muted)">${C.health[3]} &middot; as of ${toDate(last.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}${last.note ? ' &middot; ' + esc(last.note) : ''}</span>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px">
+      ${hero('Buying power', money(O.power), tone, `Safe to spend after everything owed and a ${money(P.cushion)} cushion`)}
+      ${hero('Next load (' + money(P.loadCost) + ')', ok ? 'Yes' : 'Not yet', ok ? 'var(--green)' : 'var(--bad)', ok ? `${money(O.power - P.loadCost)} left over after buying it` : `${money(short)} short${eta ? ` &middot; about ${dshort(eta)} at your recent sales pace` : ''}`)}
+      ${hero('Lowest point, next 14 days', money(O.low.v), O.low.v < P.cushion ? 'var(--bad)' : 'inherit', `${dshort(O.low.d)} &middot; if nothing sells`)}
     </div>
-    <div class="kpis">${kpiHtml([
-      ['Net business', money(C.netBiz), delta(C.netBiz, Pv && Pv.netBiz)],
-      ['Business after bills', money(C.afterBills), delta(C.afterBills, Pv && Pv.afterBills)],
-      ['Net personal', money(C.netPers), delta(C.netPers, Pv && Pv.netPers)],
-      ['Combined', money(C.combined), delta(C.combined, Pv && Pv.combined)],
-      ['Combined + stocks', money(C.withStocks), delta(C.withStocks, Pv && Pv.withStocks)],
-      ['Tax reserve (not spendable)', money(last.taxReserve7229 || 0), `<div class="c flat">${money(mTax)} sales tax collected this month</div>`],
-    ])}</div>
     <div class="grid2" style="margin-top:0">
-      <div class="card"><h2>Business</h2>
-        ${row('Commerce Business Checking ··9926', last.checking9926)}
-        ${row('Cash in safe', last.safe)}
-        ${row('Stripe not yet paid out', last.stripe, false, stripeNote)}
-        ${row('Venmo in transit', last.venmo, false, 'Not yet posted to 9926')}
-        ${row('Chase Ink ··2078', last.ink2078, true)}
-        ${row('Chase Ink ··1602', last.ink1602, true)}
-        ${row('Amex Blue Business ··91000', last.amex91000, true)}
-        <div class="row"><span><b>Net business</b></span><b>${money(C.netBiz)}</b></div>
-        ${row('Rent + utilities', last.bills == null ? 3000 : last.bills, true)}
-        <div class="row"><span><b>After bills</b></span><b>${money(C.afterBills)}</b></div>
-        <div class="row" style="opacity:.6"><span>Commerce Tax Reserve ··7229<div style="font-size:12px">Shown, never counted as spendable</div></span><b>${money(last.taxReserve7229 || 0)}</b></div>
+      <div class="card"><h2>How buying power adds up <small>as of ${dshort(toDate(last.date))}</small></h2>
+        ${row('Checking ··9926', Number(last.checking9926) || 0)}
+        ${row('Cash in safe', Number(last.safe) || 0)}
+        ${row('Venmo in transit', Number(last.venmo) || 0)}
+        ${row('Stripe on the way', O.B.stripe, last.stripeAuto ? 'pulled from Stripe' : 'typed in')}
+        ${row('Business cards (Ink ×2, Amex)', -O.B.cards)}
+        ${O.rentIn ? row('Rent + utilities', -O.bills, 'due ' + dshort(O.rent)) : ''}
+        ${row('Payroll owed', -O.payDue, prN || 'unpaid weeks + this week so far')}
+        ${row('Supplier orders + bills', -O.committed, open.length ? open.length + ' open' : 'none entered')}
+        ${row('Cushion', -P.cushion)}
+        <div class="row" style="border-top:2px solid var(--line)"><span><b>Buying power</b></span><b style="color:${tone}">${money(O.power)}</b></div>
+        <div class="row" style="opacity:.6"><span>Tax reserve ··7229<div style="font-size:12px">Never counted</div></span><b>${money(last.taxReserve7229 || 0)}</b></div>
       </div>
-      <div class="card"><h2>Personal</h2>
-        ${row('Commerce Free Checking ··5908', last.personal5908)}
-        ${row('Marcus Savings ··6620 (Travel)', last.marcus6620)}
-        ${row('Marcus Savings ··6569 (Online)', last.marcus6569)}
-        ${row('Capital One ··8760', last.capone8760, true)}
-        ${row('Discover ··6166', last.discover6166, true)}
-        <div class="row"><span><b>Net personal</b></span><b>${money(C.netPers)}</b></div>
-        <div class="row"><span>Stocks</span><b>${money(last.stocks || 0)}</b></div>
-        <div class="row"><span><b>Combined + stocks</b></span><b>${money(C.withStocks)}</b></div>
+      <div class="card"><h2>Next 14 days <small>if nothing sells</small></h2>
+        <div class="row"><span>Business cash today</span><b>${money(O.B.cash)}</b></div>
+        ${O.ev.map(e => `<div class="row"><span>${dshort(e.d)} &middot; ${esc(e.label)}</span><span style="text-align:right"><b style="color:${e.amt < 0 ? 'var(--bad)' : 'var(--green)'}">${e.amt < 0 ? '−' : '+'}${money(Math.abs(e.amt))}</b><div style="font-size:12px;color:${e.run < P.cushion ? 'var(--bad)' : 'var(--muted)'}">${money(e.run)} left</div></span></div>`).join('')}
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Sales pace: about ${money(O.perDay * 7)} a week coming in (last 28 days). Not counted above.</p>
       </div>
     </div>
-    <div class="card" style="margin-top:16px"><h2>Trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
-    <div class="card" style="margin-top:16px"><h2>Entries in this range ${snaps.length > 1 ? `<small>Net business ${(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz) >= 0 ? '+' : ''}${money(cashCalc(snaps[snaps.length-1]).netBiz - cashCalc(snaps[0]).netBiz)} over the range</small>` : ''}</h2><div style="overflow-x:auto"><table>
-      <tr><th>Date</th><th class="n">Net business</th><th class="n hide-m">After bills</th><th class="n">Personal</th><th class="n">Combined</th><th>Health</th><th class="hide-m">Note</th><th></th></tr>
-      ${snaps.slice().reverse().map(s => { const X = cashCalc(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n"><b>${money(X.netBiz)}</b></td><td class="n hide-m">${money(X.afterBills)}</td><td class="n">${money(X.netPers)}</td><td class="n">${money(X.combined)}</td><td><span class="pill ${X.health[2]}">${X.health[1]}</span>${s.score ? ` <span style="font-size:12px;color:var(--muted)">${s.score}/10</span>` : ''}</td><td class="hide-m" style="font-size:12.5px;color:var(--muted);max-width:280px">${esc(s.note || '')}</td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
-    </table></div>
-    <p class="empty" style="margin-top:12px;font-size:12.5px">Health uses business after bills: Strong $15K+, Healthy $7.5K+, Tight $0+, Danger below $0. Stripe now: ${sb.error ? esc(sb.error) : money(sb.total || 0) + ' (' + money(sb.pending || 0) + ' pending, ' + money(sb.available || 0) + ' available).'}</p></div>`;
-  const recent = snaps, o = baseOpts(true);
-  const line = (label, data, color, w) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: w || 2, tension: .3, pointRadius: recent.length < 15 ? 3 : 0 });
+    <div class="card" style="margin-top:16px"><h2>Supplier orders + bills <small>Behold, Peak Living, B-Stock wins not paid yet</small></h2>
+      <div style="overflow-x:auto"><table><tr><th>What</th><th class="n">Amount</th><th>Due</th><th></th></tr>
+      ${open.map(c => `<tr><td>${esc(c.label)}</td><td class="n"><b>${money(c.amount)}</b></td><td>${c.due ? dshort(toDate(c.due)) : 'Now'}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-cpay="${c.id}">Paid</button> <button class="btn sm" data-cdel="${c.id}">Remove</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nothing owed. Add an order when you place one.</td></tr>'}
+      <tr><td><input id="cpLabel" placeholder="Peak Living order" style="width:100%"></td><td class="n"><input id="cpAmt" inputmode="decimal" placeholder="$0" style="width:100px"></td><td><input id="cpDue" type="date"></td><td class="n"><button class="btn sm p" id="cpAdd">Add</button></td></tr>
+      </table></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:13px;align-items:center">
+        <label>Cushion $<input id="cpCush" inputmode="decimal" value="${P.cushion}" style="width:80px"></label>
+        <label>A load costs $<input id="cpLoad" inputmode="decimal" value="${P.loadCost}" style="width:80px"></label>
+        <label>Rent due day <input id="cpRent" inputmode="numeric" value="${P.rentDay}" style="width:44px"></label>
+        <button class="btn sm" id="cpSave">Save settings</button>
+      </div></div>
+    <div class="card" style="margin-top:16px"><h2>Business cash trend</h2><div class="chartwrap"><canvas id="cashChart"></canvas></div></div>
+    <div class="card" style="margin-top:16px"><h2>Entries</h2><div style="overflow-x:auto"><table>
+      <tr><th>Date</th><th class="n">Business cash</th><th class="n">Cards</th><th class="n">Net business</th><th class="hide-m">Note</th><th></th></tr>
+      ${allSnaps.slice(-30).reverse().map(s => { const X = bizCash(s); return `<tr><td>${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td><td class="n">${money(X.cash + X.stripe)}</td><td class="n">${money(X.cards)}</td><td class="n"><b>${money(X.cash + X.stripe - X.cards)}</b></td><td class="hide-m" style="font-size:12.5px;color:var(--muted);max-width:280px">${esc(s.note || '')}</td><td class="n"><button class="btn sm" data-cashdel="${s.date}">Delete</button></td></tr>`; }).join('')}
+    </table></div></div>`;
+  const recent = allSnaps.slice(-60), o = baseOpts(true);
   chartIn('cashChart', { type: 'line', data: { labels: recent.map(s => fmtD(toDate(s.date))),
-    datasets: [line('Net business', recent.map(s => cashCalc(s).netBiz), '#b0524c', 3), line('Net personal', recent.map(s => cashCalc(s).netPers), '#2e7d4f'), line('Combined', recent.map(s => cashCalc(s).combined), '#2b1d16')] }, options: o });
+    datasets: [{ label: 'Net business', data: recent.map(s => { const X = bizCash(s); return X.cash + X.stripe - X.cards; }), borderColor: '#b0524c', backgroundColor: '#b0524c', borderWidth: 3, tension: .3, pointRadius: recent.length < 15 ? 3 : 0 }] }, options: o });
+}
+async function saveCPlan(patch){
+  try { const j = await post('/api/cash/plan', { ...CPLAN, ...patch }); CPLAN = j.plan; renderCash(); toast('Saved'); } catch (e) { toast(e.message); }
+}
+document.addEventListener('click', e => {
+  const t = e.target; if (!CPLAN) return;
+  if (t.id === 'cpAdd') { const amt = parseMoney($('cpAmt').value), label = $('cpLabel').value.trim(); if (!label || !(amt > 0)) return toast('Add what it is and the amount');
+    saveCPlan({ commitments: [...CPLAN.commitments, { label, amount: amt, due: $('cpDue').value }] }); }
+  if (t.dataset && t.dataset.cpay) saveCPlan({ commitments: CPLAN.commitments.map(c => c.id === t.dataset.cpay ? { ...c, paid: true } : c) });
+  if (t.dataset && t.dataset.cdel) saveCPlan({ commitments: CPLAN.commitments.filter(c => c.id !== t.dataset.cdel) });
+  if (t.id === 'cpSave') saveCPlan({ cushion: parseMoney($('cpCush').value) ?? 0, loadCost: parseMoney($('cpLoad').value) || CPLAN.loadCost, rentDay: parseInt($('cpRent').value, 10) || 1 });
+});
+// Personal accounts card on Personal P&L
+function renderPplCash(){
+  const el = $('pplCash'); if (!el) return;
+  if (!CASH) { fetch('/api/cash', { cache: 'no-store' }).then(r => r.json()).then(d => { if (!d.error) { CASH = d; renderPplCash(); } }).catch(() => {}); return; }
+  const s = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date)).pop(); if (!s) { el.hidden = true; return; }
+  const v = k => Number(s[k]) || 0, cash = v('personal5908') + v('marcus6620') + v('marcus6569'), cards = v('capone8760') + v('discover6166');
+  const row = (l, n, neg) => `<div class="row"><span>${l}</span><b style="${neg ? 'color:var(--bad)' : ''}">${neg ? '−' : ''}${money(n)}</b></div>`;
+  el.hidden = false;
+  el.innerHTML = `<h2>Personal accounts <small>as of ${toDate(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</small></h2><div class="grid2" style="margin-top:0"><div>
+    ${row('Free Checking ··5908', v('personal5908'))}${row('Marcus ··6620 (Travel)', v('marcus6620'))}${row('Marcus ··6569 (Online)', v('marcus6569'))}${row('Capital One ··8760', v('capone8760'), true)}${row('Discover ··6166', v('discover6166'), true)}</div><div>
+    <div class="row"><span><b>Net personal</b></span><b>${money(cash - cards)}</b></div>${row('Stocks', v('stocks'))}<div class="row"><span><b>Net worth (cash + stocks)</b></span><b>${money(cash - cards + v('stocks'))}</b></div></div></div>`;
 }
 const fmtMoney = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? '' : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
 const parseMoney = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? null : n; };
@@ -1934,7 +2002,7 @@ const pplFmt = v => (v == null || v === '' || !Number(v)) ? '' : '$' + Number(v)
 document.addEventListener('focusin', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'), v = (pplData()[m] || {})[c]; e.target.value = v ? String(v) : ''; e.target.select(); });
 document.addEventListener('focusout', e => { const k = e.target.dataset && e.target.dataset.ppl; if (!k) return; const [m, c] = k.split('|'); e.target.value = pplFmt((pplData()[m] || {})[c]); });
 function renderPpl(){
-  renderTxReview('personal'); renderTxPplList();
+  renderPplCash(); renderTxReview('personal'); renderTxPplList();
   if (PPL_COACH == null) { PPL_COACH = []; fetch('/api/coach').then(r => r.json()).then(j => { PPL_COACH = j.clients || []; if (tab === 'ppl') renderPpl(); }).catch(() => {}); }
   // One-time switch: drop the typed-in couches/coaching numbers so the automatic ones take over.
   if (RAW.store.ppl && !RAW.store.ppl._v) { const m = JSON.parse(JSON.stringify(RAW.store.ppl)); Object.keys(m).forEach(k => { if (/^\d{4}-\d{2}$/.test(k)) { delete m[k].couches; delete m[k].coaching; } }); m._v = 2; RAW.store.ppl = m; saveStore('ppl', m); }
