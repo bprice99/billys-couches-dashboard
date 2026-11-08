@@ -7,6 +7,7 @@
   var FEED = 'https://hq.billyscouches.com/public/inventory';
   var ORDER_URL = 'https://order.billyscouches.com/';
   var SHOWING_URL = '/warehouseshowing';
+  var FIT_URL = '/will-it-fit';   // your Squarespace "Will it fit?" page
   var PHONE = '+13148997503';
   var TAX = 0.0968, FEE = 0.06;
   var GRADE = {
@@ -23,6 +24,10 @@
     + '#bc-inventory *{box-sizing:border-box}'
     + '.bci-top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:center;font-size:14px;color:var(--mut);margin:6px 0 28px;text-align:center}'
     + '.bci-top b{color:var(--ink)}'
+    + '.bci-fit{display:flex;align-items:center;gap:14px;max-width:820px;margin:-12px auto 40px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:#faf7f3;color:var(--ink);text-decoration:none}'
+    + '.bci-fit svg{flex:none;width:58px;height:42px}.bci-fit b{display:block;font-size:15px}.bci-fit span{font-size:13.5px;color:var(--mut)}.bci-fit i{margin-left:auto;font-style:normal;color:var(--red);font-weight:700;white-space:nowrap;font-size:14px}'
+    + '@media(max-width:600px){.bci-fit{margin:-14px 0 32px}.bci-fit i{display:none}}'
+    + '.bci-fitl{display:inline-block;margin-top:2px;color:var(--red);font-weight:600}'
     + '.bci-item{padding:0 0 56px;margin:0 0 56px;border-bottom:1px solid var(--line)}'
     + '.bci-item:last-child{border-bottom:0}'
     + '.bci-gal{position:relative;max-width:820px;margin:0 auto 28px;aspect-ratio:4/3;background:#f4efe9;border-radius:6px;overflow:hidden;touch-action:pan-y}'
@@ -110,7 +115,7 @@
       + '<a class="bci-kb" href="' + ORDER_URL + '">Pay with Klarna</a></div></div>'
       + '</div><div class="bci-accw"><div class="bci-acc"><details><summary>Details</summary><div class="in">' + details + '</div></details>'
       + '<details><summary>Imperfections</summary><div class="in">' + (c.imperfections.length ? (c.imperfections.length > 1 ? '<ul>' + c.imperfections.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(c.imperfections[0]) + '</p>') : '<p>None</p>') + '</div></details>'
-      + '<details><summary>Dimensions</summary><div class="in"><p>' + (esc(c.dimensions) || 'Ask Billy for exact measurements.') + '</p></div></details></div>'
+      + '<details><summary>Dimensions</summary><div class="in"><p>' + (esc(c.dimensions) || 'Ask Billy for exact measurements.') + '</p><a class="bci-fitl" href="' + FIT_URL + '?couch=' + encodeURIComponent(c.id) + '">Will it fit your room? See it to scale &rarr;</a></div></details></div>'
       + '</div><div class="bci-right">'
       + '<a class="bci-btn bci-buy" href="' + ORDER_URL + '">Buy Now</a>'
       + '<a class="bci-btn bci-show" href="' + SHOWING_URL + '">Schedule a Showing</a>'
@@ -134,6 +139,8 @@
     var upd = d.updated ? new Date(d.updated).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : '';
     if (!list.length) { root.innerHTML = '<div class="bci-empty">Everything sold! New couches drop to the First Dibs list first. <a href="/firstdibs">Join First Dibs</a></div>'; return; }
     root.innerHTML = '<div class="bci-top"><span><b>' + list.length + '</b> couches available</span>' + (upd ? '<span>Last updated: ' + upd + '</span>' : '') + '<span>Sales tax applicable.</span></div>'
+      + '<a class="bci-fit" href="' + FIT_URL + '"><svg viewBox="0 0 58 42"><rect x="1.5" y="1.5" width="55" height="39" fill="#fff" stroke="#1f1a17" stroke-width="2"/><path d="M12 3 H46 V12 H20 V30 H12 Z" fill="#b48f74"/><path d="M3 8 H11 M47 8 H55" stroke="#2e7d4f" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>'
+      + '<div><b>Will it fit? Find out free.</b><span>Draw your room and try any couch below, to scale.</span></div><i>Try it &rarr;</i></a>'
       + list.map(function (c) { return item(c, fee); }).join('');
     Array.prototype.forEach.call(root.querySelectorAll('.bci-gal'), slider);
     if (location.hash) { var t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
