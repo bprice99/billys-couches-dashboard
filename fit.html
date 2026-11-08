@@ -80,7 +80,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var money = function(n){ return '$' + Math.round(Number(n) || 0).toLocaleString(); };
   var ftin = function(x){ x = Math.round(Math.abs(x)); var f = Math.floor(x / 12), i = x % 12; return (f ? f + "' " : '') + i + '"'; };
-  var SNAP = 8, EX_W = 168, EX_D = 144;
+  var SNAP = 8, MAG = 12, EX_W = 168, EX_D = 144;
   var S = { couches: [], couch: null, items: [], sel: -1, first: '', saved: null, locked: false, modular: false, fixed: null };
   var ARR = new URLSearchParams(location.search).get('arrange') || '';
 
@@ -133,6 +133,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   function autoLayout(R){
     var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
     if (S.modular) { cs.forEach(function(it){ it.x = 0; it.y = 0; }); if (applyShape(R)) { var G0 = gbox(grp()); shiftGroup(-G0.x, -G0.y, R); return; } }
+    if (S.modular) { buildSectional(R); return; }
     // 3+ pieces with no saved shape: line them up flush along the back wall, wrap down the side wall, ottomans in front.
     if (cs.length > 2) {
       var all = cs.filter(function(i){ return !/ottoman/i.test(i.name); }), cor = all.filter(function(i){ return /corner/i.test(i.name); }), mid = all.filter(function(i){ return !/corner/i.test(i.name); });
@@ -177,16 +178,44 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   }
   function snapPieces(it){
     var b = box(it);
+    // Magnet: find the closest edge to line up with (next to a piece, or lined up with its side) and jump to it.
+    var bx = null, by = null;
     grp().forEach(function(o){ if (o === it) return; var ob = box(o);
-      var vOver = it.y < o.y + ob.h + SNAP && o.y < it.y + b.h + SNAP, hOver = it.x < o.x + ob.w + SNAP && o.x < it.x + b.w + SNAP;
-      if (vOver) { if (Math.abs(it.x - (o.x + ob.w)) < SNAP) it.x = o.x + ob.w; else if (Math.abs(it.x + b.w - o.x) < SNAP) it.x = o.x - b.w; }
-      if (hOver) { if (Math.abs(it.y - (o.y + ob.h)) < SNAP) it.y = o.y + ob.h; else if (Math.abs(it.y + b.h - o.y) < SNAP) it.y = o.y - b.h; }
-      if (vOver && Math.abs(it.y - o.y) < SNAP) it.y = o.y; if (hOver && Math.abs(it.x - o.x) < SNAP) it.x = o.x;
+      var vOver = it.y < o.y + ob.h + MAG && o.y < it.y + b.h + MAG, hOver = it.x < o.x + ob.w + MAG && o.x < it.x + b.w + MAG;
+      if (vOver) [o.x + ob.w, o.x - b.w, o.x, o.x + ob.w - b.w].forEach(function(t){ var d = t - it.x; if (Math.abs(d) < MAG && (bx === null || Math.abs(d) < Math.abs(bx))) bx = d; });
+      if (hOver) [o.y + ob.h, o.y - b.h, o.y, o.y + ob.h - b.h].forEach(function(t){ var d = t - it.y; if (Math.abs(d) < MAG && (by === null || Math.abs(d) < Math.abs(by))) by = d; });
     });
+    if (bx !== null) it.x += bx; if (by !== null) it.y += by;
     // Never let a piece sit on top of another: push it out the short way, flush against it.
     for (var pass = 0; pass < 6; pass++) grp().forEach(function(o){ if (o === it || !overlap(it, o)) return; var ob = box(o);
       var L = it.x + b.w - o.x, Rr = o.x + ob.w - it.x, T = it.y + b.h - o.y, Bm = o.y + ob.h - it.y, m = Math.min(L, Rr, T, Bm);
       if (m === L) it.x = o.x - b.w; else if (m === Rr) it.x = o.x + ob.w; else if (m === T) it.y = o.y - b.h; else it.y = o.y + ob.h; });
+  }
+  // A modular sectional with no saved shape: build the usual setup from its pieces.
+  // 2+ corners = U (corner, middles, corner across the back, extra middles down the left side, ottoman in front of the right corner).
+  // 1 corner = L (corner in the back-left, half the pieces across the back, half down the side, ottoman inside the L).
+  // No corner = one long sofa (arm pieces on the ends), ottoman in front.
+  function buildSectional(R){
+    var cs = S.items.filter(function(i){ return i.kind === 'couch'; }), is = function(re){ return function(i){ return re.test(i.name); }; };
+    var otts = cs.filter(is(/ottoman/i)), cor = cs.filter(is(/corner/i)), ends = cs.filter(function(i){ return !/ottoman|corner/i.test(i.name) && /\barm(?!less)|chair|end\b/i.test(i.name); });
+    var mids = cs.filter(function(i){ return otts.indexOf(i) < 0 && cor.indexOf(i) < 0 && ends.indexOf(i) < 0; });
+    cs.forEach(function(i){ i.r = 0; i.h = false; i.x = 0; i.y = 0; });
+    var back = [], left = [], right = [];
+    if (cor.length >= 2) { var lc = Math.floor(mids.length / 3); left = mids.slice(0, lc); back = [cor[0]].concat(mids.slice(lc), cor.slice(1, 2)); right = cor.slice(2).concat(ends); }
+    else if (cor.length === 1) { var mh = Math.ceil(mids.length / 2), eh = Math.ceil(ends.length / 2); back = [cor[0]].concat(mids.slice(0, mh), ends.slice(0, eh)); left = mids.slice(mh).concat(ends.slice(eh)); }
+    else { back = ends.slice(0, 1).concat(mids, ends.slice(1)); }
+    var x = 0, deep = 0;
+    back.forEach(function(it){ it.r = 0; var b = box(it); it.x = x; it.y = 0; x += b.w; deep = Math.max(deep, b.h); });
+    var y = back.length ? box(back[0]).h : 0;
+    left.forEach(function(it){ it.r = 270; var b = box(it); it.x = 0; it.y = y; y += b.h; });
+    var last = back[back.length - 1], yr = last ? box(last).h : 0;
+    right.forEach(function(it){ it.r = 90; var b = box(it); it.x = x - b.w; it.y = yr; yr += b.h; });
+    otts.forEach(function(it, n){ var b = box(it);
+      if (cor.length >= 2 && !right.length && last) { it.x = x - b.w; it.y = box(last).h + n * b.h; }
+      else if (cor.length === 1) { var c0 = box(cor[0]); it.x = c0.w + n * b.w; it.y = c0.h; }
+      else { it.x = Math.max(0, (x - b.w) / 2 + n * b.w); it.y = deep + 12; } });
+    var G = gbox(grp()); grp().forEach(function(it){ it.x -= G.x; it.y -= G.y; });
+    if (cor.length !== 1) { G = gbox(grp()); shiftGroup(Math.max(0, (R.W - G.w) / 2), 0, R); } else shiftGroup(0, 0, R);
   }
   function lockUI(){ var b = $('tLock'); b.hidden = !S.modular; b.className = S.locked ? 'on' : 'off'; b.textContent = S.locked ? '🔒 Locked' : '🔓 Unlocked';
     $('tReset').textContent = S.modular ? 'Reset shape' : 'Reset';
@@ -277,7 +306,8 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     var c = S.couches.filter(function(x){ return x.id === id; })[0] || S.couches[0]; if (!c) return;
     var extras = S.items.filter(function(i){ return i.kind !== 'couch'; });
     S.couch = c; S.items = couchItems(c).concat(extras); S.sel = 0;
-    S.modular = !!(c.shape && c.shape.length > 1 && S.items.filter(function(i){ return i.kind === 'couch'; }).length > 1);
+    var nPieces = S.items.filter(function(i){ return i.kind === 'couch'; }).length;
+    S.modular = nPieces > 1 && (!!(c.shape && c.shape.length > 1) || (nPieces >= 3 && /modular|sectional/i.test(c.title)));
     S.locked = S.modular && !ARR; if (keepLayout && S.saved && S.saved.couch === c.id && S.saved.locked === false) S.locked = false;
     var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id ? S.saved.layout : null;
     if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = m.f; it.h = m.h; clamp(it, R); } });
@@ -297,7 +327,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     if (!drag || e.pointerId !== drag.id) return; var it = S.items[drag.i], p = pt(e), R = room();
     if (drag.grp) { shiftGroup(p.x - drag.px, p.y - drag.py, R); drag.px = p.x; drag.py = p.y; draw(); return; }
     it.x = p.x - drag.ox; it.y = p.y - drag.oy;
-    if (it.kind === 'door') doorSnap(it, R); else { clamp(it, R); if (S.modular && it.kind === 'couch') { snapPieces(it); clamp(it, R); } }
+    if (it.kind === 'door') doorSnap(it, R); else { clamp(it, R); if (it.kind === 'couch') { snapPieces(it); clamp(it, R); snapPieces(it); } }
     draw();
   });
   var end = function(){ if (drag) { drag = null; save(); } };
@@ -307,13 +337,13 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   $('tRot').onclick = function(){ var it = S.items[S.sel]; if (!it || it.kind === 'door') return;
     if (S.locked && S.modular && it.kind === 'couch') { var G = gbox(grp()), cx0 = G.x + G.w / 2, cy0 = G.y + G.h / 2;
       grp().forEach(function(p){ var b0 = box(p), px = p.x + b0.w / 2, py = p.y + b0.h / 2, nx = cx0 - (py - cy0), ny = cy0 + (px - cx0); p.r = (p.r + 90) % 360; var b1 = box(p); p.x = nx - b1.w / 2; p.y = ny - b1.h / 2; });
-      shiftGroup(0, 0, room()); draw(); save(); return; } var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = (it.r + 90) % 360; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; clamp(it, room()); draw(); save(); };
+      shiftGroup(0, 0, room()); draw(); save(); return; } var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = (it.r + 90) % 360; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; clamp(it, room()); if (it.kind === 'couch') { snapPieces(it); clamp(it, room()); } draw(); save(); };
   $('tFlip').onclick = function(){ var it = S.items[S.sel]; if (!it) return; it.f = !it.f; draw(); save(); };
   $('tDel').onclick = function(){ var it = S.items[S.sel]; if (!it) return; if (it.kind === 'couch') it.h = true; else S.items.splice(S.sel, 1); S.sel = -1; draw(); save(); };
   $('tTv').onclick = function(){ var R = room(), ex = S.items.map(function(i){ return i.kind; }).indexOf('tv'); if (ex > -1) { S.sel = ex; draw(); return; } var it = { kind: 'tv', k: 'tv' + Date.now() % 1e5, name: 'TV', w: 60, d: 4, x: (R.W - 60) / 2, y: R.D - 4, r: 0 }; clamp(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tDoor').onclick = function(){ var R = room(); var it = { kind: 'door', k: 'door' + Date.now() % 1e5, name: 'Door', w: 36, d: 36, x: 0, y: R.D - 60, r: 270 }; doorSnap(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tLock').onclick = function(){ S.locked = !S.locked; if (S.locked) S.sel = S.items.map(function(i){ return i.kind; }).indexOf('couch'); draw(); save(); };
-  $('tReset').onclick = function(){ if (S.modular) { S.items.forEach(function(i){ if (i.kind === 'couch') i.h = false; }); applyShape(room()); S.locked = !ARR; S.sel = 0; draw(); save(); return; }
+  $('tReset').onclick = function(){ if (S.modular) { S.items.forEach(function(i){ if (i.kind === 'couch') i.h = false; }); var G1 = gbox(grp()); if (!applyShape(room())) { buildSectional(room()); var G2 = gbox(grp()); shiftGroup(G1.x - G2.x, G1.y - G2.y, room()); } S.locked = !ARR; S.sel = 0; draw(); save(); return; }
     S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = false; }); autoLayout(room()); S.sel = 0; draw(); save(); };
   $('pcs').addEventListener('click', function(e){ if (e.target.id === 'showAll') { e.preventDefault(); S.items.forEach(function(i){ i.h = false; }); draw(); save(); } });
   $('strip').addEventListener('click', function(e){ var b = e.target.closest('.c'); if (b) pick(b.getAttribute('data-id')); });
