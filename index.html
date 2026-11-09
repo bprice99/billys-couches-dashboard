@@ -333,7 +333,6 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div id="delToday"></div>
-      <div class="card" style="margin-bottom:16px"><h2 style="display:flex;justify-content:space-between;align-items:center;gap:10px">Website "Just sold" pop-ups <button class="btn sm" id="jsAdd" type="button">+ Add a sale</button></h2><div id="jsBody"></div></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
@@ -530,7 +529,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
       <div class="card" style="margin-top:16px"><h2>Rules</h2><div id="scRules"></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
     </section>
-    <section id="tab-drops" hidden><div id="drBody"></div></section>
+    <section id="tab-drops" hidden><div id="drBody"></div><details class="card" id="jsCard" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>Website "Just sold" pop-ups <small id="jsNeed" style="font-weight:500;color:var(--muted)"></small></span><button class="btn sm" id="jsAdd" type="button">+ Add a sale</button></summary><div id="jsBody" style="margin-top:12px"></div></details></section>
     <section id="tab-fit" hidden><div id="fitBody"></div></section>
     <section id="tab-cuts" hidden><div id="pcBody"></div></section>
   </main>
@@ -1172,7 +1171,7 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-delo
   setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
 let COMBINE = null;
 function renderSales(){
-  renderJustSold(); renderDeliveries(); renderTxReview('business');
+  renderDeliveries(); renderTxReview('business');
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
@@ -2502,6 +2501,7 @@ async function loadDrops(){
   if (tab === 'drops') renderDrops(); if (tab === 'cuts') renderCuts(); pcBadge();
 }
 function renderDrops(){
+  renderJustSold();
   const el = $('drBody'); if (!el) return;
   if (!DR) { el.innerHTML = '<p class="empty">Loading couches…</p>'; loadDrops(); return; }
   const all = DR.drops, cnt = k => all.filter(d => d.status === k).length;
@@ -2716,7 +2716,7 @@ document.addEventListener('input', e => { if (['dmSubject', 'dmPreview', 'dmHead
 
 // ---------- website "Just sold" pop-ups: pick the couch per Sales Log order ----------
 document.addEventListener('click', async e => {
-  if (e.target.id === 'jsAdd') {
+  if (e.target.id === 'jsAdd') { e.preventDefault();
     const customer = prompt('Customer name (first + last)'); if (customer == null) return;
     try { await post('/api/justsold/add', { customer }); toast('Sale added - now pick the couch'); loadJustSold(); } catch (err) { toast(err.message); } return; }
   const k = e.target.dataset && e.target.dataset.jsdel; if (!k) return;
@@ -2739,6 +2739,7 @@ function renderJustSold(){
     (gone.length ? `<optgroup label="Recently taken down">${gone.map(c => `<option ${sel === c.title ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}</optgroup>` : '');
   const when = iso => new Date(iso).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const need = JS.orders.filter(o => !o.title).length;
+  if ($('jsNeed')) $('jsNeed').textContent = JS.orders.length + ' in the last 7 days' + (need ? ' · ' + need + ' need a couch' : '');
   el.innerHTML = (need ? `<p style="font-size:13px;margin:0 0 6px;color:var(--bad)"><b>${need}</b> order${need > 1 ? 's' : ''} still need a couch picked (pop-up says “a couch” with no photo until you do).</p>` : '') +
     JS.orders.map(o => `<div class="jsrow ${o.title ? '' : 'need'}"><div class="th" style="${o.photo ? `background-image:url('${esc(/^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo)}')` : ''}">${o.photo ? '' : '🛋'}</div>
       <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${/^m/.test(o.key) ? ' · added by hand' : ''}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : o.from === 'drops' ? ' (marked Sold in Drops)' : '') : ''}</small></div>
