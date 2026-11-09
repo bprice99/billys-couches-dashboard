@@ -1655,6 +1655,7 @@ const inSale = t => t >= SALE_WIN.start && t < SALE_WIN.end;
 const saleSaved = (salePrice, listPrice) => listPrice ? (listPrice >= SALE_WIN.min ? SALE_WIN.big : SALE_WIN.small) : (Number(salePrice) + SALE_WIN.big >= SALE_WIN.min ? SALE_WIN.big : SALE_WIN.small);
 async function recentOrders(days) {
   const [loads, purchases, picks, site, pidx, drops] = await Promise.all([getLoads(), getPurchases(), kget('bcd:soldPicks', {}).catch(() => ({})), siteCouches(false), kget('bcd:photos', {}).catch(() => ({})), getDrops().catch(() => [])]);
+  const manual = await kget('bcd:manualSold', []).catch(() => []), hidden = new Set(await kget('bcd:soldHidden', []).catch(() => []));
   let log = []; try { log = await salesLogRows(); } catch (e) { console.log('Just sold: Sales Log unavailable', e.message); }
   const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
   const sold = [];
@@ -1683,7 +1684,7 @@ async function recentOrders(days) {
     const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= (manual ? -1 : -2) && dayDiff(sd, l.day) <= (manual ? 1 : 4) && (near(l.price, d.price) || near(l.net, d.price)) && (!manual || sameCouch(l)));
     const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
     if (hit) hit.drop = d;
-    else if (d.soldAt > cutoff && d.soldAt <= Date.now()) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
+    else if (d.soldAt > cutoff && d.soldAt <= Date.now() && !hidden.has('d' + d.id)) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
   });
   return log.map(l => {
     const at = l.ts || Math.min(Date.now(), Date.parse(l.day + 'T12:00:00-05:00'));
@@ -1699,8 +1700,30 @@ async function recentOrders(days) {
       else { const m = bestSiteMatch(c.name, site); if (m && m.img) photo = m.img; }
     }
     return { key: l.key, at: new Date(at).toISOString(), exact: !!l.ts, customer: l.name, price: l.price, title, photo, from, saved: inSale(at) ? saleSaved(l.price, l.drop && l.drop.price) : 0 };
-  }).filter(Boolean).concat(extra).sort((a, b) => b.at.localeCompare(a.at));
+  }).filter(Boolean).concat(extra, manualRows(manual, picks, cutoff)).sort((a, b) => b.at.localeCompare(a.at));
 }
+// Sales added by hand in HQ (paid off the forms). Same couch picker + photo upload as Sales Log orders.
+function manualRows(list, picks, cutoff) {
+  return (list || []).filter(m => m.at > cutoff && m.at <= Date.now()).map(m => {
+    const key = 'm' + m.id, pick = picks[key] || {};
+    const photo = pick.photo ? `/public/justsold-photo/${pick.photo}?v=${pick.at}` : (pick.img || '');
+    return { key, at: new Date(m.at).toISOString(), exact: true, customer: m.customer, price: m.price || 0, title: pick.title || '', photo, from: 'manual' };
+  });
+}
+app.post('/api/justsold/add', async (req, res) => {
+  try { const customer = clean(req.body.customer, 60); if (!customer) return res.status(400).json({ error: 'Add a name' });
+    const list = (await kget('bcd:manualSold', [])).filter(m => Date.now() - m.at < 30 * 864e5);
+    list.unshift({ id: crypto.randomBytes(5).toString('hex'), at: Date.now(), customer, price: Number(req.body.price) || 0 });
+    await kset('bcd:manualSold', list); recentCache.at = 0; res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/justsold/remove', async (req, res) => {
+  try { const key = String(req.body.key || '');
+    if (key.startsWith('m')) { const list = await kget('bcd:manualSold', []); await kset('bcd:manualSold', list.filter(m => 'm' + m.id !== key)); }
+    else if (key.startsWith('d')) { const h = await kget('bcd:soldHidden', []); if (!h.includes(key)) h.push(key); await kset('bcd:soldHidden', h.slice(-200)); }
+    recentCache.at = 0; res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 async function buildRecent() {
   if (recentCache.data && Date.now() - recentCache.at < 5 * 60 * 1000 && recentCache.live === saleLive()) return;
   const shortName = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
