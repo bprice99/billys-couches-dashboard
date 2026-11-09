@@ -333,6 +333,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div id="delToday"></div>
+      <div class="card" style="margin-bottom:16px"><h2 style="display:flex;justify-content:space-between;align-items:center;gap:10px">Website "Just sold" pop-ups <button class="btn sm" id="jsAdd" type="button">+ Add a sale</button></h2><div id="jsBody"></div></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
@@ -2714,6 +2715,13 @@ document.addEventListener('change', async e => {
 document.addEventListener('input', e => { if (['dmSubject', 'dmPreview', 'dmHead'].includes(e.target.id)) drawDropMail(); });
 
 // ---------- website "Just sold" pop-ups: pick the couch per Sales Log order ----------
+document.addEventListener('click', async e => {
+  if (e.target.id === 'jsAdd') {
+    const customer = prompt('Customer name (first + last)'); if (customer == null) return;
+    try { await post('/api/justsold/add', { customer }); toast('Sale added - now pick the couch'); loadJustSold(); } catch (err) { toast(err.message); } return; }
+  const k = e.target.dataset && e.target.dataset.jsdel; if (!k) return;
+  try { await post('/api/justsold/remove', { key: k }); toast('Removed from pop-ups'); loadJustSold(); } catch (err) { toast(err.message); }
+});
 let JS = null;
 async function loadJustSold(fresh){
   try { const r = await fetch('/api/justsold' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); JS = d; }
@@ -2724,7 +2732,7 @@ function renderJustSold(){
   const el = $('jsBody'); if (!el) return;
   if (!JS) { el.innerHTML = '<p class="empty">Loading…</p>'; loadJustSold(); return; }
   if (JS.error) { el.innerHTML = `<div class="err" style="display:block">${esc(JS.error)}</div>`; return; }
-  if (!JS.orders.length) { el.innerHTML = '<p class="empty">No Sales Log orders in the last 7 days.</p>'; return; }
+  if (!JS.orders.length) { el.innerHTML = '<p class="empty">No sales in the last 7 days. Sold off the forms? Tap + Add a sale.</p>'; return; }
   const live = JS.site.filter(c => c.live), gone = JS.site.filter(c => !c.live);
   const opts = sel => `<option value="">${sel ? '— Clear pick —' : '— Pick the couch they bought —'}</option>` +
     (live.length ? `<optgroup label="On the website now">${live.map(c => `<option ${sel === c.title ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}</optgroup>` : '') +
@@ -2733,10 +2741,10 @@ function renderJustSold(){
   const need = JS.orders.filter(o => !o.title).length;
   el.innerHTML = (need ? `<p style="font-size:13px;margin:0 0 6px;color:var(--bad)"><b>${need}</b> order${need > 1 ? 's' : ''} still need a couch picked (pop-up says “a couch” with no photo until you do).</p>` : '') +
     JS.orders.map(o => `<div class="jsrow ${o.title ? '' : 'need'}"><div class="th" style="${o.photo ? `background-image:url('${esc(/^https?:/.test(o.photo) ? o.photo + '?format=300w' : o.photo)}')` : ''}">${o.photo ? '' : '🛋'}</div>
-      <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : o.from === 'drops' ? ' (marked Sold in Drops)' : '') : ''}</small></div>
+      <div class="m"><b>${esc(o.customer || 'Customer')} · ${money(o.price)}</b><small>${when(o.at)}${/^m/.test(o.key) ? ' · added by hand' : ''}${o.title ? ' · ' + esc(o.title) + (o.from === 'tracker' ? ' (from Sales Tracker)' : o.from === 'drops' ? ' (marked Sold in Drops)' : '') : ''}</small></div>
       <div class="jsact"><select data-jspick="${esc(o.key)}">${opts(o.from === 'picked' && JS.site.some(c => c.title === o.title) ? o.title : '')}</select>
         <div style="display:flex;gap:6px"><input data-jsname="${esc(o.key)}" placeholder="or type the couch name" value="${o.from === 'picked' && !JS.site.some(c => c.title === o.title) ? esc(o.title) : ''}">
-        <label class="btn sm" style="white-space:nowrap;cursor:pointer">📷 ${/justsold-photo/.test(o.photo) ? 'Change' : 'Upload'}<input type="file" accept="image/*" data-jsphoto="${esc(o.key)}" hidden></label></div></div></div>`).join('') +
+        <label class="btn sm" style="white-space:nowrap;cursor:pointer">📷 ${/justsold-photo/.test(o.photo) ? 'Change' : 'Upload'}<input type="file" accept="image/*" data-jsphoto="${esc(o.key)}" hidden></label>${/^[md]/.test(o.key) ? `<button class="btn sm" type="button" data-jsdel="${esc(o.key)}">Remove</button>` : ''}</div></div></div>`).join('') +
     `<p class="empty" style="font-size:12px;margin-top:8px">Pick a couch from billyscouches.com/currentinventory (pulls its photo), or type the name and upload a photo for couches already taken down. Pop-ups show orders from the last 5 days.</p>`;
 }
 document.addEventListener('change', async e => {
