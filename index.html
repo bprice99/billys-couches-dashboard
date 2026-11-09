@@ -1476,6 +1476,12 @@ function venmoBtn(l, W){
   const note = 'Week of ' + fmtD(toDate(W.wkey)) + ' - ' + fmtD(addDays(toDate(W.wkey), 6));
   return `<a class="btn sm ${sent ? '' : 'p'}" style="text-decoration:none;white-space:nowrap" target="_blank" rel="noopener" href="${venmoLink(user, Math.round(l.total * 100) / 100, note)}" data-venmo="${esc(l.key)}">${sent ? 'Opened ✓' : 'Pay ' + money(l.total)}</a>`;
 }
+document.addEventListener('click', async e => {
+  const c = e.target.closest && e.target.closest('[data-copylog]'); if (c) { try { await navigator.clipboard.writeText(c.dataset.copylog); toast('Link copied'); } catch (x) { prompt('Copy this link', c.dataset.copylog); } return; }
+  const d = e.target.closest && e.target.closest('[data-wldel]'); if (!d) return;
+  if (!confirm('Remove this shift from payroll?')) return;
+  try { await post('/api/worklog/delete', { id: d.dataset.wldel }); PAY = null; loadPayroll(true); toast('Shift removed'); } catch (x) { toast(x.message); }
+});
 function renderPayroll(){
   if (!PAY) return loadPayroll();
   setTimeout(renderGoalEditor, 0);
@@ -1483,8 +1489,11 @@ function renderPayroll(){
   const paidAt = W.single ? weekPaid(W.wkey) : '';
   $('payWarn').hidden = !PAY.error; $('payWarn').textContent = PAY.error || '';
   const fs = PAY.fieldsSeen || {}, miss = ['name', 'hours', 'deep cleans', 'showings sold'].filter(k => !fs[k] && !(k === 'hours' && fs.start && fs.end));
-  $('payFields').innerHTML = PAY.entries.length ? 'Reading the Work Log: ' + Object.entries(fs).map(([k, v]) => `<b>${esc(k)}</b> = "${esc(v)}"`).join(' · ') +
-    (miss.length ? `<br><span style="color:var(--bad)">Couldn't find: ${miss.join(', ')}. Use the Adjust column for those.</span>` : '') : '';
+  const hqShifts = PAY.entries.filter(e => e.src === 'hq' && e.date >= ymd(R.from) && e.date <= ymd(R.to)).sort((a, b) => b.date.localeCompare(a.date));
+  $('payFields').innerHTML = (PAY.logLink ? `<div style="margin-bottom:8px">Team work log link: <a href="${esc(PAY.logLink)}" target="_blank">${esc(PAY.logLink.replace(/^https?:\/\//, '').replace(/\?k=.*/, '?k=…'))}</a> <button class="btn sm" data-copylog="${esc(PAY.logLink)}">Copy link</button></div>` : '') +
+    (hqShifts.length ? `<details><summary style="cursor:pointer">${hqShifts.length} shift${hqShifts.length > 1 ? 's' : ''} from the new work log</summary><div style="overflow-x:auto"><table style="margin-top:6px"><tr><th>Date</th><th>Who</th><th>Time</th><th class="n">Hrs</th><th class="n">Shows / sold</th><th class="n">Deep / spot</th><th class="n">Pick / deliv</th><th class="n">Tip</th><th></th></tr>` +
+      hqShifts.map(e => `<tr><td>${fmtD(toDate(e.date))}</td><td>${esc(e.name)}</td><td style="white-space:nowrap">${esc(e.start || '')}–${esc(e.end || '')}</td><td class="n">${e.hours}</td><td class="n">${e.shows} / ${e.sold}</td><td class="n">${e.deep} / ${e.spot}</td><td class="n">${e.pickups || 0} / ${e.deliveries || 0}</td><td class="n">${e.tip ? money(e.tip) : ''}</td><td class="n"><button class="btn sm" data-wldel="${esc(e.id)}">Remove</button></td></tr>`).join('') + `</table></div></details>` : '') +
+    (PAY.entries.some(e => e.src !== 'hq') ? '<div style="margin-top:6px">Old Jotform log: ' + Object.entries(fs).map(([k, v]) => `<b>${esc(k)}</b> = "${esc(v)}"`).join(' · ') + '</div>' : '');
   const sun = addDays(R.from, 6);
   $('payKpis').innerHTML = kpiHtml([
     ['Payroll', money(W.total), chg(W.total, P.total, true, vs)],
