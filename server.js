@@ -1407,7 +1407,7 @@ setInterval(() => { if (ctHour() === 7) autoCashSnapshot().catch(e => console.er
 
 
 // ---------- Cash for Your Couch (public form on billyscouches.com) ----------
-const OFFER_ORIGINS = ['https://www.billyscouches.com', 'https://billyscouches.com'];
+const OFFER_ORIGINS = ['http://127.0.0.1:5000', 'https://www.billyscouches.com', 'https://billyscouches.com'];
 const offerHits = new Map();
 const escH = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function offerCors(req, res) {
@@ -1677,7 +1677,10 @@ async function recentOrders(days) {
   soldDrops.forEach(d => {
     const sd = ctDay(d.soldAt);
     const off = inSale(d.soldAt) ? saleSaved(0, d.price) : 0, near = (a, b) => Math.abs(a - b) < 1 || (off && Math.abs(a - (b - off)) < 1);
-    const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= -2 && dayDiff(sd, l.day) <= 4 && (near(l.price, d.price) || near(l.net, d.price)));
+    // Marked Sold by hand (off-form sale): only pair with an order logged within a day at the same price that isn't
+    // already a different couch. Otherwise it gets its own pop-up.
+    const manual = !d.soldVia, sameCouch = l => !l.couch || bestSiteMatch(l.couch.name, [{ title: d.title }]);
+    const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= (manual ? -1 : -2) && dayDiff(sd, l.day) <= (manual ? 1 : 4) && (near(l.price, d.price) || near(l.net, d.price)) && (!manual || sameCouch(l)));
     const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
     if (hit) hit.drop = d;
     else if (d.soldAt > cutoff && d.soldAt <= Date.now()) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
@@ -1809,7 +1812,7 @@ app.post('/api/drops/status', async (req, res) => {
   try {
     const st = String(req.body.status || ''); if (!DROP_STATUS.includes(st)) return res.status(400).json({ error: 'bad status' });
     const ids = new Set((req.body.ids || []).map(String)), list = await getDrops(), now = Date.now();
-    list.forEach(d => { if (!ids.has(d.id)) return; d.status = st; d.updatedAt = now;
+    list.forEach(d => { if (!ids.has(d.id)) return; d.status = st; d.updatedAt = now; if (st === 'sold' && d.soldAt == null) delete d.soldVia;
       if (st === 'emailed' && !d.emailedAt) d.emailedAt = now; if (st === 'live' && !d.liveAt) d.liveAt = now; if (st === 'sold') d.soldAt = now; if (st !== 'sold') delete d.soldAt; });
     await setDrops(list); dropsAt = now; recentCache.at = 0; res.json({ ok: true, drops: list });
   } catch (e) { res.status(500).json({ error: e.message }); }
