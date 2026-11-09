@@ -561,7 +561,15 @@ function parseWorkLog(subs) {
   return { entries, fieldsSeen };
 }
 
+// Shifts logged on HQ's own work log (hq.billyscouches.com/log). Merged with the old Jotform log below.
+const HQLOG_KEY = 'bcd:workLogHQ';
+const TEAM = ['Zach', 'Luke', 'Collin', 'Finley', 'Gunnarr', 'Joey'];
 async function workLog(force) {
+  const jf = await jotformWorkLog(force).catch(e => ({ entries: [], fieldsSeen: {}, error: e.message }));
+  const mine = ((await kget(HQLOG_KEY, [])) || []).map(e => ({ id: e.id, date: e.date, name: e.name, hours: e.hours, deep: e.deep, spot: e.spot, sold: e.sold, shows: e.shows, tip: e.tip, pickups: e.pickups, deliveries: e.deliveries, start: e.start, end: e.end, src: 'hq' }));
+  return { ...jf, entries: (jf.entries || []).concat(mine), error: mine.length && jf.error && /JOTFORM_API_KEY/.test(jf.error) ? undefined : jf.error };
+}
+async function jotformWorkLog(force) {
   if (!CFG.JOTFORM_KEY) return { entries: [], fieldsSeen: {}, error: 'Add JOTFORM_API_KEY in Railway to load the Work Log.' };
   if (!force && wl.data && Date.now() - wl.at < 2 * 60 * 1000) return wl.data;
   const url = `${CFG.JOTFORM_BASE}/form/${CFG.WORKLOG_FORM}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=1000&orderby=created_at`;
@@ -577,7 +585,8 @@ app.get('/api/payroll', async (req, res) => {
     let log;
     try { log = await workLog(req.query.fresh === '1'); } catch (e) { log = { entries: [], fieldsSeen: {}, error: e.message }; }
     const [rates, adj, paid, goals] = await Promise.all([kget(KEYS.rates, {}), kget(KEYS.adj, {}), kget(KEYS.paid, {}), kget('bcd:teamGoals', {})]);
-    res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid, goals });
+    const lk = (process.env.TEAM_PAY_KEY || '').trim();
+    res.json({ ok: true, ...log, rates: { ...DEFAULT_RATES, ...rates }, adj, paid, goals, logLink: `${PUBLIC_BASE}/log${lk ? '?k=' + encodeURIComponent(lk) : ''}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ---------- thank-you cards (every scheduling / order-confirmation form submission) ----------
@@ -648,9 +657,7 @@ async function logSignatureCustomers(cards) {
 }
 async function thankYouList(force) {
   if (!force && ty.data && Date.now() - ty.at < 2 * 60 * 1000) return ty.data;
-  const signed = await require('./sign-feed')();
-  logSignatureCustomers(signed).catch(() => {});
-  const hq = [...await schedCards(), ...signed];
+  const hq = await schedCards();
   if (!CFG.JOTFORM_KEY) return { cards: hq, error: hq.length ? '' : 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
   const forms = await thankYouForms();
   const lists = await Promise.all(forms.map(async id => {
@@ -2799,6 +2806,37 @@ app.post('/client/api/checkin', async (req, res) => {
     c.checkins.push({ week, flips: n(b.flips), revenue: n(b.revenue), profit: n(b.profit), leads: n(b.leads), win: clean(b.win, 500), stuck: clean(b.stuck, 500), at: Date.now() });
     await kset(COACH.clients, list); res.json({ ok: true, me: portalView(c) });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- HQ work log (replaces the Jotform Work Log) ----------
+// The team opens hq.billyscouches.com/log?k=<TEAM_PAY_KEY> on their phone. Name, start/end, and counts. Goes straight to Payroll.
+const logKeyOk = k => { const key = (process.env.TEAM_PAY_KEY || '').trim(); return !key || k === key; };
+app.get('/log', (req, res) => res.set('Cache-Control', 'no-cache').set('X-Robots-Tag', 'noindex').sendFile(path.join(__dirname, 'worklog.html')));
+app.get('/public/worklog/team', (req, res) => { if (!logKeyOk(req.query.k)) return res.status(401).json({ error: 'This link is missing its code. Ask Billy for the work log link.' }); res.json({ ok: true, team: TEAM, today: ctYmd(new Date()) }); });
+app.post('/public/worklog', async (req, res) => {
+  try {
+    const b = req.body || {}; if (!logKeyOk(b.k)) return res.status(401).json({ error: 'This link is missing its code. Ask Billy for the work log link.' });
+    const name = TEAM.find(n => n.toLowerCase() === String(b.name || '').toLowerCase()); if (!name) return res.status(400).json({ error: 'Tap your name.' });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : ctYmd(new Date());
+    const tm = v => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})$/); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+    const a = tm(b.start), z = tm(b.end); if (a == null || z == null) return res.status(400).json({ error: 'Add your start and end time.' });
+    const hours = Math.round(((z - a + (z <= a ? 1440 : 0)) / 60) * 100) / 100; if (hours > 16) return res.status(400).json({ error: 'That shift is over 16 hours. Check your start and end time.' });
+    const c = k => Math.max(0, Math.min(50, parseInt(b[k], 10) || 0));
+    const e = { id: 'hq' + crypto.randomBytes(5).toString('hex'), at: new Date().toISOString(), name, date, start: b.start, end: b.end, hours,
+      shows: c('shows'), sold: Math.min(c('sold'), c('shows') || c('sold')), deep: c('deep'), spot: c('spot'), pickups: c('pickups'), deliveries: c('deliveries'), tip: Math.max(0, Math.min(2000, Math.round((parseFloat(b.tip) || 0) * 100) / 100)) };
+    const list = (await kget(HQLOG_KEY, [])) || []; list.push(e); await kset(HQLOG_KEY, list.slice(-5000));
+    // Their week so far (same math as Payroll: hours x rate + $20 per showing sold + $20 once deep cleans hit 4).
+    const log = await workLog(false), W = weekBounds(0), rates = { ...DEFAULT_RATES, ...((await kget(KEYS.rates, {})) || {}) }, k = name.toLowerCase();
+    const mineW = (log.entries || []).filter(x => x.date >= W.mon && x.date <= W.sun && String(x.name || '').trim().split(/\s+/)[0].toLowerCase().replace(/^gunarr$/, 'gunnarr') === k);
+    const sum = f => mineW.reduce((t, x) => t + (x[f] || 0), 0), hrs = Math.round(sum('hours') * 100) / 100, deep = sum('deep'), sold = sum('sold');
+    res.json({ ok: true, entry: e, week: { hours: hrs, showBonus: sold * 20, deep, deepToGo: Math.max(0, 4 - deep), cleanBonus: deep >= 4 ? 20 : 0, est: Math.round((hrs * (rates[k] || 0) + sold * 20 + (deep >= 4 ? 20 : 0)) * 100) / 100 } });
+    pushAll('Work log', `${name}: ${hours} hrs${e.sold ? ' · ' + e.sold + ' sold' : ''}`, '/', 'wl-' + e.id).catch(() => {});
+  } catch (err) { res.status(500).json({ error: 'Could not save. Try again.' }); }
+});
+// HQ: remove a mistaken shift from the HQ work log
+app.post('/api/worklog/delete', async (req, res) => {
+  const id = String((req.body || {}).id || ''); const list = (await kget(HQLOG_KEY, [])) || [];
+  await kset(HQLOG_KEY, list.filter(e => e.id !== id)); res.json({ ok: true });
 });
 
 // ---------- weekly pay for the team scorecard ("My pay") ----------
