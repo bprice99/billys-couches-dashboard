@@ -648,7 +648,9 @@ async function logSignatureCustomers(cards) {
 }
 async function thankYouList(force) {
   if (!force && ty.data && Date.now() - ty.at < 2 * 60 * 1000) return ty.data;
-  const hq = await schedCards();
+  const signed = await require('./sign-feed')();
+  logSignatureCustomers(signed).catch(() => {});
+  const hq = [...await schedCards(), ...signed];
   if (!CFG.JOTFORM_KEY) return { cards: hq, error: hq.length ? '' : 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
   const forms = await thankYouForms();
   const lists = await Promise.all(forms.map(async id => {
