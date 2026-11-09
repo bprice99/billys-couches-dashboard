@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Work Log · Billy's Couches</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#2b1d16;--mut:#7a6c64;--line:#e6dcd5;--bg:#f6f2ee;--red:#b0524c;--g:#2e7d4f}
+*{box-sizing:border-box}html,body{overflow-x:clip}
+body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink);-webkit-text-size-adjust:100%}
+.wrap{max-width:460px;margin:0 auto;padding:18px 16px 40px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.top img{height:32px}.top span{font-size:13px;color:var(--mut)}
+h1{font-size:26px;margin:0 0 4px}.sub{font-size:14px;color:var(--mut);margin:0 0 16px}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.n{background:#fff;border:2px solid var(--line);border-radius:14px;padding:17px 10px;text-align:center;font:inherit;font-weight:700;font-size:17px;color:var(--ink);cursor:pointer}
+.n.on{border-color:var(--red);background:#fbf0ee}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:11px}
+.lab{font-size:12px;font-weight:800;color:var(--mut);letter-spacing:.04em;margin-bottom:9px;text-transform:uppercase}
+.tm{display:flex;gap:9px}.tm label{flex:1;border:1.5px solid #d9cdc4;border-radius:11px;padding:7px 10px;display:block}
+.tm label small{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.tm input{border:0;outline:0;font:inherit;font-weight:800;font-size:18px;width:100%;background:transparent;color:var(--ink);padding:2px 0}
+.hrs{margin-top:9px;font-size:14px;font-weight:700;color:var(--g);min-height:18px}.hrs.bad{color:var(--red)}
+.row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0e8e2;gap:10px}.row:last-child{border:0}
+.row span{font-size:15px;font-weight:600}.row small{display:block;font-size:11.5px;color:var(--mut);font-weight:500}
+.st{display:flex;align-items:center;flex:none}
+.st button{width:40px;height:40px;border-radius:50%;border:1.5px solid #d9cdc4;background:#fff;font-size:22px;line-height:1;color:var(--red);font-weight:700;cursor:pointer;touch-action:manipulation}
+.st i{width:38px;text-align:center;font-style:normal;font-weight:800;font-size:19px}
+.money{display:flex;align-items:center;border:1.5px solid #d9cdc4;border-radius:11px;padding:0 10px;width:110px}.money input{border:0;outline:0;font:inherit;font-weight:800;font-size:17px;width:100%;padding:9px 4px;background:transparent}
+.btn{display:block;width:100%;background:var(--red);color:#fff;border:0;border-radius:14px;padding:16px;font:inherit;font-weight:800;font-size:17px;cursor:pointer;margin-top:6px}
+.btn:disabled{opacity:.5}.btn.ghost{background:#fff;color:var(--ink);border:1.5px solid #d9cdc4}
+.err{color:var(--red);font-size:14px;font-weight:600;min-height:20px;margin:8px 0 0;text-align:center}
+.date{width:100%;border:1.5px solid #d9cdc4;border-radius:11px;padding:11px 12px;font:inherit;font-weight:700;font-size:16px;background:#fff;color:var(--ink)}
+.ok{text-align:center;padding-top:40px}.ok .c{width:80px;height:80px;border-radius:50%;background:#eef6f0;color:var(--g);font-size:42px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.sum{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 16px;text-align:left;margin:18px 0 14px;font-size:15px}.sum div{display:flex;justify-content:space-between;padding:6px 0}
+.back{background:none;border:0;color:var(--mut);font:inherit;font-size:14px;padding:0;margin-bottom:10px;cursor:pointer}
+</style></head><body><div class="wrap" id="app"></div>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); }, app = $('app');
+  var K = new URLSearchParams(location.search).get('k') || '';
+  var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var money = function(n){ return '$' + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+  var S = { team: [], today: '', name: '', date: '', start: '', end: '', c: { shows: 0, sold: 0, deep: 0, spot: 0, pickups: 0, deliveries: 0 }, tip: '' };
+  try { S.name = localStorage.getItem('bcWlName') || ''; } catch (e) {}
+  var nice = function(d){ return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
+  var head = function(right){ return '<div class="top"><img src="/logo.png" alt="Billy\'s Couches"><span>' + right + '</span></div>'; };
+  function hours(){ if (!S.start || !S.end) return null; var a = S.start.split(':'), b = S.end.split(':'), m = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]); if (m <= 0) m += 1440; return Math.round(m / 60 * 100) / 100; }
+
+  function step1(){
+    app.innerHTML = head(nice(S.today)) + '<h1>Work log</h1><p class="sub">Takes 30 seconds. Fill it out before you leave.</p>' +
+      '<div class="names">' + S.team.map(function(n){ return '<button class="n' + (n === S.name ? ' on' : '') + '" data-n="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>' +
+      '<div class="card" style="margin-top:14px"><div class="lab">Date of your shift</div><input class="date" type="date" id="d" value="' + S.date + '" max="' + S.today + '"></div>' +
+      '<button class="btn" id="next"' + (S.name ? '' : ' disabled') + '>Next &rarr;</button>';
+    app.querySelectorAll('[data-n]').forEach(function(b){ b.onclick = function(){ S.name = b.getAttribute('data-n'); try { localStorage.setItem('bcWlName', S.name); } catch (e) {} step1(); }; });
+    $('d').onchange = function(){ S.date = this.value || S.today; };
+    $('next').onclick = function(){ if (S.name) step2(); };
+  }
+  function row(k, label, note){ return '<div class="row"><span>' + label + (note ? '<small>' + note + '</small>' : '') + '</span><div class="st"><button type="button" data-m="' + k + '">&minus;</button><i id="v-' + k + '">' + S.c[k] + '</i><button type="button" data-p="' + k + '">+</button></div></div>'; }
+  function step2(){
+    app.innerHTML = head(esc(S.name) + ' &middot; ' + nice(S.date)) + '<button class="back" id="bk">&larr; Change name or date</button>' +
+      '<div class="card"><div class="lab">Your hours</div><div class="tm"><label><small>Start</small><input type="time" id="s" value="' + S.start + '"></label><label><small>End</small><input type="time" id="e" value="' + S.end + '"></label></div><div class="hrs" id="h"></div></div>' +
+      '<div class="card"><div class="lab">What you did (leave 0 if none)</div>' + row('shows', 'Showings') + row('sold', 'Showings that bought', '$20 bonus each') + row('deep', 'Deep cleans', '4+ this week = $20 bonus') + row('spot', 'Spot cleans') + row('pickups', 'Pickups') + row('deliveries', 'Deliveries') + '</div>' +
+      '<div class="card"><div class="row"><span>Tips you got<small>Tracked only, not added to pay</small></span><div class="money">$<input id="tip" inputmode="decimal" placeholder="0" value="' + esc(S.tip) + '"></div></div></div>' +
+      '<button class="btn" id="go">Submit</button><div class="err" id="err"></div>';
+    var showH = function(){ var h = hours(), el = $('h'); el.className = 'hrs' + (h > 16 ? ' bad' : ''); el.textContent = h == null ? '' : h > 16 ? 'Over 16 hours? Check your times.' : '= ' + h + ' hours'; };
+    $('s').oninput = function(){ S.start = this.value; showH(); }; $('e').oninput = function(){ S.end = this.value; showH(); }; showH();
+    $('tip').oninput = function(){ S.tip = this.value; };
+    $('bk').onclick = step1;
+    app.querySelectorAll('[data-p],[data-m]').forEach(function(b){ b.onclick = function(){
+      var k = b.getAttribute('data-p') || b.getAttribute('data-m'); S.c[k] = Math.max(0, S.c[k] + (b.hasAttribute('data-p') ? 1 : -1));
+      if (k === 'sold' && S.c.sold > S.c.shows) S.c.shows = S.c.sold; if (k === 'shows' && S.c.sold > S.c.shows) S.c.sold = S.c.shows;
+      ['shows', 'sold'].concat([k]).forEach(function(x){ $('v-' + x).textContent = S.c[x]; }); }; });
+    $('go').onclick = submit;
+  }
+  function submit(){
+    var err = $('err'), go = $('go'); err.textContent = '';
+    if (!S.start || !S.end) return err.textContent = 'Add your start and end time.';
+    if (hours() > 16) return err.textContent = 'Check your start and end time.';
+    go.disabled = true; go.textContent = 'Saving...';
+    var body = { k: K, name: S.name, date: S.date, start: S.start, end: S.end, tip: S.tip }; Object.keys(S.c).forEach(function(k){ body[k] = S.c[k]; });
+    fetch('/public/worklog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not save.'); return j; }); })
+      .then(function(j){ done(j.week); })
+      .catch(function(e){ go.disabled = false; go.textContent = 'Submit'; err.textContent = e.message; });
+  }
+  function done(w){
+    app.innerHTML = head('') + '<div class="ok"><div class="c">&#10003;</div><h1>Thanks, ' + esc(S.name) + '!</h1><p class="sub">Your shift on ' + nice(S.date) + ' is logged.</p>' +
+      (w ? '<div class="sum"><div><span>This week so far</span><b>' + w.hours + ' hrs</b></div><div><span>Showing bonuses</span><b>' + money(w.showBonus) + '</b></div><div><span>Deep cleans</span><b>' + (w.deepToGo ? w.deep + ' of 4 for bonus' : w.deep + ' &middot; +$20 bonus') + '</b></div>' +
+        '<div style="border-top:1px solid #eee;margin-top:4px;padding-top:10px"><span>Est. pay this week</span><b style="color:var(--g)">' + money(w.est) + '</b></div></div>' : '') +
+      '<button class="btn ghost" id="again">Log another shift</button></div>';
+    $('again').onclick = function(){ S.start = S.end = S.tip = ''; Object.keys(S.c).forEach(function(k){ S.c[k] = 0; }); S.date = S.today; step1(); };
+  }
+  fetch('/public/worklog/team?k=' + encodeURIComponent(K)).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error); return j; }); })
+    .then(function(j){ S.team = j.team; S.today = S.date = j.today; if (S.team.indexOf(S.name) < 0) S.name = ''; step1(); })
+    .catch(function(e){ app.innerHTML = head('') + '<h1>Work log</h1><p class="sub">' + esc(e.message) + '</p>'; });
+})();
+</script>
+</body></html>
