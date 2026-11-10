@@ -1765,7 +1765,7 @@ document.addEventListener('click', e => {
   if (WKV.per === 'month') q.set('m', ymd(wkRange().from).slice(0, 7)); else if (WKV.w) q.set('w', WKV.w);
   history.replaceState(null, '', '/weekly' + (q.toString() ? '?' + q : '')); renderWeekly();
 });
-const wkPct = (a, b) => b ? (a >= b ? '+' : '−') + Math.round(Math.abs(a - b) / b * 100) + '%' : '–';
+const wkPct = (a, b) => b > 0 ? (a >= b ? '+' : '−') + Math.round(Math.abs(a - b) / b * 100) + '%' : '–';
 function renderWeekly(){
   const el = $('wkBody'); if (!el) return;
   if (!RAW) return;
@@ -1796,7 +1796,7 @@ function renderWeekly(){
       <div class="row"><span>Coaching + other income</span><b style="color:var(--green)">+${money(S.other)}</b></div>
       <div class="row"><span>Spent</span><b style="color:var(--bad)">−${money(S.spent)}</b></div>
       <div class="verdict" style="background:${v[0]};color:${v[1]}">${v[2]}</div></div>
-    <div class="card"><h2 class="wh">Where you spent · ${money(S.spent)}</h2>${order.length ? order.map((c, i) => { const d = S.cats[c] - (P.cats[c] || 0); return bar(esc(lab(c)), Math.abs(d) >= 25 ? (d > 0 ? '↑ ' : '↓ ') + money(Math.abs(d)) + ' vs ' + R.prevName : '', S.cats[c], S.spent, reds[i] || reds[8]); }).join('') : '<p class="empty">No spending recorded.</p>'}</div>
+    <div class="card"><h2 class="wh">Where you spent · ${money(S.spent)}</h2>${order.length ? order.map((c, i) => { const d = S.cats[c] - Math.max(0, P.cats[c] || 0); return bar(esc(lab(c)), Math.abs(d) >= 25 ? (d > 0 ? '↑ ' : '↓ ') + money(Math.abs(d)) + ' vs ' + R.prevName : '', S.cats[c], S.spent, reds[i] || reds[8]); }).join('') : '<p class="empty">No spending recorded.</p>'}</div>
     <div class="card"><h2 class="wh">Biggest purchases</h2>${big.length ? big.map(x => `<div class="row"><span>${esc(x.name)} · ${new Date(x.date + 'T12:00:00').toLocaleDateString('en-US', M ? { month: 'short', day: 'numeric' } : { weekday: 'short' })}</span><b>${money(x.amount)}</b></div>`).join('') : '<p class="empty">Nothing yet.</p>'}</div>
     <div class="card"><h2 class="wh">vs ${R.prevName}</h2><div class="g2"><div class="mini"><small>Paid yourself</small><b>${wkPct(S.pay, P.pay)}</b></div><div class="mini"><small>Spending</small><b>${wkPct(S.spent, P.spent)}</b></div></div></div>` + foot;
     return;
