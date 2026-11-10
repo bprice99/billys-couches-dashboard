@@ -2635,7 +2635,7 @@ app.post('/public/sched/:token', async (req, res) => {
       try { const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: o.name, orderType: [extrasNew.length ? 'Add-ons: ' + extrasNew.map(a => a.label).join(', ') : '', holdFee ? `Holding fee (${holdNew} day${holdNew > 1 ? 's' : ''} x $${HOLD_RATE})` : ''].filter(Boolean).join(' + '), totalCents: Math.round(due * 100), totalDisplay: '$' + due.toFixed(2), redirectUrl: schedLink(o.token) + '?paid=1' }) });
         const d = await r.json(); payUrl = d.url || ''; } catch (e) { console.log('Add-on pay link failed', e.message); }
     }
-    o.booking = { date, win, label: `${day.label} · ${slot.label}`, address, city, zip, room, notes, phone, email, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
+    o.booking = { date, win, label: `${day.label} · ${slot.label}`, address, city, zip, room, notes, phone, email, why: clean(b.why, 300) || prev.why || '', extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
     if (extrasNew.length || holdFee) o.extraDue = (o.extraDue || 0) + due;
     if (holdFee) o.holdPaidDays = holdDays;
     m[o.token] = o; await setSched(m);
