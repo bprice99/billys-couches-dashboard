@@ -2310,6 +2310,7 @@ function renderFit(){
   const ft = x => Math.floor(x / 12) + "'" + (Math.round(x % 12) ? ' ' + Math.round(x % 12) + '"' : '');
   const pill = sc => `<span class="pill ${sc === 'Hot' ? 'd' : sc === 'Warm' ? 'u' : ''}">${sc}</span>`;
   const list = L.filter(l => FITF === 'all' || (FITF === 'bought' ? l.bought : l.score === FITF));
+  const TXD = fitTexted(), toText = L.filter(l => !TXD[l.phone] && !l.bought && l.smsOk).length;
   $('fitBody').innerHTML = `
     <div class="kpis">${kpiHtml([
       ['Sign-ups', n, `<div class="c flat">${s30} in the last 30 days</div>`],
@@ -2323,14 +2324,14 @@ function renderFit(){
       <div class="card"><h2>Couches people try most</h2>${top.length ? top.map(([t, c]) => `<div class="row"><span>${esc(t)}</span><b>${c}</b></div>`).join('') : '<p class="empty">No one has tried a couch yet.</p>'}
         <p class="empty" style="font-size:12px;margin-top:10px">Tool link: <a href="${esc(FIT.base)}/fit" target="_blank">${esc(FIT.base.replace(/^https?:\/\//, ''))}/fit</a></p></div>
     </div>
-    <div class="card" style="margin-top:16px"><h2 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Leads <small>Hot = typed their room + tried 2 couches or saved a picture · Warm = opened · Cold = never opened</small><span style="flex:1"></span>
+    <div class="card" style="margin-top:16px">${toText ? `<div style="background:#fdf3e1;color:#8a5a12;border-radius:12px;padding:10px 14px;font-weight:700;margin-bottom:12px">📱 ${toText} lead${toText === 1 ? '' : 's'} to text</div>` : ''}<h2 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Leads <small>Tap Check in to text from your phone · Hot = typed their room + tried 2 couches or saved a picture · Warm = opened · Cold = never opened</small><span style="flex:1"></span>
       ${['all', 'Hot', 'Warm', 'Cold', 'bought'].map(f => `<button class="btn sm ${FITF === f ? 'p' : ''}" data-fitf="${f}">${f === 'all' ? 'All' : f === 'bought' ? 'Bought' : f}</button>`).join('')}</h2>
       <div style="overflow-x:auto"><table>
       <tr><th>Signed up</th><th>Name</th><th>Score</th><th class="hide-m">Room</th><th>Couches tried</th><th class="n hide-m">Opens</th><th class="hide-m">Last open</th><th></th></tr>
       ${list.map(l => `<tr><td>${fmtD(new Date(l.at))}</td><td><b>${esc(l.name)}</b><br><a href="sms:+1${esc(l.phone)}" style="font-size:12px">${esc(l.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'))}</a>${l.smsOk ? '' : ' <small style="color:var(--bad)">no texts</small>'}</td>
         <td>${pill(l.score)}${l.bought ? ' <span class="pill g">Bought</span>' : ''}${l.saves ? ` <small style="color:var(--muted)">${l.saves} pic${l.saves > 1 ? 's' : ''}</small>` : ''}</td>
         <td class="hide-m">${l.room ? ft(l.room[0]) + ' × ' + ft(l.room[1]) : '–'}</td><td style="font-size:12.5px;max-width:260px">${l.tried.map(esc).join(', ') || (l.from ? '<span style="color:var(--muted)">came from ' + esc(l.from) + '</span>' : '–')}</td>
-        <td class="n hide-m">${l.opens}</td><td class="hide-m" style="font-size:12.5px">${l.lastOpen ? agoTxt(Date.parse(l.lastOpen)) : 'never'}</td><td class="n"><a class="btn sm" href="${esc(l.link)}" target="_blank" rel="noopener">Their room</a></td></tr>`).join('') || '<tr><td colspan="8" class="empty">No leads here yet.</td></tr>'}
+        <td class="n hide-m">${l.opens}</td><td class="hide-m" style="font-size:12.5px">${l.lastOpen ? agoTxt(Date.parse(l.lastOpen)) : 'never'}</td><td class="n" style="white-space:nowrap">${fitCheckBtn(l, TXD)} <a class="btn sm" href="${esc(l.link)}" target="_blank" rel="noopener">Their room</a></td></tr>`).join('') || '<tr><td colspan="8" class="empty">No leads here yet.</td></tr>'}
       </table></div></div>`;
   const days = Array.from({ length: 30 }, (_, i) => ymd(addDays(new Date(), i - 29)));
   chartIn('fitChart', { type: 'bar', data: { labels: days.map(d => fmtD(toDate(d))), datasets: [
@@ -2340,6 +2341,16 @@ function renderFit(){
     options: { animation: false, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
 }
 document.addEventListener('click', e => { const f = e.target.closest && e.target.closest('[data-fitf]'); if (f) { FITF = f.dataset.fitf; renderFit(); } });
+// Check in text from Billy's own phone; marks the lead Texted (saved in HQ so it shows on every device).
+const fitTexted = () => (RAW && RAW.store && RAW.store.fitTexted && typeof RAW.store.fitTexted === 'object' ? RAW.store.fitTexted : {});
+function fitCheckBtn(l, TXD){
+  if (TXD[l.phone]) return `<span class="btn sm" style="background:#e3efe6;color:var(--green);border-color:#cfe3d5">✓ Texted ${fmtD(new Date(TXD[l.phone]))}</span>`;
+  const first = (String(l.name).trim().split(/\s+/)[0] || '').replace(/^./, c => c.toUpperCase()), c = l.tried[0] || l.from;
+  const msg = `Hey ${first}, this is Billy with Billy's Couches! I saw you were using our sizing tool${c ? ' and tried the ' + c : ''}. Just wanted to check in, were you looking to see ${c ? 'it' : 'any of our couches'} in person?`;
+  return `<a class="btn sm p" data-fitchk="${esc(l.phone)}" href="sms:+1${esc(l.phone)}?&body=${encodeURIComponent(msg)}">Check in</a>`;
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-fitchk]'); if (!b) return;
+  const m = { ...fitTexted(), [b.dataset.fitchk]: new Date().toISOString() }; saveStore('fitTexted', m); setTimeout(() => renderFit(), 400); });
 function setTab(t){
   tab = t;
   document.querySelectorAll('.nav').forEach(x => x.classList.toggle('on', x.dataset.tab === t));
