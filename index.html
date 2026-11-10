@@ -1787,8 +1787,8 @@ function renderWeekly(){
       const spent = Object.values(cats).reduce((s, v) => s + v, 0), pay = n('ownerPay'), other = n('coachIn') + n('otherIn');
       return { l: spend, cats, spent, pay, other, kept: pay + other - spent }; };
     const S = sum(R.from, R.to), P = sum(R.pFrom, R.pTo), lab = c => (TX.pplCats || {})[c] || c;
-    const order = Object.keys(S.cats).filter(c => S.cats[c] > 0).sort((a, b) => S.cats[b] - S.cats[a]);
-    const big = S.l.filter(x => x.amount > 0).sort((a, b) => b.amount - a.amount).slice(0, 5);
+    const order = Object.keys(S.cats).filter(c => S.cats[c] > 0 && c !== 'rent').sort((a, b) => S.cats[b] - S.cats[a]);
+    const big = S.l.filter(x => x.amount > 0 && x.cat !== 'rent').sort((a, b) => b.amount - a.amount).slice(0, 5);
     const v = S.kept >= 0 ? ['#e3efe6', 'var(--green)', '✅ Spent less than you made.'] : ['#fbe9e7', 'var(--bad)', '⚠️ Spent ' + money(-S.kept) + ' more than you made.'];
     el.innerHTML = seg + `
     <div class="card"><h2 class="wh">You kept ${R.short}</h2><div><span class="big" style="color:${S.kept < 0 ? 'var(--bad)' : 'inherit'}">${S.kept < 0 ? '−' : ''}${money(Math.abs(S.kept))}</span><span class="chg" style="color:${S.kept >= P.kept ? 'var(--green)' : 'var(--bad)'};background:${S.kept >= P.kept ? '#e3efe6' : '#fbe9e7'}">${S.kept >= P.kept ? '▲' : '▼'} vs ${P.kept < 0 ? '−' : ''}${money(Math.abs(P.kept))} ${R.prevName}</span></div>
@@ -1796,7 +1796,7 @@ function renderWeekly(){
       <div class="row"><span>Coaching + other income</span><b style="color:var(--green)">+${money(S.other)}</b></div>
       <div class="row"><span>Spent</span><b style="color:var(--bad)">−${money(S.spent)}</b></div>
       <div class="verdict" style="background:${v[0]};color:${v[1]}">${v[2]}</div></div>
-    <div class="card"><h2 class="wh">Where you spent · ${money(S.spent)}</h2>${order.length ? order.map((c, i) => { const d = S.cats[c] - Math.max(0, P.cats[c] || 0); return bar(esc(lab(c)), Math.abs(d) >= 25 ? (d > 0 ? '↑ ' : '↓ ') + money(Math.abs(d)) + ' vs ' + R.prevName : '', S.cats[c], S.spent, reds[i] || reds[8]); }).join('') : '<p class="empty">No spending recorded.</p>'}</div>
+    <div class="card"><h2 class="wh">Where you spent · ${money(S.spent - (S.cats.rent || 0))}${S.cats.rent ? ' <span style="text-transform:none;letter-spacing:0">(rent not shown)</span>' : ''}</h2>${order.length ? order.map((c, i) => { const d = S.cats[c] - Math.max(0, P.cats[c] || 0); return bar(esc(lab(c)), Math.abs(d) >= 25 ? (d > 0 ? '↑ ' : '↓ ') + money(Math.abs(d)) + ' vs ' + R.prevName : '', S.cats[c], S.spent, reds[i] || reds[8]); }).join('') : '<p class="empty">No spending recorded.</p>'}</div>
     <div class="card"><h2 class="wh">Biggest purchases</h2>${big.length ? big.map(x => `<div class="row"><span>${esc(x.name)} · ${new Date(x.date + 'T12:00:00').toLocaleDateString('en-US', M ? { month: 'short', day: 'numeric' } : { weekday: 'short' })}</span><b>${money(x.amount)}</b></div>`).join('') : '<p class="empty">Nothing yet.</p>'}</div>
     <div class="card"><h2 class="wh">vs ${R.prevName}</h2><div class="g2"><div class="mini"><small>Paid yourself</small><b>${wkPct(S.pay, P.pay)}</b></div><div class="mini"><small>Spending</small><b>${wkPct(S.spent, P.spent)}</b></div></div></div>` + foot;
     return;
@@ -2152,7 +2152,7 @@ const PPL_INC = ['otherIn', 'ownerPay', 'coachIn'];
 // Through Oct 2026 this column is Billy's Couches net profit; from Nov 2026 on it's what you paid yourself.
 const PPL_PAY_FROM = '2026-11';
 const PPL_IN = [['couches', "Billy's Couches"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
-const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['eatingOut', 'Eating out'], ['subscriptions', 'Subscriptions'], ['needs', 'Needs'], ['education', 'Education'], ['travel', 'Travel'], ['otherOut', 'Other']];
+const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['eatingOut', 'Eating out'], ['subscriptions', 'Subscriptions'], ['needs', 'Needs'], ['wants', 'Wants'], ['education', 'Education'], ['travel', 'Travel'], ['otherOut', 'Other']];
 let PPLY = new Date().getFullYear(), pplT = null;
 const pplData = () => (RAW.store.ppl && typeof RAW.store.ppl === 'object' ? RAW.store.ppl : {});
 // Billy's Couches column: net profit from the Sales Tracker before PPL_PAY_FROM, then owner's pay (transfers sorted as "Owner's pay" in Review). Coaching from payments marked paid in Coaching HQ,
