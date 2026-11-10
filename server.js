@@ -2237,6 +2237,11 @@ app.post('/public/fit-sess/:id/saved', async (req, res) => {
   s.saves = (s.saves || 0) + 1; s.lastSave = new Date().toISOString(); await kset(fitKey(s.id), s); fitCount('saves'); res.json({ ok: true });
 });
 // HQ: sizing tool leads as a spreadsheet. Hot = typed their room and tried 2+ couches or saved a picture, Warm = opened the link, Cold = never opened.
+// Sidebar badges: one small read (lead ids only).
+app.get('/api/badges', async (req, res) => {
+  try { const L = ((await kget('bcd:fitLeads', [])) || []).slice(-800); res.json({ ok: true, fit: L.map(l => l.id) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/fit', async (req, res) => {
   try {
     const drops = await getDrops(), title = id => (drops.find(d => d.id === id) || {}).title || '', L = ((await kget('bcd:fitLeads', [])) || []).slice(-600);
