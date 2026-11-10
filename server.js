@@ -119,6 +119,29 @@ app.get('/logout', async (req, res) => {
 });
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
 app.get('/healthz', (req, res) => res.send('ok'));
+// Weekly Cash: text Billy a link every Monday at 8am Central (once per week).
+setInterval(async () => {
+  try {
+    const ct = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    if (ct.getDay() !== 1 || ct.getHours() < 8) return;
+    const wk = ct.toLocaleDateString('en-CA'); if ((await kget('bcd:weeklySent', '')) === wk) return;
+    await kset('bcd:weeklySent', wk);
+    const from = new Date(ct); from.setDate(from.getDate() - 7); const to = new Date(ct); to.setDate(to.getDate() - 1);
+    const f = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    await textAlert(`Your weekly cash flow statement for ${f(from)} - ${f(to)} is ready: https://hq.billyscouches.com/weekly`);
+  } catch (e) { console.log('weekly text failed', e.message); }
+}, 10 * 60 * 1000);
+// Monthly Cash: text Billy a link to last month's statement on the 1st at 8am Central.
+setInterval(async () => {
+  try {
+    const ct = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    if (ct.getDate() !== 1 || ct.getHours() < 8) return;
+    const mk = ct.toLocaleDateString('en-CA').slice(0, 7); if ((await kget('bcd:monthlySent', '')) === mk) return;
+    await kset('bcd:monthlySent', mk);
+    const lm = new Date(ct.getFullYear(), ct.getMonth() - 1, 1), key = lm.toLocaleDateString('en-CA').slice(0, 7);
+    await textAlert(`Your ${lm.toLocaleDateString('en-US', { month: 'long' })} cash flow statement is ready: https://hq.billyscouches.com/weekly?m=${key}`);
+  } catch (e) { console.log('monthly text failed', e.message); }
+}, 10 * 60 * 1000);
 const longCache = { headers: { 'Cache-Control': 'public, max-age=604800' } };
 app.get('/chart.js', (req, res) => res.sendFile(path.join(__dirname, 'node_modules', 'chart.js', 'dist', 'chart.umd.js'), longCache));
 ['favicon.png', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'manifest.json', 'logo.png'].forEach(f => app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f), longCache)));
@@ -136,6 +159,7 @@ app.get('/public/logo.png', (req, res) => res.set('Cache-Control', 'public, max-
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png'), longCache));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
 // ---------- /security page: sessions + two-step login ----------
+app.get('/weekly', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'index.html' : 'login.html')));
 app.get('/security', (req, res) => res.sendFile(path.join(__dirname, authed(req) ? 'security.html' : 'login.html')));
 app.get('/api/security', (req, res) => {
   const cur = cookieTok(req), now = Date.now();
