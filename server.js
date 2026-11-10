@@ -1075,17 +1075,21 @@ async function plaidBalances(force, live) {
       if (live) { try { j = await plaid('/accounts/balance/get', { access_token: it.access_token }); }
         catch (e) { if (/ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message)) throw e; liveNote = 'Live balance not available for some banks (' + e.message.slice(0, 160) + '), showing saved balance'; j = await plaid('/accounts/get', { access_token: it.access_token }); } }
       else j = await plaid('/accounts/get', { access_token: it.access_token });
+      // When did Plaid last actually hear from this bank? (cached balances can be hours old)
+      let itemAsOf = null; try { const ig = await plaid('/item/get', { access_token: it.access_token }); itemAsOf = (ig.status && ig.status.transactions && ig.status.transactions.last_successful_update) || null; } catch {}
+      const liveNow = live && !liveNote ? new Date().toISOString() : null;
       const accounts = j.accounts.map(a => {
         const field = MASK_FIELD[a.mask] || MASK_FIELD[String(a.mask || '').slice(-4)] || '';
         const bal = a.balances.current != null ? a.balances.current : a.balances.available;
         const val = Math.round(Math.abs(Number(bal) || 0) * 100) / 100;   // cards: amount owed
         if (field) fields[field] = (fields[field] || 0) + val;
-        return { name: a.official_name || a.name, mask: a.mask, type: a.type, subtype: a.subtype, current: a.balances.current, available: a.balances.available, field };
+        return { name: a.official_name || a.name, mask: a.mask, type: a.type, subtype: a.subtype, current: a.balances.current, available: a.balances.available, field, asOf: liveNow || a.balances.last_updated_datetime || itemAsOf };
       });
       banks.push({ item_id: it.item_id, institution: it.institution, accounts });
     } catch (e) { banks.push({ item_id: it.item_id, institution: it.institution, error: e.message, relink: /ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message) }); }
   }
-  plaidCache = { at: Date.now(), data: { banks, fields, at: new Date().toISOString(), live: !!live && !liveNote, liveNote, configured: !!(PLAID.ID && PLAID.SECRET), env: PLAID.ENV } };
+  const asOfs = banks.flatMap(b => (b.accounts || []).filter(a => a.field && a.asOf).map(a => a.asOf)).sort();
+  plaidCache = { at: Date.now(), data: { banks, fields, oldestAsOf: asOfs[0] || null, at: new Date().toISOString(), live: !!live && !liveNote, liveNote, configured: !!(PLAID.ID && PLAID.SECRET), env: PLAID.ENV } };
   return plaidCache.data;
 }
 app.get('/api/plaid/balances', async (req, res) => {
@@ -1381,7 +1385,7 @@ async function bankSnapshot(live) {
   if (!Object.keys(pb.fields).length) return null;
   // Today's entry keeps what you typed (safe, Venmo); banks + Stripe get the newest numbers.
   const snap = { ...last, date: today, savedAt: new Date().toISOString(), note: last.date === today ? (last.note || '') : 'Auto from banks', auto: true, score: undefined, imported: undefined };
-  Object.assign(snap, pb.fields);
+  Object.assign(snap, pb.fields); snap.bankAsOf = pb.oldestAsOf || null;
   const sb = await stripeBalance(true).catch(() => ({}));
   if (!sb.error) { snap.stripe = sb.total || 0; snap.stripeAuto = true; }
   await kset(KEYS.cash, snaps.filter(s => s.date !== today).concat(snap).sort((a, b) => a.date.localeCompare(b.date)));
