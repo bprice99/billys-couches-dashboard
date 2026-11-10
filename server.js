@@ -2402,6 +2402,69 @@ const orderOriginOk = o => { if (ORDER_ORIGINS.includes(o)) return true; try { c
 function orderCors(req, res) { const o = req.get('origin') || ''; if (orderOriginOk(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET, POST'); return true; } return false; }
 // Private order app: today's showings so the team can tap a customer instead of typing them in.
 // Only answered for the order app's own page (Origin check). Returns first-name-level info + phone for today only.
+// ---------- TextMagic "Warm Leads (30 days)" list ----------
+// Showings from the last 30 days that canceled, no-showed, or showed and didn't buy. Synced every hour:
+// new people are added, anyone past 30 days (or who bought since) is taken off the list.
+const WARM_LIST = process.env.TM_WARM_LIST || 'Warm Leads (30 days)';
+const tmPhone = v => { const d = String(v || '').replace(/\D/g, ''); return d.length === 10 ? '1' + d : d.length === 11 && d[0] === '1' ? d : ''; };
+async function tmApi(method, apiPath, form) {
+  const user = (process.env.TEXTMAGIC_USERNAME || '').trim(), key = (process.env.TEXTMAGIC_API_KEY || '').trim();
+  if (!user || !key) throw new Error('add TEXTMAGIC_USERNAME + TEXTMAGIC_API_KEY');
+  const r = await fetch('https://rest.textmagic.com' + apiPath, { method, headers: { 'X-TM-Username': user, 'X-TM-Key': key, Accept: 'application/json',
+    ...(form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) }, body: form ? new URLSearchParams(form).toString() : undefined });
+  const j = await r.json().catch(() => ({})); return { ok: r.ok, status: r.status, j };
+}
+let warmSyncing = false;
+async function syncWarmLeads() {
+  if (warmSyncing || !CFG.API) return; warmSyncing = true;
+  try {
+    const g = await google(false), now = Date.now(), from = now - 30 * 864e5, to = now + 30 * 864e5;
+    const rows = (g.showings || []).map(([iso, title, color, phone]) => {
+      const t = String(title || ''), at = new Date(iso).getTime();
+      const status = /cancel/i.test(t) ? 'canceled' : (/no.?show/i.test(t) || color === '8') ? 'noshow' : (color === '2' || color === '10') ? 'bought' : at > now ? 'upcoming' : 'showed';
+      return { at, status, phone: tmPhone(phone), name: t.replace(/\(.*?\)/g, '').replace(/^\s*showing\s*(for)?\s*/i, '').trim() };
+    }).filter(x => x.phone && !isNaN(x.at));
+    const buyers = new Set(rows.filter(x => x.status === 'bought').map(x => x.phone));
+    try { Object.values(await getSched()).forEach(o => { const p = tmPhone(o.phone); if (p) buyers.add(p); }); } catch {}
+    const want = new Map();
+    for (const x of rows) {
+      if (buyers.has(x.phone)) continue;
+      const inWin = x.status === 'canceled' ? x.at >= from && x.at <= to : (x.status === 'noshow' || x.status === 'showed') && x.at >= from && x.at <= now;
+      if (inWin && (!want.has(x.phone) || want.get(x.phone).at < x.at)) want.set(x.phone, x);
+    }
+    const st = await kget('bcd:tmWarm', { listId: null, people: {} });
+    if (!st.listId) {
+      const f = await tmApi('GET', `/api/v2/lists/search?query=${encodeURIComponent(WARM_LIST)}&limit=50`);
+      const hit = ((f.j && f.j.resources) || []).find(l => String(l.name).toLowerCase() === WARM_LIST.toLowerCase());
+      st.listId = hit ? hit.id : (await tmApi('POST', '/api/v2/lists', { name: WARM_LIST, shared: '0' })).j.id;
+      if (!st.listId) throw new Error('could not create TextMagic list');
+    }
+    let added = 0, removed = 0;
+    for (const [phone, x] of want) {
+      if (st.people[phone]) continue;
+      const [firstName, ...rest] = x.name.split(/\s+/);
+      let c = await tmApi('POST', '/api/v2/contacts', { phone, firstName: firstName || '', lastName: rest.join(' '), lists: String(st.listId) });
+      let id = c.ok && c.j.id;
+      if (!id) { const f = await tmApi('GET', `/api/v2/contacts/phone/${phone}`); id = f.j && f.j.id;
+        if (id) await tmApi('PUT', `/api/v2/lists/${st.listId}/contacts`, { contacts: String(id) }); }
+      if (id) { st.people[phone] = { id, at: x.at }; added++; }
+      await new Promise(r => setTimeout(r, 800));
+    }
+    const drop = Object.keys(st.people).filter(p => !want.has(p));
+    for (let i = 0; i < drop.length; i += 50) {
+      const ids = drop.slice(i, i + 50).map(p => st.people[p].id).join(',');
+      const r = await tmApi('DELETE', `/api/v2/lists/${st.listId}/contacts`, { contacts: ids });
+      if (r.ok || r.status === 404) drop.slice(i, i + 50).forEach(p => { delete st.people[p]; removed++; });
+    }
+    st.syncedAt = Date.now(); st.count = Object.keys(st.people).length;
+    await kset('bcd:tmWarm', st);
+    console.log(`[warm leads] +${added} -${removed} = ${st.count}`);
+  } catch (e) { console.log('[warm leads] sync failed:', e.message); }
+  finally { warmSyncing = false; }
+}
+setTimeout(syncWarmLeads, 2 * 60 * 1000); setInterval(syncWarmLeads, 60 * 60 * 1000);
+app.get('/api/warm-leads', async (req, res) => { const st = await kget('bcd:tmWarm', {}); res.json({ ok: true, list: WARM_LIST, count: st.count || 0, syncedAt: st.syncedAt || null }); });
+
 app.options('/public/today-showings', (req, res) => { orderCors(req, res); res.sendStatus(204); });
 app.get('/public/today-showings', async (req, res) => {
   if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
