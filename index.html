@@ -2371,7 +2371,7 @@ const fitTexted = () => (RAW && RAW.store && RAW.store.fitTexted && typeof RAW.s
 function fitCheckBtn(l, TXD){
   if (TXD[l.phone]) return `<span class="btn sm" style="background:#e3efe6;color:var(--green);border-color:#cfe3d5">✓ Texted ${fmtD(new Date(TXD[l.phone]))}</span>`;
   const first = (String(l.name).trim().split(/\s+/)[0] || '').replace(/^./, c => c.toUpperCase()), c = l.tried[0] || l.from;
-  const msg = `Hey ${first}, this is Billy with Billy's Couches! I saw you were using our sizing tool${c ? ' and tried the ' + c : ''}. Just wanted to check in, were you looking to see ${c ? 'it' : 'any of our couches'} in person?`;
+  const msg = `Hey ${first}, this is Billy with Billy's Couches! I saw you were using our sizing tool and wanted to check in, were you looking to see any couches in person?`;
   return `<a class="btn sm p" data-fitchk="${esc(l.phone)}" href="sms:+1${esc(l.phone)}?&body=${encodeURIComponent(msg)}">Check in</a>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-fitchk]'); if (!b) return;
