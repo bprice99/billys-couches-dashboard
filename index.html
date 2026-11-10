@@ -282,19 +282,19 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   <nav class="side">
     <div class="brand">Billy's Couches<small>Dashboard</small></div>
     <div class="navh">Money</div>
-    <a class="nav on" data-tab="sales">Sales Tracker</a>
+    <a class="nav on" data-tab="sales">Sales Tracker<span class="obadge" id="nb-sales" hidden></span></a>
     <a class="nav" data-tab="cash">Buying Power</a>
     <a class="nav" data-tab="ppl">Personal P&amp;L</a>
     <a class="nav" data-tab="goals">Goals</a>
-    <a class="nav" data-tab="payroll">Payroll</a>
+    <a class="nav" data-tab="payroll">Payroll<span class="obadge" id="nb-payroll" hidden></span></a>
     <div class="navh">Inventory</div>
-    <a class="nav" data-tab="drops">Drops</a>
+    <a class="nav" data-tab="drops">Drops<span class="obadge" id="nb-drops" hidden></span></a>
     <a class="nav" data-tab="bstock">B-Stock</a>
     <a class="nav" data-tab="cuts">Price Cuts<span class="obadge" id="pcBadge" hidden></span></a>
     <a class="nav" data-tab="offers">Couch Offers<span class="obadge" id="offerBadge" hidden></span></a>
     <div class="navh">Customers</div>
-    <a class="nav" data-tab="showings">Showing Tracker</a>
-    <a class="nav" data-tab="sched">Scheduling</a>
+    <a class="nav" data-tab="showings">Showing Tracker<span class="obadge" id="nb-showings" hidden></span></a>
+    <a class="nav" data-tab="sched">Scheduling<span class="obadge" id="nb-sched" hidden></span></a>
     <a class="nav" data-tab="upsells">Upsells</a>
     <a class="nav" data-tab="sources">Sales &amp; Sourcing</a>
     <a class="nav" data-tab="thanks">Thank You Cards<span class="obadge" id="tyBadge" hidden></span></a>
@@ -302,7 +302,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     <a class="nav" data-tab="meta">Ad Performance</a>
     <a class="nav" data-tab="ads">Ad Library</a>
     <a class="nav" data-tab="content">Content Plan</a>
-    <a class="nav" data-tab="fit">Will It Fit</a>
+    <a class="nav" data-tab="fit">Will It Fit<span class="obadge" id="nb-fit" hidden></span></a>
     <a class="nav" data-tab="openhouse">Open Houses</a>
     <a class="nav" href="/coach" style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);border-radius:0;padding-top:14px">Coaching &rarr;</a>
     <div class="foot"><span id="synced">Loading...</span><br><a href="#" id="pushBtn">🔔 Notifications</a> &middot; <a href="/security">Security</a> &middot; <a href="/logout">Log out</a></div>
@@ -1431,7 +1431,7 @@ async function loadPayroll(fresh){
   try {
     const r = await fetch('/api/payroll' + (fresh ? '?fresh=1' : ''), { cache: 'no-store' });
     const d = await r.json(); if (d.error && !d.entries) throw new Error(d.error);
-    PAY = d; renderPayroll(); if (tab === 'goals') renderGoals();
+    PAY = d; renderPayroll(); newBadges(); if (tab === 'goals') renderGoals();
   } catch (e) { $('payTbl').innerHTML = `<tr><td class="empty">Couldn't load payroll: ${esc(e.message)}</td></tr>`; }
 }
 // One Mon-Sun week (cleaning bonus is per week), limited to dates inside [a, b].
@@ -2208,7 +2208,7 @@ function setTab(t){
   syncRangeBar();
   document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
   try { localStorage.setItem('bcdTab', t); } catch {}
-  render();
+  render(); if (typeof newBadges === 'function') newBadges();
 }
 async function load(fresh){
   $('err').style.display = 'none';
@@ -2222,7 +2222,8 @@ async function load(fresh){
     if (fresh && d.cachedAt) setTimeout(() => load(), 8000);
     render(); if (!d.demo) goalSnap();
     // Load the other tabs' data in the background so switching tabs is instant.
-    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); if (!TY) loadThanks(); if (!DR) loadDrops(); }, 400); }
+    if (!window.__pre) { window.__pre = true; setTimeout(() => { if (!PAY) loadPayroll(); if (!CASH) loadCash(); if (!ADSD) loadAds(); if (!OFFERS) loadOffers(); if (!TY) loadThanks(); if (!DR) loadDrops(); loadBadgeData(); }, 400); }
+    newBadges();
   } catch (e) { $('err').textContent = "Couldn't load data: " + e.message; $('err').style.display = 'block'; }
 }
 
@@ -2416,6 +2417,30 @@ const DRST = { draft: 'Draft', emailed: 'First Dibs', live: 'On website', sold: 
 const dPhoto = (ph, w) => /^https?:/.test(ph) ? ph + (w ? '?format=' + w + 'w' : '') : (DR && DR.base || location.origin) + '/public/dphoto/' + ph + '.jpg';
 const dLocalPhoto = ph => /^https?:/.test(ph) ? ph + '?format=300w' : '/public/dphoto/' + ph + '.jpg';
 
+
+// ---------- Sidebar "new" badges: items added since you last opened that tab ----------
+const NB = (() => { try { return JSON.parse(localStorage.getItem('bcNewSeen') || '{}'); } catch (e) { return {}; } })();
+let FITIDS = null;
+const nbItems = {
+  sales: () => RAW && RAW.sales ? RAW.sales.map(x => +x.date + '|' + x.name + '|' + x.price) : null,
+  showings: () => RAW && RAW.showings ? RAW.showings.map(x => +x.at + '|' + x.name) : null,
+  sched: () => SC && SC.list ? SC.list.filter(o => o.booking).map(o => o.token + '|' + o.booking.date + o.booking.win) : null,
+  payroll: () => PAY && PAY.entries ? PAY.entries.map(e => e.id || e.date + '|' + e.name) : null,
+  fit: () => FITIDS
+};
+function nbSave(){ try { localStorage.setItem('bcNewSeen', JSON.stringify(NB)); } catch (e) {} }
+function newBadges(){
+  Object.keys(nbItems).forEach(t => { const ids = nbItems[t](), b = $('nb-' + t); if (!ids || !b) return;
+    if (!NB[t] || t === tab) { NB[t] = ids.slice(-800); nbSave(); }   // first time, or you're on the tab = all seen
+    const seen = new Set(NB[t]), n = ids.filter(i => !seen.has(i)).length; b.hidden = !n; b.textContent = n; });
+  const d = $('nb-drops'); if (d && DR && DR.drops) { const n = DR.drops.filter(x => x.status === 'draft').length; d.hidden = !n; d.textContent = n; d.title = n + ' drafts not live yet'; }
+}
+async function loadBadgeData(){
+  try { const j = await (await fetch('/api/badges', { cache: 'no-store' })).json(); FITIDS = j.fit || []; } catch (e) {}
+  if (!SC) try { SC = await (await fetch('/api/sched', { cache: 'no-store' })).json(); } catch (e) {}
+  newBadges();
+}
+setInterval(() => { loadBadgeData(); }, 5 * 60 * 1000);
 // ---------- Price Cuts: markdown ladder on every couch that's on the website ----------
 // Day 14 −7%, day 28 −7%, day 42 −20%, day 56 pull it. New prices round to the nearest $10 and never go
 // below cost + $100 (cost comes from the matching couch in Couches in stock on the Sales Tracker).
@@ -2498,7 +2523,7 @@ document.addEventListener('change', async e => { const t = e.target; if (!t.data
 async function loadDrops(){
   try { const r = await fetch('/api/drops', { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); DR = d; }
   catch (e) { DR = { drops: [], error: e.message }; }
-  if (tab === 'drops') renderDrops(); if (tab === 'cuts') renderCuts(); pcBadge();
+  if (tab === 'drops') renderDrops(); if (tab === 'cuts') renderCuts(); pcBadge(); newBadges();
 }
 function renderDrops(){
   renderJustSold();
