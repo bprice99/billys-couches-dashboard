@@ -130,6 +130,8 @@ app.get('/public/one-of-one.jpg', (req, res) => {
   if (fs.existsSync(jpg)) return res.sendFile(jpg);
   try { res.type('image/jpeg').send(Buffer.from(fs.readFileSync(txt, 'utf8').replace(/[^A-Za-z0-9+/=]/g, ''), 'base64')); } catch (e) { res.sendStatus(404); }
 });
+// Billy's photo for customer emails (image.jpg in the repo).
+app.get('/public/billy.jpg', (req, res) => res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile(path.join(__dirname, 'image.jpg')));
 app.get('/public/logo.png', (req, res) => res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile(path.join(__dirname, 'logo.png')));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png'), longCache));
 app.use('/api', (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'login' }));
