@@ -10,7 +10,7 @@
 :root{--red:#b0524c;--red2:#963f3a;--dark:#2b1d16;--cream:#efe9e2;--bg:#f7f3ee;--line:#e8e0d6;--muted:#7a6f66;--text:#222;--green:#2e7d4f;--bad:#c0392b;--sage:#8fb59a;--gray:#c9bfb5}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-html,body{max-width:100%;overflow-x:hidden}
+html,body{max-width:100%;overflow-x:hidden}@supports (overflow:clip){html,body{overflow-x:clip}}
 button,a,select,input,label,.nav,.adchip{touch-action:manipulation}
 .btn:active,.nav:active,.adchip:active{transform:scale(.97)}
 canvas{max-width:100%}
@@ -288,13 +288,15 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
 @media (max-width:800px){
   .side{display:none!important}
   .main{padding-bottom:calc(96px + env(safe-area-inset-bottom))!important}
-  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--dark);padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(0,0,0,.18)}
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateZ(0);-webkit-transform:translateZ(0);background:var(--dark);padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(0,0,0,.18)}
   .mbar button{flex:1;min-width:0;background:none;border:0;color:#bfae9f;font:inherit;font-size:10.5px;font-weight:700;padding:4px 2px;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .mbar button i{display:block;font-style:normal;font-size:21px;line-height:1.1;margin-bottom:2px}
   .mbar button span.l{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mbar button.on{color:#fff}.mbar button.pick{outline:2px dashed #e3b5ab;outline-offset:-2px;border-radius:10px}
   .mbar .obadge{position:absolute;top:-2px;left:50%;margin-left:6px;min-width:16px;line-height:16px;font-size:10px;padding:0 5px}
-  .msheet.on{display:block;position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.38)}
+  html:has(.msheet.on),body:has(.msheet.on){overflow:hidden}
+  .msheet.on{display:block;position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.38);overscroll-behavior:contain}
+  .msheet .pane{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .msheet .pane{position:absolute;left:0;right:0;bottom:0;max-height:78vh;overflow-y:auto;background:#fbf8f5;border-radius:22px 22px 0 0;padding:12px 16px calc(92px + env(safe-area-inset-bottom))}
   .msheet .grab{width:40px;height:5px;background:#d9cfc7;border-radius:9px;margin:0 auto 6px}
   .msheet h4{font-size:11px;font-weight:800;color:#8a6f5e;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px}
@@ -2423,6 +2425,8 @@ document.querySelectorAll('.nav[data-tab]').forEach(n => n.onclick = () => setTa
 // ---------- Phone navigation: bottom bar (4 tabs + More) and a More sheet with every other tab ----------
 const MB_ICON = { sales: '\u{1F4B0}', showings: '\u{1F6CB}\u{FE0F}', fit: '\u{1F4CF}', drops: '\u{1F4E6}', content: '\u{1F3AC}', ppl: '\u{1F464}', openhouse: '\u{1F3E0}', cash: '\u{1F4B5}', goals: '\u{1F3AF}', payroll: '\u{1F9FE}', bstock: '\u{1F69A}', cuts: '✂\u{FE0F}', offers: '\u{1F91D}', sched: '\u{1F4C5}', upsells: '➕', sources: '\u{1F4CA}', thanks: '\u{1F48C}', meta: '\u{1F4C8}', ads: '\u{1F5BC}\u{FE0F}' };
 const MB_SHORT = { sales: 'Sales', showings: 'Showings', fit: 'Will It Fit', drops: 'Drops', content: 'Content', ppl: 'Personal', openhouse: 'Open House', cash: 'Buying Power', payroll: 'Payroll', sched: 'Scheduling', offers: 'Offers', cuts: 'Price Cuts', sources: 'Sourcing', thanks: 'Thank Yous', meta: 'Ads', ads: 'Ad Library' };
+// Live directly under <body> so iPhone keeps them pinned to the bottom while scrolling.
+document.body.append($('msheet'), $('mbar'));
 const MB_ALL = [...document.querySelectorAll('.side .nav[data-tab]')].map(n => n.dataset.tab);
 let MB = { bar: ['sales', 'showings', 'fit', 'drops'], fav: ['content', 'ppl', 'openhouse'] }, MBSWAP = null;
 try { const s = JSON.parse(localStorage.getItem('bcdMBar') || 'null'); if (s && Array.isArray(s.bar) && s.bar.length === 4 && s.bar.every(t => MB_ALL.includes(t))) MB = { bar: s.bar, fav: (s.fav || []).filter(t => MB_ALL.includes(t) && !s.bar.includes(t)) }; } catch {}
