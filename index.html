@@ -275,6 +275,15 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   .top h1{width:100%}
   .hide-m{display:none}
 }
+body.solo .side,body.solo .top,body.solo .rangebar{display:none!important}body.solo .main{max-width:460px;margin:0 auto;padding:16px 14px 40px}
+.wkc .card{margin-bottom:12px}.wkc h2.wh{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.wkc .big{font-size:38px;font-weight:800;letter-spacing:-.02em}.wkc .chg{display:inline-block;margin-left:6px;font-weight:700;font-size:14px;border-radius:999px;padding:4px 10px;vertical-align:8px}
+.wkc .verdict{border-radius:14px;padding:12px 14px;font-weight:700;font-size:15px;margin-top:14px}
+.wkc{display:block}.wkc>*{width:100%;max-width:100%}.wkc .cat{margin-bottom:10px}.wkc .cat .wcl{display:flex;font-size:inherit;font-weight:inherit;line-height:1.3;justify-content:space-between;font-size:14px;margin-bottom:5px}.wkc .cat .wcl span{color:var(--muted);font-size:12px;margin-left:6px;font-weight:500}
+.wkc .track{background:#f3ece6;border-radius:6px;height:10px;overflow:hidden}.wkc .track i{display:block;height:100%;border-radius:6px}
+.wkc .wseg{display:flex;background:#ece4dc;border-radius:999px;padding:4px;margin-bottom:10px}.wkc .wseg button{flex:1;border:0;background:none;padding:9px 0;border-radius:999px;font:inherit;font-size:14px;font-weight:700;color:#7a6c64;cursor:pointer}.wkc .wseg button.on{background:#2b1d16;color:#fff}
+.wkc .wseg2{display:flex;gap:6px;margin-bottom:12px}.wkc .wseg2 button{border:0;font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:#ece4dc;color:#7a6c64;cursor:pointer}.wkc .wseg2 button.on{background:#fff;color:#2b1d16;box-shadow:0 0 0 1px #d9cfc7}
+.wkc .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wkc .mini{background:#faf7f3;border-radius:14px;padding:12px}.wkc .mini small{color:var(--muted);font-size:12px;display:block}.wkc .mini b{font-size:20px;display:block;margin-top:2px}.wkc .mini em{font-style:normal;font-size:12px;font-weight:700}
 @media print{.side,.top .btn,.mon,.noprint{display:none!important}.main{padding:0}.card{border:0}}
 </style></head>
 <body>
@@ -417,6 +426,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
     </section>
 
     <!-- SALES & SOURCING -->
+    <section id="tab-weekly" hidden><div class="wkc" id="wkBody"><div class="card"><p class="empty">Loading your week...</p></div></div></section>
     <section id="tab-sources" hidden>
       <div class="note" id="srcNote" hidden>Ivy Flip months have no lead source or pickup/delivery, so only order-app sales (June 2026 on) are counted here.</div>
       <div class="pies">
@@ -1734,6 +1744,122 @@ function cashOutlook(last){
   const power = B.cash + B.stripe - B.cards - (rentIn ? bills : 0) - payDue - committed - P.cushion;
   return { ev, low, B, bills, util, U, rentIn, rent, payDue, committed, later, power, pr, perDay: rev28 / 28 };
 }
+// ---------- Weekly / Monthly Cash statement (hq.billyscouches.com/weekly) ----------
+// Business or Personal, Week (last full Mon-Sun, texted Monday 8am) or Month (last full month, texted the 1st).
+// URL: ?w=YYYY-MM-DD (a week), ?m=YYYY-MM (a month), ?p=personal
+const WKV = (() => { const q = new URLSearchParams(location.search); return { mode: q.get('p') === 'personal' ? 'ppl' : 'biz', per: q.get('m') ? 'month' : 'week', w: q.get('w') || '', m: q.get('m') || '' }; })();
+function wkRange(){
+  if (WKV.per === 'month') {
+    const now = new Date(), k = WKV.m || new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleDateString('en-CA').slice(0, 7);
+    const [y, mo] = k.split('-').map(Number), from = new Date(y, mo - 1, 1), next = new Date(y, mo, 1), to = addDays(next, -1);
+    const pf = new Date(y, mo - 2, 1);
+    return { from, to, next, pFrom: pf, pTo: addDays(from, -1), label: from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), short: from.toLocaleDateString('en-US', { month: 'long' }), prevName: pf.toLocaleDateString('en-US', { month: 'long' }), unit: 'month' };
+  }
+  const thisMon = mondayOf(new Date()), from = WKV.w ? mondayOf(toDate(WKV.w)) : addDays(thisMon, -7);
+  return { from, to: addDays(from, 6), next: addDays(from, 7), pFrom: addDays(from, -7), pTo: addDays(from, -1), label: fmtD(from) + ' – ' + fmtD(addDays(from, 6)), short: 'this week', prevName: 'last week', unit: 'week' };
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-wkv]'); if (!b) return;
+  const [k, v] = b.dataset.wkv.split(':'); WKV[k] = v; if (k === 'per') { WKV.w = ''; WKV.m = ''; }
+  const q = new URLSearchParams(); if (WKV.mode === 'ppl') q.set('p', 'personal');
+  if (WKV.per === 'month') q.set('m', ymd(wkRange().from).slice(0, 7)); else if (WKV.w) q.set('w', WKV.w);
+  history.replaceState(null, '', '/weekly' + (q.toString() ? '?' + q : '')); renderWeekly();
+});
+const wkPct = (a, b) => b ? (a >= b ? '+' : '−') + Math.round(Math.abs(a - b) / b * 100) + '%' : '–';
+function renderWeekly(){
+  const el = $('wkBody'); if (!el) return;
+  if (!RAW) return;
+  const R = wkRange(), M = WKV.per === 'month';
+  const seg = `<div class="wseg">${[['mode:biz', 'Business'], ['mode:ppl', 'Personal']].map(([v, l]) => `<button data-wkv="${v}" class="${WKV.mode === v.split(':')[1] ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="wseg2">${[['per:week', 'Week'], ['per:month', 'Month']].map(([v, l]) => `<button data-wkv="${v}" class="${WKV.per === v.split(':')[1] ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:16px">${WKV.mode === 'ppl' ? 'Personal' : M ? 'Monthly' : 'Weekly'} Cash</b><span style="color:var(--muted);font-size:13px">${R.label}</span></div>`;
+  const bar = (label, note, v, tot, color) => `<div class="cat"><div class="wcl"><b>${label}${note ? `<span>${note}</span>` : ''}</b><b>${money(v)}</b></div><div class="track"><i style="width:${tot ? Math.min(100, v / tot * 100) : 0}%;background:${color}"></i></div></div>`;
+  const reds = ['#b0524c', '#c97a6f', '#d89c90', '#e3b5ab', '#ecccc5', '#f1d9d3', '#f4e2dd', '#f6e9e5', '#f8eeeb'];
+  const foot = `<p style="text-align:center;margin-top:14px"><a href="/" class="btn sm">Open HQ</a></p>`;
+
+  // ---------- Personal ----------
+  if (WKV.mode === 'ppl') {
+    if (!TX) { el.innerHTML = seg + '<div class="card"><p class="empty">Loading...</p></div>'; if (!renderWeekly.tx) { renderWeekly.tx = 1; loadTx().then(() => renderWeekly()); } return; }
+    if (!TX.configured) { el.innerHTML = seg + '<div class="card"><p class="empty">Connect your bank in Personal P&amp;L to see this.</p></div>' + foot; return; }
+    const sum = (f, t) => { const a = ymd(f), b = ymd(t), l = (TX.ppl || []).filter(x => x.date >= a && x.date <= b);
+      const n = c => l.filter(x => x.cat === c).reduce((s, x) => s - (Number(x.amount) || 0), 0);
+      const spend = l.filter(x => !PPL_INC.includes(x.cat)), cats = {}; spend.forEach(x => { cats[x.cat] = (cats[x.cat] || 0) + (Number(x.amount) || 0); });
+      const spent = Object.values(cats).reduce((s, v) => s + v, 0), pay = n('ownerPay'), other = n('coachIn') + n('otherIn');
+      return { l: spend, cats, spent, pay, other, kept: pay + other - spent }; };
+    const S = sum(R.from, R.to), P = sum(R.pFrom, R.pTo), lab = c => (TX.pplCats || {})[c] || c;
+    const order = Object.keys(S.cats).filter(c => S.cats[c] > 0).sort((a, b) => S.cats[b] - S.cats[a]);
+    const big = S.l.filter(x => x.amount > 0).sort((a, b) => b.amount - a.amount).slice(0, 5);
+    const v = S.kept >= 0 ? ['#e3efe6', 'var(--green)', '✅ Spent less than you made.'] : ['#fbe9e7', 'var(--bad)', '⚠️ Spent ' + money(-S.kept) + ' more than you made.'];
+    el.innerHTML = seg + `
+    <div class="card"><h2 class="wh">You kept ${R.short}</h2><div><span class="big" style="color:${S.kept < 0 ? 'var(--bad)' : 'inherit'}">${S.kept < 0 ? '−' : ''}${money(Math.abs(S.kept))}</span><span class="chg" style="color:${S.kept >= P.kept ? 'var(--green)' : 'var(--bad)'};background:${S.kept >= P.kept ? '#e3efe6' : '#fbe9e7'}">${S.kept >= P.kept ? '▲' : '▼'} vs ${P.kept < 0 ? '−' : ''}${money(Math.abs(P.kept))} ${R.prevName}</span></div>
+      <div class="row" style="margin-top:8px"><span>Paid yourself (owner's pay)</span><b style="color:var(--green)">+${money(S.pay)}</b></div>
+      <div class="row"><span>Coaching + other income</span><b style="color:var(--green)">+${money(S.other)}</b></div>
+      <div class="row"><span>Spent</span><b style="color:var(--bad)">−${money(S.spent)}</b></div>
+      <div class="verdict" style="background:${v[0]};color:${v[1]}">${v[2]}</div></div>
+    <div class="card"><h2 class="wh">Where you spent · ${money(S.spent)}</h2>${order.length ? order.map((c, i) => { const d = S.cats[c] - (P.cats[c] || 0); return bar(esc(lab(c)), Math.abs(d) >= 25 ? (d > 0 ? '↑ ' : '↓ ') + money(Math.abs(d)) + ' vs ' + R.prevName : '', S.cats[c], S.spent, reds[i] || reds[8]); }).join('') : '<p class="empty">No spending recorded.</p>'}</div>
+    <div class="card"><h2 class="wh">Biggest purchases</h2>${big.length ? big.map(x => `<div class="row"><span>${esc(x.name)} · ${new Date(x.date + 'T12:00:00').toLocaleDateString('en-US', M ? { month: 'short', day: 'numeric' } : { weekday: 'short' })}</span><b>${money(x.amount)}</b></div>`).join('') : '<p class="empty">Nothing yet.</p>'}</div>
+    <div class="card"><h2 class="wh">vs ${R.prevName}</h2><div class="g2"><div class="mini"><small>Paid yourself</small><b>${wkPct(S.pay, P.pay)}</b></div><div class="mini"><small>Spending</small><b>${wkPct(S.spent, P.spent)}</b></div></div></div>` + foot;
+    return;
+  }
+
+  // ---------- Business ----------
+  if (!CASH || !CPLAN) { el.innerHTML = seg + '<div class="card"><p class="empty">Loading...</p></div>'; if (!renderWeekly.busy) { renderWeekly.busy = 1; loadCash().then(() => { renderWeekly.busy = 0; renderWeekly(); }); } return; }
+  if (!PAY && !renderWeekly.pay) { renderWeekly.pay = 1; Promise.resolve(loadPayroll()).then(() => renderWeekly()); }
+  if (!TX && !renderWeekly.tx) { renderWeekly.tx = 1; loadTx().then(() => renderWeekly()); }
+  const snaps = CASH.snaps.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const at = d => { const k = ymd(d); let s = null; snaps.forEach(x => { if (x.date <= k) s = x; }); return s; };
+  const cashOf = s => { if (!s) return null; const B = bizCash(s); return B.cash + B.stripe; };
+  const flows = (f, t) => {
+    const inR = d => d && d >= f && d <= t;
+    const sales = RAW.sales.filter(x => inR(x.date)), salesAmt = sales.reduce((a, x) => a + x.rev, 0), cats = {};
+    (RAW.expenses || []).filter(x => inR(x.date)).forEach(x => { const c = /owner/i.test(x.cat) ? "Owner's pay" : /payroll/i.test(x.cat) ? 'Payroll' : /rent|util/i.test(x.cat) ? 'Rent + utilities' : /advert/i.test(x.cat) ? 'Ads' : 'Everything else'; cats[c] = (cats[c] || 0) + x.amt; });
+    const inv = RAW.loads.filter(l => inR(l.arrived)).reduce((a, l) => a + (l.landed || 0), 0) + RAW.purchases.filter(p => inR(p.date)).reduce((a, p) => a + (p.cost || 0), 0);
+    if (inv) cats['Inventory'] = inv;
+    if (!cats["Owner's pay"] && TX && TX.ppl) { const a = ymd(f), b = ymd(t), op = TX.ppl.filter(x => x.cat === 'ownerPay' && x.date >= a && x.date <= b).reduce((s, x) => s - (Number(x.amount) || 0), 0); if (op > 0) cats["Owner's pay"] = op; }
+    return { sales, salesAmt, cats, outAmt: Object.values(cats).reduce((a, v) => a + v, 0) };
+  };
+  const F = flows(R.from, R.to), PF = flows(R.pFrom, R.pTo), { sales, salesAmt, cats, outAmt } = F;
+  const s0 = at(R.from), s1 = at(R.next) || snaps[snaps.length - 1], start = cashOf(s0), end = cashOf(s1);
+  const order = ['Inventory', 'Payroll', 'Rent + utilities', 'Ads', "Owner's pay", 'Everything else'].filter(k => cats[k]);
+  const pctS = v => salesAmt ? Math.round(v / salesAmt * 100) + '% of sales' : '';
+  const chg = start != null && end != null ? end - start : null;
+  const last = snaps[snaps.length - 1] || {}, O = cashOutlook(last), wkEnd = addDays(day0(new Date()), 7);
+  const ev = O.ev.filter(e => e.d <= wkEnd);
+  let low = { v: O.B.cash, d: day0(new Date()) }; ev.forEach(e => { if (e.run < low.v) low = { v: e.run, d: e.d }; });
+  const good = (chg == null || chg >= 0) && O.power >= CPLAN.loadCost, ok = O.power >= 0;
+  const verdict = good ? ['#e3efe6', 'var(--green)', '✅ Healthy ' + R.unit + '. Cash ' + (chg == null ? 'is steady' : chg >= 0 ? 'grew' : 'dipped') + ' and you can afford the next load.']
+    : ok ? ['#fdf3e1', '#b7791f', '⚠️ Okay, but tight. Watch spending before buying the next load.'] : ['#fbe9e7', 'var(--bad)', '🚨 Cash is short of what you owe. Hold off on new inventory.'];
+  const k = v => '$' + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toFixed(1) + 'k' : Math.round(Math.abs(v)));
+  const vals = [start || 0, salesAmt, outAmt, end || 0], mx = Math.max(start || 0, (start || 0) + salesAmt, end || 0, 1), H = 120, y = v => 10 + H - v / mx * H, h = v => v / mx * H;
+  const top1 = (start || 0) + salesAmt, wf = `<svg viewBox="0 -12 360 177" width="100%"><g font-size="11" fill="#7a6c64">
+    <rect x="10" y="${y(vals[0])}" width="64" height="${h(vals[0])}" rx="6" fill="#d9cfc7"/><text x="42" y="${y(vals[0]) - 6}" text-anchor="middle" fill="#2b1d16" font-weight="700">${k(vals[0])}</text><text x="42" y="158" text-anchor="middle">Start</text>
+    <rect x="98" y="${y(top1)}" width="64" height="${Math.max(2, h(salesAmt))}" rx="6" fill="#2e7d4f"/><text x="130" y="${y(top1) + h(salesAmt) + 14}" text-anchor="middle" fill="#2e7d4f" font-weight="700">+${k(salesAmt)}</text><text x="130" y="158" text-anchor="middle">Money in</text>
+    <rect x="186" y="${y(top1)}" width="64" height="${Math.max(2, h(outAmt))}" rx="6" fill="#b0524c"/><text x="218" y="${y(top1) + h(outAmt) + 14}" text-anchor="middle" fill="#b0524c" font-weight="700">−${k(outAmt)}</text><text x="218" y="158" text-anchor="middle">Money out</text>
+    <rect x="274" y="${y(vals[3])}" width="64" height="${h(vals[3])}" rx="6" fill="#2b1d16"/><text x="306" y="${y(vals[3]) - 6}" text-anchor="middle" fill="#2b1d16" font-weight="700">${k(vals[3])}</text><text x="306" y="158" text-anchor="middle">End</text></g></svg>`;
+  const other = start != null && end != null ? end - start - salesAmt + outAmt : 0;
+  const ends = [5, 4, 3, 2, 1, 0].map(i => M ? new Date(R.next.getFullYear(), R.next.getMonth() - i, 1) : addDays(R.next, -7 * i));
+  const wks = ends.map(m => ({ m, v: cashOf(at(m)) })), wmx = Math.max(1, ...wks.map(w => w.v || 0));
+  const up = wks.slice(1).filter((w, i) => w.v != null && wks[i].v != null && w.v >= wks[i].v).length;
+  const trend = `<svg viewBox="0 0 360 100" width="100%"><g font-size="10" fill="#7a6c64">${wks.map((w, i) => { const hh = (w.v || 0) / wmx * 70, x = 14 + i * 58; return `<rect x="${x}" y="${88 - hh}" width="38" height="${hh}" rx="5" fill="${i === 5 ? '#2b1d16' : '#d9cfc7'}"/>${i === 5 ? `<text x="${x + 19}" y="${82 - hh}" text-anchor="middle" fill="#2b1d16" font-weight="700">${k(w.v || 0)}</text>` : ''}`; }).join('')}</g></svg>`;
+  const inStockCost = RAW.loads.reduce((a, l) => a + l.units.filter(u => u.status !== 'sold').reduce((b, u) => b + (u.cost || 0), 0), 0) + RAW.purchases.filter(p => p.status !== 'sold').reduce((a, p) => a + (p.cost || 0), 0);
+  const tax = Number(last.taxReserve7229) || 0;
+  el.innerHTML = seg + `
+    <div class="card"><h2 class="wh">${M ? 'Business cash end of month' : 'Business cash right now'}</h2><div><span class="big">${money((M ? end : cashOf(last)) || 0)}</span>${chg != null ? `<span class="chg" style="color:${chg >= 0 ? 'var(--green)' : 'var(--bad)'};background:${chg >= 0 ? '#e3efe6' : '#fbe9e7'}">${chg >= 0 ? '▲' : '▼'} ${money(Math.abs(chg))}</span>` : ''}</div>
+      <div style="color:var(--muted);font-size:14px">${start != null ? 'vs ' + money(start) + ' at the start of the ' + R.unit + ' · ' : ''}checking + Stripe + safe</div>
+      <div class="verdict" style="background:${verdict[0]};color:${verdict[1]}">${verdict[2]}</div></div>
+    <div class="card"><h2 class="wh">Where the money went</h2>${wf}${Math.abs(other) >= 50 ? `<div style="color:var(--muted);font-size:12.5px">Includes ${other >= 0 ? '+' : '−'}${money(Math.abs(other))} from timing, sales tax and transfers.</div>` : ''}</div>
+    <div class="card"><h2 class="wh">Money in · ${money(salesAmt)}</h2>${bar('Couch sales', '', salesAmt, salesAmt, '#2e7d4f')}<div style="color:var(--muted);font-size:14px">${sales.length} sale${sales.length === 1 ? '' : 's'}${sales.length ? ' · avg ' + money(salesAmt / sales.length) : ''}</div></div>
+    <div class="card"><h2 class="wh">Money out · ${money(outAmt)}</h2>${order.length ? order.map((c, i) => bar(c, c === 'Payroll' || c === 'Ads' ? pctS(cats[c]) : '', cats[c], outAmt, reds[i])).join('') : '<p class="empty">Nothing recorded.</p>'}</div>
+    <div class="card"><h2 class="wh">vs ${R.prevName}</h2><div class="g2"><div class="mini"><small>Sales</small><b>${wkPct(salesAmt, PF.salesAmt)}</b></div><div class="mini"><small>Spending</small><b>${wkPct(outAmt, PF.outAmt)}</b></div></div></div>
+    ${M ? '' : `<div class="card"><h2 class="wh">This week · what's coming</h2>${ev.length ? ev.map(e => `<div class="row"><span>${esc(e.label)}<div style="font-size:12px;color:var(--muted)">${e.d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div></span><b style="color:${e.amt >= 0 ? 'var(--green)' : 'var(--bad)'}">${e.amt >= 0 ? '+' : '−'}${money(Math.abs(e.amt))}</b></div>`).join('') : '<p class="empty">Nothing due this week.</p>'}
+      <div style="margin-top:10px;font-weight:700;color:${low.v < 0 ? 'var(--bad)' : '#b7791f'}">Lowest point: ${money(low.v)} on ${low.d.toLocaleDateString('en-US', { weekday: 'short' })}</div></div>`}
+    <div class="card"><h2 class="wh">Health check</h2><div class="g2">
+      <div class="mini"><small>Buying power</small><b>${money(O.power)}</b><em style="color:${O.power >= CPLAN.loadCost ? 'var(--green)' : O.power >= 0 ? '#b7791f' : 'var(--bad)'}">${O.power >= CPLAN.loadCost ? '✓ covers next load' : O.power >= 0 ? 'short of a full load' : 'below zero'}</em></div>
+      <div class="mini"><small>Business card balances</small><b>${money(O.B.cards)}</b><em style="color:${O.B.cards < 2000 ? 'var(--green)' : '#b7791f'}">${O.B.cards < 2000 ? '✓ low' : 'pay down soon'}</em></div>
+      <div class="mini"><small>Sales tax reserve</small><b>${money(tax)}</b><em style="color:var(--muted)">account ··7229</em></div>
+      <div class="mini"><small>Cash in inventory</small><b>${money(inStockCost)}</b><em style="color:var(--muted)">cost of couches on the floor</em></div></div></div>
+    <div class="card"><h2 class="wh">Last 6 ${M ? 'months' : 'weeks'} · ending cash</h2>${trend}<div style="color:var(--muted);font-size:14px">Up ${up} of the last 5 ${M ? 'months' : 'weeks'}.</div></div>` + foot;
+}
 // Utilities: average of the last 3 full months of "Utilities" expenses.
 function utilAuto(){
   if (!RAW) return { avg: 0, n: 0 };
@@ -2011,7 +2137,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
+const TITLES = { weekly: 'Weekly Cash', sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -2165,7 +2291,7 @@ function render(){
   if (!RAW) return;
   syncRangeBar();
   $('monNav').hidden = tab === 'ads' || tab === 'offers' || tab === 'thanks' || tab === 'drops' || tab === 'cuts' || tab === 'ppl' || tab === 'cash' || tab === 'sched' || tab === 'content' || tab === 'fit';
-  ({ fit: renderFit, cuts: renderCuts, sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched })[tab]();
+  ({ fit: renderFit, cuts: renderCuts, sales: renderSales, goals: renderGoals, upsells: renderUpsells, sources: renderSources, showings: renderShowings, openhouse: renderOpenHouse, meta: renderMeta, ads: renderAds, bstock: renderBstock, payroll: renderPayroll, cash: renderCash, ppl: renderPpl, offers: renderOffers, content: renderContent, thanks: renderThanks, drops: renderDrops, sched: renderSched, weekly: renderWeekly })[tab]();
 }
 // ---------- Will It Fit (sizing tool leads + usage) ----------
 let FIT = null, FITF = 'all';
@@ -2221,7 +2347,7 @@ function setTab(t){
   $('title').textContent = TITLES[t];
   syncRangeBar();
   document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
-  try { localStorage.setItem('bcdTab', t); } catch {}
+  if (t !== 'weekly') try { localStorage.setItem('bcdTab', t); } catch {}
   render(); if (typeof newBadges === 'function') newBadges();
 }
 async function load(fresh){
@@ -3286,7 +3412,7 @@ let saved = 'sales';
 const QS = new URLSearchParams(location.search), openId = QS.get('offer');
 if (openId || QS.get('tab') === 'offers') { saved = 'offers'; history.replaceState(null, '', '/'); }
 else if (QS.get('tab') && TITLES[QS.get('tab')]) { saved = QS.get('tab'); history.replaceState(null, '', '/'); }
-setTab(TITLES[saved] ? saved : 'sales');
+if (location.pathname === '/weekly') { document.body.classList.add('solo'); setTab('weekly'); } else setTab(TITLES[saved] && saved !== 'weekly' ? saved : 'sales');
 if (openId) loadOffers().then(() => openOffer(openId));
 load();
 setInterval(() => load(), 5 * 60 * 1000);
