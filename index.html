@@ -275,7 +275,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
   .top h1{width:100%}
   .hide-m{display:none}
 }
-body.solo .side,body.solo .top,body.solo .rangebar{display:none!important}body.solo .main{max-width:460px;margin:0 auto;padding:16px 14px 40px}
+body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .msheet{display:none!important}body.solo .main{max-width:460px;margin:0 auto;padding:16px 14px 40px}
 .wkc .card{margin-bottom:12px}.wkc h2.wh{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
 .wkc .big{font-size:38px;font-weight:800;letter-spacing:-.02em}.wkc .chg{display:inline-block;margin-left:6px;font-weight:700;font-size:14px;border-radius:999px;padding:4px 10px;vertical-align:8px}
 .wkc .verdict{border-radius:14px;padding:12px 14px;font-weight:700;font-size:15px;margin-top:14px}
@@ -284,6 +284,30 @@ body.solo .side,body.solo .top,body.solo .rangebar{display:none!important}body.s
 .wkc .wseg{display:flex;background:#ece4dc;border-radius:999px;padding:4px;margin-bottom:10px}.wkc .wseg button{flex:1;border:0;background:none;padding:9px 0;border-radius:999px;font:inherit;font-size:14px;font-weight:700;color:#7a6c64;cursor:pointer}.wkc .wseg button.on{background:#2b1d16;color:#fff}
 .wkc .wseg2{display:flex;gap:6px;margin-bottom:12px}.wkc .wseg2 button{border:0;font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:#ece4dc;color:#7a6c64;cursor:pointer}.wkc .wseg2 button.on{background:#fff;color:#2b1d16;box-shadow:0 0 0 1px #d9cfc7}
 .wkc .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wkc .mini{background:#faf7f3;border-radius:14px;padding:12px}.wkc .mini small{color:var(--muted);font-size:12px;display:block}.wkc .mini b{font-size:20px;display:block;margin-top:2px}.wkc .mini em{font-style:normal;font-size:12px;font-weight:700}
+.mbar,.msheet{display:none}
+@media (max-width:800px){
+  .side{display:none!important}
+  .main{padding-bottom:calc(96px + env(safe-area-inset-bottom))!important}
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--dark);padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(0,0,0,.18)}
+  .mbar button{flex:1;min-width:0;background:none;border:0;color:#bfae9f;font:inherit;font-size:10.5px;font-weight:700;padding:4px 2px;position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .mbar button i{display:block;font-style:normal;font-size:21px;line-height:1.1;margin-bottom:2px}
+  .mbar button span.l{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbar button.on{color:#fff}.mbar button.pick{outline:2px dashed #e3b5ab;outline-offset:-2px;border-radius:10px}
+  .mbar .obadge{position:absolute;top:-2px;left:50%;margin-left:6px;min-width:16px;line-height:16px;font-size:10px;padding:0 5px}
+  .msheet.on{display:block;position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.38)}
+  .msheet .pane{position:absolute;left:0;right:0;bottom:0;max-height:78vh;overflow-y:auto;background:#fbf8f5;border-radius:22px 22px 0 0;padding:12px 16px calc(92px + env(safe-area-inset-bottom))}
+  .msheet .grab{width:40px;height:5px;background:#d9cfc7;border-radius:9px;margin:0 auto 6px}
+  .msheet h4{font-size:11px;font-weight:800;color:#8a6f5e;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px}
+  .msheet .mg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .msheet .mg button{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 4px;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink);position:relative;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .msheet .mg button i{display:block;font-style:normal;font-size:18px;margin-bottom:3px}
+  .msheet .mg.fav button{background:var(--dark);color:#fff;border-color:var(--dark)}
+  .msheet .mg button.on{box-shadow:0 0 0 2px #b0524c inset}
+  .msheet .mg .obadge{position:absolute;top:4px;right:4px;margin:0}
+  .msheet .tip{text-align:center;font-size:12px;color:#8a6f5e;font-weight:700;margin-top:14px}
+  .msheet .swap{background:#fdf3e1;color:#8a5a12;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .msheet .links{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:16px;font-size:13px}.msheet .links a{color:var(--ink);font-weight:700}
+}
 @media print{.side,.top .btn,.mon,.noprint{display:none!important}.main{padding:0}.card{border:0}}
 </style></head>
 <body>
@@ -317,6 +341,7 @@ body.solo .side,body.solo .top,body.solo .rangebar{display:none!important}body.s
     <div class="foot"><span id="synced">Loading...</span><br><a href="#" id="pushBtn">🔔 Notifications</a> &middot; <a href="/security">Security</a> &middot; <a href="/logout">Log out</a></div>
   </nav>
 
+  <nav class="mbar noprint" id="mbar"></nav><div class="msheet" id="msheet"><div class="pane"></div></div>
   <main class="main">
     <div class="top">
       <h1 id="title">Sales Tracker</h1>
@@ -2360,6 +2385,7 @@ function setTab(t){
   document.querySelectorAll('[data-only]').forEach(b => b.hidden = b.dataset.only !== t);
   if (t !== 'weekly') try { localStorage.setItem('bcdTab', t); } catch {}
   render(); if (typeof newBadges === 'function') newBadges();
+  if (typeof mbarRender === 'function') mbarRender();
 }
 async function load(fresh){
   $('err').style.display = 'none';
@@ -2394,6 +2420,45 @@ $('payBtn').onclick = async () => {
     toast(paid ? 'Marked unpaid' : 'Marked paid and added to Expenses'); await loadPayroll(true); load(true); } catch (e) { toast(e.message); }
 };
 document.querySelectorAll('.nav[data-tab]').forEach(n => n.onclick = () => setTab(n.dataset.tab));
+// ---------- Phone navigation: bottom bar (4 tabs + More) and a More sheet with every other tab ----------
+const MB_ICON = { sales: '\u{1F4B0}', showings: '\u{1F6CB}\u{FE0F}', fit: '\u{1F4CF}', drops: '\u{1F4E6}', content: '\u{1F3AC}', ppl: '\u{1F464}', openhouse: '\u{1F3E0}', cash: '\u{1F4B5}', goals: '\u{1F3AF}', payroll: '\u{1F9FE}', bstock: '\u{1F69A}', cuts: '✂\u{FE0F}', offers: '\u{1F91D}', sched: '\u{1F4C5}', upsells: '➕', sources: '\u{1F4CA}', thanks: '\u{1F48C}', meta: '\u{1F4C8}', ads: '\u{1F5BC}\u{FE0F}' };
+const MB_SHORT = { sales: 'Sales', showings: 'Showings', fit: 'Will It Fit', drops: 'Drops', content: 'Content', ppl: 'Personal', openhouse: 'Open House', cash: 'Buying Power', payroll: 'Payroll', sched: 'Scheduling', offers: 'Offers', cuts: 'Price Cuts', sources: 'Sourcing', thanks: 'Thank Yous', meta: 'Ads', ads: 'Ad Library' };
+const MB_ALL = [...document.querySelectorAll('.side .nav[data-tab]')].map(n => n.dataset.tab);
+let MB = { bar: ['sales', 'showings', 'fit', 'drops'], fav: ['content', 'ppl', 'openhouse'] }, MBSWAP = null;
+try { const s = JSON.parse(localStorage.getItem('bcdMBar') || 'null'); if (s && Array.isArray(s.bar) && s.bar.length === 4 && s.bar.every(t => MB_ALL.includes(t))) MB = { bar: s.bar, fav: (s.fav || []).filter(t => MB_ALL.includes(t) && !s.bar.includes(t)) }; } catch {}
+const mbSave = () => { try { localStorage.setItem('bcdMBar', JSON.stringify(MB)); } catch {} };
+const mbName = t => { const n = document.querySelector(`.side .nav[data-tab="${t}"]`); return n ? n.firstChild.textContent.trim() : t; };
+const mbBadge = t => { const b = document.querySelector(`.side .nav[data-tab="${t}"] .obadge`); return b && !b.hidden && b.textContent.trim() ? `<span class="obadge">${esc(b.textContent.trim())}</span>` : ''; };
+function mbarRender(){
+  const bar = $('mbar'), sh = $('msheet'); if (!bar) return;
+  const inBar = MB.bar.includes(tab), open = sh.classList.contains('on');
+  bar.innerHTML = MB.bar.map((t, i) => `<button data-mb="${t}" data-mbi="${i}" class="${t === tab && !open ? 'on' : ''}${MBSWAP ? ' pick' : ''}"><i>${MB_ICON[t] || '•'}</i><span class="l">${esc(MB_SHORT[t] || mbName(t))}</span>${mbBadge(t)}</button>`).join('')
+    + `<button data-mb="more" class="${open || !inBar ? 'on' : ''}"><i>☰</i><span class="l">${!inBar && !open ? esc(MB_SHORT[tab] || mbName(tab) || 'More') : 'More'}</span>${MB_ALL.filter(t => !MB.bar.includes(t)).some(t => mbBadge(t)) ? '<span class="obadge">•</span>' : ''}</button>`;
+  if (!open) return;
+  const tile = t => `<button data-mbt="${t}" class="${t === tab ? 'on' : ''}"><i>${MB_ICON[t] || '•'}</i>${esc(mbName(t))}${mbBadge(t)}</button>`;
+  const fav = MB.fav.filter(t => !MB.bar.includes(t)), rest = MB_ALL.filter(t => !MB.bar.includes(t) && !fav.includes(t));
+  sh.querySelector('.pane').innerHTML = `<div class="grab"></div>${fav.length ? `<h4>Favorites</h4><div class="mg fav">${fav.map(tile).join('')}</div>` : ''}<h4>Everything else</h4><div class="mg">${rest.map(tile).join('')}</div>`
+    + (MBSWAP ? `<div class="swap"><span>Tap a tab in the bottom bar to swap in ${esc(mbName(MBSWAP))}</span><button class="btn sm" data-mbcancel>Cancel</button></div>` : `<div class="tip">Press and hold any tab to put it in the bottom bar</div>`)
+    + `<div class="links"><a href="/coach">Coaching →</a><a href="#" data-mbpush>\u{1F514} Notifications</a><a href="/security">Security</a><a href="/logout">Log out</a></div>`;
+}
+const mbClose = () => { MBSWAP = null; $('msheet').classList.remove('on'); mbarRender(); };
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-mb],[data-mbt],[data-mbcancel],[data-mbpush]'); if (!b) { if (e.target.id === 'msheet') mbClose(); return; }
+  if (b.dataset.mbpush != null) { e.preventDefault(); const p = $('pushBtn'); if (p) p.click(); return; }
+  if (b.dataset.mbcancel != null) { MBSWAP = null; mbarRender(); return; }
+  if (b.dataset.mbt) { if (mbLong) { mbLong = false; return; } mbClose(); setTab(b.dataset.mbt); window.scrollTo(0, 0); return; }
+  const t = b.dataset.mb;
+  if (t === 'more') { if ($('msheet').classList.contains('on')) mbClose(); else { $('msheet').classList.add('on'); mbarRender(); } return; }
+  if (MBSWAP) { const i = +b.dataset.mbi, out = MB.bar[i]; MB.bar[i] = MBSWAP; MB.fav = [out, ...MB.fav.filter(x => x !== MBSWAP && x !== out)]; mbSave(); const go = MBSWAP; mbClose(); toast(mbName(go) + ' is in your bottom bar'); return; }
+  mbClose(); if (t !== tab) { setTab(t); window.scrollTo(0, 0); }
+});
+let mbTimer = null, mbLong = false;
+document.addEventListener('touchstart', e => { const b = e.target.closest && e.target.closest('[data-mbt]'); if (!b) return; mbLong = false;
+  mbTimer = setTimeout(() => { mbLong = true; MBSWAP = b.dataset.mbt; if (navigator.vibrate) navigator.vibrate(15); mbarRender(); }, 500); }, { passive: true });
+['touchend', 'touchmove', 'touchcancel'].forEach(ev => document.addEventListener(ev, () => clearTimeout(mbTimer), { passive: true }));
+document.addEventListener('contextmenu', e => { const b = e.target.closest && e.target.closest('[data-mbt]'); if (b) { e.preventDefault(); mbLong = true; MBSWAP = b.dataset.mbt; mbarRender(); } });
+// Keep the bar's badges in step with the sidebar's.
+new MutationObserver(() => { clearTimeout(mbarRender.t); mbarRender.t = setTimeout(mbarRender, 50); }).observe(document.querySelector('.side'), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
 document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open), f = m.querySelector('form'); f.reset(); if (f.elements.id) f.elements.id.value = ''; if ($('expTitle')) $('expTitle').textContent = 'Log an expense'; m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
