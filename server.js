@@ -2579,6 +2579,28 @@ async function sheetsBook(q) {
   const j = await (await fetch(u)).json(); if (j.error) throw new Error(j.error); return j;
 }
 const fmtPhone = p => p && p.length === 10 ? `(${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}` : p;
+// ---------- Customer Database tab (Google Sheet) ----------
+// Every scheduled delivery/pickup is added as a row. The order proxy has the Google
+// login, so HQ hands it the rows. Needs SIGN_FEED_KEY in HQ = the proxy's SIGN_FEED_KEY.
+function custRow(o) {
+  const b = o.booking || {}, isDel = o.type === 'delivery';
+  return { at: b.at || o.created || Date.now(), name: o.name, email: b.email || '', phone: fmtPhone(b.phone || o.phone || ''),
+    street: isDel ? b.address || '' : '', city: isDel ? b.city || '' : '', state: isDel ? 'MO' : '', zip: isDel ? b.zip || '' : '',
+    couch: o.couches.map(c => c.title).join(' + ') };
+}
+async function pushCustomers(rows) {
+  if (!rows.length) return;
+  const key = process.env.SIGN_FEED_KEY; if (!key) throw new Error('Set SIGN_FEED_KEY in HQ (same value as the proxy)');
+  const r = await fetch(SCHED_PROXY + '/api/customer', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-sign-key': key }, body: JSON.stringify({ rows }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'proxy ' + r.status);
+}
+// One-time: add everyone who already booked on the new scheduling form.
+setTimeout(async () => {
+  try { if (await kget('bcd:custBackfill', null)) return;
+    const rows = Object.values(await getSched()).filter(o => o.booking && o.booking.date).sort((a, b) => (a.booking.at || 0) - (b.booking.at || 0)).map(custRow);
+    await pushCustomers(rows); await kset('bcd:custBackfill', { at: Date.now(), n: rows.length }); console.log('Customer Database backfill:', rows.length);
+  } catch (e) { console.log('Customer Database backfill waiting:', e.message); }
+}, 20000);
 app.post('/public/sched/:token', async (req, res) => {
   try {
     const m = await getSched(), o = m[String(req.params.token)]; if (!o) return res.status(404).json({ error: 'This link has expired. Text us at (314) 899-7503.' });
@@ -2588,6 +2610,8 @@ app.post('/public/sched/:token', async (req, res) => {
     const isDel = o.type === 'delivery', address = clean(b.address, 120), city = clean(b.city, 60), zip = clean(b.zip, 10).replace(/[^\d]/g, '');
     if (isDel && (!address || !city || zip.length !== 5)) return res.status(400).json({ error: 'Add your full address and ZIP code.' });
     const phone = String(b.phone || o.phone || '').replace(/\D/g, '').slice(-10) || o.phone;
+    const email = clean(b.email, 160).toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
     const offered = schedPublic(o, []).upsells, extrasNew = offered.filter(a => (b.extras || []).includes(a.id));
     const prev = o.booking || {}, w = parseWin(win), start = ctAt(date, w[0]), end = ctAt(date, w[1]);
     const extras = [...(prev.extras || []), ...extrasNew.map(a => a.label)];
@@ -2609,11 +2633,12 @@ app.post('/public/sched/:token', async (req, res) => {
       try { const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: o.name, orderType: [extrasNew.length ? 'Add-ons: ' + extrasNew.map(a => a.label).join(', ') : '', holdFee ? `Holding fee (${holdNew} day${holdNew > 1 ? 's' : ''} x $${HOLD_RATE})` : ''].filter(Boolean).join(' + '), totalCents: Math.round(due * 100), totalDisplay: '$' + due.toFixed(2), redirectUrl: schedLink(o.token) + '?paid=1' }) });
         const d = await r.json(); payUrl = d.url || ''; } catch (e) { console.log('Add-on pay link failed', e.message); }
     }
-    o.booking = { date, win, label: `${day.label} · ${slot.label}`, address, city, zip, room, notes, phone, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
+    o.booking = { date, win, label: `${day.label} · ${slot.label}`, address, city, zip, room, notes, phone, email, extras, eventId: j.eventId || prev.eventId || '', at: Date.now(), moved: !!prev.date, photoAttached: !!j.attached };
     if (extrasNew.length || holdFee) o.extraDue = (o.extraDue || 0) + due;
     if (holdFee) o.holdPaidDays = holdDays;
     m[o.token] = o; await setSched(m);
     cache.at = 0;   // so the next HQ load re-reads the calendar
+    if (!prev.date) pushCustomers([custRow(o)]).catch(e => console.log('Customer Database add failed', e.message));
     textAlert(`${prev.date ? 'RESCHEDULED' : 'BOOKED'}: ${holdDays ? '[HOLD ' + holdDays + 'd = $' + holdDays * HOLD_RATE + '] ' : ''}${isDel ? 'Delivery' : 'Pickup'} ${o.booking.label}\n${o.name} ${fmtPhone(phone)}\n${couch}${allAdds.length ? '\nAdd-ons: ' + allAdds.join(', ') : ''}${extrasNew.length ? `\nNEW ADD-ONS: ${extrasNew.map(a => a.label).join(', ')} ($${due.toFixed(2)} link sent)` : ''}${isDel ? '\n' + address + ', ' + city : ''}`).catch(() => {});
     res.json({ ok: true, payUrl, due, ...schedPublic(o, []) });
   } catch (e) { console.log('Schedule failed', e.message); res.status(500).json({ error: 'Could not book that time. Please text us at (314) 899-7503.' }); }
