@@ -1088,7 +1088,7 @@ async function plaidBalances(force, live) {
       banks.push({ item_id: it.item_id, institution: it.institution, accounts });
     } catch (e) { banks.push({ item_id: it.item_id, institution: it.institution, error: e.message, relink: /ITEM_LOGIN_REQUIRED|PENDING_EXPIRATION/.test(e.message) }); }
   }
-  const asOfs = banks.flatMap(b => (b.accounts || []).filter(a => a.field && a.asOf).map(a => a.asOf)).sort();
+  const asOfs = banks.flatMap(b => (b.accounts || []).filter(a => /^(checking9926|taxReserve7229|ink1602|ink2078|amex91000)$/.test(a.field) && a.asOf).map(a => a.asOf)).sort();
   plaidCache = { at: Date.now(), data: { banks, fields, oldestAsOf: asOfs[0] || null, at: new Date().toISOString(), live: !!live && !liveNote, liveNote, configured: !!(PLAID.ID && PLAID.SECRET), env: PLAID.ENV } };
   return plaidCache.data;
 }
