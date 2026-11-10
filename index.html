@@ -425,6 +425,7 @@ html:has(.mask.on),body:has(.mask.on),html.cf-on,html.cf-on body{overflow:hidden
         <div class="card"><h2>Sales source <small>how buyers found you</small></h2><div class="piewrap"><canvas id="pieSrc"></canvas></div><div style="overflow-x:auto;margin-top:12px"><table id="tblSrc"></table></div></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="srcTrend"></table></div></div>
+      <div class="card" style="margin-top:16px"><h2>Why customers chose us <small id="whyN">from the scheduling form</small></h2><div id="whyBody"><p class="empty">Loading...</p></div></div>
     </section>
 
     <!-- GOALS -->
@@ -1571,6 +1572,15 @@ function invSources(R){
   RAW.hSales.forEach(x => { if (x.rev > 0 && x.invSrc && inR(x.date, R) && isHistDay(x.date)) out[x.invSrc] = (out[x.invSrc] || 0) + x.rev; });
   return Object.entries(out).sort((a, b) => b[1] - a[1]);
 }
+// "Why did you choose Billy's Couches?" answers from the delivery/pickup scheduling form.
+async function renderWhy(){
+  const el = $('whyBody'); if (!el) return;
+  if (!SC) { try { SC = await (await fetch('/api/sched', { cache: 'no-store' })).json(); } catch (e) { el.innerHTML = '<p class="empty">Could not load answers.</p>'; return; } }
+  const rows = (SC.list || []).filter(o => o.booking && (o.booking.why || '').trim()).sort((a, b) => (b.booking.at || 0) - (a.booking.at || 0));
+  $('whyN').textContent = rows.length ? rows.length + ' answer' + (rows.length === 1 ? '' : 's') : 'from the scheduling form';
+  el.innerHTML = rows.length ? rows.map(o => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="font-size:15px">&ldquo;${esc(o.booking.why)}&rdquo;</div><small style="color:var(--muted)">${esc(o.name)} · ${esc(o.couch)} · ${new Date(o.booking.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</small></div>`).join('')
+    : '<p class="empty">No answers yet. Customers are asked when they book their delivery or pick up.</p>';
+}
 function renderSources(){
   const R = getR('sources'), live = RAW.sales.filter(x => inR(x.date, R)), hist = RAW.hSales.some(x => inR(x.date, R) && isHistDay(x.date) && x.rev > 0);
   $('srcNote').hidden = !hist;
@@ -1596,6 +1606,7 @@ function renderSources(){
       const L = RAW.sales.filter(x => inR(x.date, MR)), rev = L.reduce((a, x) => a + x.rev, 0), top = groupSum(L, 'source', 'rev')[0];
       const meta = L.filter(x => x.source === 'Meta Ads').reduce((a, x) => a + x.rev, 0), iv = invSources(MR), ivT = iv.reduce((a, p) => a + p[1], 0), bs = (iv.find(p => p[0] === 'Bstock') || [0, 0])[1];
       return `<tr><td>${MON[t.m]} ${t.y}</td><td class="n">${L.length || '–'}</td><td class="n">${L.length ? pct(L.filter(x => x.type === 'Delivery').length / L.length) : '–'}</td><td class="n">${L.length ? money(L.reduce((a, x) => a + (x.type === 'Delivery' ? x.del || 0 : 0), 0)) : '–'}</td><td class="n hide-m">${top ? esc(top[0]) : '–'}</td><td class="n">${rev ? pct(meta / rev) : '–'}</td><td class="n">${ivT ? pct(bs / ivT) : '–'}</td></tr>`; }).join('');
+  renderWhy();
 }
 
 // ---------- open houses ----------
