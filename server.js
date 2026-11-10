@@ -2389,7 +2389,7 @@ app.get('/public/orderable', async (req, res) => {
   dropCors(res);
   try {
     const list = (await getDrops()).filter(d => d.status === 'live' || d.status === 'emailed');
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '' })) });
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, retail: d.retail || 0, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '' })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Private order app (team checkout): marks the couches it just sold as Sold in Drops, so they leave the
