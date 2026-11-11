@@ -75,7 +75,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     <div class="hint" id="tip">Drag any piece. It snaps to the walls. Tap a piece, then Rotate.</div>
     <button class="btn red" id="arrSave" type="button" hidden style="margin-top:12px">Save shape</button>
     <button class="btn dark" id="save" type="button">⤓ Save picture of my room</button>
-    <div class="cta"><a class="btn red" id="buy" href="https://order.billyscouches.com" target="_blank" rel="noopener">Buy it</a><a class="btn o" href="https://www.billyscouches.com/visitshowroom" target="_blank" rel="noopener">Sit on it</a></div>
+    <div class="cta"><a class="btn red" id="buy" href="https://order.billyscouches.com" target="_blank" rel="noopener">Buy it</a><a class="btn o" id="sit" href="https://www.billyscouches.com/visitshowroom" target="_blank" rel="noopener">Sit on it</a></div>
     <div class="soon-note" id="bnNote" hidden></div>
     <div class="pcs" id="pcs"></div>
   </div>
@@ -433,6 +433,8 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
       if (bnId) { $('buy').innerHTML = 'Reserve for $100<small>' + money(c.price) + ' total</small>'; $('bnNote').innerHTML = '<b>Coming soon. Not in stock yet.</b> Arriving Dec 1. Hold yours with a $100 deposit, and the rest (' + money(c.price - 100) + ' plus tax) is due when it lands.'; }
       else $('buy').textContent = 'Buy · ' + money(c.price);
       $('bnNote').hidden = !bnId;
+      // Not in the warehouse yet, so nothing to sit on: text Billy instead.
+      $('sit').textContent = bnId ? 'Text Billy' : 'Sit on it'; $('sit').href = bnId ? 'sms:+13148997503' : 'https://www.billyscouches.com/visitshowroom'; $('sit').target = bnId ? '_top' : '_blank';
       $('buy').href = bnId ? 'https://hq.billyscouches.com/brand-new?p=' + bnId : 'https://order.billyscouches.com';
       var ps = c.pieces || [], hidden = S.items.filter(function(i){ return i.kind === 'couch' && i.h; });
       $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"') + (p.ch ? ', chaise ' + Math.round(p.ch) + '"' : '') + (p.side === 'rev' ? ' (reversible)' : p.side === 'L' ? ' (left side)' : p.side === 'R' ? ' (right side)' : ''); }).join(', ') +
