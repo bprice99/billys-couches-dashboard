@@ -289,7 +289,9 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     $('tDel').textContent = it && it.kind === 'couch' ? 'Hide ' + it.name.toLowerCase() : 'Remove';
     if (B.bad === 0 && S.modular && !S.locked && R.real && c) { st.className = 'status'; st.textContent = '✓ Pieces unlocked: drag any piece'; }
     if (c) {
-      $('buy').textContent = 'Buy · ' + money(c.price);
+      var bnId = /^bn-/.test(c.id) ? c.id.slice(3) : '';
+      $('buy').textContent = (bnId ? 'Reserve · ' : 'Buy · ') + money(c.price);
+      $('buy').href = bnId ? 'https://hq.billyscouches.com/brand-new?p=' + bnId : 'https://order.billyscouches.com';
       var ps = c.pieces || [], hidden = S.items.filter(function(i){ return i.kind === 'couch' && i.h; });
       $('pcs').innerHTML = esc(c.title) + ': ' + ps.map(function(p){ return ((p.qty || 1) > 1 ? p.qty + ' × ' : '') + esc(p.name) + ' ' + Math.round(p.w) + '"' + (p.ret ? ' × ' + Math.round(p.ret) + '"' : ' × ' + Math.round(p.d) + '"') + (p.ch ? ', chaise ' + Math.round(p.ch) + '"' : '') + (p.side === 'rev' ? ' (reversible)' : p.side === 'L' ? ' (left side)' : p.side === 'R' ? ' (right side)' : ''); }).join(', ') +
         (hidden.length ? ' · <a href="#" id="showAll" style="color:var(--red)">Show hidden pieces</a>' : '');
