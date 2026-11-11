@@ -3494,5 +3494,15 @@ if (location.pathname === '/weekly') { document.body.classList.add('solo'); setT
 if (openId) loadOffers().then(() => openOffer(openId));
 load();
 setInterval(() => load(), 5 * 60 * 1000);
+// iPhone: after the keyboard closes or you come back from Messages, Safari can leave the bottom bar
+// stuck halfway up the screen. Nudge it so it re-pins to the bottom.
+(function(){
+  const fix = () => { const b = document.querySelector('.mbar'); if (!b) return; b.style.display = 'none'; void b.offsetHeight; b.style.display = ''; window.scrollTo(window.scrollX, window.scrollY); };
+  const later = () => { setTimeout(fix, 60); setTimeout(fix, 400); };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) later(); });
+  window.addEventListener('pageshow', later); window.addEventListener('focus', later); window.addEventListener('orientationchange', later);
+  document.addEventListener('focusout', later);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
+})();
 </script>
 </body></html>
