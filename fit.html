@@ -38,6 +38,9 @@ h1{font-size:clamp(26px,5vw,38px);margin:4px 0 14px;line-height:1.08}
 .tools button{flex:1 1 auto;border:1.5px solid #d9cdc4;background:#fff;border-radius:10px;padding:10px 8px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap}
 .tools button:disabled{opacity:.4}
 .tools button.sel{border-color:var(--red)}
+.setups{margin:0 0 10px}.setups b{display:block;font-size:13px;margin:0 0 6px}.setups div{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;-webkit-overflow-scrolling:touch}
+.setups button{flex:none;width:92px;border:2px solid var(--line);background:#fff;border-radius:12px;padding:6px 6px 5px;font:inherit;font-size:11.5px;font-weight:600;color:var(--ink);cursor:pointer;text-align:center}
+.setups button.on{border-color:var(--red);background:#fdf5f3}.setups svg{display:block;width:100%;height:52px;margin-bottom:3px}
 #tLock.on{background:var(--ink);color:#fff;border-color:var(--ink)}#tLock.off{background:#fff4ef;color:var(--red);border-color:var(--red)}
 body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.arr #save,body.arr .cta,body.arr #tTv,body.arr #tDoor,body.arr #status,body.arr .dims{display:none!important}body.arr .g{grid-template-columns:minmax(0,1fr)}
 .btn{display:block;text-align:center;border-radius:12px;padding:14px;font-weight:700;text-decoration:none;font-size:15px;border:0;font-family:inherit;cursor:pointer;width:100%}
@@ -60,6 +63,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   </div>
   <div class="card">
     <div class="status idle" id="status">Type your room size to start.</div>
+    <div class="setups" id="setups" hidden><b>Pick a setup</b><div id="setupList"></div></div>
     <svg id="plan" viewBox="0 0 168 144"></svg>
     <div class="dims"><span id="dimW"></span><span id="dimD"></span></div>
     <div class="tools">
@@ -110,7 +114,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   function rot(p, r, bw, bh){ return r === 90 ? [bh - p[1], p[0]] : r === 180 ? [bw - p[0], bh - p[1]] : r === 270 ? [p[1], bw - p[0]] : p; }
   function box(it){ var L = local(it), sw = it.r % 180 ? 1 : 0; return { w: sw ? L.bh : L.bw, h: sw ? L.bw : L.bh }; }
   function shape(it){ var L = local(it); return L.pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
-  function backStrip(it, side){ var L = local(it), b = Math.min(9, it.d * 0.25), pts = side ? [[0,0],[b,0],[b,L.bh],[0,L.bh]] : [[0,0],[L.bw,0],[L.bw,b],[0,b]]; return pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
+  function backStrip(it, side){ var L = local(it), b = Math.min(9, it.d * 0.25), pts = side === 2 ? [[L.bw - b,0],[L.bw,0],[L.bw,L.bh],[L.bw - b,L.bh]] : side ? [[0,0],[b,0],[b,L.bh],[0,L.bh]] : [[0,0],[L.bw,0],[L.bw,b],[0,b]]; return pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
   function clamp(it, R){ var b = box(it);
     it.x = Math.max(0, Math.min(R.W - b.w, it.x)); it.y = Math.max(0, Math.min(R.D - b.h, it.y));
     if (it.x < SNAP) it.x = 0; if (R.W - b.w - it.x < SNAP) it.x = Math.max(0, R.W - b.w);
@@ -133,7 +137,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   function autoLayout(R){
     var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
     if (S.modular) { cs.forEach(function(it){ it.x = 0; it.y = 0; }); if (applyShape(R)) { var G0 = gbox(grp()); shiftGroup(-G0.x, -G0.y, R); return; } }
-    if (S.modular) { buildSectional(R); return; }
+    if (S.modular) { S.setups = setupList(); if (S.setups.length) { var di = 0; S.setups.forEach(function(p, i){ if (p.name === 'Corner left' && !di) di = i; }); useSetup(di, R); S.locked = !ARR; return; } buildSectional(R); return; }
     // 3+ pieces with no saved shape: line them up flush along the back wall, wrap down the side wall, ottomans in front.
     if (cs.length > 2) {
       var all = cs.filter(function(i){ return !/ottoman/i.test(i.name); }), cor = all.filter(function(i){ return /corner/i.test(i.name); }), mid = all.filter(function(i){ return !/corner/i.test(i.name); });
@@ -176,7 +180,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     var G = gbox(grp()); grp().forEach(function(it){ it.x += at.x - G.x; it.y += at.y - G.y; });
     shiftGroup(0, 0, R); return true;
   }
-  function snapPieces(it){
+  function snapPieces(it, live){
     var b = box(it);
     // Magnet: find the closest edge to line up with (next to a piece, or lined up with its side) and jump to it.
     var bx = null, by = null;
@@ -186,6 +190,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
       if (hOver) [o.y + ob.h, o.y - b.h, o.y, o.y + ob.h - b.h].forEach(function(t){ var d = t - it.y; if (Math.abs(d) < MAG && (by === null || Math.abs(d) < Math.abs(by))) by = d; });
     });
     if (bx !== null) it.x += bx; if (by !== null) it.y += by;
+    if (live) return;
     // Never let a piece sit on top of another: push it out the short way, flush against it.
     for (var pass = 0; pass < 6; pass++) grp().forEach(function(o){ if (o === it || !overlap(it, o)) return; var ob = box(o);
       var L = it.x + b.w - o.x, Rr = o.x + ob.w - it.x, T = it.y + b.h - o.y, Bm = o.y + ob.h - it.y, m = Math.min(L, Rr, T, Bm);
@@ -257,6 +262,66 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     var gh = { kind: 'couch', name: it.name, w: it.w, d: it.d, x: start.x, y: start.y, r: start.r };
     if (!overlap(it, gh)) { closeGap(it, start); clamp(it, R); snapPieces(it); clamp(it, R); }
   }
+  // ---------- ready-made setups: every sensible way to put this sectional together ----------
+  // Arm pieces: 'L' = arm on the left as you face it, 'R' = arm on the right.
+  function armSide(it){ if (it.kind !== 'couch' || it.ret || it.ch || isCorner(it) || /ottoman|armless/i.test(it.name)) return ''; if (it.side === 'L' || /\bleft\b|\blaf\b/i.test(it.name)) return 'L'; if (it.side === 'R' || /\bright\b|\braf\b/i.test(it.name)) return 'R'; return /\barm\b/i.test(it.name) ? '?' : ''; }
+  function setupList(){
+    var cs = S.items.filter(function(i){ return i.kind === 'couch'; });
+    if (!S.modular || cs.some(function(i){ return i.ret || i.ch; })) return [];
+    var cor = cs.filter(isCorner), otts = cs.filter(function(i){ return /ottoman/i.test(i.name); });
+    var arms = cs.filter(function(i){ return armSide(i); }), mids = cs.filter(function(i){ return cor.indexOf(i) < 0 && otts.indexOf(i) < 0 && arms.indexOf(i) < 0; });
+    if (cor.length > 2 || arms.length > 2) return [];
+    var la = arms.filter(function(a){ return armSide(a) === 'L'; })[0], ra = arms.filter(function(a){ return armSide(a) === 'R'; })[0];
+    arms.forEach(function(a){ if (a !== la && a !== ra) { if (!la) la = a; else if (!ra) ra = a; } });
+    var L = la ? [la] : [], Rr = ra ? [ra] : [], out = [], n = mids.length;
+    if (cor.length === 0) out.push({ name: 'Sofa', back: L.concat(mids, Rr), left: [], right: [], at: 'mid', otts: otts });
+    if (cor.length === 1) for (var side = 0; side < 2; side++) for (var k = n; k >= 0; k--) {
+      // Corner in the back-left: back row runs right and ends in the right-arm piece; the left run ends in the left-arm piece. Mirror for back-right.
+      var bk = mids.slice(0, k), sd = mids.slice(k);
+      out.push(side === 0 ? { name: 'Corner left', back: [cor[0]].concat(bk, Rr), left: sd.concat(L), right: [], at: 'left', otts: otts, cr: [0] }
+                          : { name: 'Corner right', back: L.concat(bk, [cor[0]]), left: [], right: sd.concat(Rr), at: 'right', otts: otts, cr: [90] });
+    }
+    if (cor.length === 2) for (var l = 0; l <= n; l++) for (var r = 0; l + r <= n; r++) out.push({ name: 'U', back: [cor[0]].concat(mids.slice(l, n - r), [cor[1]]), left: mids.slice(0, l).concat(L), right: mids.slice(n - r).concat(Rr), at: 'mid', otts: otts, cr: [0, 90] });
+    out.forEach(function(p){ var bl = p.back.length, sl = p.left.length + p.right.length; if (cor.length === 1) p.name = (p.at === 'left' ? 'Corner left' : 'Corner right') + (sl > bl - 1 ? ' · long side' : sl === bl - 1 ? '' : ' · long back'); });
+    return out.slice(0, 10);
+  }
+  // Lay a setup out from (0,0). Works on the real pieces.
+  function placeSetup(p){
+    var cs = S.items.filter(function(i){ return i.kind === 'couch'; }); cs.forEach(function(i){ i.h = false; });
+    var x = 0, deep = 0;
+    p.back.forEach(function(it){ it.r = isCorner(it) ? (p.back.indexOf(it) === 0 ? 0 : 90) : 0; var b = box(it); it.x = x; it.y = 0; x += b.w; deep = Math.max(deep, b.h); });
+    var y = p.back.length ? box(p.back[0]).h : 0;
+    p.left.forEach(function(it){ it.r = 270; var b = box(it); it.x = 0; it.y = y; y += b.h; });
+    var last = p.back[p.back.length - 1], yr = last ? box(last).h : 0;
+    p.right.forEach(function(it){ it.r = 90; var b = box(it); it.x = x - b.w; it.y = yr; yr += b.h; });
+    p.otts.forEach(function(it, i){ it.r = 0; var b = box(it);
+      if (p.at === 'left' && p.back[0]) { var c = box(p.back[0]); it.x = c.w + i * b.w; it.y = c.h; }
+      else if (p.at === 'right' && last) { var c2 = box(last); it.x = x - c2.w - b.w * (i + 1); it.y = c2.h; }
+      else { it.x = Math.max(0, (x - b.w) / 2 + i * b.w); it.y = deep + 12; } });
+  }
+  function useSetup(i, R){
+    var p = S.setups[i]; if (!p) return; placeSetup(p);
+    var G = gbox(grp()); grp().forEach(function(it){ it.x -= G.x; it.y -= G.y; }); G = gbox(grp());
+    shiftGroup(p.at === 'right' ? R.W - G.w : p.at === 'mid' ? Math.max(0, (R.W - G.w) / 2) : 0, 0, R);
+    S.preset = i; S.locked = !ARR; S.sel = -1;
+  }
+  // Little picture of each setup for the picker.
+  function setupThumb(p){
+    var keep = S.items.filter(function(i){ return i.kind === 'couch'; }).map(function(i){ return { i: i, x: i.x, y: i.y, r: i.r, h: i.h }; });
+    placeSetup(p); var cs = S.items.filter(function(i){ return i.kind === 'couch'; }), G = gbox(cs), pad = 4, s = '';
+    cs.forEach(function(it){ s += '<path d="' + pathOf(shape(it)) + '" fill="' + (/ottoman/i.test(it.name) ? '#d8c6b6' : '#b48f74') + '" stroke="#6e5240" stroke-width="1.2"/>';
+      if (!/ottoman/i.test(it.name)) s += '<path d="' + pathOf(backStrip(it)) + '" fill="#8c6a55"/>';
+      if (isCorner(it) || armSide(it) === 'L') s += '<path d="' + pathOf(backStrip(it, 1)) + '" fill="#8c6a55"/>'; if (armSide(it) === 'R') s += '<path d="' + pathOf(backStrip(it, 2)) + '" fill="#8c6a55"/>'; });
+    keep.forEach(function(k){ k.i.x = k.x; k.i.y = k.y; k.i.r = k.r; k.i.h = k.h; });
+    return '<svg viewBox="' + (G.x - pad) + ' ' + (G.y - pad) + ' ' + (G.w + pad * 2) + ' ' + (G.h + pad * 2) + '" preserveAspectRatio="xMidYMid meet">' + s + '</svg>';
+  }
+  function renderSetups(){
+    S.setups = setupList(); var box0 = $('setups');
+    if (S.setups.length < 2) { box0.hidden = true; return; }
+    box0.hidden = false;
+    $('setupList').innerHTML = S.setups.map(function(p, i){ return '<button type="button" data-su="' + i + '"' + (i === S.preset ? ' class="on"' : '') + '>' + setupThumb(p) + esc(p.name) + '</button>'; }).join('');
+  }
+  $('setupList').addEventListener('click', function(e){ var b = e.target.closest('[data-su]'); if (!b) return; useSetup(+b.getAttribute('data-su'), room()); renderSetups(); draw(); save(); });
   // A modular sectional with no saved shape: build the usual setup from its pieces.
   // 2+ corners = U (corner, middles, corner across the back, extra middles down the left side, ottoman in front of the right corner).
   // 1 corner = L (corner in the back-left, half the pieces across the back, half down the side, ottoman inside the L).
@@ -316,7 +381,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
         return;
       }
       var stroke = bad[i] ? '#b0524c' : sel ? '#b0524c' : '#6e5240';
-      out.push('<g data-i="' + i + '" style="cursor:grab"><path d="' + pathOf(shape(it)) + '" fill="' + (bad[i] ? '#c99a8a' : '#b48f74') + '" stroke="' + stroke + '" stroke-width="' + sw * (sel || bad[i] ? 2.4 : 1.2) + '"/>' + (/ottoman/i.test(it.name) ? '' : '<path d="' + pathOf(backStrip(it)) + '" fill="#9a7660"/>' + (isCorner(it) && !it.ret && !it.ch ? '<path d="' + pathOf(backStrip(it, 1)) + '" fill="#9a7660"/>' : '')) + '');
+      out.push('<g data-i="' + i + '" style="cursor:grab"><path d="' + pathOf(shape(it)) + '" fill="' + (bad[i] ? '#c99a8a' : '#b48f74') + '" stroke="' + stroke + '" stroke-width="' + sw * (sel || bad[i] ? 2.4 : 1.2) + '"/>' + (/ottoman/i.test(it.name) ? '' : '<path d="' + pathOf(backStrip(it)) + '" fill="#9a7660"/>' + (!it.ret && !it.ch && (isCorner(it) || armSide(it) === 'L') ? '<path d="' + pathOf(backStrip(it, 1)) + '" fill="#9a7660"/>' : '') + (!it.ret && !it.ch && armSide(it) === 'R' ? '<path d="' + pathOf(backStrip(it, 2)) + '" fill="#9a7660"/>' : '')) + '');
       var cx = it.x + b.w / 2, cy = it.y + b.h / 2;
       if (it.ret || it.ch) { var L = local(it), arm = rot([L.bw / 2, it.d / 2], it.r, L.bw, L.bh); cx = arm[0] + it.x; cy = arm[1] + it.y; }
       var vert = it.r % 180 && !it.ret && !it.ch, size = Math.round(it.w) + '"' + (it.ret ? ' × ' + Math.round(it.ret) + '"' : '') + (it.ch ? ' · chaise ' + Math.round(it.ch) + '"' : '');
@@ -380,10 +445,10 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     S.modular = nPieces > 1 && (!!(c.shape && c.shape.length > 1) || (nPieces >= 3 && /modular|sectional/i.test(c.title)));
     S.locked = S.modular && !ARR; if (keepLayout && S.saved && S.saved.couch === c.id && S.saved.locked === false) S.locked = false;
     // Only reuse a saved layout if it was made with this exact set of pieces (new sizes in Drops = fresh setup).
-    var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id && S.saved.sig === sigOf(c) ? S.saved.layout : null;
+    S.preset = -1; var R = room(), sv = keepLayout && S.saved && S.saved.couch === c.id && S.saved.sig === sigOf(c) ? S.saved.layout : null;
     if (sv && sv.length) S.items.forEach(function(it){ var m = sv.filter(function(l){ return l.k === it.k; })[0]; if (m && it.kind === 'couch') { it.x = m.x; it.y = m.y; it.r = m.r; it.f = it.fixed ? it.side === 'L' : m.f; it.h = m.h; clamp(it, R); } });
     else autoLayout(R);
-    strip(); draw(); save();
+    if (sv && sv.length) S.preset = -1; renderSetups(); strip(); draw(); save();
   }
 
   // ---------- drag ----------
@@ -398,11 +463,11 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
     if (!drag || e.pointerId !== drag.id) return; var it = S.items[drag.i], p = pt(e), R = room();
     if (drag.grp) { shiftGroup(p.x - drag.px, p.y - drag.py, R); drag.px = p.x; drag.py = p.y; draw(); return; }
     it.x = p.x - drag.ox; it.y = p.y - drag.oy; drag.raw = { x: it.x, y: it.y };
-    if (it.kind === 'door') doorSnap(it, R); else { clamp(it, R); if (it.kind === 'couch') { snapPieces(it); clamp(it, R); snapPieces(it); } }
+    if (it.kind === 'door') doorSnap(it, R); else { clamp(it, R); if (it.kind === 'couch') { var lv = S.modular && !S.locked; snapPieces(it, lv); clamp(it, R); snapPieces(it, lv); } }
     draw();
   });
   var end = function(){ if (drag) { var d0 = drag, it = S.items[d0.i]; drag = null;
-    if (d0.raw && !d0.grp && S.modular && it && it.kind === 'couch' && (Math.abs(it.x - d0.start.x) > 2 || Math.abs(it.y - d0.start.y) > 2)) { settle(it, d0.raw, d0.start, room()); draw(); }
+    if (d0.raw && !d0.grp && S.modular && it && it.kind === 'couch') { var Rm = room(); if (Math.abs(it.x - d0.start.x) > 2 || Math.abs(it.y - d0.start.y) > 2) settle(it, d0.raw, d0.start, Rm); clamp(it, Rm); snapPieces(it); clamp(it, Rm); S.preset = -1; draw(); }
     save(); } };
   $('plan').addEventListener('pointerup', end); $('plan').addEventListener('pointercancel', end);
 
@@ -416,7 +481,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   $('tTv').onclick = function(){ var R = room(), ex = S.items.map(function(i){ return i.kind; }).indexOf('tv'); if (ex > -1) { S.sel = ex; draw(); return; } var it = { kind: 'tv', k: 'tv' + Date.now() % 1e5, name: 'TV', w: 60, d: 4, x: (R.W - 60) / 2, y: R.D - 4, r: 0 }; clamp(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tDoor').onclick = function(){ var R = room(); var it = { kind: 'door', k: 'door' + Date.now() % 1e5, name: 'Door', w: 36, d: 36, x: 0, y: R.D - 60, r: 270 }; doorSnap(it, R); S.items.push(it); S.sel = S.items.length - 1; draw(); save(); };
   $('tLock').onclick = function(){ S.locked = !S.locked; if (S.locked) S.sel = S.items.map(function(i){ return i.kind; }).indexOf('couch'); draw(); save(); };
-  $('tReset').onclick = function(){ if (S.modular) { S.items.forEach(function(i){ if (i.kind === 'couch') i.h = false; }); var G1 = gbox(grp()); if (!applyShape(room())) { buildSectional(room()); var G2 = gbox(grp()); shiftGroup(G1.x - G2.x, G1.y - G2.y, room()); } S.locked = !ARR; S.sel = 0; draw(); save(); return; }
+  $('tReset').onclick = function(){ if (S.modular) { S.items.forEach(function(i){ if (i.kind === 'couch') i.h = false; }); var G1 = gbox(grp()); S.preset = -1; if (!applyShape(room())) { S.setups = setupList(); if (S.setups.length) autoLayout(room()); else { buildSectional(room()); var G2 = gbox(grp()); shiftGroup(G1.x - G2.x, G1.y - G2.y, room()); } } S.locked = !ARR; S.sel = 0; renderSetups(); draw(); save(); return; }
     S.items = S.items.filter(function(i){ return i.kind === 'couch'; }); S.items.forEach(function(i){ i.h = false; i.f = i.side === 'L'; }); autoLayout(room()); S.sel = 0; draw(); save(); };
   $('pcs').addEventListener('click', function(e){ if (e.target.id === 'showAll') { e.preventDefault(); S.items.forEach(function(i){ i.h = false; }); draw(); save(); } });
   $('strip').addEventListener('click', function(e){ var b = e.target.closest('.c'); if (b) pick(b.getAttribute('data-id')); });
