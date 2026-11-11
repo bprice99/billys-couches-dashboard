@@ -58,6 +58,7 @@ a{color:inherit}.serif{font-family:Georgia,"Times New Roman",serif;font-weight:4
 .empty{padding:60px 20px;text-align:center;color:var(--muted)}
 body.embed .nav{display:none}
 .cmp{margin:0 24px 36px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px}.cmp h3{margin:0 0 4px;font-size:24px}.cmp .cs{margin:0 0 14px;color:#6b5d55}.cw{overflow-x:auto}.cmp table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:520px}.cmp td,.cmp th{padding:11px 10px;border-bottom:1px solid #f1e9e3;text-align:left;vertical-align:top}.cmp tr:last-child td{border:0;font-weight:800;font-size:16px}.cmp td:first-child{color:var(--muted);width:24%}.cmp th button{background:none;border:0;padding:0;font:inherit;font-size:18px;font-weight:800;color:var(--ink);cursor:pointer;text-decoration:underline;text-underline-offset:3px}.cmp th small{display:block;font-size:12px;color:var(--red);font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-top:2px}.cmp th.cur{background:#faf5ef;border-radius:10px 10px 0 0}@media (max-width:820px){.cmp{margin:0 16px 30px;padding:18px 14px}.cmp table{min-width:0;font-size:13px}.cmp td,.cmp th{padding:9px 6px}.cmp td:first-child{width:22%;font-size:12px}.cmp th button{font-size:16px}.cmp th small{font-size:10.5px}.cmp tr:last-child td{font-size:15px}}
+.sw{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:13.5px;color:var(--muted)}.sw b{color:var(--ink);font-weight:600}.sw i{display:block;width:24px;height:24px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px var(--ink)}.sw.big{margin-top:10px;font-size:15px}.sw.big i{width:30px;height:30px}
 #app.fade{animation:bnIn .22s ease-out}@keyframes bnIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){#app.fade{animation:none}}
 @media (max-width:820px){.hero h1 br{display:none}.nav{padding:10px 16px}.nav .l a:not(:first-child){display:none}.hero{padding:34px 16px 20px}.hero h1{font-size:32px}.cd div{width:72px}.cd b{font-size:26px}
  .grid,.det,.low{grid-template-columns:1fr;padding-left:16px;padding-right:16px}.how,.why{grid-template-columns:1fr;padding:0 16px 30px}.band{margin:0 16px 30px}.det h1{font-size:30px}.back{margin:16px 16px 0}.cdbox .t{font-size:18px}.ctas{flex-direction:column}}
@@ -138,7 +139,7 @@ function grid(){
       <div class="cd" data-cd="big"></div>
       <div class="chips"><span>✓ Brand new, never sat on</span><span>✓ $${D.deliveryFee} white-glove delivery</span><span>✓ Deposit comes off your price</span><span>✓ Refundable until it arrives</span></div></div>`;
   const cards = D.products.map(p => `<div class="card"><div class="ph" data-view="${p.id}" style="background-image:url(${p.photos[0]})${/^https?:/.test(p.photos[0]) ? '' : ';background-size:contain;background-position:center'}"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
-    <div class="bd"><h3>${esc(p.name)}</h3><div class="br">${esc(p.brand)} · ${esc(p.color)}</div>${p.tagline ? `<div class="tl">${esc(p.tagline)}</div>` : ''}${priceRow(p)}
+    <div class="bd"><h3>${esc(p.name)}</h3><div class="br">${esc(p.brand)}</div>${sw(p)}${p.tagline ? `<div class="tl">${esc(p.tagline)}</div>` : ''}${priceRow(p)}
     <div class="specs">${p.specs.filter(s => ['Overall size', 'Fabric', 'Pieces'].includes(s[0])).map(s => `<span>${esc(s[0])}</span><b>${esc(s[1])}</b>`).join('')}</div>
     ${stockBar(p)}<div class="row">${ctas(p)}</div></div></div>`).join('');
   const how = L ? '' : `<div class="how"><div><em>1</em><b>Reserve with $${D.deposit}</b><p>Your sectional comes off the list the second you pay. The $${D.deposit} comes off your total.</p></div><div><em>2</em><b>We text you when it lands</b><p>Estimated Dec 1. If the truck runs late, you'll hear from Billy first.</p></div><div><em>3</em><b>Pay the rest and get it home</b><p>Pick it up, or get $${D.deliveryFee} white-glove delivery. Change your mind before it lands? Full refund.</p></div></div>`;
@@ -155,7 +156,7 @@ function detail(p){
   <div class="det"><div><div class="main" id="mainPic" style="background-image:url(${pic});background-size:${/^https?:/.test(pic) ? 'cover' : 'contain'}"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span>${p.photos.length > 1 ? `<button class="arr l" data-step="-1" aria-label="Previous photo">‹</button><button class="arr r" data-step="1" aria-label="Next photo">›</button><span class="cnt" id="picN">${PIC + 1} / ${p.photos.length}</span>` : ''}</div>
     ${p.photos.length > 1 ? `<div class="thumbs">${p.photos.map((f, i) => `<button class="${i === PIC ? 'on' : ''}" data-pic="${i}" style="background-image:url(${f})" aria-label="Photo ${i + 1}"></button>`).join('')}</div>` : ''}
     ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}</div>
-  <div><span class="tag">${L ? 'Brand new · in stock in Pacific' : 'Brand new · first truckload'}</span><h1 class="serif">${esc(p.name)}</h1><div class="br" style="font-size:15px">${esc(p.brand)} · ${esc(p.color)} · ${esc(p.specs[0][1])}</div>
+  <div><span class="tag">${L ? 'Brand new · in stock in Pacific' : 'Brand new · first truckload'}</span><h1 class="serif">${esc(p.name)}</h1><div class="br" style="font-size:15px">${esc(p.brand)} · ${esc(p.specs[0][1])}</div>${sw(p, 1)}
     ${priceRow(p)}${right}${stockBar(p)}<div class="ctas">${ctas(p, true)}</div>
     ${L ? '' : `<div class="fine">Your deposit holds this exact sectional and comes off your price. Fully refundable until it arrives.</div>`}</div></div>
   <div class="low"><div><div class="box" style="margin-bottom:20px"><h3>About the ${esc(shortName(p))}</h3><p>${esc(p.blurb)}</p></div>${specs}</div>
@@ -189,6 +190,9 @@ function compare(cur){
   return `<div class="cmp"><h3 class="serif">Harmont or Ryker?</h3><p class="cs">Same frame, same size, same 5 pieces. The difference is the fabric and the cushions.</p>
     <div class="cw"><table><tr><th></th>${col(h, 0)}${col(r, 1)}</tr>${rows.map(x => `<tr><td>${x[0]}</td><td>${esc(x[1])}</td><td>${esc(x[2])}</td></tr>`).join('')}</table></div></div>`;
 }
+// Color swatch under the name (one color per sectional on this truck).
+const SWC = { harmont: '#c9b79f', ryker: '#d8d2c7' };
+const sw = (p, big) => `<div class="sw${big ? ' big' : ''}"><span>Color: <b>${esc(p.color)}</b></span><i style="background:${SWC[p.id] || '#ddd'}" title="${esc(p.color)}"></i></div>`;
 function terms(){
   return `<div class="terms"><h3>What your $${D.deposit} deposit means</h3><ul>
   <li>This exact sectional is set aside for you. Nobody else can buy it.</li>
