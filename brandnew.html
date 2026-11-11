@@ -72,6 +72,11 @@ const money = n => '$' + Math.round(n).toLocaleString('en-US');
 let D = null, VIEW = Q.get('p') || '', PIC = 0, SKEW = 0, TICK = null;
 const SHOWING = 'https://www.billyscouches.com/warehouseshowing', BUY = 'https://order.billyscouches.com/';
 function postHeight(){ try { parent.postMessage({ bnH: document.documentElement.scrollHeight }, '*'); } catch {} }
+// Inside the website page (iframe): the site tells us where its window is, so the reserve box opens where they are looking.
+const EMB = window.top !== window.self; let PV = null;
+addEventListener('message', e => { if (e.data && e.data.bnView) PV = e.data.bnView; });
+if (EMB) try { parent.postMessage({ bnAsk: 1 }, '*'); } catch {}
+function toTop(){ window.scrollTo(0, 0); if (EMB) try { parent.postMessage({ bnTop: 1 }, '*'); } catch {} }
 new ResizeObserver(postHeight).observe(document.body);
 async function load(){
   try { D = await (await fetch('/public/brand-new', { cache: 'no-store' })).json(); SKEW = D.now - Date.now(); }
@@ -105,7 +110,7 @@ function priceRow(p){
 }
 function stockBar(p){
   if (D.live) return `<div class="left"><span>${p.left ? 'In stock in Pacific' : 'Sold out'}</span><span>${p.left} left</span></div>`;
-  return `<div class="left"><span>${p.reserved} of ${p.units} reserved</span><span>${p.left ? p.left + ' left' : 'All reserved'}</span></div><div class="bar"><i style="width:${p.reserved / p.units * 100}%"></i></div>`;
+  return `<div class="left"><span>${!p.left ? 'All reserved' : p.left < p.units ? 'Only ' + p.left + ' left' : p.left + ' left'}</span><span>Arriving Dec 1</span></div>`;
 }
 function ctas(p, big){
   if (D.live) return p.left ? `<a class="btn" href="${BUY}" target="_top">Buy now</a><a class="btn o" href="${SHOWING}" target="_top">Come sit on it</a>` : `<a class="btn o" href="sms:+13148997503">Text Billy for the waitlist</a>`;
@@ -139,7 +144,7 @@ function detail(p){
   const right = L
     ? `<div class="stack"><div><span>Brand new, never sat on</span><b>✓</b></div><div><span>Delivered and set up</span><b>$${D.deliveryFee}</b></div><div><span>Sit on it before you buy</span><b>✓</b></div></div>`
     : `<div class="cdbox"><div><small>LANDS IN PACIFIC IN</small><div class="t" data-cd="small"></div></div><div style="text-align:right"><small>EST. ARRIVAL</small><div style="font-weight:800">Dec 1</div></div></div>
-       <div class="dep"><div><span>Launch price</span><b>${money(p.launch)}</b></div><div><span>Reserve today</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(p.launch - D.deposit)}</b></div></div>`;
+       <div class="dep"><div><span>Launch price</span><b>${money(p.launch)}</b></div><div><span>Reserve today</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(p.launch - D.deposit)}</b></div></div><div class="fine">Plus sales tax. Pickup is free, or $${D.deliveryFee} for white-glove delivery.</div>`;
   return `<div class="wrap"><button class="back" data-view="">← All brand-new sectionals</button>
   <div class="det"><div><div class="main" style="background-image:url(${pic})"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
     ${p.photos.length > 1 ? `<div class="thumbs">${p.photos.map((f, i) => `<button class="${i === PIC ? 'on' : ''}" data-pic="${i}" style="background-image:url(${f})" aria-label="Photo ${i + 1}"></button>`).join('')}</div>` : ''}
@@ -148,14 +153,14 @@ function detail(p){
     ${priceRow(p)}${right}${stockBar(p)}<div class="ctas">${ctas(p, true)}</div>
     ${L ? '' : `<div class="fine">Your deposit holds this exact sectional and comes off your price. Fully refundable until it arrives.</div>`}</div></div>
   <div class="low"><div><div class="box" style="margin-bottom:20px"><h3>About the ${esc(shortName(p))}</h3><p>${esc(p.blurb)}</p></div>${specs}</div>
-    <div><div class="box" style="margin-bottom:20px"><h3>Will it fit your room?</h3><p style="margin-bottom:14px">Not sure about the size? Text Billy your room measurements and he'll tell you.</p><a class="btn o sm" href="sms:+13148997503">Text my measurements</a></div>
+    <div><div class="box" style="margin-bottom:20px"><h3>Will it fit your room?</h3><p style="margin-bottom:14px">Drop the ${esc(shortName(p))} into your room with our free sizing tool. Takes 2 minutes.</p><a class="btn o sm" href="${D.fitUrl}?couch=bn-${p.id}" target="_top">Try it in my room →</a></div>
     ${L ? '' : terms()}</div></div>
   <div class="why"><div><b>Sectional specialists</b><p>We only sell couches, so we know what lasts.</p></div><div><b>No big-store markup</b><p>No giant showroom, no commissioned salespeople.</p></div><div><b>Sit on it first</b><p>Come try it in Pacific before it goes home.</p></div><div><b>Text the owner</b><p>Questions go to Billy, not a call center.</p></div></div></div>`;
 }
 function terms(){
   return `<div class="terms"><h3>What your $${D.deposit} deposit means</h3><ul>
   <li>This exact sectional is set aside for you. Nobody else can buy it.</li>
-  <li>The $${D.deposit} comes off your price. You pay the rest when it lands.</li>
+  <li>The $${D.deposit} comes off your price. You pay the rest, plus sales tax, when it lands.</li>
   <li>Estimated arrival is Dec 1. Billy texts you the day it lands.</li>
   <li>Change your mind before it arrives? Full refund, no questions.</li>
   <li>Once it lands, you have 7 days to pick up or book delivery.</li></ul></div>`;
@@ -163,12 +168,14 @@ function terms(){
 function openReserve(id){
   const p = P(id); if (!p) return;
   $('modal').innerHTML = `<button class="x" data-close aria-label="Close">×</button><h2>Reserve your ${esc(shortName(p))}</h2><div class="s">You're holding 1 of the ${p.units} ${esc(shortName(p))} sectionals (${esc(p.color)}).</div>
-    <div class="dep" style="margin-top:0"><div><span>${esc(p.name)}</span><b>${money(p.now)}</b></div><div><span>Deposit today</span><b>$${D.deposit}</b></div><div><span>Due when it arrives</span><b>${money(p.now - D.deposit)}</b></div></div>
+    <div class="dep" style="margin-top:0"><div><span>${esc(p.name)}</span><b>${money(p.now)}</b></div><div><span>Deposit today</span><b>$${D.deposit}</b></div><div><span>Due when it arrives</span><b>${money(p.now - D.deposit)}</b></div></div><div class="fine">Plus sales tax when it arrives. Pickup is free, or $${D.deliveryFee} for white-glove delivery.</div>
     <div style="margin-top:14px">${terms()}</div>
     <form id="rf"><input type="text" name="name" placeholder="Full name" autocomplete="name" required><input type="tel" name="phone" placeholder="Phone" autocomplete="tel" required><input type="email" name="email" placeholder="Email" autocomplete="email" required>
-    <label class="chk"><input type="checkbox" name="agree"><span>I understand I'm paying a $${D.deposit} deposit to hold this sectional, and the rest (${money(p.now - D.deposit)}) is due when it arrives.</span></label>
+    <label class="chk"><input type="checkbox" name="agree"><span>I understand I'm paying a $${D.deposit} deposit to hold this sectional, and the rest (${money(p.now - D.deposit)} plus sales tax, and delivery if I want it) is due when it arrives.</span></label>
     <div class="err" id="rerr"></div><button class="btn" type="submit" id="rgo">Pay $${D.deposit} deposit</button><div class="fine" style="text-align:center">Secure checkout by Stripe</div></form>`;
-  $('mask').classList.add('on');
+  const mk = $('mask');
+  if (EMB && PV) { mk.style.position = 'absolute'; mk.style.inset = 'auto 0 auto 0'; mk.style.top = Math.max(0, PV.y) + 'px'; mk.style.height = PV.h + 'px'; }
+  mk.classList.add('on');
   $('rf').onsubmit = async e => {
     e.preventDefault(); const f = e.target, b = $('rgo'); $('rerr').textContent = '';
     if (!f.agree.checked) { $('rerr').textContent = 'Tick the box to show you understand how the deposit works.'; return; }
@@ -191,13 +198,13 @@ async function confirmDeposit(){
   const p = P(j.item) || { name: 'sectional', color: '' };
   $('app').innerHTML = `<div class="ok"><span class="tag">Reserved</span><h1 class="serif">Your ${esc(shortName(p))} is yours, ${esc(String(j.name).split(' ')[0])}.</h1>
     <p>We got your $${D.deposit} deposit and pulled this ${esc(shortName(p))} (${esc(p.color)}) off the list. You'll get a text from Billy in a minute.</p>
-    <div class="dep" style="text-align:left;margin:18px 0"><div><span>Price</span><b>${money(j.price)}</b></div><div><span>Deposit paid</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(j.price - D.deposit)}</b></div></div>
+    <div class="dep" style="text-align:left;margin:18px 0 6px"><div><span>Price</span><b>${money(j.price)}</b></div><div><span>Deposit paid</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(j.price - D.deposit)}</b></div></div><div class="fine" style="margin-bottom:14px">Plus sales tax when it arrives. Pickup is free, or $${D.deliveryFee} for white-glove delivery.</div>
     <p>Estimated arrival is <b>Dec 1</b>. Billy texts you the day it lands so you can pick it up or book delivery. Change your mind before then? Text Billy for a full refund.</p>
     <p><a class="btn o" href="https://www.billyscouches.com/" target="_top">Back to Billy's Couches</a></p></div>`;
   history.replaceState(null, '', '/brand-new'); postHeight();
 }
 document.addEventListener('click', e => {
-  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; PIC = 0; history.replaceState(null, '', '/brand-new' + (VIEW ? '?p=' + VIEW : '')); render(); window.scrollTo(0, 0); try { parent.postMessage({ bnTop: 1 }, '*'); } catch {} return; }
+  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; PIC = 0; history.replaceState(null, '', '/brand-new' + (VIEW ? '?p=' + VIEW : '')); render(); toTop(); return; }
   const r = e.target.closest('[data-res]'); if (r) { openReserve(r.dataset.res); return; }
   const pc = e.target.closest('[data-pic]'); if (pc) { PIC = +pc.dataset.pic; render(); return; }
   if (e.target.closest('[data-close]') || e.target.id === 'mask') $('mask').classList.remove('on');
