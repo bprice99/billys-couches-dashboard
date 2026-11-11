@@ -65,7 +65,7 @@ app.use((req, res, next) => {
   res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
   // The sizing tool's "Arrange pieces" screen opens inside HQ itself, so /fit may be framed by HQ (same site only).
   if (req.path === '/fit') res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  else if (!req.path.startsWith('/public/')) res.setHeader('X-Frame-Options', 'DENY');
+  else if (!req.path.startsWith('/public/') && req.path !== '/brand-new') res.setHeader('X-Frame-Options', 'DENY');
   next();
 });
 // "Will it fit?" on its own address (e.g. fit.billyscouches.com). Set FIT_BASE in Railway after adding the
@@ -2760,6 +2760,94 @@ app.post('/api/sched/delete', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ===================== END SCHEDULING =====================
+// ---------- Brand New: reserve-before-it-lands page (hq.billyscouches.com/brand-new) ----------
+// Countdown to BN_LAUNCH, $100 Stripe deposit holds one of the 4 units, then the page flips to a normal shop.
+const BN_LAUNCH = Date.parse(process.env.BN_LAUNCH || '2026-12-01T06:00:00Z'); // Dec 1, 12:00 AM Central
+const BN_DEPOSIT = 100;
+const BN_PRODUCTS = [
+  { id: 'harmont', name: 'Harmont 5-Piece Sectional', brand: 'Behold Home', color: 'Camel', price: 2486, launch: 2286, units: 4,
+    photos: ['h'], note: '',
+    blurb: "Deep seats and high backs that feel genuinely comfortable without losing the support to keep you there all day. Plush reversible seat and back cushions hold their shape long after the new-couch feeling wears off.",
+    specs: [['Overall size', 'About 124" x 124" corner'], ['Depth', '45"'], ['Back height', '37" (top of back cushion)'], ['Seat height', '19"'], ['Arm height', '26"'],
+      ['Fabric', 'Camel, a light warm beige'], ['Cushions', 'Deep, plush, reversible seat and back cushions'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
+      ['Modular', 'Yes, every piece moves separately'], ['Legs', 'Removable, 1" tall']] },
+  { id: 'ryker', name: 'Ryker 5-Piece Sectional', brand: 'Behold Home', color: 'Stone', price: 2964, launch: 2764, units: 4,
+    photos: ['r1', 'r2'], crop: { r1: [20, 195, 914, 340] }, note: 'Ottoman and pillows in the photo are not included.',
+    blurb: 'A deep, sink-in corner sectional with a gel-infused cushion topper and performance fabric you can actually live on. Fully modular, so it fits your room your way.',
+    specs: [['Overall size', '123" x 123" corner'], ['Depth', '44"'], ['Back height', '36" (top of back cushion)'], ['Seat height', '20"'], ['Arm height', '26"'],
+      ['Fabric', 'Stone performance fabric, removable and washable covers'], ['Cushions', '2.0 density foam with a gel-infused topper'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
+      ['Modular', 'Yes, every piece moves separately'], ['Legs', 'Removable, 1" tall']] }
+];
+const BN_KEY = 'bcd:brandNew';
+const bnGet = () => kget(BN_KEY, { res: [] });
+const bnLive = () => Date.now() >= BN_LAUNCH;
+const bnCount = (st, id) => (st.res || []).filter(r => r.item === id && (r.status === 'paid' || r.status === 'landed' || r.status === 'done')).length;
+app.get('/brand-new', (req, res) => res.sendFile(path.join(__dirname, 'brandnew.html')));
+app.get('/public/bn/:f', (req, res) => { const f = req.params.f; if (!BN_PRODUCTS.some(p => p.photos.includes(f))) return res.sendStatus(404);
+  res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile(path.join(__dirname, 'bn', f, 'image.png')); });
+app.get('/public/brand-new', async (req, res) => {
+  dropCors(res);
+  try { const st = await bnGet(), live = bnLive();
+    res.set('Cache-Control', 'no-store').json({ ok: true, now: Date.now(), launchAt: BN_LAUNCH, live, deposit: BN_DEPOSIT, deliveryFee: deliveryFee(),
+      products: BN_PRODUCTS.map(p => { const taken = bnCount(st, p.id); return { ...p, photos: p.photos.map(f => '/public/bn/' + f), crop: Object.fromEntries(Object.entries(p.crop || {}).map(([k, v]) => ['/public/bn/' + k, v])), reserved: taken, left: Math.max(0, p.units - taken), now: live ? p.price : p.launch }; }) });
+  } catch (e) { res.status(500).json({ error: 'unavailable' }); }
+});
+const bnHits = new Map();
+app.post('/public/brand-new/reserve', async (req, res) => {
+  dropCors(res);
+  try {
+    const b = req.body || {}, ip = clientIp(req), now = Date.now();
+    const h = (bnHits.get(ip) || []).filter(t => now - t < 3600e3); if (h.length >= 8) return res.status(429).json({ error: 'Too many tries. Text Billy at (314) 899-7503.' }); h.push(now); bnHits.set(ip, h);
+    const p = BN_PRODUCTS.find(x => x.id === b.item); if (!p) return res.status(400).json({ error: 'Pick a sectional.' });
+    const name = String(b.name || '').trim().slice(0, 80), email = String(b.email || '').trim().toLowerCase().slice(0, 160), phone = String(b.phone || '').replace(/\D/g, '').replace(/^1(\d{10})$/, '$1');
+    if (name.length < 2) return res.status(400).json({ error: 'Add your full name.' });
+    if (phone.length !== 10) return res.status(400).json({ error: 'Add a 10-digit phone number.' });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Add a valid email.' });
+    if (!b.agree) return res.status(400).json({ error: 'Tick the box to show you understand how the deposit works.' });
+    const st = await bnGet(); if (bnCount(st, p.id) >= p.units) return res.status(409).json({ error: `All ${p.units} ${p.name.split(' ')[0]} sectionals are reserved. Text Billy to get on the waitlist.` });
+    const live = bnLive(), total = live ? p.price : p.launch, rid = crypto.randomBytes(9).toString('hex');
+    const r = await fetch(SCHED_PROXY + '/create-stripe-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: name,
+      orderType: `$${BN_DEPOSIT} deposit to reserve: ${p.name} (${p.color}). $${(total - BN_DEPOSIT).toLocaleString()} due when it arrives`, totalCents: BN_DEPOSIT * 100, totalDisplay: '$' + BN_DEPOSIT,
+      redirectUrl: `https://hq.billyscouches.com/brand-new?bnr=${rid}&sid={CHECKOUT_SESSION_ID}` }) });
+    const j = await r.json().catch(() => ({}));
+    if (!j.url) return res.status(502).json({ error: 'Payment link failed. Text Billy at (314) 899-7503.' });
+    st.res = (st.res || []).concat({ id: rid, item: p.id, name, phone, email, price: total, at: now, status: 'pending' }).slice(-400);
+    await kset(BN_KEY, st);
+    res.json({ ok: true, url: j.url });
+  } catch (e) { console.log('[brand-new] reserve failed', e.message); res.status(500).json({ error: 'Something went wrong. Text Billy at (314) 899-7503.' }); }
+});
+// After Stripe: confirm the deposit really went through (asks the proxy, which holds the Stripe key), then text both sides.
+app.post('/public/brand-new/confirm', async (req, res) => {
+  dropCors(res);
+  try {
+    const { bnr, sid } = req.body || {}; const st = await bnGet(), r = (st.res || []).find(x => x.id === bnr);
+    if (!r) return res.status(404).json({ error: 'Reservation not found. Text Billy at (314) 899-7503.' });
+    const p = BN_PRODUCTS.find(x => x.id === r.item) || {};
+    if (r.status !== 'pending') return res.json({ ok: true, item: r.item, name: r.name, price: r.price });
+    if (!/^cs_[A-Za-z0-9_]+$/.test(String(sid || ''))) return res.status(400).json({ error: 'Missing payment info. Text Billy at (314) 899-7503.' });
+    const v = await fetch(SCHED_PROXY + '/stripe-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sid }) }).then(x => x.json()).catch(() => ({}));
+    if (!v.paid || v.amount < BN_DEPOSIT * 100) return res.status(402).json({ error: "We couldn't confirm your deposit yet. Refresh in a minute, or text Billy at (314) 899-7503." });
+    if ((st.res || []).some(x => x.sid === sid)) return res.json({ ok: true, item: r.item, name: r.name, price: r.price });
+    r.status = 'paid'; r.sid = sid; r.paidAt = Date.now(); await kset(BN_KEY, st);
+    const first = r.name.split(/\s+/)[0], left = Math.max(0, (p.units || 4) - bnCount(st, r.item));
+    sendText(r.phone, `Hey ${first}, this is Billy with Billy's Couches! Your ${p.name || 'sectional'} (${p.color || ''}) is reserved. $${BN_DEPOSIT} deposit received, $${(r.price - BN_DEPOSIT).toLocaleString()} due when it arrives. Estimated arrival is Dec 1, and I'll text you the day it lands.`).catch(() => {});
+    textAlert(`New deposit: ${r.name} reserved a ${p.name} ($${BN_DEPOSIT}). ${left} left. ${r.phone}`).catch(() => {});
+    res.json({ ok: true, item: r.item, name: r.name, price: r.price });
+  } catch (e) { console.log('[brand-new] confirm failed', e.message); res.status(500).json({ error: 'Something went wrong. Text Billy at (314) 899-7503.' }); }
+});
+app.options(['/public/brand-new/reserve', '/public/brand-new/confirm'], (req, res) => { dropCors(res); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.sendStatus(204); });
+// HQ (Drops tab): see reservations, mark landed / done / refunded, and text everyone "it landed".
+app.get('/api/brand-new', async (req, res) => { const st = await bnGet(); res.json({ ok: true, launchAt: BN_LAUNCH, products: BN_PRODUCTS.map(p => ({ id: p.id, name: p.name, color: p.color, units: p.units, reserved: bnCount(st, p.id) })), res: (st.res || []).filter(r => r.status !== 'pending').sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0)) }); });
+app.post('/api/brand-new/status', async (req, res) => { const { id, status } = req.body || {}; if (!['paid', 'landed', 'done', 'refunded'].includes(status)) return res.status(400).json({ error: 'bad status' });
+  const st = await bnGet(), r = (st.res || []).find(x => x.id === id); if (!r) return res.status(404).json({ error: 'not found' }); r.status = status; await kset(BN_KEY, st); res.json({ ok: true }); });
+app.post('/api/brand-new/landed', async (req, res) => {
+  const st = await bnGet(); let n = 0;
+  for (const r of (st.res || []).filter(x => x.status === 'paid')) { const p = BN_PRODUCTS.find(x => x.id === r.item) || {};
+    const ok = await sendText(r.phone, `Hey ${r.name.split(/\s+/)[0]}, your ${(p.name || 'sectional').replace(' 5-Piece Sectional', '')} just landed! Want to pick it up or have us deliver? Reply here and I'll get you on the schedule. -Billy`).catch(() => false);
+    if (ok) { r.status = 'landed'; r.landedAt = Date.now(); n++; } }
+  await kset(BN_KEY, st); res.json({ ok: true, texted: n });
+});
+
 app.get('/public/inventory.js', (req, res) => res.set('Cache-Control', 'public, max-age=300').type('application/javascript').sendFile(path.join(__dirname, 'inventory.js')));
 
 // ---------- Coaching (Billy Price Coaching): admin at /coach, client portal at /client ----------
