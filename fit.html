@@ -282,7 +282,8 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
                           : { name: 'Corner right', back: L.concat(bk, [cor[0]]), left: [], right: sd.concat(Rr), at: 'right', otts: otts, cr: [90] });
     }
     if (cor.length === 2) for (var l = 0; l <= n; l++) for (var r = 0; l + r <= n; r++) out.push({ name: 'U', back: [cor[0]].concat(mids.slice(l, n - r), [cor[1]]), left: mids.slice(0, l).concat(L), right: mids.slice(n - r).concat(Rr), at: 'mid', otts: otts, cr: [0, 90] });
-    out.forEach(function(p){ var bl = p.back.length, sl = p.left.length + p.right.length; if (cor.length === 1) p.name = (p.at === 'left' ? 'Corner left' : 'Corner right') + (sl > bl - 1 ? ' · long side' : sl === bl - 1 ? '' : ' · long back'); });
+    out.forEach(function(p){ var bl = p.back.length, sl = p.left.length + p.right.length; if (cor.length === 1) p.name = (p.at === 'left' ? 'Corner left' : 'Corner right') + (sl > bl - 1 ? ' · long side' : sl === bl - 1 ? '' : ' · long back');
+      if (cor.length === 2) { var nl = p.left.length, nr = p.right.length; p.name = !nl && !nr ? 'Straight' : !nl ? 'L · ' + nr + ' down right' : !nr ? 'L · ' + nl + ' down left' : 'U · ' + nl + ' left, ' + nr + ' right'; } });
     return out.slice(0, 10);
   }
   // Lay a setup out from (0,0). Works on the real pieces.
