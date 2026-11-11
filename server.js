@@ -2796,14 +2796,14 @@ const BN_LAUNCH = Date.parse(process.env.BN_LAUNCH || '2026-12-01T06:00:00Z'); /
 const BN_DEPOSIT = 100;
 const BN_PRODUCTS = [
   { id: 'harmont', name: 'Harmont 5-Piece Sectional', brand: 'Behold Home', color: 'Camel', tagline: 'Deepest seats · plush reversible cushions', price: 2486, launch: 2286, units: 4,
-    photos: ['h2', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2F2026_03_17_2Fdfae8b32-5449-4f68-af1e-6b1ece26c29f.jpg?v=1776083426&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2F2026_03_17_2F3aa40af5-212a-43c3-adc2-8ccf8c1715bc.jpg?v=1773959410&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2F2026_03_17_2F68c92ab8-2286-45c1-ac3d-6fc0513ec332.jpg?v=1773959413&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2F2026_03_17_2F73c3eb4c-2d98-4c94-a4b7-970982e89e7d.jpg?v=1776083426&width=1445'], note: 'Ottoman and pillows shown in some photos are not included.',
+    photos: ['h2', 'h3', 'h4', 'h5'], note: 'Ottoman and pillows shown in some photos are not included.',
     pieces: [{ name: 'Corner wedge', w: 45, d: 45 }, { name: 'Armless', w: 38, d: 45, qty: 2 }, { name: 'Left arm', w: 41, d: 45, side: 'L' }, { name: 'Right arm', w: 41, d: 45, side: 'R' }],
     blurb: "Deep seats and high backs that feel genuinely comfortable without losing the support to keep you there all day. Plush reversible seat and back cushions hold their shape long after the new-couch feeling wears off.",
     specs: [['Overall size', 'About 124" x 124" corner'], ['Depth', '45"'], ['Back height', '37" (top of back cushion)'], ['Seat height', '19"'], ['Arm height', '26"'],
       ['Fabric', 'Camel, a light warm beige'], ['Cushions', 'Deep, plush, reversible seat and back cushions'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
       ['Modular', 'Yes, every piece moves separately'], ['Legs', 'Removable, 1" tall']] },
   { id: 'ryker', name: 'Ryker 5-Piece Sectional', brand: 'Behold Home', color: 'Stone', tagline: 'Performance fabric · washable covers · gel topper', price: 2964, launch: 2764, units: 4,
-    photos: ['r3', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2Flisting-manager_2Fmaster_2F50ac0d6b-04c2-4020-96ed-a399650a7a15.jpg?v=1781533223&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2Flisting-manager_2Fmaster_2F443db62c-4783-4f89-a05b-5dda938d6ff8.jpg?v=1781533226&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2Flisting-manager_2Fmaster_2F4d21567d-4627-4a81-ba94-60218f2fce20_2ba0bc46-4a24-4a78-89ac-fc9ff25c30c0.jpg?v=1781533243&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2Flisting-manager_2Fmaster_2F19171c81-2ab1-4275-b133-4a93329d0e9d_dd7a5862-7571-46f3-a6f2-96733c7036a9.jpg?v=1781533246&width=1445', 'https://kindredcouches.com/cdn/shop/files/images_2Fm7gIYVakWxPh6DNcr61xYsSdBum2_2Flisting-manager_2Fmaster_2Ff8cf22d8-c541-48d7-9c1b-43dfe8193c21_7bad6f0a-468b-48a7-ab2e-d94ea8e3a3bd.jpg?v=1781533248&width=1445'], fitPhoto: 'r3', note: 'Ottoman and pillows shown in some photos are not included.',
+    photos: ['r3', 'r7', 'r4', 'r6', 'r5'], fitPhoto: 'r3', note: 'Ottoman and pillows shown in some photos are not included.',
     pieces: [{ name: 'Corner wedge', w: 44, d: 44 }, { name: 'Armless', w: 37, d: 44, qty: 2 }, { name: 'Left arm', w: 42, d: 44, side: 'L' }, { name: 'Right arm', w: 42, d: 44, side: 'R' }],
     blurb: 'A deep, sink-in corner sectional with a gel-infused cushion topper and performance fabric you can actually live on. Fully modular, so it fits your room your way.',
     specs: [['Overall size', '123" x 123" corner'], ['Depth', '44"'], ['Back height', '36" (top of back cushion)'], ['Seat height', '20"'], ['Arm height', '26"'],
@@ -2817,7 +2817,7 @@ const bnCount = (st, id) => (st.res || []).filter(r => r.item === id && (r.statu
 const bnPhoto = f => /^https?:/.test(f) ? f : '/public/bn/' + f;
 app.get('/brand-new', (req, res) => res.sendFile(path.join(__dirname, 'brandnew.html')));
 app.get('/public/bn/:f', (req, res) => { const f = req.params.f; if (!BN_PRODUCTS.some(p => p.photos.includes(f) || p.fitPhoto === f)) return res.sendStatus(404);
-  res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile(path.join(__dirname, 'bn', f, 'image.png')); });
+  res.set('Cache-Control', 'public, max-age=86400').set('Access-Control-Allow-Origin', '*').sendFile((/^[hr]\d+$/.test(f) && fs.existsSync(path.join(__dirname, 'bn', 'x', f + '.jpg')) ? path.join(__dirname, 'bn', 'x', f + '.jpg') : path.join(__dirname, 'bn', f, 'image.png'))); });
 app.get('/public/brand-new', async (req, res) => {
   dropCors(res);
   try { const st = await bnGet(), live = bnLive();
