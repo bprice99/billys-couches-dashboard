@@ -419,7 +419,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   }
   var local0 = null; try { local0 = JSON.parse(localStorage.getItem('bcFit2') || 'null'); } catch (e) {}
   var sess = sid ? fetch('/public/fit-sess/' + sid + '?open=1').then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }) : Promise.resolve(null);
-  Promise.all([fetch('/public/inventory').then(function(r){ return r.json(); }), sess]).then(function(a){
+  Promise.all([fetch('/public/inventory?fit=1').then(function(r){ return r.json(); }), sess]).then(function(a){
     S.couches = (a[0].couches || []).filter(function(c){ return c.pieces && c.pieces.length; });
     var s = a[1]; if (s && s.first) $('hi').textContent = 'Hi ' + s.first + '! Draw your room, try any couch.';
     var m = s && s.meas && (s.meas.roomW || s.meas.couch) ? s.meas : local0;
