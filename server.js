@@ -1718,7 +1718,7 @@ async function recentOrders(days) {
   });
   return log.map(l => {
     const at = l.ts || Math.min(Date.now(), Date.parse(l.day + 'T12:00:00-05:00'));
-    if (!(at > cutoff && at <= Date.now())) return null;
+    if (!(at > cutoff && at <= Date.now()) || hidden.has(l.key)) return null;
     const pick = picks[l.key], c = l.couch;
     let title = '', photo = '', from = '';
     if (pick && pick.title) { title = pick.title; photo = pick.img || ''; from = 'picked'; }
@@ -1750,7 +1750,7 @@ app.post('/api/justsold/add', async (req, res) => {
 app.post('/api/justsold/remove', async (req, res) => {
   try { const key = String(req.body.key || '');
     if (key.startsWith('m')) { const list = await kget('bcd:manualSold', []); await kset('bcd:manualSold', list.filter(m => 'm' + m.id !== key)); }
-    else if (key.startsWith('d')) { const h = await kget('bcd:soldHidden', []); if (!h.includes(key)) h.push(key); await kset('bcd:soldHidden', h.slice(-200)); }
+    else if (key) { const h = await kget('bcd:soldHidden', []); if (!h.includes(key)) h.push(key); await kset('bcd:soldHidden', h.slice(-200)); }   // test orders, Drops sales, Sales Log orders: hide from pop-ups
     recentCache.at = 0; res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
