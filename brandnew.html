@@ -60,7 +60,7 @@ body.embed .nav{display:none}
 @media (max-width:420px){.row{flex-direction:column}}
 </style></head>
 <body>
-<div class="nav"><div class="l"><a href="https://www.billyscouches.com/" target="_top"><img src="/public/logo.png" alt="Billy's Couches"></a><a href="https://www.billyscouches.com/currentinventory" target="_top">Shop all</a><a class="on" href="/brand-new">Brand New</a><a href="https://www.billyscouches.com/currentinventory" target="_top">Clearance Deals</a><a href="https://www.billyscouches.com/warehouseshowing" target="_top">Visit</a></div><a class="btn sm" href="sms:+13148997503">Text Billy</a></div>
+<div class="nav"><div class="l"><a href="https://www.billyscouches.com/" target="_top"><img src="/public/logo.png" alt="Billy's Couches"></a><a href="https://www.billyscouches.com/currentinventory" target="_top">Shop all</a><a class="on" href="/brand-new">New</a><a href="https://www.billyscouches.com/currentinventory" target="_top">Like New</a><a href="https://www.billyscouches.com/warehouseshowing" target="_top">Visit</a></div><a class="btn sm" href="sms:+13148997503">Text Billy</a></div>
 <div id="app"><div class="empty">Loading...</div></div>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <script>
@@ -131,7 +131,7 @@ function grid(){
     <div class="specs">${p.specs.filter(s => ['Overall size', 'Fabric', 'Pieces'].includes(s[0])).map(s => `<span>${esc(s[0])}</span><b>${esc(s[1])}</b>`).join('')}</div>
     ${stockBar(p)}<div class="row">${ctas(p)}</div></div></div>`).join('');
   const how = L ? '' : `<div class="how"><div><em>1</em><b>Reserve with $${D.deposit}</b><p>Your sectional comes off the list the second you pay. The $${D.deposit} comes off your total.</p></div><div><em>2</em><b>We text you when it lands</b><p>Estimated Dec 1. If the truck runs late, you'll hear from Billy first.</p></div><div><em>3</em><b>Pay the rest and get it home</b><p>Pick it up, or get $${D.deliveryFee} white-glove delivery. Change your mind before it lands? Full refund.</p></div></div>`;
-  return `<div class="wrap">${hero}<div class="grid">${cards}</div>${how}<div class="band"><div><h3 class="serif">Looking for a bigger deal?</h3><p>Our clearance floor has name-brand liquidation sectionals up to 50% off retail.</p></div><a class="btn" href="https://www.billyscouches.com/currentinventory" target="_top">Shop clearance →</a></div></div>`;
+  return `<div class="wrap">${hero}<div class="grid">${cards}</div>${how}<div class="band"><div><h3 class="serif">Looking for a bigger deal?</h3><p>Our Like New floor has name-brand sectionals up to 50% off retail.</p></div><a class="btn" href="https://www.billyscouches.com/currentinventory" target="_top">Shop Like New →</a></div></div>`;
 }
 function detail(p){
   const L = D.live, pic = p.photos[Math.min(PIC, p.photos.length - 1)];
