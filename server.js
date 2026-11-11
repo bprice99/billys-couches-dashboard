@@ -2658,6 +2658,34 @@ app.post('/public/order-create', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, 'schedule.html')));
+// One link for everyone (the old Jotform points here): type your phone, we text you your own scheduling link.
+// Never shows order details on the page, so a stranger typing someone's number learns nothing.
+const findHits = new Map();
+app.get('/schedule', (req, res) => res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schedule your delivery · Billy's Couches</title><style>body{margin:0;background:#f6f2ee;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#2b1d16}
+.w{max-width:440px;margin:0 auto;padding:40px 20px}img{height:52px}h1{font-size:26px;margin:22px 0 8px}p{color:#6b5d55;line-height:1.5;margin:0 0 18px}
+input{width:100%;box-sizing:border-box;font:inherit;font-size:20px;padding:14px;border:2px solid #e0d5ca;border-radius:14px;background:#fff}
+button{width:100%;margin-top:12px;font:inherit;font-size:17px;font-weight:700;padding:15px;border:0;border-radius:999px;background:#b0524c;color:#fff;cursor:pointer}
+button:disabled{opacity:.6}.ok{background:#e3efe6;color:#2e6b45;border-radius:14px;padding:14px;margin-top:14px;display:none;line-height:1.5}a{color:#b0524c}</style></head><body><div class="w">
+<img src="/logo.png" alt="Billy's Couches"><h1>Schedule your delivery or pick up</h1><p>Type the phone number you used when you bought your couch. We'll text you your own link to pick a time.</p>
+<form id="f"><input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="(314) 555-1234" required><button id="b">Text me my link</button></form>
+<div class="ok" id="ok"></div><p style="margin-top:22px;font-size:14px">Questions? Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>
+<script>document.getElementById('f').onsubmit=async function(e){e.preventDefault();var b=document.getElementById('b'),ok=document.getElementById('ok');b.disabled=true;
+try{var r=await fetch('/public/sched-find',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:document.getElementById('ph').value})});var j=await r.json();ok.textContent=j.msg||j.error||'Done.';}
+catch(x){ok.textContent='Something went wrong. Text Billy at (314) 899-7503.';}ok.style.display='block';b.disabled=false;};</script></body></html>`));
+app.post('/public/sched-find', async (req, res) => {
+  try {
+    const ip = clientIp(req), now = Date.now(), h = (findHits.get(ip) || []).filter(x => now - x < 3600e3);
+    if (h.length >= 6) return res.status(429).json({ error: 'Too many tries. Text Billy at (314) 899-7503.' }); h.push(now); findHits.set(ip, h);
+    const phone = String((req.body || {}).phone || '').replace(/\D/g, '').replace(/^1(\d{10})$/, '$1');
+    if (phone.length !== 10) return res.status(400).json({ error: 'Add your 10-digit phone number.' });
+    const m = await getSched(), mine = Object.values(m).filter(o => o.phone === phone).sort((a, b) => (b.created || 0) - (a.created || 0));
+    const o = mine.find(x => !x.booking) || mine[0];
+    if (o) await sendText(phone, `Hi ${o.name.split(/\s+/)[0]}! Here's your link to pick your ${o.type === 'pickup' ? 'pick up' : 'delivery'} time: ${schedLink(o.token)}`).catch(() => false);
+    else textAlert(`Someone tried to schedule from the old link with ${phone}, but there's no order under that number. Send them a link from HQ > Scheduling.`).catch(() => {});
+    res.json({ ok: true, msg: o ? 'Done! We just texted your scheduling link. Tap it to pick your time.' : "We couldn't find an order under that number yet. Billy will text you your link shortly, or text him at (314) 899-7503." });
+  } catch (e) { res.status(500).json({ error: 'Something went wrong. Text Billy at (314) 899-7503.' }); }
+});
 const schedPublic = (o, days) => ({ name: o.name, first: o.name.split(/\s+/)[0], phone: o.phone, type: o.type, couches: o.couches, addons: o.addons, zip: o.zip,
   booking: o.booking ? { date: o.booking.date, win: o.booking.win, label: o.booking.label, address: o.booking.address, city: o.booking.city, zip: o.booking.zip, room: o.booking.room, notes: o.booking.notes, extras: o.booking.extras || [] } : null,
   upsells: SCHED_ADDONS.filter(a => !(a.deliveryOnly && o.type !== 'delivery') && !o.addons.some(x => a.match.test(x)) && !((o.booking && o.booking.extras) || []).some(x => a.match.test(x))).map(({ id, label, price, pitch }) => ({ id, label, price, pitch })),
