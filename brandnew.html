@@ -19,18 +19,18 @@ a{color:inherit}.serif{font-family:Georgia,"Times New Roman",serif;font-weight:4
 .chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.chips span{background:#fff;border:1px solid #e6dcd5;border-radius:999px;padding:9px 16px;font-size:14px;font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;padding:28px 24px 36px}
 .card{background:#fff;border-radius:18px;overflow:hidden;border:1px solid var(--line);display:flex;flex-direction:column}
-.ph{position:relative;aspect-ratio:16/10;background:#fff center/cover no-repeat;cursor:pointer;border-bottom:1px solid var(--line)}.ph.cover{background-size:cover}
+.ph{position:relative;aspect-ratio:16/10;background:#fff center 78%/cover no-repeat;cursor:pointer;border-bottom:1px solid var(--line)}.ph.cover{background-size:cover}
 .badge{position:absolute;top:12px;left:12px;color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em;padding:6px 10px;border-radius:999px;background:var(--red)}.badge.g{background:var(--green)}
 .bd{padding:18px 20px 20px;display:flex;flex-direction:column;flex:1}.bd h3{margin:0 0 4px;font-size:20px}.br{font-size:13.5px;color:var(--muted)}
 .pr{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:12px 0 2px}.pr b{font-size:26px;font-weight:800}.pr s{color:#9a8f86;font-size:14px}.save{background:#e3efe6;color:var(--green);font-weight:800;font-size:12.5px;padding:4px 9px;border-radius:999px}
-.lp{font-size:13px;color:var(--muted)}
+.lp{font-size:13px;color:var(--muted)}.tl{display:inline-block;margin-top:8px;background:#f3ece6;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;color:var(--ink)}
 .specs{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:14px 0 4px;font-size:13.5px}.specs span{color:var(--muted)}.specs b{font-weight:600}
 .left{display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:var(--red);margin:14px 0 6px}.bar{height:8px;background:#f3ece6;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--red)}
 .row{display:flex;gap:10px;margin-top:auto;padding-top:16px}.row .btn{flex:1;padding:13px 10px}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:0 24px 40px}.how div{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}.how em{font-style:normal;display:inline-block;background:var(--ink);color:#fff;border-radius:50%;width:26px;height:26px;text-align:center;line-height:26px;font-weight:800;margin-bottom:8px}.how b{display:block;margin-bottom:4px}.how p{margin:0;font-size:14px;color:#6b5d55;line-height:1.5}
 .band{margin:0 24px 40px;background:var(--ink);color:#fff;border-radius:20px;padding:26px 30px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.band h3{margin:0 0 4px;font-size:22px}.band p{margin:0;color:#d8cfc6}.band .btn{background:#fff;color:var(--ink)}
 .det{display:grid;grid-template-columns:1.2fr 1fr;gap:36px;padding:28px 24px}
-.main{border-radius:20px;overflow:hidden;background-color:#fff;border:1px solid var(--line);position:relative;aspect-ratio:16/10;background-position:center;background-size:contain;background-repeat:no-repeat}
+.main{border-radius:20px;overflow:hidden;background-color:#fff;border:1px solid var(--line);position:relative;aspect-ratio:4/3;background-position:center 82%;background-size:contain;background-repeat:no-repeat}
 .thumbs{display:grid;grid-auto-flow:column;grid-auto-columns:calc(25% - 8px);gap:10px;margin-top:10px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.thumbs button{scroll-snap-align:start}.thumbs button{aspect-ratio:4/3;border-radius:12px;background:#fff center/cover no-repeat;border:2px solid var(--line);cursor:pointer;padding:0}.thumbs button.on{border-color:var(--ink)}
 .note{font-size:12.5px;color:var(--muted);margin-top:8px}
 .det h1{font-size:40px;margin:8px 0 6px;line-height:1.1}.det .pr b{font-size:34px}
@@ -134,8 +134,8 @@ function grid(){
     : `<div class="hero"><span class="tag">Brand new · first truckload · arriving Dec 1</span><h1 class="serif">Reserve a brand-new sectional <br>before it lands.</h1><p>Only 4 of each are coming on this truck. Hold yours with a $${D.deposit} deposit, and it's set aside with your name on it.</p>
       <div class="cd" data-cd="big"></div>
       <div class="chips"><span>✓ Brand new, never sat on</span><span>✓ $${D.deliveryFee} white-glove delivery</span><span>✓ Deposit comes off your price</span><span>✓ Refundable until it arrives</span></div></div>`;
-  const cards = D.products.map(p => `<div class="card"><div class="ph" data-view="${p.id}" style="background-image:url(${p.photos[0]})"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
-    <div class="bd"><h3>${esc(p.name)}</h3><div class="br">${esc(p.brand)} · ${esc(p.color)}</div>${priceRow(p)}
+  const cards = D.products.map(p => `<div class="card"><div class="ph" data-view="${p.id}" style="background-image:url(${p.photos[0]})${/^https?:/.test(p.photos[0]) ? '' : ';background-size:contain;background-position:center'}"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
+    <div class="bd"><h3>${esc(p.name)}</h3><div class="br">${esc(p.brand)} · ${esc(p.color)}</div>${p.tagline ? `<div class="tl">${esc(p.tagline)}</div>` : ''}${priceRow(p)}
     <div class="specs">${p.specs.filter(s => ['Overall size', 'Fabric', 'Pieces'].includes(s[0])).map(s => `<span>${esc(s[0])}</span><b>${esc(s[1])}</b>`).join('')}</div>
     ${stockBar(p)}<div class="row">${ctas(p)}</div></div></div>`).join('');
   const how = L ? '' : `<div class="how"><div><em>1</em><b>Reserve with $${D.deposit}</b><p>Your sectional comes off the list the second you pay. The $${D.deposit} comes off your total.</p></div><div><em>2</em><b>We text you when it lands</b><p>Estimated Dec 1. If the truck runs late, you'll hear from Billy first.</p></div><div><em>3</em><b>Pay the rest and get it home</b><p>Pick it up, or get $${D.deliveryFee} white-glove delivery. Change your mind before it lands? Full refund.</p></div></div>`;
