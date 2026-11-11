@@ -292,6 +292,31 @@ app.post('/api/openhouse', async (req, res) => {
     res.json({ ok: true, id: o.id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// "Save my spot" sign-ups from billyscouches.com/openhouse (the page posts here as well as to the Google Sheet).
+// HQ's Open Houses tab files each one under the next open house on or after the day they signed up.
+const OHS_KEY = 'bcd:ohSignups', ohsHits = new Map();
+async function addSignup(b, src) {
+  const name = clean(b.name, 80), phone = String(b.phone || '').replace(/\D/g, '').replace(/^1(\d{10})$/, '$1');
+  if (!name || phone.length !== 10) throw new Error('Add a name and a 10-digit phone number');
+  const at = b.date && /^\d{4}-\d{2}-\d{2}$/.test(b.date) ? Date.parse(b.date + 'T12:00:00-06:00') : Date.now();
+  const list = await kget(OHS_KEY, []), dupe = list.find(x => x.phone === phone && Math.abs(at - x.at) < 10 * 864e5);
+  if (dupe) { dupe.name = name; if (b.couch) dupe.couch = clean(b.couch, 120); }
+  else list.unshift({ id: crypto.randomBytes(5).toString('hex'), name, phone, couch: clean(b.couch, 120), at, src });
+  await kset(OHS_KEY, list.slice(0, 1000));
+}
+app.options('/public/oh-signup', (req, res) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); res.sendStatus(204); });
+app.post('/public/oh-signup', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const b = req.body || {}; if (b.website) return res.json({ ok: true });   // honeypot = bot
+    const ip = clientIp(req), now = Date.now(), h = (ohsHits.get(ip) || []).filter(t => now - t < 3600e3);
+    if (h.length >= 10) return res.status(429).json({ error: 'Too many tries' }); h.push(now); ohsHits.set(ip, h);
+    await addSignup({ name: b.name, phone: b.phone, couch: b.couch }, 'website'); res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/oh-signups', async (req, res) => res.json({ ok: true, list: await kget(OHS_KEY, []) }));
+app.post('/api/oh-signup/add', async (req, res) => { try { await addSignup(req.body || {}, 'hq'); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/oh-signup/remove', async (req, res) => { try { const id = String((req.body || {}).id || ''); await kset(OHS_KEY, (await kget(OHS_KEY, [])).filter(x => x.id !== id)); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/openhouse/check', async (req, res) => {
   try {
     const { id, idx, on } = req.body || {};
