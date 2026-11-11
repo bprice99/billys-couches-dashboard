@@ -152,13 +152,15 @@
   var nw = document.createElement('div'); nw.id = 'bc-new'; nw.style.display = 'none';
   root.parentNode.insertBefore(nw, root.nextSibling);
   var frame = null;
+  // Jump straight there (Squarespace turns on smooth scrolling, which looks like the page sliding up).
+  function jump(y) { y = Math.max(0, y); try { window.scrollTo({ top: y, behavior: 'instant' }); } catch (e) { window.scrollTo(0, y); } }
   function loadNew() { if (frame) return; frame = document.createElement('iframe'); frame.src = BN_SRC; frame.title = 'Brand new sectionals'; frame.setAttribute('scrolling', 'no'); nw.appendChild(frame); }
   function sendView() { if (!frame || !frame.contentWindow) return; var r = frame.getBoundingClientRect(); try { frame.contentWindow.postMessage({ bnView: { y: Math.max(0, -r.top), h: window.innerHeight } }, '*'); } catch (e) {} }
   window.addEventListener('message', function (e) {
     if (!frame || e.source !== frame.contentWindow || !e.data) return;
     if (e.data.bnH) frame.style.height = e.data.bnH + 'px';
     if (e.data.bnAsk) sendView();
-    if (e.data.bnTop) { var y = seg.getBoundingClientRect().top + window.pageYOffset - 110; if (window.pageYOffset > y) window.scrollTo(0, Math.max(0, y)); }
+    if (e.data.bnTop) { var y = seg.getBoundingClientRect().top + window.pageYOffset - 110; if (window.pageYOffset > y) jump(y); }
   });
   var vq = 0; window.addEventListener('scroll', function () { if (vq || nw.style.display === 'none') return; vq = requestAnimationFrame(function () { vq = 0; sendView(); }); }, { passive: true });
   function show(tab) {
@@ -166,7 +168,7 @@
     Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { var on = b.getAttribute('data-t') === tab; b.className = on ? 'on' : ''; b.setAttribute('aria-selected', on ? 'true' : 'false'); });
     var a = isNew ? nw : root, b = isNew ? root : nw;
     b.style.display = 'none'; a.style.display = ''; a.classList.remove('bci-pane'); void a.offsetWidth; a.classList.add('bci-pane');
-    var y = seg.getBoundingClientRect().top + window.pageYOffset - 110; if (window.pageYOffset > y) window.scrollTo(0, Math.max(0, y));
+    var y = seg.getBoundingClientRect().top + window.pageYOffset - 110; if (window.pageYOffset > y) jump(y);
     if (isNew) sendView();
     try { history.replaceState(null, '', location.pathname + location.search + (isNew ? '#new' : '')); } catch (e) {}
   }
