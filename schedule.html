@@ -72,7 +72,8 @@ const money = n => '$' + Number(n).toFixed(2);
 const cap = s => String(s || '').replace(/\b\w/g, c => c.toUpperCase());
 const isDel = () => D.type === 'delivery';
 const fmtTel = v => { const d = String(v).replace(/\D/g, '').replace(/^1/, '').slice(0, 10); return d.length > 6 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : d.length > 3 ? `(${d.slice(0, 3)}) ${d.slice(3)}` : d; };
-function steps(n){ ['s1', 's2', 's3'].forEach((id, i) => $(id).classList.toggle('on', i < n)); window.scrollTo(0, 0); }
+// Only jump to the top when moving to a different step (not when tapping a day or time on the same step).
+function steps(n){ ['s1', 's2', 's3'].forEach((id, i) => $(id).classList.toggle('on', i < n)); if (ST.step !== n) window.scrollTo(0, 0); }
 function couchCard(){
   const c = D.couches[0] || {}, more = D.couches.length > 1 ? ` + ${D.couches.length - 1} more` : '';
   return `<div class="ord">${c.photo ? `<img src="${esc(c.photo)}" alt="">` : ''}<div class="b"><b>${esc(D.couches.map(x => x.title).join(' + ') || 'Your couch')}</b>
@@ -91,7 +92,7 @@ function step1(){
   steps(1); ST.step = 1;
   const days = D.days.filter(d => d.slots.length);
   if (!ST.date || !days.find(d => d.date === ST.date && d.slots.some(s => s.left > 0))) { const f = days.find(d => d.slots.some(s => s.left > 0)); ST.date = f ? f.date : ''; ST.win = ''; }
-  const day = days.find(d => d.date === ST.date);
+  const day = days.find(d => d.date === ST.date), dl = document.querySelector('.days') ? document.querySelector('.days').scrollLeft : 0;
   $('app').innerHTML = `<div class="pad">
     ${ST.reschedule ? '<button class="back" onclick="ST.reschedule=false;confirmed()">← Keep my current time</button>' : ''}
     <div class="h">Hi ${esc(cap(D.first))}! Pick your ${isDel() ? 'delivery' : 'pick up'} time</div>
@@ -106,6 +107,7 @@ function step1(){
       : '<p class="empty">No open times right now. Text us at (314) 899-7503 and we\'ll fit you in.</p>'}
     <button class="btn" ${ST.win ? '' : 'disabled'} onclick="step2()">Continue →</button>
     <p class="foot">Questions? Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
+  if (dl && document.querySelector('.days')) document.querySelector('.days').scrollLeft = dl;
 }
 // Holding: free for 5 days after purchase, then $20 a day.
 const H = () => D.hold || {};
