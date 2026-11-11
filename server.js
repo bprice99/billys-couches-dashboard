@@ -2409,8 +2409,10 @@ app.get('/public/inventory', async (req, res) => {
   dropCors(res);
   try {
     const list = (await getDrops()).filter(d => d.status === 'live');
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
-      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: null, photos: (d.photos || []).map(dropPhotoUrl) })) });
+    // The sizing tool (?fit=1) also gets the brand-new sectionals so people can try them in their room.
+    let bnFit = []; if (req.query.fit) { try { const st = await bnGet(); bnFit = BN_PRODUCTS.filter(p => bnCount(st, p.id) < p.units).map(p => ({ id: 'bn-' + p.id, title: p.name.replace(' 5-Piece', '') + ' (Brand New, ' + p.color + ')', price: bnLive() ? p.price : p.launch, retail: 0, pieces: p.pieces, shape: null, photos: ['/public/bn/' + (p.fitPhoto || p.photos[0])] })); } catch {} }
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
+      details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: null, photos: (d.photos || []).map(dropPhotoUrl) }))) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Public order app (order.billyscouches.com) reads this: everything a customer can buy right now,
@@ -2767,12 +2769,14 @@ const BN_DEPOSIT = 100;
 const BN_PRODUCTS = [
   { id: 'harmont', name: 'Harmont 5-Piece Sectional', brand: 'Behold Home', color: 'Camel', price: 2486, launch: 2286, units: 4,
     photos: ['h'], note: '',
+    pieces: [{ name: 'Corner wedge', w: 45, d: 45 }, { name: 'Armless', w: 38, d: 45, qty: 2 }, { name: 'Left arm', w: 41, d: 45, side: 'L' }, { name: 'Right arm', w: 41, d: 45, side: 'R' }],
     blurb: "Deep seats and high backs that feel genuinely comfortable without losing the support to keep you there all day. Plush reversible seat and back cushions hold their shape long after the new-couch feeling wears off.",
     specs: [['Overall size', 'About 124" x 124" corner'], ['Depth', '45"'], ['Back height', '37" (top of back cushion)'], ['Seat height', '19"'], ['Arm height', '26"'],
       ['Fabric', 'Camel, a light warm beige'], ['Cushions', 'Deep, plush, reversible seat and back cushions'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
       ['Modular', 'Yes, every piece moves separately'], ['Legs', 'Removable, 1" tall']] },
   { id: 'ryker', name: 'Ryker 5-Piece Sectional', brand: 'Behold Home', color: 'Stone', price: 2964, launch: 2764, units: 4,
-    photos: ['r1', 'r2'], crop: { r1: [20, 195, 914, 340] }, note: 'Ottoman and pillows in the photo are not included.',
+    photos: ['r1', 'r2'], crop: { r1: [20, 195, 914, 340] }, fitPhoto: 'r2', note: 'Ottoman and pillows in the photo are not included.',
+    pieces: [{ name: 'Corner wedge', w: 44, d: 44 }, { name: 'Armless', w: 37, d: 44, qty: 2 }, { name: 'Left arm', w: 42, d: 44, side: 'L' }, { name: 'Right arm', w: 42, d: 44, side: 'R' }],
     blurb: 'A deep, sink-in corner sectional with a gel-infused cushion topper and performance fabric you can actually live on. Fully modular, so it fits your room your way.',
     specs: [['Overall size', '123" x 123" corner'], ['Depth', '44"'], ['Back height', '36" (top of back cushion)'], ['Seat height', '20"'], ['Arm height', '26"'],
       ['Fabric', 'Stone performance fabric, removable and washable covers'], ['Cushions', '2.0 density foam with a gel-infused topper'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
@@ -2788,7 +2792,7 @@ app.get('/public/bn/:f', (req, res) => { const f = req.params.f; if (!BN_PRODUCT
 app.get('/public/brand-new', async (req, res) => {
   dropCors(res);
   try { const st = await bnGet(), live = bnLive();
-    res.set('Cache-Control', 'no-store').json({ ok: true, now: Date.now(), launchAt: BN_LAUNCH, live, deposit: BN_DEPOSIT, deliveryFee: deliveryFee(),
+    res.set('Cache-Control', 'no-store').json({ ok: true, now: Date.now(), launchAt: BN_LAUNCH, live, deposit: BN_DEPOSIT, deliveryFee: deliveryFee(), fitUrl: FIT_BASE ? FIT_BASE + '/' : PUBLIC_BASE + '/fit',
       products: BN_PRODUCTS.map(p => { const taken = bnCount(st, p.id); return { ...p, photos: p.photos.map(f => '/public/bn/' + f), crop: Object.fromEntries(Object.entries(p.crop || {}).map(([k, v]) => ['/public/bn/' + k, v])), reserved: taken, left: Math.max(0, p.units - taken), now: live ? p.price : p.launch }; }) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
