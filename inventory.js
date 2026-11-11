@@ -134,6 +134,46 @@
   }
 
   root.innerHTML = '<div class="bci-empty">Loading couches&hellip;</div>';
+  // Like New / Brand New switch. Brand New is the HQ brand-new page in a frame, loaded quietly in the background
+  // so tapping the switch only swaps which section is showing (no reload, no wait).
+  var BN_SRC = 'https://hq.billyscouches.com/brand-new?embed=1';
+  var segCss = document.createElement('style');
+  segCss.textContent = '.bci-seg{display:flex;justify-content:center;margin:4px 0 26px}.bci-seg div{display:inline-flex;background:#efe9e2;border-radius:999px;padding:5px;gap:4px;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}'
+    + '.bci-seg button{border:0;background:transparent;border-radius:999px;padding:11px 28px;font:inherit;font-weight:700;font-size:16px;line-height:1.15;color:#6b5d54;cursor:pointer;transition:background .15s,color .15s;-webkit-tap-highlight-color:transparent}'
+    + '.bci-seg button small{display:block;font-size:11.5px;font-weight:600;opacity:.75;margin-top:2px}'
+    + '.bci-seg button.on{background:#1f1a17;color:#fff;box-shadow:0 4px 12px rgba(31,26,23,.25)}'
+    + '@media(max-width:600px){.bci-seg button{padding:10px 20px;font-size:15px}}'
+    + '.bci-pane{animation:bciIn .18s ease-out}@keyframes bciIn{from{opacity:0}to{opacity:1}}@media (prefers-reduced-motion:reduce){.bci-pane{animation:none}}'
+    + '#bc-new iframe{display:block;width:100%;border:0;min-height:900px}';
+  document.head.appendChild(segCss);
+  var seg = document.createElement('div'); seg.className = 'bci-seg';
+  seg.innerHTML = '<div role="tablist"><button type="button" role="tab" data-t="used" class="on">Like New<small>Up to 50% off retail</small></button><button type="button" role="tab" data-t="new">Brand New<small>Reserve before Dec 1</small></button></div>';
+  root.parentNode.insertBefore(seg, root);
+  var nw = document.createElement('div'); nw.id = 'bc-new'; nw.style.display = 'none';
+  root.parentNode.insertBefore(nw, root.nextSibling);
+  var frame = null;
+  function loadNew() { if (frame) return; frame = document.createElement('iframe'); frame.src = BN_SRC; frame.title = 'Brand new sectionals'; frame.setAttribute('scrolling', 'no'); nw.appendChild(frame); }
+  function sendView() { if (!frame || !frame.contentWindow) return; var r = frame.getBoundingClientRect(); try { frame.contentWindow.postMessage({ bnView: { y: Math.max(0, -r.top), h: window.innerHeight } }, '*'); } catch (e) {} }
+  window.addEventListener('message', function (e) {
+    if (!frame || e.source !== frame.contentWindow || !e.data) return;
+    if (e.data.bnH) frame.style.height = e.data.bnH + 'px';
+    if (e.data.bnAsk) sendView();
+    if (e.data.bnTop) { var y = seg.getBoundingClientRect().top + window.pageYOffset - 110; if (window.pageYOffset > y) window.scrollTo(0, Math.max(0, y)); }
+  });
+  var vq = 0; window.addEventListener('scroll', function () { if (vq || nw.style.display === 'none') return; vq = requestAnimationFrame(function () { vq = 0; sendView(); }); }, { passive: true });
+  function show(tab) {
+    var isNew = tab === 'new'; if (isNew) loadNew();
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) { var on = b.getAttribute('data-t') === tab; b.className = on ? 'on' : ''; b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    var a = isNew ? nw : root, b = isNew ? root : nw;
+    b.style.display = 'none'; a.style.display = ''; a.classList.remove('bci-pane'); void a.offsetWidth; a.classList.add('bci-pane');
+    var y = seg.getBoundingClientRect().top + window.pageYOffset - 110; if (window.pageYOffset > y) window.scrollTo(0, Math.max(0, y));
+    if (isNew) sendView();
+    try { history.replaceState(null, '', location.pathname + location.search + (isNew ? '#new' : '')); } catch (e) {}
+  }
+  seg.addEventListener('click', function (e) { var b = e.target.closest('button[data-t]'); if (b) show(b.getAttribute('data-t')); });
+  if (location.hash === '#new') show('new');
+  // Preload Brand New once the page has settled, so the first tap is instant.
+  if (document.readyState === 'complete') setTimeout(loadNew, 1200); else window.addEventListener('load', function () { setTimeout(loadNew, 1200); });
   fetch(FEED, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
     var list = (d && d.couches) || [], fee = d.deliveryFee || 150;
     var upd = d.updated ? new Date(d.updated).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : '';
@@ -143,7 +183,7 @@
       + '<div><b>Will it fit? Find out free.</b><span>Draw your room and try any couch below, to scale.</span></div><i>Try it &rarr;</i></a>'
       + list.map(function (c) { return item(c, fee); }).join('');
     Array.prototype.forEach.call(root.querySelectorAll('.bci-gal'), slider);
-    if (location.hash) { var t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
+    if (location.hash && location.hash !== '#new') { var t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
     fetch('https://order.billyscouches.com/api/delivery-status').then(function (r) { return r.json(); }).then(function (s) {
       if (!s || !s.nextDate) return;
       var when = s.daysOut === 0 ? 'today' : s.daysOut === 1 ? 'tomorrow' : s.dayName.slice(0, 3) + ', ' + s.dateLabel;
