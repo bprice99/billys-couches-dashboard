@@ -2820,19 +2820,19 @@ app.post('/api/sched/delete', async (req, res) => {
 const BN_LAUNCH = Date.parse(process.env.BN_LAUNCH || '2026-12-01T06:00:00Z'); // Dec 1, 12:00 AM Central
 const BN_DEPOSIT = 100;
 const BN_PRODUCTS = [
-  { id: 'harmont', name: 'Harmont 5-Piece Sectional', brand: 'Behold Home', color: 'Camel', tagline: 'Deepest seats · plush reversible cushions', price: 2486, launch: 2286, units: 4,
-    photos: ['h2', 'h3', 'h4', 'h5'], note: 'Ottoman and pillows shown in some photos are not included.',
+  { id: 'harmont', name: 'Harmont 5-Piece Sectional', brand: 'Behold Home', color: 'Camel', tagline: 'Ottoman included · deepest seats · plush reversible cushions', price: 2486, launch: 2286, units: 4,
+    photos: ['h2', 'h3', 'h4', 'h5'], note: 'Matching ottoman included. Throw pillows may differ from photos.',
     pieces: [{ name: 'Corner wedge', w: 45, d: 45 }, { name: 'Armless', w: 38, d: 45, qty: 2 }, { name: 'Left arm', w: 41, d: 45, side: 'L' }, { name: 'Right arm', w: 41, d: 45, side: 'R' }],
     blurb: "Deep seats and high backs that feel genuinely comfortable without losing the support to keep you there all day. Plush reversible seat and back cushions hold their shape long after the new-couch feeling wears off.",
     specs: [['Overall size', 'About 124" x 124" corner'], ['Depth', '45"'], ['Back height', '37" (top of back cushion)'], ['Seat height', '19"'], ['Arm height', '26"'],
-      ['Fabric', 'Camel, a light warm beige'], ['Cushions', 'Deep, plush, reversible seat and back cushions'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
+      ['Fabric', 'Camel, a light warm beige'], ['Cushions', 'Deep, plush, reversible seat and back cushions'], ['Pieces', 'Left-arm, right-arm, 2 armless, a corner wedge + matching ottoman'], ['Ottoman', 'Included, same fabric'],
       ['Modular', 'Yes, every piece moves separately'], ['Legs', 'Removable, 1" tall']] },
-  { id: 'ryker', name: 'Ryker 5-Piece Sectional', brand: 'Behold Home', color: 'Stone', tagline: 'Performance fabric · washable covers · gel topper', price: 2964, launch: 2764, units: 4,
-    photos: ['r3', 'r7', 'r4', 'r6', 'r5'], fitPhoto: 'r3', note: 'Ottoman and pillows shown in some photos are not included.',
+  { id: 'ryker', name: 'Ryker 5-Piece Sectional', brand: 'Behold Home', color: 'Stone', tagline: 'Ottoman included · performance fabric · washable covers', price: 2964, launch: 2764, units: 4,
+    photos: ['r5', 'r3', 'r7', 'r4', 'r6', 'r8'], fitPhoto: 'r3', note: 'Matching ottoman included. Throw pillows may differ from photos.',
     pieces: [{ name: 'Corner wedge', w: 44, d: 44 }, { name: 'Armless', w: 37, d: 44, qty: 2 }, { name: 'Left arm', w: 42, d: 44, side: 'L' }, { name: 'Right arm', w: 42, d: 44, side: 'R' }],
     blurb: 'A deep, sink-in corner sectional with a gel-infused cushion topper and performance fabric you can actually live on. Fully modular, so it fits your room your way.',
     specs: [['Overall size', '123" x 123" corner'], ['Depth', '44"'], ['Back height', '36" (top of back cushion)'], ['Seat height', '20"'], ['Arm height', '26"'],
-      ['Fabric', 'Stone performance fabric, removable and washable covers'], ['Cushions', '2.0 density foam with a gel-infused topper'], ['Pieces', 'Left-arm, right-arm, 2 armless and a corner wedge'],
+      ['Fabric', 'Stone performance fabric, removable and washable covers'], ['Cushions', '2.0 density foam with a gel-infused topper'], ['Pieces', 'Left-arm, right-arm, 2 armless, a corner wedge + matching ottoman'], ['Ottoman', 'Included, same fabric'],
       ['Modular', 'Yes, every piece moves separately'], ['Legs', 'Removable, 1" tall']] }
 ];
 const BN_KEY = 'bcd:brandNew';
