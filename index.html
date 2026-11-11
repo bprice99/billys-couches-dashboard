@@ -500,6 +500,8 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
         <div class="card"><h2>Couches on floor vs. sales</h2><div class="chartwrap" style="height:240px"><canvas id="ohFloor"></canvas></div></div>
         <div class="card"><h2>"Save my spot" leads vs. walk-ins</h2><div class="chartwrap" style="height:240px"><canvas id="ohLeads"></canvas></div></div>
       </div>
+      <div class="card" style="margin-top:16px"><h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span id="ohsTitle" style="flex:1">Saved their spot</span><button class="btn sm" id="ohsAdd">+ Add</button></h2><div id="ohsList"></div>
+        <p class="empty" style="font-size:12.5px;margin-top:10px">Everyone who taps "Save my spot" on billyscouches.com/openhouse lands here, filed under the next open house. Text them the day before.</p></div>
       <div class="card" style="margin-top:16px"><h2>Every open house</h2><div style="overflow-x:auto"><table id="ohTbl"></table></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Conversion = sales ÷ walk-ins. "Sales Log that day" is every order-app sale on that date, as a check on the count.</p></div>
       <div class="card" style="margin-top:16px"><h2 id="ohCheckTitle">Promo checklist</h2><div id="ohChecks"></div></div>
@@ -1661,8 +1663,15 @@ function ohStats(o){
   const done = PROMO_ALL.filter((_, i) => (o.checks || {})[i]).length;
   return { d, conv: o.walkins ? o.sales / o.walkins : NaN, salesLog: salesLog.length, salesLogRev: salesLog.reduce((a, s) => a + s.rev, 0), done };
 }
+// "Save my spot" sign-ups, filed under the next open house on or after the day they signed up.
+let OHS = null, OHS_LOADING = false;
+function ohsLoad(){ if (OHS_LOADING) return; OHS_LOADING = true; fetch('/api/oh-signups').then(r => r.json()).then(j => { OHS = j.list || []; OHS_LOADING = false; if (tab === 'openhouse') renderOpenHouse(); }).catch(() => { OHS_LOADING = false; }); }
+const ctYmd2 = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+function ohsFor(o){ const all = (RAW.openhouses || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  return (OHS || []).filter(s => { const d = ctYmd2(s.at), host = all.find(x => x.date >= d); return host && host.id === o.id && (toDate(o.date) - toDate(d)) / 864e5 <= 30; }); }
+const leadsOf = o => Math.max(Number(o.leads) || 0, OHS ? ohsFor(o).length : 0);
 function renderOpenHouse(){
-  renderOHCal();
+  renderOHCal(); if (OHS === null) ohsLoad();
   const R = getR('openhouse'), list = (RAW.openhouses || []).filter(o => inR(toDate(o.date), R)).sort((a, b) => a.date.localeCompare(b.date));
   const past = list.filter(o => toDate(o.date) <= day0(new Date()));
   const T = k => past.reduce((a, o) => a + (Number(o[k]) || 0), 0);
@@ -1671,7 +1680,7 @@ function renderOpenHouse(){
   $('ohKpis').innerHTML = kpiHtml([
     ['Open houses', past.length], ['Walk-ins', walk, `<div class="c flat">${past.length ? (walk / past.length).toFixed(1) : 0} per event</div>`],
     ['Sales', sales, `<div class="c flat">${past.length ? (sales / past.length).toFixed(1) : 0} per event</div>`], ['Conversion', pct(walk ? sales / walk : NaN)],
-    ['"Save my spot" leads', T('leads')], ['Avg. couches on floor', withFloor.length ? Math.round(withFloor.reduce((a, o) => a + Number(o.floor), 0) / withFloor.length) : '–'],
+    ['"Save my spot" leads', past.reduce((a, o) => a + leadsOf(o), 0)], ['Avg. couches on floor', withFloor.length ? Math.round(withFloor.reduce((a, o) => a + Number(o.floor), 0) / withFloor.length) : '–'],
   ]);
   // next or most recent event gets the checklist
   const all = (RAW.openhouses || []).slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -1685,18 +1694,28 @@ function renderOpenHouse(){
     (list.length ? list.slice().reverse().map(o => { const st = ohStats(o);
       return `<tr><td><b>${fmtD(st.d)}</b>${o.note ? `<div style="font-size:12px;color:var(--muted)">${esc(o.note)}</div>` : ''}</td><td class="hide-m">${esc(o.time || '')}</td>
         <td class="n">${o.walkins ?? '–'}</td><td class="n">${o.sales ?? '–'}</td><td class="n"><b>${pct(st.conv)}</b></td>
-        <td class="n hide-m">${o.floor || '–'}</td><td class="n hide-m">${o.promoDays || '–'}</td><td class="n hide-m">${o.leads || '–'}</td>
+        <td class="n hide-m">${o.floor || '–'}</td><td class="n hide-m">${o.promoDays || '–'}</td><td class="n hide-m">${leadsOf(o) || '–'}</td>
         <td class="n hide-m">${st.done ? st.done + '/' + PROMO_ALL.length : '–'}</td><td class="n hide-m">${st.salesLog ? st.salesLog + ' · ' + money(st.salesLogRev) : '–'}</td>
         <td class="n" style="white-space:nowrap">${o.date >= todayStr() ? `<a class="btn sm" target="_blank" rel="noopener" href="${gcalLink(o)}">+ GCal</a> ` : ''}<button class="btn sm" data-ohedit="${esc(o.id)}">Edit</button> <button class="btn sm" data-del="openhouses:${esc(o.id)}">Delete</button></td></tr>`; }).join('')
       : `<tr><td colspan="11" class="empty">No open houses in this range.</td></tr>`);
   // does more inventory on the floor mean more sales?
   const pts = past.filter(o => o.floor && o.sales != null).map(o => ({ x: Number(o.floor), y: Number(o.sales) }));
-  const lpts = past.filter(o => o.leads && o.walkins != null).map(o => ({ x: Number(o.leads), y: Number(o.walkins) }));
+  const lpts = past.filter(o => leadsOf(o) && o.walkins != null).map(o => ({ x: leadsOf(o), y: Number(o.walkins) }));
+  // who saved their spot for the next (or latest) open house
+  const sv = next && OHS ? ohsFor(next) : [];
+  $('ohsTitle').innerHTML = 'Saved their spot' + (next ? ` <small>${esc(fmtD(toDate(next.date), true))} &middot; ${sv.length}</small>` : '');
+  $('ohsList').innerHTML = OHS === null ? '<p class="empty">Loading...</p>' : sv.length ? `<div style="overflow-x:auto"><table><tr><th>Name</th><th>Phone</th><th class="hide-m">Couch they liked</th><th>Signed up</th><th></th></tr>${sv.map(s => `<tr><td><b>${esc(s.name)}</b></td><td><a href="sms:+1${esc(s.phone)}">${esc(s.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'))}</a></td><td class="hide-m" style="font-size:12.5px">${esc(s.couch || '–')}</td><td style="font-size:12.5px">${esc(fmtD(new Date(s.at)))}</td><td class="n"><button class="btn sm" data-ohsdel="${esc(s.id)}">Remove</button></td></tr>`).join('')}</table></div>` : '<p class="empty">No one has saved a spot for this one yet.</p>';
   const so = (xt, yt) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: xt } }, y: { beginAtZero: true, title: { display: true, text: yt }, ticks: { precision: 0 } } } });
   chartIn('ohFloor', { type: 'scatter', data: { datasets: [{ data: pts, backgroundColor: '#b0524c', pointRadius: 6 }] }, options: so('Couches on floor', 'Sales') });
   chartIn('ohLeads', { type: 'scatter', data: { datasets: [{ data: lpts, backgroundColor: '#2b1d16', pointRadius: 6 }] }, options: so('"Save my spot" leads', 'Walk-ins') });
   void withPromo;
 }
+document.addEventListener('click', async e => {
+  if (e.target.id === 'ohsAdd') { const name = prompt('Name'); if (!name) return; const phone = prompt('Phone number'); if (!phone) return; const date = prompt('Day they signed up (YYYY-MM-DD)', todayStr()); if (!date) return;
+    try { await post('/api/oh-signup/add', { name, phone, date }); OHS = null; ohsLoad(); toast('Added'); } catch (err) { toast(err.message); } return; }
+  const id = e.target.dataset && e.target.dataset.ohsdel; if (!id) return;
+  try { await post('/api/oh-signup/remove', { id }); OHS = (OHS || []).filter(s => s.id !== id); renderOpenHouse(); } catch (err) { toast(err.message); }
+});
 function openOH(o){
   const m = $('m-oh'), f = m.querySelector('form').elements;
   o = o || {};
