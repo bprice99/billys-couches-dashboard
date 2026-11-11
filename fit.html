@@ -110,7 +110,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   function rot(p, r, bw, bh){ return r === 90 ? [bh - p[1], p[0]] : r === 180 ? [bw - p[0], bh - p[1]] : r === 270 ? [p[1], bw - p[0]] : p; }
   function box(it){ var L = local(it), sw = it.r % 180 ? 1 : 0; return { w: sw ? L.bh : L.bw, h: sw ? L.bw : L.bh }; }
   function shape(it){ var L = local(it); return L.pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
-  function backStrip(it){ var L = local(it), b = Math.min(9, it.d * 0.25), pts = [[0,0],[L.bw,0],[L.bw,b],[0,b]]; return pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
+  function backStrip(it, side){ var L = local(it), b = Math.min(9, it.d * 0.25), pts = side ? [[0,0],[b,0],[b,L.bh],[0,L.bh]] : [[0,0],[L.bw,0],[L.bw,b],[0,b]]; return pts.map(function(p){ var q = rot(p, it.r, L.bw, L.bh); return [q[0] + it.x, q[1] + it.y]; }); }
   function clamp(it, R){ var b = box(it);
     it.x = Math.max(0, Math.min(R.W - b.w, it.x)); it.y = Math.max(0, Math.min(R.D - b.h, it.y));
     if (it.x < SNAP) it.x = 0; if (R.W - b.w - it.x < SNAP) it.x = Math.max(0, R.W - b.w);
@@ -191,6 +191,72 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
       var L = it.x + b.w - o.x, Rr = o.x + ob.w - it.x, T = it.y + b.h - o.y, Bm = o.y + ob.h - it.y, m = Math.min(L, Rr, T, Bm);
       if (m === L) it.x = o.x - b.w; else if (m === Rr) it.x = o.x + ob.w; else if (m === T) it.y = o.y - b.h; else it.y = o.y + ob.h; });
   }
+  // ---------- unlocked pieces: slide into gaps, and face the right way ----------
+  var isCorner = function(it){ return /corner|wedge/i.test(it.name); };
+  var plainPiece = function(it){ return it.kind === 'couch' && !it.ret && !it.ch && !/ottoman/i.test(it.name); };
+  var SIDE_R = { top: 0, right: 90, bottom: 180, left: 270 };
+  // Which sides of a piece are "back": one for a regular piece, two for a corner.
+  function backs(it){ var o = ['top', 'right', 'bottom', 'left'], i = (it.r / 90) % 4; return isCorner(it) ? [o[i], o[(i + 3) % 4]] : [o[i]]; }
+  function touchSide(a, b){ var A = box(a), B = box(b), e = 1;
+    var vO = Math.min(a.y + A.h, b.y + B.h) - Math.max(a.y, b.y), hO = Math.min(a.x + A.w, b.x + B.w) - Math.max(a.x, b.x);
+    if (vO > 4 && Math.abs(a.x + A.w - b.x) < e) return 'right'; if (vO > 4 && Math.abs(b.x + B.w - a.x) < e) return 'left';
+    if (hO > 4 && Math.abs(a.y + A.h - b.y) < e) return 'bottom'; if (hO > 4 && Math.abs(b.y + B.h - a.y) < e) return 'top'; return ''; }
+  function turnTo(it, r){ if (it.r === r) return; var b0 = box(it), cx = it.x + b0.w / 2, cy = it.y + b0.h / 2; it.r = r; var b = box(it); it.x = cx - b.w / 2; it.y = cy - b.h / 2; }
+  // Face the piece into the room: back against the wall it's on, or lined up with the pieces it's touching.
+  function orient(it, R){
+    if (!plainPiece(it) && !isCorner(it)) return;
+    var b = box(it), walls = [];
+    if (!ARR) { if (it.y < 1) walls.push('top'); if (R.W - it.x - b.w < 1) walls.push('right'); if (R.D - it.y - b.h < 1) walls.push('bottom'); if (it.x < 1) walls.push('left'); }
+    if (isCorner(it)) {
+      var cr = { 'top,left': 0, 'left,top': 0, 'top,right': 90, 'right,top': 90, 'right,bottom': 180, 'bottom,right': 180, 'bottom,left': 270, 'left,bottom': 270 };
+      if (walls.length === 2 && cr[walls.join(',')] !== undefined) { it.r = cr[walls.join(',')]; return; }
+      var n = {}; grp().forEach(function(o){ if (o !== it && plainPiece(o)) { var s = touchSide(it, o); if (s) n[s] = 1; } });
+      var h = n.right ? 'right' : n.left ? 'left' : '', v = n.bottom ? 'bottom' : n.top ? 'top' : '';
+      if (h && v) it.r = { 'right,bottom': 0, 'left,bottom': 90, 'left,top': 180, 'right,top': 270 }[h + ',' + v];
+      return;
+    }
+    if (walls.length === 1) { turnTo(it, SIDE_R[walls[0]]); return; }
+    var pick = null;
+    grp().forEach(function(o){ if (pick || o === it || /ottoman/i.test(o.name)) return; var s = touchSide(it, o); if (!s) return;
+      var horiz = s === 'left' || s === 'right', bk = backs(o).filter(function(x){ return horiz ? (x === 'top' || x === 'bottom') : (x === 'left' || x === 'right'); })[0];
+      if (bk) pick = bk; });
+    if (pick) turnTo(it, SIDE_R[pick]); else if (walls.length) { if (walls.map(function(w){ return SIDE_R[w]; }).indexOf(it.r) < 0) turnTo(it, SIDE_R[walls[0]]); }
+  }
+  // Where two pieces touch in a row, find the seam nearest the drop point (so a piece can be slipped in between them).
+  function seamAt(it, cx, cy){
+    var best = null, b = box(it), half = Math.max(b.w, b.h) / 2 + 6;
+    grp().forEach(function(A){ if (A === it || /ottoman/i.test(A.name)) return; grp().forEach(function(B){ if (B === it || B === A || /ottoman/i.test(B.name)) return;
+      var s = touchSide(A, B), Ab = box(A), Bb = box(B), d, lo, hi;
+      if (s === 'right') { lo = Math.max(A.y, B.y); hi = Math.min(A.y + Ab.h, B.y + Bb.h); if (cy < lo - 10 || cy > hi + 10) return; d = Math.abs(cx - (A.x + Ab.w)); if (d < half && (!best || d < best.d)) best = { d: d, A: A, B: B, ax: 'x' }; }
+      if (s === 'bottom') { lo = Math.max(A.x, B.x); hi = Math.min(A.x + Ab.w, B.x + Bb.w); if (cx < lo - 10 || cx > hi + 10) return; d = Math.abs(cy - (A.y + Ab.h)); if (d < half && (!best || d < best.d)) best = { d: d, A: A, B: B, ax: 'y' }; }
+    }); });
+    return best;
+  }
+  // Pulling a piece out of the middle of a run closes the gap it leaves.
+  function closeGap(it, at){
+    var ghost = { kind: 'couch', name: it.name, w: it.w, d: it.d, x: at.x, y: at.y, r: at.r }, gb = box(ghost), n = {};
+    grp().forEach(function(o){ if (o !== it) { var s = touchSide(ghost, o); if (s) n[s] = 1; } });
+    if (n.left && n.right) { var mx = at.x + gb.w / 2; grp().forEach(function(o){ if (o !== it && o.x + box(o).w / 2 > mx) o.x -= gb.w; }); }
+    else if (n.top && n.bottom) { var my = at.y + gb.h / 2; grp().forEach(function(o){ if (o !== it && o.y + box(o).h / 2 > my) o.y -= gb.h; }); }
+  }
+  // After a drop (pieces unlocked): slip into a seam if it was dropped on one, otherwise just face the right way.
+  function settle(it, raw, start, R){
+    if (!plainPiece(it) && !isCorner(it)) return;
+    var b = box(it), sm = isCorner(it) ? null : seamAt(it, raw.x + b.w / 2, raw.y + b.h / 2);
+    if (sm) {
+      closeGap(it, start);
+      var A = sm.A, B = sm.B, ref = plainPiece(A) ? A : B, horiz = sm.ax === 'x';
+      var bk = backs(ref).filter(function(x){ return horiz ? (x === 'top' || x === 'bottom') : (x === 'left' || x === 'right'); })[0] || (horiz ? 'top' : 'left');
+      it.r = SIDE_R[bk]; b = box(it); var Ab = box(A), rb = box(ref);
+      if (horiz) { var s = A.x + Ab.w; grp().forEach(function(o){ if (o !== it && o.x + box(o).w / 2 > s) o.x += b.w; }); it.x = s; it.y = bk === 'bottom' ? ref.y + rb.h - b.h : ref.y; }
+      else { var sy = A.y + Ab.h; grp().forEach(function(o){ if (o !== it && o.y + box(o).h / 2 > sy) o.y += b.h; }); it.y = sy; it.x = bk === 'right' ? ref.x + rb.w - b.w : ref.x; }
+      shiftGroup(0, 0, R); return;
+    }
+    orient(it, R); clamp(it, R); snapPieces(it); clamp(it, R);
+    // Moved clear of where it was? Close the gap it left in that run.
+    var gh = { kind: 'couch', name: it.name, w: it.w, d: it.d, x: start.x, y: start.y, r: start.r };
+    if (!overlap(it, gh)) { closeGap(it, start); clamp(it, R); snapPieces(it); clamp(it, R); }
+  }
   // A modular sectional with no saved shape: build the usual setup from its pieces.
   // 2+ corners = U (corner, middles, corner across the back, extra middles down the left side, ottoman in front of the right corner).
   // 1 corner = L (corner in the back-left, half the pieces across the back, half down the side, ottoman inside the L).
@@ -214,6 +280,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
       if (cor.length >= 2 && !right.length && last) { it.x = x - b.w; it.y = box(last).h + n * b.h; }
       else if (cor.length === 1) { var c0 = box(cor[0]); it.x = c0.w + n * b.w; it.y = c0.h; }
       else { it.x = Math.max(0, (x - b.w) / 2 + n * b.w); it.y = deep + 12; } });
+    if (cor.length >= 2) cor.slice(1, 2).forEach(function(c){ if (!c.ret && !c.ch) c.r = 90; });
     var G = gbox(grp()); grp().forEach(function(it){ it.x -= G.x; it.y -= G.y; });
     if (cor.length !== 1) { G = gbox(grp()); shiftGroup(Math.max(0, (R.W - G.w) / 2), 0, R); } else shiftGroup(0, 0, R);
   }
@@ -249,7 +316,7 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
         return;
       }
       var stroke = bad[i] ? '#b0524c' : sel ? '#b0524c' : '#6e5240';
-      out.push('<g data-i="' + i + '" style="cursor:grab"><path d="' + pathOf(shape(it)) + '" fill="' + (bad[i] ? '#c99a8a' : '#b48f74') + '" stroke="' + stroke + '" stroke-width="' + sw * (sel || bad[i] ? 2.4 : 1.2) + '"/>' + (/ottoman/i.test(it.name) ? '' : '<path d="' + pathOf(backStrip(it)) + '" fill="#9a7660"/>') + '');
+      out.push('<g data-i="' + i + '" style="cursor:grab"><path d="' + pathOf(shape(it)) + '" fill="' + (bad[i] ? '#c99a8a' : '#b48f74') + '" stroke="' + stroke + '" stroke-width="' + sw * (sel || bad[i] ? 2.4 : 1.2) + '"/>' + (/ottoman/i.test(it.name) ? '' : '<path d="' + pathOf(backStrip(it)) + '" fill="#9a7660"/>' + (isCorner(it) && !it.ret && !it.ch ? '<path d="' + pathOf(backStrip(it, 1)) + '" fill="#9a7660"/>' : '')) + '');
       var cx = it.x + b.w / 2, cy = it.y + b.h / 2;
       if (it.ret || it.ch) { var L = local(it), arm = rot([L.bw / 2, it.d / 2], it.r, L.bw, L.bh); cx = arm[0] + it.x; cy = arm[1] + it.y; }
       var vert = it.r % 180 && !it.ret && !it.ch, size = Math.round(it.w) + '"' + (it.ret ? ' × ' + Math.round(it.ret) + '"' : '') + (it.ch ? ' · chaise ' + Math.round(it.ch) + '"' : '');
@@ -325,16 +392,18 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
   $('plan').addEventListener('pointerdown', function(e){
     var g = e.target.closest('[data-i]'); if (!g) { S.sel = -1; draw(); return; }
     var i = +g.getAttribute('data-i'), it = S.items[i], p = pt(e); S.sel = i;
-    drag = { i: i, ox: p.x - it.x, oy: p.y - it.y, id: e.pointerId, grp: S.locked && S.modular && it.kind === 'couch', px: p.x, py: p.y }; $('plan').setPointerCapture(e.pointerId); draw(); e.preventDefault();
+    drag = { i: i, ox: p.x - it.x, oy: p.y - it.y, id: e.pointerId, grp: S.locked && S.modular && it.kind === 'couch', px: p.x, py: p.y, start: { x: it.x, y: it.y, r: it.r }, raw: null }; $('plan').setPointerCapture(e.pointerId); draw(); e.preventDefault();
   });
   $('plan').addEventListener('pointermove', function(e){
     if (!drag || e.pointerId !== drag.id) return; var it = S.items[drag.i], p = pt(e), R = room();
     if (drag.grp) { shiftGroup(p.x - drag.px, p.y - drag.py, R); drag.px = p.x; drag.py = p.y; draw(); return; }
-    it.x = p.x - drag.ox; it.y = p.y - drag.oy;
+    it.x = p.x - drag.ox; it.y = p.y - drag.oy; drag.raw = { x: it.x, y: it.y };
     if (it.kind === 'door') doorSnap(it, R); else { clamp(it, R); if (it.kind === 'couch') { snapPieces(it); clamp(it, R); snapPieces(it); } }
     draw();
   });
-  var end = function(){ if (drag) { drag = null; save(); } };
+  var end = function(){ if (drag) { var d0 = drag, it = S.items[d0.i]; drag = null;
+    if (d0.raw && !d0.grp && S.modular && it && it.kind === 'couch' && (Math.abs(it.x - d0.start.x) > 2 || Math.abs(it.y - d0.start.y) > 2)) { settle(it, d0.raw, d0.start, room()); draw(); }
+    save(); } };
   $('plan').addEventListener('pointerup', end); $('plan').addEventListener('pointercancel', end);
 
   // ---------- tools ----------
