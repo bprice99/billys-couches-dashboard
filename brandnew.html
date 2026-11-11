@@ -160,7 +160,7 @@ function detail(p){
     ${priceRow(p)}${right}${stockBar(p)}<div class="ctas">${ctas(p, true)}</div>
     ${L ? '' : `<div class="fine">Your deposit holds this exact sectional and comes off your price. Fully refundable until it arrives.</div>`}</div></div>
   <div class="low"><div><div class="box" style="margin-bottom:20px"><h3>About the ${esc(shortName(p))}</h3><p>${esc(p.blurb)}</p></div>${specs}</div>
-    <div><div class="box" style="margin-bottom:20px"><h3>Will it fit your room?</h3><p style="margin-bottom:14px">Drop the ${esc(shortName(p))} into your room with our free sizing tool. Takes 2 minutes.</p><a class="btn o sm" href="${D.fitUrl}?couch=bn-${p.id}" target="_top">Try it in my room →</a></div>
+    <div><div class="box" style="margin-bottom:20px"><h3>Will it fit your room?</h3><p style="margin-bottom:14px">Drop the ${esc(shortName(p))} into your room with our free sizing tool. Takes 2 minutes.</p><a class="btn o sm" href="https://www.billyscouches.com/will-it-fit" target="_top">Try it in my room →</a></div>
     ${L ? '' : terms()}</div></div>
   ${compare(p.id)}
   <div class="why"><div><b>Sectional specialists</b><p>We only sell couches, so we know what lasts.</p></div><div><b>No big-store markup</b><p>No giant showroom, no commissioned salespeople.</p></div><div><b>Sit on it first</b><p>Come try it in Pacific before it goes home.</p></div><div><b>Text the owner</b><p>Questions go to Billy, not a call center.</p></div></div></div>`;
