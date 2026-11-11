@@ -149,7 +149,7 @@ function detail(p){
     : `<div class="cdbox"><div><small>LANDS IN PACIFIC IN</small><div class="t" data-cd="small"></div></div><div style="text-align:right"><small>EST. ARRIVAL</small><div style="font-weight:800">Dec 1</div></div></div>
        <div class="dep"><div><span>Launch price</span><b>${money(p.launch)}</b></div><div><span>Reserve today</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(p.launch - D.deposit)}</b></div></div><div class="fine">Plus sales tax. Pickup is free, or $${D.deliveryFee} for white-glove delivery.</div>`;
   return `<div class="wrap"><button class="back" data-view="">← All brand-new sectionals</button>
-  <div class="det"><div><div class="main" style="background-image:url(${pic})"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
+  <div class="det"><div><div class="main" style="background-image:url(${pic});background-size:${/^https?:/.test(pic) ? 'cover' : 'contain'}"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
     ${p.photos.length > 1 ? `<div class="thumbs">${p.photos.map((f, i) => `<button class="${i === PIC ? 'on' : ''}" data-pic="${i}" style="background-image:url(${f})" aria-label="Photo ${i + 1}"></button>`).join('')}</div>` : ''}
     ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}</div>
   <div><span class="tag">${L ? 'Brand new · in stock in Pacific' : 'Brand new · first truckload'}</span><h1 class="serif">${esc(p.name)}</h1><div class="br" style="font-size:15px">${esc(p.brand)} · ${esc(p.color)} · ${esc(p.specs[0][1])}</div>
