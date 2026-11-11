@@ -55,6 +55,7 @@ a{color:inherit}.serif{font-family:Georgia,"Times New Roman",serif;font-weight:4
 .ok{max-width:620px;margin:40px auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:30px;text-align:center}.ok h1{font-size:34px;margin:8px 0}.ok p{color:#6b5d55;line-height:1.55}
 .empty{padding:60px 20px;text-align:center;color:var(--muted)}
 body.embed .nav{display:none}
+#app.fade{animation:bnIn .22s ease-out}@keyframes bnIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){#app.fade{animation:none}}
 @media (max-width:820px){.hero h1 br{display:none}.nav{padding:10px 16px}.nav .l a:not(:first-child){display:none}.hero{padding:34px 16px 20px}.hero h1{font-size:32px}.cd div{width:72px}.cd b{font-size:26px}
  .grid,.det,.low{grid-template-columns:1fr;padding-left:16px;padding-right:16px}.how,.why{grid-template-columns:1fr;padding:0 16px 30px}.band{margin:0 16px 30px}.det h1{font-size:30px}.back{margin:16px 16px 0}.cdbox .t{font-size:18px}.ctas{flex-direction:column}}
 @media (max-width:420px){.row{flex-direction:column}}
@@ -76,7 +77,9 @@ function postHeight(){ try { parent.postMessage({ bnH: document.documentElement.
 const EMB = window.top !== window.self; let PV = null;
 addEventListener('message', e => { if (e.data && e.data.bnView) PV = e.data.bnView; });
 if (EMB) try { parent.postMessage({ bnAsk: 1 }, '*'); } catch {}
-function toTop(){ window.scrollTo(0, 0); if (EMB) try { parent.postMessage({ bnTop: 1 }, '*'); } catch {} }
+function toTop(){ try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0, 0); } if (EMB) try { parent.postMessage({ bnTop: 1 }, '*'); } catch {} }
+// Swap views: jump to the top first (no scroll animation), then fade the new view in.
+function swapView(){ toTop(); requestAnimationFrame(() => { const a = $('app'); a.classList.remove('fade'); render(); void a.offsetWidth; a.classList.add('fade'); }); }
 new ResizeObserver(postHeight).observe(document.body);
 async function load(){
   try { D = await (await fetch('/public/brand-new', { cache: 'no-store' })).json(); SKEW = D.now - Date.now(); }
@@ -126,9 +129,9 @@ function render(){
 }
 function grid(){
   const L = D.live;
-  const hero = L ? `<div class="hero"><span class="tag">Brand new · never sat on</span><h1 class="serif">New sectionals, without the<br>big-store markup.</h1><p>Hand-picked new sectionals, in stock in Pacific. Sit on them today, and have yours in your living room this week.</p>
+  const hero = L ? `<div class="hero"><span class="tag">Brand new · never sat on</span><h1 class="serif">New sectionals, without the <br>big-store markup.</h1><p>Hand-picked new sectionals, in stock in Pacific. Sit on them today, and have yours in your living room this week.</p>
       <div class="chips"><span>✓ In stock, not special order</span><span>✓ $${D.deliveryFee} white-glove delivery</span><span>✓ Sit on it first</span></div></div>`
-    : `<div class="hero"><span class="tag">Brand new · first truckload · arriving Dec 1</span><h1 class="serif">Reserve a brand-new sectional<br>before it lands.</h1><p>Only 4 of each are coming on this truck. Hold yours with a $${D.deposit} deposit, and it's set aside with your name on it.</p>
+    : `<div class="hero"><span class="tag">Brand new · first truckload · arriving Dec 1</span><h1 class="serif">Reserve a brand-new sectional <br>before it lands.</h1><p>Only 4 of each are coming on this truck. Hold yours with a $${D.deposit} deposit, and it's set aside with your name on it.</p>
       <div class="cd" data-cd="big"></div>
       <div class="chips"><span>✓ Brand new, never sat on</span><span>✓ $${D.deliveryFee} white-glove delivery</span><span>✓ Deposit comes off your price</span><span>✓ Refundable until it arrives</span></div></div>`;
   const cards = D.products.map(p => `<div class="card"><div class="ph" data-view="${p.id}" style="background-image:url(${p.photos[0]})"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
@@ -204,7 +207,7 @@ async function confirmDeposit(){
   history.replaceState(null, '', '/brand-new'); postHeight();
 }
 document.addEventListener('click', e => {
-  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; PIC = 0; history.replaceState(null, '', '/brand-new' + (VIEW ? '?p=' + VIEW : '')); render(); toTop(); return; }
+  const v = e.target.closest('[data-view]'); if (v) { VIEW = v.dataset.view; PIC = 0; history.replaceState(null, '', '/brand-new' + (VIEW ? '?p=' + VIEW : '')); swapView(); return; }
   const r = e.target.closest('[data-res]'); if (r) { openReserve(r.dataset.res); return; }
   const pc = e.target.closest('[data-pic]'); if (pc) { PIC = +pc.dataset.pic; render(); return; }
   if (e.target.closest('[data-close]') || e.target.id === 'mask') $('mask').classList.remove('on');
