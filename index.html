@@ -2196,7 +2196,7 @@ const PPL_INC = ['otherIn', 'ownerPay', 'coachIn'];
 // Through Oct 2026 this column is Billy's Couches net profit; from Nov 2026 on it's what you paid yourself.
 const PPL_PAY_FROM = '2026-11';
 const PPL_IN = [['couches', "Billy's Couches"], ['coaching', 'Coaching'], ['otherIn', 'Other income']];
-const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['eatingOut', 'Eating out'], ['subscriptions', 'Subscriptions'], ['needs', 'Needs'], ['wants', 'Wants'], ['education', 'Education'], ['travel', 'Travel'], ['otherOut', 'Other']];
+const PPL_OUT = [['rent', 'Rent'], ['groceries', 'Groceries'], ['eatingOut', 'Eating out'], ['subscriptions', 'Subscriptions'], ['needs', 'Needs'], ['wants', 'Wants'], ['education', 'Education'], ['coachingExp', 'Coaching expense'], ['travel', 'Travel'], ['otherOut', 'Other']];
 let PPLY = new Date().getFullYear(), pplT = null;
 const pplData = () => (RAW.store.ppl && typeof RAW.store.ppl === 'object' ? RAW.store.ppl : {});
 // Billy's Couches column: net profit from the Sales Tracker before PPL_PAY_FROM, then owner's pay (transfers sorted as "Owner's pay" in Review). Coaching from payments marked paid in Coaching HQ,
@@ -2309,7 +2309,7 @@ function pplRefresh(){
   const labels = rows.map(r => new Date(r.k + '-15').toLocaleDateString('en-US', { month: 'short' }));
   chartIn('pplNet', { type: 'line', data: { labels, datasets: [{ label: 'Net profit', data: rows.map(r => r.has ? r.net : null), borderColor: '#2e7d4f', backgroundColor: 'rgba(46,125,79,.12)', fill: true, tension: .3, pointRadius: 3, spanGaps: true }] },
     options: { animation: false, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v / 100) / 10 + 'k' } } } } });
-  const cols = { rent: '#2b1d16', groceries: '#b0524c', eatingOut: '#e08a4f', subscriptions: '#6b7fa8', needs: '#5c8a6b', education: '#8a6bb0', travel: '#3e9bb3', otherOut: '#d9c4b8' };
+  const cols = { rent: '#2b1d16', groceries: '#b0524c', eatingOut: '#e08a4f', subscriptions: '#6b7fa8', needs: '#5c8a6b', education: '#8a6bb0', coachingExp: '#c9a227', travel: '#3e9bb3', otherOut: '#d9c4b8' };
   chartIn('pplSpend', { type: 'bar', data: { labels, datasets: PPL_OUT.map(([c, l]) => ({ label: l, data: rows.map(r => r.has ? Number(r.r[c]) || 0 : null), backgroundColor: cols[c], borderRadius: 3 })) },
     options: { animation: false, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v => '$' + v.toLocaleString() } } } } });
   // Where the money goes: this month + the whole year
