@@ -1154,13 +1154,15 @@ app.get('/api/plaid/balances', async (req, res) => {
 const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta', all: 'bcd:txnAll' };
 // Business expenses before this date were tracked by hand (IvyFlip + typed in), so bank sync never auto-adds or asks about them.
 const BIZ_FROM = (process.env.BIZ_AUTO_FROM || '2026-11-01').trim();
-const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
+// Matches IRS Schedule C lines so the tax export lines up (Payroll renamed Contract labor: team is paid on 1099s).
+const BIZ_CATS = ['Advertising', 'Contract labor', 'Rent', 'Equipment rental', 'Utilities', 'Fuel', 'Truck', 'Insurance', 'Supplies', 'Software', 'Fees', 'Legal & professional', 'Taxes & licenses', 'Interest', 'Repairs', 'Meals', 'Travel', 'Coaching & education', 'Equipment', 'Freight', 'Other'];
 const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', wants: 'Wants', education: 'Education', coachingExp: 'Coaching expense', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay", coachIn: 'Coaching income' };
 // Built-in guesses (your own "remember this" rules always win).
-const BIZ_GUESS = [[/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
+const BIZ_GUESS = [[/stripe fee|klarna|affirm|square fee|paypal fee|service charge|statement fee|monthly maintenance|overdraft|wire fee/i, 'Fees'], [/dark ?horse|cpa|legalzoom|attorney|law office|bookkeep/i, 'Legal & professional'],
+  [/city of pacific|secretary of state|business license|dept of revenue license/i, 'Taxes & licenses'], [/interest charge|purchase interest|finance charge/i, 'Interest'], [/keon|roane|charles chy/i, 'Coaching & education'], [/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
   [/shell|qt |quiktrip|bp |exxon|mobil|phillips 66|casey|speedway|marathon|circle k|\bgas\b|fuel/i, 'Fuel'], [/home depot|lowe|menards|uline|harbor freight|walmart|amazon|scotchgard|ace hardware/i, 'Supplies'],
   [/u-?haul|penske|ryder|tire|jiffy|valvoline|autozone|o.?reilly|advance auto/i, 'Truck'], [/progressive|state farm|geico|insurance|next insurance/i, 'Insurance'], [/ameren|spire|at&t|verizon|t-?mobile|comcast|spectrum|water/i, 'Utilities'],
-  [/b-?stock|ch robinson|freight|uship/i, 'Freight'], [/forklift/i, 'Equipment']];
+  [/b-?stock|ch robinson|freight|uship/i, 'Freight'], [/forklift/i, 'Equipment rental']];
 const PPL_GUESS = [[/schnucks|aldi|dierbergs|hy-?vee|kroger|trader joe|whole foods|sam'?s club|costco|grocery|walmart super/i, 'groceries'],
   [/netflix|spotify|hulu|disney|youtube premium|apple\.com\/bill|icloud|amazon prime|hbo|max\.com|peacock|paramount|chatgpt|gym|planet fitness|crunch|audible|patreon/i, 'subscriptions'],
   [/mcdonald|chick-?fil|starbucks|chipotle|taco bell|wendy|burger|panera|subway|domino|pizza|doordash|uber ?eats|grubhub|restaurant|grill|cafe|coffee|bar & grill|wingstop|raising cane/i, 'eatingOut'],
@@ -1180,6 +1182,24 @@ const skipNote = t => {
   return '';
 };
 async function txnRules(){ const r = (await kget(TXN.rules, null)) || {}; r.accounts = r.accounts || {}; r.vendors = r.vendors || {}; return r; }
+// One-time (Nov 2026): move saved expenses + vendor rules onto the Schedule C categories.
+setTimeout(async () => { try {
+  if (await kget('bcd:catMigr1', null)) return;
+  const fixCat = (cat, vendor) => { const v = String(vendor || '').toLowerCase();
+    if (/forklift america/.test(v)) return 'Equipment rental';
+    if (/keon|roane/.test(v)) return 'Coaching & education';
+    if (/anthropic|google cloud/.test(v) && cat === 'Other') return 'Software';
+    if (/statement fee|deposited cash charges|bundled items charges/.test(v)) return 'Fees';
+    if (/sure lock/.test(v) && cat === 'Other') return 'Repairs';
+    return cat === 'Payroll' ? 'Contract labor' : cat; };
+  const list = await getExpenses(); let n = 0;
+  list.forEach(x => { const c = fixCat(x.category, x.vendor); if (c !== x.category) { x.category = c; n++; } });
+  await kset(KEYS.expenses, list);
+  const r = await txnRules();
+  Object.entries(r.vendors).forEach(([k, v]) => { if (v && typeof v === 'object' && v.scope === 'business') v.cat = fixCat(v.cat, k); });
+  if (r.vendors['']) delete r.vendors[''];   // blank-name Venmo rule caught every emoji-only note; send those to Review instead
+  await kset(TXN.rules, r); await kset('bcd:catMigr1', { at: Date.now(), n });
+} catch (e) { console.error('category migration', e.message); } }, 8000);
 // Accounts + their scope (business / personal / ignore). Guessed from the Daily Cash mapping until you set it.
 async function txnAccounts(){
   const pb = await plaidBalances(false).catch(() => ({ banks: [] })), rules = await txnRules(), out = [];
