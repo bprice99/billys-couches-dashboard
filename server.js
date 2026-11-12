@@ -423,7 +423,8 @@ async function getLoads() {
 }
 // Landed cost is split only across sectionals, sofas, sleepers and loveseats.
 // Chairs, recliners, ottomans, consoles, mattresses get $0.
-const PAID = /sectional|sofa|sleeper|loveseat|love seat|couch|sect\b|\bmod\b|modular/i;
+// B-Stock manifests abbreviate a lot (SEC, SECTNL, 6PC), so match those too.
+const PAID = /sectional|sofa|sleeper|loveseat|love seat|couch|sect\b|\bsec\b|sectnl|\bmod\b|modular|\b\d+\s?pc\b/i;
 function allocate(load) {
   const paid = load.units.filter(u => PAID.test(u.name));
   const each = paid.length ? Math.round(load.landed / paid.length * 100) / 100 : 0;
@@ -493,8 +494,8 @@ app.post('/api/couch/rename', async (req, res) => {
       const list = await getPurchases(), p = list.find(x => x.id === id); if (!p) return res.status(404).json({ error: 'Not found' });
       p.item = name; await kset(KEYS.purchases, list);
     } else {
-      const loads = await getLoads(), u = (loads.find(l => l.id === id) || { units: [] }).units.find(x => x.uid === uid);
-      if (!u) return res.status(404).json({ error: 'Not found' }); u.name = name; await kset(KEYS.loads, loads);
+      const loads = await getLoads(), ld = loads.find(l => l.id === id), u = (ld || { units: [] }).units.find(x => x.uid === uid);
+      if (!u) return res.status(404).json({ error: 'Not found' }); u.name = name; allocate(ld); await kset(KEYS.loads, loads);
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
