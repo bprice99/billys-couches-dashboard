@@ -1154,8 +1154,8 @@ app.get('/api/plaid/balances', async (req, res) => {
 const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnInbox', seen: 'bcd:txnSeen', cursor: 'bcd:txnCursor', ppl: 'bcd:pplTxns', meta: 'bcd:txnMeta', all: 'bcd:txnAll' };
 // Business expenses before this date were tracked by hand (IvyFlip + typed in), so bank sync never auto-adds or asks about them.
 const BIZ_FROM = (process.env.BIZ_AUTO_FROM || '2026-11-01').trim();
-// Matches IRS Schedule C lines so the tax export lines up (Payroll renamed Contract labor: team is paid on 1099s).
-const BIZ_CATS = ['Advertising', 'Contract labor', 'Rent', 'Equipment rental', 'Utilities', 'Fuel', 'Truck', 'Insurance', 'Supplies', 'Software', 'Fees', 'Legal & professional', 'Taxes & licenses', 'Interest', 'Repairs', 'Meals', 'Travel', 'Coaching & education', 'Equipment', 'Freight', 'Other'];
+// Matches IRS Schedule C lines so the tax export lines up (Payroll = 1099 contractors, reported as Contract labor in the tax export).
+const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Equipment rental', 'Utilities', 'Fuel', 'Truck', 'Insurance', 'Supplies', 'Software', 'Fees', 'Legal & professional', 'Taxes & licenses', 'Interest', 'Repairs', 'Meals', 'Travel', 'Coaching & education', 'Equipment', 'Freight', 'Other'];
 const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', wants: 'Wants', education: 'Education', coachingExp: 'Coaching expense', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay", coachIn: 'Coaching income' };
 // Built-in guesses (your own "remember this" rules always win).
 const BIZ_GUESS = [[/stripe fee|klarna|affirm|square fee|paypal fee|service charge|statement fee|monthly maintenance|overdraft|wire fee/i, 'Fees'], [/dark ?horse|cpa|legalzoom|attorney|law office|bookkeep/i, 'Legal & professional'],
@@ -1191,7 +1191,7 @@ setTimeout(async () => { try {
     if (/anthropic|google cloud/.test(v) && cat === 'Other') return 'Software';
     if (/statement fee|deposited cash charges|bundled items charges/.test(v)) return 'Fees';
     if (/sure lock/.test(v) && cat === 'Other') return 'Repairs';
-    return cat === 'Payroll' ? 'Contract labor' : cat; };
+    return cat; };
   const list = await getExpenses(); let n = 0;
   list.forEach(x => { const c = fixCat(x.category, x.vendor); if (c !== x.category) { x.category = c; n++; } });
   await kset(KEYS.expenses, list);
@@ -1200,6 +1200,13 @@ setTimeout(async () => { try {
   if (r.vendors['']) delete r.vendors[''];   // blank-name Venmo rule caught every emoji-only note; send those to Review instead
   await kset(TXN.rules, r); await kset('bcd:catMigr1', { at: Date.now(), n });
 } catch (e) { console.error('category migration', e.message); } }, 8000);
+// v2: Billy prefers the label Payroll (still exported as Schedule C line 11 Contract labor).
+setTimeout(async () => { try {
+  if (await kget('bcd:catMigr2', null)) return;
+  const list = await getExpenses(); list.forEach(x => { if (x.category === 'Contract labor') x.category = 'Payroll'; }); await kset(KEYS.expenses, list);
+  const r = await txnRules(); Object.values(r.vendors).forEach(v => { if (v && typeof v === 'object' && v.cat === 'Contract labor') v.cat = 'Payroll'; }); await kset(TXN.rules, r);
+  await kset('bcd:catMigr2', { at: Date.now() });
+} catch (e) { console.error('category migration v2', e.message); } }, 12000);
 // Accounts + their scope (business / personal / ignore). Guessed from the Daily Cash mapping until you set it.
 async function txnAccounts(){
   const pb = await plaidBalances(false).catch(() => ({ banks: [] })), rules = await txnRules(), out = [];
