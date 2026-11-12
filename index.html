@@ -380,7 +380,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
           <div><div class="chartwrap" style="height:240px"><canvas id="expBar"></canvas></div></div>
         </div>
         <div class="grid2">
-          <div><h2 style="font-size:14px">By category</h2><div style="overflow-x:auto"><table id="expTbl"></table></div></div>
+          <div><h2 style="font-size:14px;display:flex;justify-content:space-between;align-items:center">By category <button type="button" id="taxExport" class="btn" style="font-size:12px;padding:4px 10px">Tax export (CSV)</button></h2><div style="overflow-x:auto"><table id="expTbl"></table></div></div>
           <div><h2 style="font-size:14px">Biggest expenses</h2><div id="expBig"></div></div>
         </div>
       </div>
@@ -592,7 +592,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
   <h3 id="expTitle">Log an expense</h3><input type="hidden" name="id">
   <div class="two">
     <label>Date<input type="date" name="date" required></label>
-    <label>Category<select name="category"><option>Advertising</option><option>Payroll</option><option>Rent</option><option>Fuel</option><option>Supplies</option><option>Software</option><option>Truck</option><option>Insurance</option><option>Utilities</option><option>Freight</option><option>Equipment</option><option>Other</option></select></label>
+    <label>Category<select name="category"><option>Advertising</option><option>Contract labor</option><option>Rent</option><option>Equipment rental</option><option>Utilities</option><option>Fuel</option><option>Truck</option><option>Insurance</option><option>Supplies</option><option>Software</option><option>Fees</option><option>Legal &amp; professional</option><option>Taxes &amp; licenses</option><option>Interest</option><option>Repairs</option><option>Meals</option><option>Travel</option><option>Coaching &amp; education</option><option>Equipment</option><option>Freight</option><option>Other</option></select></label>
   </div>
   <div class="two">
     <label>Amount ($)<input type="number" step="0.01" name="amount" required></label>
@@ -983,7 +983,7 @@ function renderGoals(){
   const last3 = months.slice(-4, -1).map(m => m.P), avgPrice = last3.reduce((a, p) => a + p.gross, 0) / Math.max(1, last3.reduce((a, p) => a + p.count, 0)), avgCount = last3.reduce((a, p) => a + p.count, 0) / 3;
   $('roadNote').innerHTML = `This month is on pace for <b>${money(curPace)}</b> (lighter bar). At your recent average sale of <b>${money(avgPrice)}</b>, $100K takes <b>${Math.ceil(100000 / avgPrice)} sales a month</b> (you've averaged ${Math.round(avgCount)}). At your recent volume, it takes a <b>${money(100000 / Math.max(1, avgCount))}</b> average sale.`;
   // team
-  const pay = A.e.filter(x => /payroll/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
+  const pay = A.e.filter(x => /payroll|contract labor/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
   const ppl = {}; if (PAY) PAY.entries.filter(e => inR(toDate(e.date), R)).forEach(e => { const k = fname(e.name); const p = ppl[k] = ppl[k] || { shows: 0, sold: 0, hours: 0 }; p.shows += e.shows; p.sold += e.sold; p.hours += e.hours; });
   $('teamTbl').innerHTML = `<tr><th>Who</th><th class="n">Hours</th><th class="n">Showings hosted</th><th class="n">Sold</th><th class="n">Close rate</th></tr>` +
     (Object.keys(ppl).length ? Object.entries(ppl).sort((a, b) => b[1].sold - a[1].sold).map(([k, p]) => `<tr><td><b>${esc(k)}</b></td><td class="n">${p.hours.toFixed(1)}</td><td class="n">${p.shows}</td><td class="n"><b>${p.sold}</b></td><td class="n">${p.shows ? pct(p.sold / p.shows) : '–'}</td></tr>`).join('')
@@ -1263,7 +1263,7 @@ function renderSales(){
   // ----- expenses -----
   const PE = period(prevRange(R)), days = Math.max(1, Math.min(spanDays(R), dayDiff(R.from, today0) + 1));
   const cats = groupSum(A.e, 'cat', 'amt'), pcats = Object.fromEntries(groupSum(PE.e, 'cat', 'amt'));
-  const adSpend = A.e.filter(x => /advert/i.test(x.cat)).reduce((a, x) => a + x.amt, 0), pay = A.e.filter(x => /payroll/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
+  const adSpend = A.e.filter(x => /advert/i.test(x.cat)).reduce((a, x) => a + x.amt, 0), pay = A.e.filter(x => /payroll|contract labor/i.test(x.cat)).reduce((a, x) => a + x.amt, 0);
   $('expKpis').innerHTML = kpiHtml([
     ['Spent', money(A.exp), chg(A.exp, PE.exp, true, vs)],
     ['Per day', money(A.exp / days), ''],
@@ -1856,7 +1856,7 @@ function renderWeekly(){
   const flows = (f, t) => {
     const inR = d => d && d >= f && d <= t;
     const sales = RAW.sales.filter(x => inR(x.date)), salesAmt = sales.reduce((a, x) => a + x.rev, 0), cats = {};
-    (RAW.expenses || []).filter(x => inR(x.date)).forEach(x => { const c = /owner/i.test(x.cat) ? "Owner's pay" : /payroll/i.test(x.cat) ? 'Payroll' : /rent|util/i.test(x.cat) ? 'Rent + utilities' : /advert/i.test(x.cat) ? 'Ads' : 'Everything else'; cats[c] = (cats[c] || 0) + x.amt; });
+    (RAW.expenses || []).filter(x => inR(x.date)).forEach(x => { const c = /owner/i.test(x.cat) ? "Owner's pay" : /payroll|contract labor/i.test(x.cat) ? 'Payroll' : /rent|util/i.test(x.cat) ? 'Rent + utilities' : /advert/i.test(x.cat) ? 'Ads' : 'Everything else'; cats[c] = (cats[c] || 0) + x.amt; });
     const inv = RAW.loads.filter(l => inR(l.arrived)).reduce((a, l) => a + (l.landed || 0), 0) + RAW.purchases.filter(p => inR(p.date)).reduce((a, p) => a + (p.cost || 0), 0);
     if (inv) cats['Inventory'] = inv;
     if (!cats["Owner's pay"] && TX && TX.ppl) { const a = ymd(f), b = ymd(t), op = TX.ppl.filter(x => x.cat === 'ownerPay' && x.date >= a && x.date <= b).reduce((s, x) => s - (Number(x.amount) || 0), 0); if (op > 0) cats["Owner's pay"] = op; }
@@ -3522,6 +3522,29 @@ setInterval(() => load(), 5 * 60 * 1000);
   window.addEventListener('pageshow', later); window.addEventListener('focus', later); window.addEventListener('orientationchange', later);
   document.addEventListener('focusout', later);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
+})();
+</script>
+
+<script>
+// Tax export: one CSV per year, every business expense tagged with its Schedule C line, plus cost of goods (loads + couch purchases).
+(function(){
+  const LINE={'Advertising':'8 Advertising','Fuel':'9 Car and truck','Truck':'9 Car and truck','Fees':'10 Commissions and fees','Contract labor':'11 Contract labor','Payroll':'11 Contract labor','Equipment':'13 Depreciation / Sec 179 (ask CPA)','Insurance':'15 Insurance','Interest':'16b Interest','Legal & professional':'17 Legal and professional','Equipment rental':'20a Rent - vehicles/equipment','Rent':'20b Rent - other property','Repairs':'21 Repairs and maintenance','Supplies':'22 Supplies','Taxes & licenses':'23 Taxes and licenses','Travel':'24a Travel','Meals':'24b Meals (50%)','Utilities':'25 Utilities','Software':'27a Other - software','Coaching & education':'27a Other - coaching/education','Other':'27a Other','Freight':'COGS - freight in'};
+  const d=x=>{const v=x instanceof Date?x:new Date(x);return isNaN(v)?null:v;};
+  const ymd=v=>v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  document.addEventListener('click',e=>{
+    if(!e.target||e.target.id!=='taxExport')return;
+    const yr=Number(prompt('Tax year to export:',String(new Date().getFullYear())));if(!yr)return;
+    const rows=[],tot={};
+    const add=(sec,line,cat,dt,vendor,amt,notes)=>{rows.push([sec,line,cat,ymd(dt),vendor,(Math.round(amt*100)/100).toFixed(2),notes]);tot[line]=(tot[line]||0)+amt;};
+    [].concat(RAW.hExp||[],RAW.expenses||[]).forEach(x=>{const dt=d(x.date);if(!dt||dt.getFullYear()!==yr)return;const amt=+x.amt||+x.amount||0;if(!amt)return;const cat=x.cat||x.category||'Other';const line=LINE[cat]||'27a Other';add(line.startsWith('COGS')?'Cost of goods':'Expense',line,cat,dt,x.vendor||'',amt,x.notes||'');});
+    (RAW.loads||[]).forEach(l=>{const dt=d(l.date);if(dt&&dt.getFullYear()===yr&&+l.landed)add('Cost of goods','COGS - inventory (B-Stock loads)','B-Stock load',dt,l.loadId||'',+l.landed,l.origin||'');});
+    (RAW.purchases||[]).forEach(p=>{const dt=d(p.date);if(dt&&dt.getFullYear()===yr&&+p.cost)add('Cost of goods','COGS - inventory (couch purchases)','Couch purchase',dt,p.source||'',+p.cost,p.item||'');});
+    rows.sort((a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:a[3]<b[3]?-1:1);
+    const sum=Object.keys(tot).sort().map(k=>['TOTAL',k,'','','',tot[k].toFixed(2),'']);
+    const csv=[['Section','Schedule C line','Category','Date','Vendor','Amount','Notes']].concat(sum,[['']],rows).map(r=>r.map(q).join(',')).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='billys-couches-tax-'+yr+'.csv';document.body.appendChild(a);a.click();a.remove();
+  });
 })();
 </script>
 </body></html>
