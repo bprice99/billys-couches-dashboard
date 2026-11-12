@@ -1155,7 +1155,7 @@ const TXN = { ignored: 'bcd:txnIgnored', rules: 'bcd:txnRules', inbox: 'bcd:txnI
 // Business expenses before this date were tracked by hand (IvyFlip + typed in), so bank sync never auto-adds or asks about them.
 const BIZ_FROM = (process.env.BIZ_AUTO_FROM || '2026-11-01').trim();
 const BIZ_CATS = ['Advertising', 'Payroll', 'Rent', 'Fuel', 'Supplies', 'Software', 'Truck', 'Insurance', 'Utilities', 'Freight', 'Equipment', 'Other'];
-const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', wants: 'Wants', education: 'Education', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay", coachIn: 'Coaching income' };
+const PPL_CATS = { rent: 'Rent', groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', wants: 'Wants', education: 'Education', coachingExp: 'Coaching expense', travel: 'Travel', otherOut: 'Other', otherIn: 'Other income', ownerPay: "Owner's pay", coachIn: 'Coaching income' };
 // Built-in guesses (your own "remember this" rules always win).
 const BIZ_GUESS = [[/facebook|facebk|meta ?ads|^fb |fb ads|instagram|google ?ads|tiktok ads|nextdoor/i, 'Advertising'], [/zapier|railway|upstash|jotform|textmagic|squarespace|google ?(workspace|gsuite)|canva|notion|openai|anthropic|claude|stripe fee|apify|ivy ?flip|quickbooks|adobe|capcut/i, 'Software'],
   [/shell|qt |quiktrip|bp |exxon|mobil|phillips 66|casey|speedway|marathon|circle k|\bgas\b|fuel/i, 'Fuel'], [/home depot|lowe|menards|uline|harbor freight|walmart|amazon|scotchgard|ace hardware/i, 'Supplies'],
