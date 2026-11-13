@@ -697,6 +697,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
   <label class="drl">Details <small>one per line (color, power recline, pieces, smoke/pet free...)</small><textarea id="drDetails" rows="4"></textarea></label>
   <label class="drl">Imperfections <small>one per line, leave blank for none</small><textarea id="drImp" rows="2"></textarea></label>
   <label class="drl">Dimensions<input id="drDims" placeholder="L: 128 x 115 in. | H: 42 in." maxlength="200"></label>
+  <div style="margin:-6px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="btn sm" style="cursor:pointer">📷 Fill from dimension photo<input type="file" id="drDimsFile" accept="image/*" hidden></label><small id="drDimsMsg" style="color:var(--muted)">Upload the diagram with measurements; it fills Dimensions and the pieces below.</small></div>
   <div class="drl">Will it fit? pieces <small>inches · one row per piece (sofa, loveseat, each modular section)</small></div>
   <div id="fitPieces" style="margin-bottom:6px"></div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><button type="button" class="btn sm" id="fitAdd">+ Add piece</button>
@@ -3546,5 +3547,27 @@ setInterval(() => load(), 5 * 60 * 1000);
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='billys-couches-tax-'+yr+'.csv';document.body.appendChild(a);a.click();a.remove();
   });
 })();
+</script>
+
+<script>
+// Drop tab: read a dimension diagram photo -> fill Dimensions + Will-it-fit pieces.
+document.addEventListener('change', async e => {
+  if (!e.target || e.target.id !== 'drDimsFile' || !e.target.files[0]) return;
+  const f = e.target.files[0], msg = document.getElementById('drDimsMsg'); e.target.value = '';
+  msg.textContent = 'Reading measurements...';
+  try {
+    const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = URL.createObjectURL(f); });
+    const s = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+    const t = document.getElementById('drTitle');
+    const r = await fetch('/api/drops/read-dims', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: c.toDataURL('image/jpeg', 0.88), title: t ? t.value : '' }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Could not read that photo');
+    if (j.dimensions) document.getElementById('drDims').value = j.dimensions;
+    if (j.pieces && j.pieces.length) { FITP = j.pieces.map(p => ({ ...p })); drawFitPieces(); }
+    msg.textContent = 'Filled ' + (j.pieces || []).length + ' piece' + ((j.pieces || []).length === 1 ? '' : 's') + '. Double-check the numbers, then save.';
+  } catch (err) { msg.textContent = err.message; }
+});
 </script>
 </body></html>
