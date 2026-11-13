@@ -1915,6 +1915,24 @@ app.post('/api/drops/save', async (req, res) => {
     await setDrops(list); dropsAt = Date.now(); res.json({ ok: true, drop: d });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Pick Gemini models from what the API key can actually use right now, so retired model names never break the reader.
+let dimsModelCache = { at: 0, list: [] };
+async function dimsModels() {
+  if (process.env.AI_DIMS_MODEL) return process.env.AI_DIMS_MODEL.split(',').map(x => x.trim()).filter(Boolean);
+  if (Date.now() - dimsModelCache.at < 6 * 3600e3 && dimsModelCache.list.length) return dimsModelCache.list;
+  let names = [];
+  try {
+    const r = await fetch(AI_BASE + '/models?pageSize=200', { headers: { 'x-goog-api-key': (process.env.GEMINI_API_KEY || '').trim() } });
+    const jj = await r.json();
+    names = (jj.models || []).filter(x => (x.supportedGenerationMethods || []).includes('generateContent')).map(x => String(x.name).replace(/^models\//, ''))
+      .filter(x => /^gemini-[\d.]+-(pro|flash)(-preview)?(-\d\d-\d\d)?$/.test(x));
+  } catch (err) { /* fall back below */ }
+  const ver = x => parseFloat((x.match(/gemini-([\d.]+)/) || [])[1]) || 0;
+  const pro = names.filter(x => /-pro/.test(x)).sort((a, b) => ver(b) - ver(a)), flash = names.filter(x => /-flash/.test(x)).sort((a, b) => ver(b) - ver(a));
+  const list = [pro[0], flash[0], flash[1]].filter(Boolean);
+  dimsModelCache = { at: Date.now(), list: list.length ? list : ['gemini-3.1-pro-preview', 'gemini-3.8-flash'] };
+  return dimsModelCache.list;
+}
 // Drop tab: read a manufacturer dimension diagram (photo) and fill Dimensions + the Will-it-fit pieces.
 app.post('/api/drops/read-dims', async (req, res) => {
   try {
@@ -1932,12 +1950,15 @@ app.post('/api/drops/read-dims', async (req, res) => {
       '- Separate sofa/loveseat/ottoman: one entry each.\n' +
       '- OTTOMANS: always list every ottoman as its own piece, including one pushed against a seat to make a chaise/lounge end. A chaise end that is deeper than the other seats on a modular = seat + ottoman: the ottoman depth is the chaise-side total depth minus the seat depth. The piece count in the title (e.g. 4-piece) includes the ottoman, so your pieces qty must add up to it.\n' +
       '- side "L" or "R" only when the piece is left- or right-arm specific; side "rev" for an ottoman/chaise that can go on either side or when the listing says reversible. Never guess numbers that cannot be derived; leave optional fields null.';
-    // Fast model first; fall back if it's busy or unavailable. 40s cap per try.
-    const models = (process.env.AI_DIMS_MODEL || 'gemini-3.1-pro-preview,gemini-3-flash-preview,gemini-2.5-flash').split(',').map(s => s.trim()).filter(Boolean);
+    // Newest Pro model first (most accurate), then the newest Flash. Busy = wait and retry once.
+    const models = await dimsModels();
     let j = null, lastErr = null;
     for (const md of models) {
-      try { j = await Promise.race([gemini(md, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true), new Promise((_, no) => setTimeout(() => no(new Error('took too long')), 60000))]); break; }
-      catch (err) { lastErr = err; }
+      for (let n = 0; n < 2 && !j; n++) {
+        try { j = await Promise.race([gemini(md, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true), new Promise((_, no) => setTimeout(() => no(new Error('took too long')), 60000))]); }
+        catch (err) { lastErr = err; if (/no longer available|not found|not supported|took too long/i.test(err.message)) break; await new Promise(r => setTimeout(r, 3000)); }
+      }
+      if (j) break;
     }
     if (!j) throw lastErr || new Error('no model');
     const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
