@@ -1916,6 +1916,17 @@ app.post('/api/drops/save', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Pick Gemini models from what the API key can actually use right now, so retired model names never break the reader.
+// JSON answer with light thinking, so reading a diagram takes seconds, not a minute.
+async function geminiQuick(model, parts) {
+  const key = (process.env.GEMINI_API_KEY || '').trim(); if (!key) throw new Error('not set up');
+  const call = async think => {
+    const r = await fetch(AI_BASE + '/models/' + encodeURIComponent(model) + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', ...(think ? { thinkingConfig: think } : {}) } }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && j.error.message) || ('AI ' + r.status)); return j;
+  };
+  try { return await call(/^gemini-2/.test(model) ? { thinkingBudget: 512 } : { thinkingLevel: 'low' }); }
+  catch (e) { if (/thinking/i.test(e.message)) return call(null); throw e; }
+}
 let dimsModelCache = { at: 0, list: [] };
 async function dimsModels() {
   if (process.env.AI_DIMS_MODEL) return process.env.AI_DIMS_MODEL.split(',').map(x => x.trim()).filter(Boolean);
@@ -1952,15 +1963,15 @@ app.post('/api/drops/read-dims', async (req, res) => {
       '- side "L" or "R" only when the piece is left- or right-arm specific; side "rev" for an ottoman/chaise that can go on either side or when the listing says reversible. Never guess numbers that cannot be derived; leave optional fields null.';
     // Newest Flash first (fast), then Pro, then older Flash. Busy = wait and retry once. Whole thing capped at ~75s.
     const models = await dimsModels(), started = Date.now();
-    let j = null, lastErr = null;
+    let j = null, lastErr = null; const tried = [];
     for (const md of models) {
       for (let n = 0; n < 2 && !j && Date.now() - started < 75000; n++) {
-        try { j = await Promise.race([gemini(md, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true), new Promise((_, no) => setTimeout(() => no(new Error('took too long')), 30000))]); }
-        catch (err) { lastErr = err; if (/no longer available|not found|not supported|took too long/i.test(err.message)) break; await new Promise(r => setTimeout(r, 3000)); }
+        try { j = await Promise.race([geminiQuick(md, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }]), new Promise((_, no) => setTimeout(() => no(new Error('took too long')), 30000))]); }
+        catch (err) { lastErr = err; tried.push(md + ': ' + String(err.message).slice(0, 80)); if (/no longer available|not found|not supported|took too long/i.test(err.message)) break; await new Promise(r => setTimeout(r, 3000)); }
       }
       if (j) break;
     }
-    if (!j) throw lastErr || new Error('no model');
+    if (!j) throw new Error(tried.join(' | ') || (lastErr && lastErr.message) || 'no model');
     const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
     const out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
     const n = x => { const y = parseFloat(x); return y > 0 && y < 400 ? Math.round(y * 10) / 10 : ''; };
