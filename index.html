@@ -3561,7 +3561,7 @@ document.addEventListener('change', async e => {
     c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
     const t = document.getElementById('drTitle');
-    const r = await fetch('/api/drops/read-dims', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: c.toDataURL('image/jpeg', 0.88), title: t ? t.value : '' }) });
+    const r = await fetch('/api/drops/read-dims', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: c.toDataURL('image/jpeg', 0.88), title: t ? t.value : '', details: ((document.getElementById('drDetails') || {}).value || '') }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Could not read that photo');
     if (j.dimensions) document.getElementById('drDims').value = j.dimensions;
