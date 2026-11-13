@@ -1922,19 +1922,20 @@ app.post('/api/drops/read-dims', async (req, res) => {
     if (!m) return res.status(400).json({ error: 'Send a photo' });
     const title = clean((req.body || {}).title || '', 120);
     const prompt = 'This is a furniture dimension diagram' + (title ? ' for "' + title + '"' : '') + '. Read every labeled measurement (convert cm to inches, 1 decimal).\n' +
-      'Return JSON only: {"dimensions": string, "pieces": [{"name": string, "w": number, "d": number, "ret": number|null, "ch": number|null, "cw": number|null, "side": "L"|"R"|"", "qty": number}]}\n' +
-      'dimensions: one line like "L: 142.5 x 70.5 in. | D: 37.7 in. | H: 36.7 in." (overall length x overall depth/return, seat depth, height).\n' +
+      'Return JSON only: {"labels": number[], "dimensions": string, "pieces": [{"name": string, "w": number, "d": number, "ret": number|null, "ch": number|null, "cw": number|null, "side": "L"|"R"|"", "qty": number}]}\n' +
+      'labels: every inch measurement printed on the image, exactly as printed (ignore cm).\n' +
+      'dimensions: use ONLY numbers from labels, never invent or round. One line like "L: 142.5 x 70.5 in. | D: 37.7 in. | H: 36.7 in." (overall length x overall depth/return, seat depth, height).\n' +
       'pieces: the separate pieces a delivery crew carries in, for a to-scale room planner:\n' +
-      '- Modular sectional: one entry per piece type with qty. Name each Corner, Armless, Arm chair, Left arm, Right arm, Chaise, Ottoman, Sofa, Loveseat or Chair. w = piece width, d = piece depth. If a piece is not labeled, work it out from the overall size and the labeled pieces.\n' +
+      '- Modular sectional: one entry per piece type with qty. Name each Corner, Armless, Arm chair, Left arm, Right arm, Chaise, Ottoman, Sofa, Loveseat or Chair. w = piece width, d = piece depth (use the labeled piece depth for every seat piece). Count the pieces in the picture. If a piece width is not labeled, solve it so the pieces along each side add up exactly to that side\'s labeled overall length (a corner counts on both sides).\n' +
       '- One-piece L sectional: name "Sectional", w = long side, d = seat depth, ret = the short side length.\n' +
       '- Sofa with attached chaise: name "Sofa", w = total width, d = depth, ch = chaise length, cw = chaise width.\n' +
       '- Separate sofa/loveseat/ottoman: one entry each. Include an ottoman if one is shown.\n' +
       '- side "L" or "R" only when the piece is left- or right-arm specific. Never guess numbers that cannot be derived; leave optional fields null.';
     // Fast model first; fall back if it's busy or unavailable. 40s cap per try.
-    const models = (process.env.AI_DIMS_MODEL || 'gemini-3-flash-preview,gemini-2.5-flash,gemini-3.1-pro-preview').split(',').map(s => s.trim()).filter(Boolean);
+    const models = (process.env.AI_DIMS_MODEL || 'gemini-3.1-pro-preview,gemini-3-flash-preview,gemini-2.5-flash').split(',').map(s => s.trim()).filter(Boolean);
     let j = null, lastErr = null;
     for (const md of models) {
-      try { j = await Promise.race([gemini(md, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true), new Promise((_, no) => setTimeout(() => no(new Error('took too long')), 40000))]); break; }
+      try { j = await Promise.race([gemini(md, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true), new Promise((_, no) => setTimeout(() => no(new Error('took too long')), 60000))]); break; }
       catch (err) { lastErr = err; }
     }
     if (!j) throw lastErr || new Error('no model');
@@ -1943,6 +1944,10 @@ app.post('/api/drops/read-dims', async (req, res) => {
     const n = x => { const y = parseFloat(x); return y > 0 && y < 400 ? Math.round(y * 10) / 10 : ''; };
     const pieces = (Array.isArray(out.pieces) ? out.pieces : []).slice(0, 12).map(p => ({ name: clean(p.name || 'Piece', 40), w: n(p.w), d: n(p.d), ret: n(p.ret), ch: n(p.ch), cw: n(p.cw),
       side: /^(L|R)$/.test(p.side) ? p.side : '', qty: Math.max(1, Math.min(8, parseInt(p.qty, 10) || 1)) })).filter(p => p.w && p.d);
+    // Sanity check: the overall length must be a number actually printed on the diagram.
+    const labels = (Array.isArray(out.labels) ? out.labels : []).map(Number).filter(x => x > 0);
+    const L = parseFloat((String(out.dimensions || '').match(/L:\s*([\d.]+)/) || [])[1]);
+    if (!labels.length || !(L > 0) || !labels.some(x => Math.abs(x - L) < 0.6)) return res.status(422).json({ error: 'Could not read the measurements reliably. Try a clearer diagram or type them in.' });
     res.json({ ok: true, dimensions: clean(out.dimensions || '', 200), pieces });
   } catch (e) { res.status(500).json({ error: /not set up/.test(e.message) ? 'AI is not set up (GEMINI_API_KEY)' : 'Could not read that photo: ' + e.message }); }
 });
