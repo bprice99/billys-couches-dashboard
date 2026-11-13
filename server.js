@@ -29,6 +29,7 @@ app.use(compression());
 app.use('/api/photo', express.json({ limit: '4mb' }));
 app.use('/api/justsold/pick', express.json({ limit: '4mb' }));
 app.use('/api/drops/photo', express.json({ limit: '6mb' }));
+app.use('/api/drops/read-dims', express.json({ limit: '6mb' }));
 app.use('/public/couch-offer', express.json({ limit: '15mb' }));
 app.use('/public/ai-room', express.json({ limit: '14mb' }));
 app.use('/public/ai-sess', express.json({ limit: '14mb' }));
@@ -1913,6 +1914,30 @@ app.post('/api/drops/save', async (req, res) => {
     else { d = { id: crypto.randomBytes(6).toString('hex'), status: 'draft', createdAt: Date.now(), updatedAt: Date.now(), photos: [], details: [], imperfections: [], ...next }; list.unshift(d); }
     await setDrops(list); dropsAt = Date.now(); res.json({ ok: true, drop: d });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Drop tab: read a manufacturer dimension diagram (photo) and fill Dimensions + the Will-it-fit pieces.
+app.post('/api/drops/read-dims', async (req, res) => {
+  try {
+    const m = String((req.body || {}).image || '').match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+    if (!m) return res.status(400).json({ error: 'Send a photo' });
+    const title = clean((req.body || {}).title || '', 120);
+    const prompt = 'This is a furniture dimension diagram' + (title ? ' for "' + title + '"' : '') + '. Read every labeled measurement (convert cm to inches, 1 decimal).\n' +
+      'Return JSON only: {"dimensions": string, "pieces": [{"name": string, "w": number, "d": number, "ret": number|null, "ch": number|null, "cw": number|null, "side": "L"|"R"|"", "qty": number}]}\n' +
+      'dimensions: one line like "L: 142.5 x 70.5 in. | D: 37.7 in. | H: 36.7 in." (overall length x overall depth/return, seat depth, height).\n' +
+      'pieces: the separate pieces a delivery crew carries in, for a to-scale room planner:\n' +
+      '- Modular sectional: one entry per piece type with qty. Name each Corner, Armless, Arm chair, Left arm, Right arm, Chaise, Ottoman, Sofa, Loveseat or Chair. w = piece width, d = piece depth. If a piece is not labeled, work it out from the overall size and the labeled pieces.\n' +
+      '- One-piece L sectional: name "Sectional", w = long side, d = seat depth, ret = the short side length.\n' +
+      '- Sofa with attached chaise: name "Sofa", w = total width, d = depth, ch = chaise length, cw = chaise width.\n' +
+      '- Separate sofa/loveseat/ottoman: one entry each. Include an ottoman if one is shown.\n' +
+      '- side "L" or "R" only when the piece is left- or right-arm specific. Never guess numbers that cannot be derived; leave optional fields null.';
+    const j = await gemini(AI_CHECK_MODEL, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true);
+    const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
+    const out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+    const n = x => { const y = parseFloat(x); return y > 0 && y < 400 ? Math.round(y * 10) / 10 : ''; };
+    const pieces = (Array.isArray(out.pieces) ? out.pieces : []).slice(0, 12).map(p => ({ name: clean(p.name || 'Piece', 40), w: n(p.w), d: n(p.d), ret: n(p.ret), ch: n(p.ch), cw: n(p.cw),
+      side: /^(L|R)$/.test(p.side) ? p.side : '', qty: Math.max(1, Math.min(8, parseInt(p.qty, 10) || 1)) })).filter(p => p.w && p.d);
+    res.json({ ok: true, dimensions: clean(out.dimensions || '', 200), pieces });
+  } catch (e) { res.status(500).json({ error: /not set up/.test(e.message) ? 'AI is not set up (GEMINI_API_KEY)' : 'Could not read that photo: ' + e.message }); }
 });
 app.post('/api/drops/status', async (req, res) => {
   try {
