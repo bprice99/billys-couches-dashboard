@@ -1930,7 +1930,7 @@ app.post('/api/drops/read-dims', async (req, res) => {
       '- Sofa with attached chaise: name "Sofa", w = total width, d = depth, ch = chaise length, cw = chaise width.\n' +
       '- Separate sofa/loveseat/ottoman: one entry each. Include an ottoman if one is shown.\n' +
       '- side "L" or "R" only when the piece is left- or right-arm specific. Never guess numbers that cannot be derived; leave optional fields null.';
-    const j = await gemini(AI_CHECK_MODEL, [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true);
+    const j = await gemini((process.env.AI_DIMS_MODEL || 'gemini-3.1-pro-preview').trim(), [imgPart({ mime: m[1], b64: m[2] }), { text: prompt }], true);
     const txt = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
     const out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
     const n = x => { const y = parseFloat(x); return y > 0 && y < 400 ? Math.round(y * 10) / 10 : ''; };
