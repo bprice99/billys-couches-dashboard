@@ -698,7 +698,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
   <label class="drl">Imperfections <small>one per line, leave blank for none</small><textarea id="drImp" rows="2"></textarea></label>
   <label class="drl">Dimensions<input id="drDims" placeholder="L: 128 x 115 in. | H: 42 in." maxlength="200"></label>
   <div style="margin:-6px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="btn sm" style="cursor:pointer">📷 Fill from dimension photo<input type="file" id="drDimsFile" accept="image/*" hidden></label><small id="drDimsMsg" style="color:var(--muted)">Upload the diagram with measurements; it fills Dimensions and the pieces below.</small></div>
-  <div class="drl">Will it fit? pieces <small>inches · one row per piece (sofa, loveseat, each modular section)</small></div>
+  <div class="drl">Will it fit? pieces <small>pick the shape, then type the inches</small></div>
   <div id="fitPieces" style="margin-bottom:6px"></div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><button type="button" class="btn sm" id="fitAdd">+ Add piece</button>
     <small id="fitArrNote" style="color:var(--muted)">Modular? Name pieces Corner, Armless, Arm chair, Ottoman and the tool sets them up for you.</small></div>
@@ -2813,22 +2813,109 @@ function openDrop(id){
   $('drName').value = d ? d.title : ''; $('drPrice').value = d ? d.price || '' : ''; $('drRetail').value = d && d.retail ? d.retail : '';
   $('drGrade').value = d ? d.grade || '' : ''; $('drDetails').value = d ? (d.details || []).join('\n') : ''; $('drImp').value = d ? (d.imperfections || []).join('\n') : '';
   $('drDims').value = d ? d.dimensions || '' : '';
-  FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces();
+  FITS = ''; FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces();
   $('fitArrNote').textContent = d && d.fitShape ? '✓ Showroom shape saved (modular)' : 'For modular sectionals'; DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
   $('m-drop').classList.add('on');
 }
 window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.fitShapeSaved) { $('fitArrNote').textContent = '✓ Showroom shape saved (modular)'; toast('Shape saved'); loadDrops(); } });
 // "Will it fit?" pieces editor (sofa, loveseat, each modular section)
 let FITP = [];
-function drawFitPieces(){
-  const inp = (i, k, ph) => `<input data-fp="${i}|${k}" value="${esc(FITP[i][k] ?? '')}" placeholder="${ph}" ${k === 'name' ? '' : 'inputmode="decimal"'} style="width:100%;min-width:0;padding:7px 5px">`;
-  const sel = i => `<select data-fp="${i}|side" style="width:100%;min-width:0;padding:7px 2px;font-size:12px">${[['', '–'], ['rev', 'Reversible'], ['L', 'Left'], ['R', 'Right']].map(([v, l]) => `<option value="${v}"${(FITP[i].side || '') === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
-  const cols = 'display:grid;grid-template-columns:1.4fr repeat(5,minmax(0,.9fr)) minmax(0,1.25fr) .6fr auto;gap:4px';
-  $('fitPieces').innerHTML = FITP.length ? `<div style="${cols};font-size:10.5px;color:var(--muted);margin-bottom:4px;line-height:1.2"><span>Piece</span><span>Back length</span><span>Seat depth</span><span>Side length</span><span>Chaise length</span><span>Chaise width</span><span>Chaise / L side</span><span>How many</span><span></span></div>` +
-    FITP.map((p, i) => `<div style="${cols};margin-bottom:6px">${inp(i, 'name', 'Sofa')}${inp(i, 'w', '137')}${inp(i, 'd', '37')}${inp(i, 'ret', '')}${inp(i, 'ch', '')}${inp(i, 'cw', '')}${sel(i)}${inp(i, 'qty', '1')}<button type="button" class="btn sm" data-fpx="${i}">&times;</button></div>`).join('') +
-    `<p class="empty" style="font-size:11.5px;margin:2px 0 6px;text-align:left">Back length = along the wall. Side length = the end that turns the corner (L). Chaise = the lounge end, measured from the back. Chaise / L side = which side it's on when you face the couch, or Reversible if customers can switch it. Leave blank what it doesn't have.</p>`
-    : '<p class="empty" style="font-size:12.5px;margin:0 0 6px">No pieces yet. The tool will guess from Dimensions. Add pieces to make it exact.</p>';
+let FITS = '';
+const FIT_SHAPES = [['sofa', 'Sofa'], ['love', 'Loveseat'], ['chair', 'Chair / recliner'], ['lsec', 'L-shaped sectional'], ['chaise', 'Sectional w/ chaise'], ['ush', 'U-shaped'], ['mod', 'Modular (pieces)'], ['ott', 'Ottoman only']];
+const FIT_PCS = ['Corner', 'Armless (middle)', 'Left arm end', 'Right arm end', 'Chaise', 'Wedge', 'Console', 'Recliner', 'Ottoman'];
+const fitIsOtt = p => /ottoman/i.test(p.name || '');
+function fitGuessShape(){
+  if (!FITP.length) return '';
+  const main = FITP.filter(p => !fitIsOtt(p));
+  if (!main.length) return 'ott';
+  if (main.length > 1 || (Number(main[0].qty) || 1) > 1) return 'mod';
+  const p = main[0], n = String(p.name || '').toLowerCase();
+  if (Number(p.ret) && Number(p.ch)) return 'ush';
+  if (Number(p.ret)) return 'lsec';
+  if (Number(p.ch)) return 'chaise';
+  if (/love/.test(n)) return 'love';
+  if (/chair|recliner/.test(n)) return 'chair';
+  if (/corner|armless|wedge|console|arm end/.test(n)) return 'mod';
+  return 'sofa';
 }
+function fitIcon(k){
+  const G = '#c9bfb3', s = b => `<svg viewBox="0 0 60 30" style="display:block;margin:0 auto 5px;height:26px">${b}</svg>`;
+  return s({
+    sofa: `<rect x="2" y="6" width="56" height="20" rx="3" fill="${G}"/>`,
+    love: `<rect x="12" y="6" width="36" height="20" rx="3" fill="${G}"/>`,
+    chair: `<rect x="18" y="4" width="24" height="24" rx="3" fill="${G}"/>`,
+    lsec: `<path d="M2 2h56v12H16v14H2z" fill="${G}"/>`,
+    chaise: `<rect x="2" y="4" width="56" height="12" fill="${G}"/><rect x="44" y="4" width="14" height="24" fill="${G}"/>`,
+    ush: `<path d="M2 2h56v26H46V14H14v14H2z" fill="${G}"/>`,
+    mod: `<g fill="${G}"><rect x="2" y="6" width="13" height="18"/><rect x="16" y="6" width="13" height="18"/><rect x="30" y="6" width="13" height="18"/><rect x="44" y="6" width="14" height="18"/></g>`,
+    ott: `<rect x="20" y="8" width="20" height="16" rx="3" fill="${G}"/>`
+  }[k]);
+}
+function fitDiagram(k){
+  const G = '#c9bfb3', R = '#b0524c', t = (x, y, s) => `<text x="${x}" y="${y}" font-size="11" fill="${R}" font-weight="700" text-anchor="middle">${s}</text>`;
+  const b = {
+    sofa: `<rect x="20" y="20" width="180" height="50" rx="6" fill="${G}"/>${t(110, 14, 'A')}${t(208, 50, 'B')}`,
+    lsec: `<path d="M20 20h180v40H70v50H20z" fill="${G}"/>${t(110, 14, 'A')}${t(10, 80, 'B')}${t(135, 78, 'C')}`,
+    chaise: `<rect x="20" y="20" width="180" height="40" fill="${G}"/><rect x="150" y="20" width="50" height="85" fill="${G}"/>${t(110, 14, 'A')}${t(210, 70, 'B')}${t(85, 76, 'C')}`,
+    ush: `<path d="M20 20h180v85h-45V60H65v45H20z" fill="${G}"/>${t(110, 14, 'A')}${t(10, 70, 'B')}${t(210, 70, 'C')}${t(110, 76, 'D')}`
+  }[k === 'love' || k === 'chair' ? 'sofa' : k];
+  return b ? `<div style="background:var(--bg,#f6f1ea);border-radius:10px;padding:6px;text-align:center;margin-bottom:10px"><svg viewBox="0 0 220 ${k === 'sofa' || k === 'love' || k === 'chair' ? 80 : 115}" style="width:220px;max-width:100%">${b}</svg><div style="font-size:11px;color:var(--muted)">Top view, back of the couch at the top</div></div>` : '';
+}
+function drawFitPieces(){
+  if (!FITS) FITS = fitGuessShape();
+  const box = $('fitPieces');
+  const addRow = $('fitAdd') && $('fitAdd').parentNode; if (addRow) addRow.style.display = 'none';
+  const lbl = 'display:block;font-size:12px;font-weight:600;margin-bottom:3px';
+  const ip = 'width:100%;box-sizing:border-box;padding:9px;font-size:15px';
+  const fld = (i, k, l, ph) => `<label style="flex:1;min-width:120px;margin:0"><span style="${lbl}">${l}</span><input data-fp="${i}|${k}" value="${esc(FITP[i][k] ?? '')}" placeholder="${ph}" inputmode="decimal" style="${ip}"></label>`;
+  const seg = (i, l, opts) => `<div style="flex:1;min-width:150px"><span style="${lbl}">${l}</span><div style="display:flex;gap:5px">${opts.map(([v, t]) => `<button type="button" class="btn sm" data-fside="${i}|${v}" style="flex:1;padding:8px 0;${(FITP[i].side || '') === v ? 'border-color:#b0524c;color:#b0524c;background:#fbeeec;font-weight:700' : ''}">${t}</button>`).join('')}</div></div>`;
+  const row = s => `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">${s}</div>`;
+  let h = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">${FIT_SHAPES.map(([k, l]) => `<button type="button" data-fshape="${k}" style="border:1.5px solid ${k === FITS ? '#b0524c' : 'var(--line,#e6dccf)'};background:${k === FITS ? '#fbeeec' : '#fff'};color:${k === FITS ? '#b0524c' : 'inherit'};border-radius:10px;padding:8px 4px;font-size:11.5px;font-weight:600;cursor:pointer;line-height:1.2">${fitIcon(k)}${l}</button>`).join('')}</div>`;
+  if (!FITS) { box.innerHTML = h + '<p class="empty" style="font-size:12.5px;margin:0 0 6px;text-align:left">Pick the shape first.</p>'; return; }
+  const mi = FITP.findIndex(p => !fitIsOtt(p));
+  if (FITS === 'mod' || FITS === 'ott') {
+    const rows = FITP.map((p, i) => [p, i]).filter(([p]) => FITS === 'mod' || fitIsOtt(p));
+    const opts = n => { const list = FIT_PCS.includes(n) || !n ? FIT_PCS : [n, ...FIT_PCS]; return list.map(o => `<option${o === n ? ' selected' : ''}>${esc(o)}</option>`).join(''); };
+    const cols = 'display:grid;grid-template-columns:2fr 1fr 1fr .7fr auto;gap:6px;align-items:center';
+    h += (FITS === 'mod' ? '<p class="empty" style="font-size:12px;margin:0 0 8px;text-align:left">Add each kind of piece once and set how many. Every piece is just width x depth.</p>' : '') +
+      `<div style="${cols};font-size:11px;color:var(--muted);margin-bottom:4px"><span>Piece</span><span>Width</span><span>Depth</span><span>How many</span><span></span></div>` +
+      rows.map(([p, i]) => `<div style="${cols};margin-bottom:6px">${FITS === 'mod' ? `<select data-fp="${i}|name" style="${ip};padding:8px">${opts(p.name)}</select>` : '<b style="font-size:13px">Ottoman</b>'}<input data-fp="${i}|w" value="${esc(p.w ?? '')}" placeholder="37" inputmode="decimal" style="${ip}"><input data-fp="${i}|d" value="${esc(p.d ?? '')}" placeholder="37" inputmode="decimal" style="${ip}"><input data-fp="${i}|qty" value="${esc(p.qty ?? 1)}" inputmode="numeric" style="${ip}"><button type="button" class="btn sm" data-fpx="${i}">&times;</button></div>`).join('') +
+      `<button type="button" class="btn sm" data-fadd="${FITS === 'mod' ? 'Armless (middle)' : 'Ottoman'}" style="border-style:dashed;color:#b0524c;border-color:#b0524c">+ Add ${FITS === 'mod' ? 'piece' : 'ottoman'}</button>`;
+    if (FITS === 'mod') { const tot = FITP.filter(p => !fitIsOtt(p)).reduce((a, p) => a + (parseFloat(p.w) || 0) * (Number(p.qty) || 1), 0); if (tot) h += `<span style="font-size:12px;color:var(--muted);margin-left:8px">All in one straight row: <b>${Math.round(tot * 10) / 10}"</b></span>`; }
+    box.innerHTML = h; return;
+  }
+  const i = mi;
+  h += fitDiagram(FITS);
+  if (FITS === 'lsec') h += row(fld(i, 'w', 'A · Long side', '120') + fld(i, 'ret', 'B · Short side', '90')) + row(fld(i, 'd', 'C · Depth', '38') + seg(i, 'Short side is on the… (facing it)', [['R', 'Left'], ['L', 'Right'], ['rev', 'Reversible']]));
+  else if (FITS === 'chaise') h += row(fld(i, 'w', 'A · Total width', '112') + fld(i, 'ch', 'B · Chaise length', '65')) + row(fld(i, 'd', 'C · Depth (sofa part)', '38') + seg(i, 'Chaise is on the… (facing it)', [['L', 'Left'], ['R', 'Right'], ['rev', 'Reversible']])) + row(fld(i, 'cw', 'Chaise width (optional)', '34'));
+  else if (FITS === 'ush') h += row(fld(i, 'w', 'A · Back width', '140') + fld(i, 'd', 'D · Depth', '38')) + row(fld(i, 'ret', 'B · Left side', '90') + fld(i, 'ch', 'C · Right side', '90'));
+  else h += row(fld(i, 'w', 'A · Width (arm to arm)', '84') + fld(i, 'd', 'B · Depth (front to back)', '38'));
+  const otts = FITP.map((p, j) => [p, j]).filter(([p]) => fitIsOtt(p));
+  h += otts.map(([p, j]) => row(`<b style="align-self:flex-end;font-size:13px;padding-bottom:10px;min-width:70px">Ottoman</b>` + fld(j, 'w', 'Width', '43') + fld(j, 'd', 'Depth', '43') + `<button type="button" class="btn sm" data-fpx="${j}" style="align-self:flex-end;margin-bottom:6px">&times;</button>`)).join('');
+  h += `<button type="button" class="btn sm" data-fadd="Ottoman" style="border-style:dashed;color:#b0524c;border-color:#b0524c">+ ${otts.length ? 'Another' : 'Comes with an'} ottoman</button>`;
+  box.innerHTML = h;
+}
+document.addEventListener('click', e => {
+  const sh = e.target.closest && e.target.closest('[data-fshape]');
+  if (sh) {
+    const k = sh.dataset.fshape, lab = (FIT_SHAPES.find(x => x[0] === k) || [])[1];
+    const otts = FITP.filter(fitIsOtt), main = FITP.filter(p => !fitIsOtt(p));
+    if (k === 'mod') FITP = [...(main.length > 1 || FITS === 'mod' ? main : [{ name: 'Corner', w: '', d: main[0] ? main[0].d : '', qty: 2 }, { name: 'Armless (middle)', w: '', d: main[0] ? main[0].d : '', qty: 1 }]), ...otts];
+    else if (k === 'ott') FITP = otts.length ? otts : [{ name: 'Ottoman', w: '', d: '', qty: 1 }];
+    else { const m = main.length === 1 && FITS !== 'mod' ? main[0] : { w: '', d: main[0] ? main[0].d : '' };
+      const p = { name: k === 'ush' ? 'U-shaped sectional' : k === 'lsec' ? 'L-shaped sectional' : k === 'chaise' ? 'Sectional with chaise' : lab, w: m.w || '', d: m.d || '', ret: '', ch: '', cw: '', side: '', qty: 1 };
+      if (k === 'lsec') { p.ret = m.ret || ''; p.side = ['R', 'L', 'rev'].includes(m.side) ? m.side : 'R'; }
+      if (k === 'chaise') { p.ch = m.ch || ''; p.cw = m.cw || ''; p.side = ['R', 'L', 'rev'].includes(m.side) ? m.side : 'R'; }
+      if (k === 'ush') { p.ret = m.ret || ''; p.ch = m.ch || ''; p.cw = m.d || ''; }
+      FITP = [p, ...otts]; }
+    FITS = k; drawFitPieces(); return;
+  }
+  const sd = e.target.closest && e.target.closest('[data-fside]');
+  if (sd) { const [i, v] = sd.dataset.fside.split('|'); FITP[i].side = v; drawFitPieces(); return; }
+  const ad = e.target.closest && e.target.closest('[data-fadd]');
+  if (ad) { const m = FITP.find(p => !fitIsOtt(p)); FITP.push({ name: ad.dataset.fadd, w: '', d: ad.dataset.fadd === 'Ottoman' ? '' : (m ? m.d : ''), ret: '', ch: '', cw: '', qty: 1 }); drawFitPieces(); }
+});
+document.addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.fp; if (k && FITS === 'ush') { const p = FITP.find(x => !fitIsOtt(x)); if (p) p.cw = p.d; } });
 function readFitPieces(){ return FITP.filter(p => parseFloat(p.w) > 0 && parseFloat(p.d) > 0).map(p => ({ name: p.name || 'Piece', w: p.w, d: p.d, ret: p.ret || '', ch: p.ch || '', cw: p.cw || '', side: p.side || '', qty: p.qty || 1 })); }
 ['input', 'change'].forEach(ev => document.addEventListener(ev, e => { const k = e.target.dataset && e.target.dataset.fp; if (!k) return; const [i, f] = k.split('|'); FITP[i][f] = e.target.value; }));
 document.addEventListener('click', e => {
@@ -3574,7 +3661,7 @@ document.addEventListener('change', async e => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Could not read that photo');
     if (j.dimensions) document.getElementById('drDims').value = j.dimensions;
-    if (j.pieces && j.pieces.length) { FITP = j.pieces.map(p => ({ ...p })); drawFitPieces(); }
+    if (j.pieces && j.pieces.length) { FITS = ''; FITP = j.pieces.map(p => ({ ...p })); drawFitPieces(); }
     msg.textContent = 'Filled ' + (j.pieces || []).length + ' piece' + ((j.pieces || []).length === 1 ? '' : 's') + '. Double-check the numbers, then save.';
   } catch (err) { msg.textContent = err.message; }
 });
