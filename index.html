@@ -1672,10 +1672,11 @@ function ohsFor(o){ const all = (RAW.openhouses || []).slice().sort((a, b) => a.
   return (OHS || []).filter(s => { const d = ctYmd2(s.at), host = all.find(x => x.date >= d); return host && host.id === o.id && (toDate(o.date) - toDate(d)) / 864e5 <= 30; }); }
 const leadsOf = o => Math.max(Number(o.leads) || 0, OHS ? ohsFor(o).length : 0);
 function ohsMsg(s, o){
-  const [sh, sm, eh, em] = ohTimes(o), h = (H, M) => (H % 12 || 12) + (M ? ':' + String(M).padStart(2, '0') : '') + (H < 12 ? 'am' : 'pm');
-  const diff = Math.round((toDate(o.date) - day0(new Date())) / 864e5), when = diff <= 0 ? 'TODAY' : diff === 1 ? 'tomorrow' : fmtD(toDate(o.date), true);
-  const first = String(s && s.name || '').trim().split(/\s+/)[0] || 'there';
-  return `Hi ${first}! It's Billy from Billy's Couches. Your spot is saved for our open house ${when}, ${h(sh, sm)}-${h(eh, em)} at 126 E Orleans St, Pacific. Come early for first pick, we only have one of each. See you there!`;
+  const [sh, sm, eh, em] = ohTimes(o), h = (H, M) => (H % 12 || 12) + (M ? ':' + String(M).padStart(2, '0') : '');
+  const diff = Math.round((toDate(o.date) - day0(new Date())) / 864e5), when = diff <= 0 ? 'today' : diff === 1 ? 'tomorrow' : 'on ' + toDate(o.date).toLocaleDateString('en-US', { weekday: 'long' });
+  const first = String(s && s.name || '').trim().split(/\s+/)[0];
+  const nm = first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : '';
+  return `Hey${nm ? ' ' + nm : ''}! This is Billy from Billy's Couches. Just wanted to let you know we're open ${when} from ${h(sh, sm)}-${h(eh, em)} at 126 E Orleans St in Pacific. I saved your spot, see you soon!`;
 }
 const ohsSms = (s, o) => 'sms:+1' + String(s.phone).replace(/\D/g, '').slice(-10) + '?&body=' + encodeURIComponent(ohsMsg(s, o));
 function renderOpenHouse(){
@@ -1719,7 +1720,7 @@ function renderOpenHouse(){
   void withPromo;
 }
 document.addEventListener('click', async e => {
-  if (e.target.id === 'ohsCopy') { const o = (RAW.openhouses || []).slice().sort((a, b) => a.date.localeCompare(b.date)).find(x => x.date >= todayStr()); if (!o) { toast('No upcoming open house'); return; } try { await navigator.clipboard.writeText(ohsMsg({ name: '' }, o).replace('Hi there!', 'Hi!')); toast('Message copied'); } catch (err) { toast('Copy failed'); } return; }
+  if (e.target.id === 'ohsCopy') { const o = (RAW.openhouses || []).slice().sort((a, b) => a.date.localeCompare(b.date)).find(x => x.date >= todayStr()); if (!o) { toast('No upcoming open house'); return; } try { await navigator.clipboard.writeText(ohsMsg({ name: '' }, o)); toast('Message copied'); } catch (err) { toast('Copy failed'); } return; }
   if (e.target.id === 'ohsAdd') { const name = prompt('Name'); if (!name) return; const phone = prompt('Phone number'); if (!phone) return; const date = prompt('Day they signed up (YYYY-MM-DD)', todayStr()); if (!date) return;
     try { await post('/api/oh-signup/add', { name, phone, date }); OHS = null; ohsLoad(); toast('Added'); } catch (err) { toast(err.message); } return; }
   const id = e.target.dataset && e.target.dataset.ohsdel; if (!id) return;
