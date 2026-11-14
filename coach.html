@@ -282,6 +282,27 @@ function callsList(c){
           <div style="display:flex;gap:6px;flex-wrap:wrap">${x.link ? `<a class="btn sm" href="${esc(x.link)}" target="_blank" rel="noopener">Recording</a>` : ''}${x.plan ? '' : `<button class="btn sm" data-filltpl="${x.id}">Use template</button>`}<span style="flex:1"></span><button class="btn sm x" data-delcall="${x.id}">Remove</button></div></div></div></div></details>`; }).join('')
     : '<p class="empty">No calls yet. Tap + Plan a call.</p>';
 }
+function clientUrl(k, val){
+  let s = String(val || '').trim(); if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  const h = s.replace(/^@/, '');
+  if (k === 'ig' && !/\./.test(h)) return 'https://www.instagram.com/' + h;
+  if (k === 'tiktok' && !/\./.test(h)) return 'https://www.tiktok.com/@' + h;
+  if (k === 'fb' && !/\./.test(h)) return 'https://www.facebook.com/' + h;
+  return 'https://' + s.replace(/^\/+/, '');
+}
+function clientLinkBar(c){
+  const L = c.links || {}, q = c.business || c.name || '';
+  const ads = clientUrl('ads', L.ads) || (q ? 'https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&search_type=keyword_unordered&q=' + encodeURIComponent(q) : '');
+  const items = [['web', 'Website', '🌐', '#2f5d8a'], ['ig', 'Instagram', 'IG', '#c13584'], ['fb', 'Facebook', 'f', '#1877f2'], ['tiktok', 'TikTok', '♪', '#111'], ['ads', 'Ad Library', 'Ad', '#0866ff']];
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:12px">' + items.map(([k, l, ic, col]) => {
+    const u = k === 'ads' ? ads : clientUrl(k, L[k]);
+    const st = 'display:inline-flex;align-items:center;gap:6px;border:1px ' + (u ? 'solid' : 'dashed') + ' var(--line);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--text);text-decoration:none;background:#fbfaf8' + (u ? '' : ';opacity:.45');
+    const badge = '<b style="width:16px;height:16px;border-radius:4px;display:inline-grid;place-items:center;color:#fff;font-size:10px;background:' + col + '">' + ic + '</b>';
+    return u ? '<a target="_blank" rel="noopener" href="' + esc(u) + '" style="' + st + '">' + badge + l + '</a>' : '<a data-editlinks="1" style="' + st + ';cursor:pointer">' + badge + l + '</a>';
+  }).join('') + '<button type="button" data-editlinks="1" style="margin-left:auto;font-size:12px;color:var(--muted);border:0;background:none;cursor:pointer">✎ Edit links</button></div>';
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-editlinks]'); if (!b) return; const p = $('cprof'); if (p) { p.scrollIntoView({ behavior: 'smooth', block: 'center' }); const i = p.querySelector('[data-f="links.web"]'); if (i) setTimeout(() => i.focus(), 400); } });
 function renderClient(){
   const c = curClient(); if (!c) { CUR = null; return renderClients(); }
   c.links = c.links || {}; c.program = c.program || {}; c.start = c.start || {}; c.goals = c.goals || {}; c.calls = c.calls || []; c.tasks = c.tasks || []; c.checkins = c.checkins || [];
@@ -291,6 +312,7 @@ function renderClient(){
   const ck = c.checkins.slice().sort((a, b) => b.week.localeCompare(a.week)), mt = monthTotals(c);
   const taskRow = t => `<div class="row"><input type="checkbox" class="chk" data-task="${t.id}" ${(t.recurring ? t.doneWeek === D.week : t.done) ? 'checked' : ''}><span class="grow ${(t.recurring ? t.doneWeek === D.week : t.done) ? 'done' : ''}" contenteditable="true" data-tasktext="${t.id}">${esc(t.text)}</span><button class="btn sm x" data-deltask="${t.id}">&times;</button></div>`;
   $('view').innerHTML = `<div class="top"><button class="btn" data-back>&larr; Clients</button><h1>${esc(c.name || 'New client')}</h1><span class="save" id="saveSt">Saved</span></div>
+  ${clientLinkBar(c)}
   <div class="portal"><b style="flex:none">Client page</b>
     <label class="f">PIN (4-6 digits)<input data-f="pin" value="${esc(c.pin || '')}" inputmode="numeric" maxlength="6" placeholder="e.g. 4821"></label>
     <button class="btn sm" data-copy="${esc(portal)}">Copy link</button>
@@ -326,7 +348,7 @@ function renderClient(){
       <div class="three">${F('Program', 'program.length')}${F('Start', 'program.start', 'date')}${F('End', 'program.end', 'date')}</div>${F('Payment plan', 'program.plan')}
       ${c.program.payments.map((p, i) => `<div class="row"><input type="checkbox" class="chk" data-paid="${i}" ${p.paid ? 'checked' : ''}><input type="text" class="grow" data-pay="${i}" data-k="label" value="${esc(p.label)}"><input type="number" style="width:100px" data-pay="${i}" data-k="amount" value="${esc(p.amount)}"><input type="date" data-pay="${i}" data-k="paidAt" value="${esc(p.paidAt || '')}" title="Date paid"><button class="btn sm x" data-delpay="${i}">&times;</button></div>`).join('')}
     </div>
-    <div class="card"><h2>Profile</h2><div class="two">${F('Name', 'name')}${F('Business', 'business')}${F('Phone', 'phone', 'tel')}${F('Email', 'email', 'email')}${F('Market', 'market')}${F('Booking link (Calendly)', 'calendly', 'url')}${F('Instagram', 'links.ig', 'url')}${F('Facebook', 'links.fb', 'url')}</div>${F('TikTok', 'links.tiktok', 'url')}
+    <div class="card" id="cprof"><h2>Profile</h2><div class="two">${F('Name', 'name')}${F('Business', 'business')}${F('Phone', 'phone', 'tel')}${F('Email', 'email', 'email')}${F('Market', 'market')}${F('Booking link (Calendly)', 'calendly', 'url')}${F('Instagram', 'links.ig', 'url')}${F('Facebook', 'links.fb', 'url')}</div><div class="two">${F('TikTok', 'links.tiktok', 'url')}${F('Website', 'links.web', 'url')}</div>${F('Ad Library link (optional, blank = searches their business name)', 'links.ads', 'url')}
       <div style="display:flex;gap:6px;flex-wrap:wrap">${['ig', 'fb', 'tiktok'].filter(k => c.links[k]).map(k => `<a class="btn sm" target="_blank" rel="noopener" href="${esc(c.links[k])}">${{ ig: 'Instagram', fb: 'Facebook', tiktok: 'TikTok' }[k]}</a>`).join('')}${c.phone ? `<a class="btn sm" href="sms:${esc(c.phone.replace(/[^\d+]/g, ''))}">Text</a>` : ''}</div></div>
   </div>
   <div class="card" style="margin-top:16px"><h2>Private notes <span class="empty" style="font-weight:400;font-size:12.5px">only you see these</span></h2>${F('', 'notes', 'textarea', 'rows="5"')}
