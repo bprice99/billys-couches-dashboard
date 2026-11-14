@@ -109,6 +109,11 @@ details.call .ct{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white
 html.cf-on,html.cf-on body{overflow:hidden}
 .ctgrid .card h2 small{font-weight:500;color:var(--muted);font-size:12px}.hide-m{}@media(max-width:800px){.hide-m{display:none}}
 .vc.cx{opacity:.55}.vc .cxl{color:var(--bad);font-weight:700}
+.cbar{display:none}
+@media(max-width:800px){nav.side{display:none!important}main{padding-bottom:calc(96px + env(safe-area-inset-bottom))!important}
+  .cbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--dark);padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(0,0,0,.18)}
+  .cbar a{flex:1;min-width:0;text-align:center;color:#a9b4bd;font-size:10.5px;font-weight:700;text-decoration:none;padding:4px 2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-tap-highlight-color:transparent}
+  .cbar a i{display:block;font-style:normal;font-size:21px;line-height:1.1;margin-bottom:2px}.cbar a.on{color:#fff}}
 </style></head>
 <body>
 <div class="app">
@@ -124,6 +129,7 @@ html.cf-on,html.cf-on body{overflow:hidden}
   <main><div id="view"><p class="empty">Loading…</p></div></main>
 </div>
 
+<nav class="cbar" id="cbar"><a data-tab="home"><i>🏠</i>Home</a><a data-tab="clients"><i>👥</i>Clients</a><a data-tab="youtube"><i>▶️</i>YouTube</a><a data-tab="pipeline"><i>📊</i>Pipeline</a><a data-tab="reels"><i>🎬</i>Reels</a><a href="/"><i>🛋️</i>Couches</a></nav>
 <div class="mask" id="m-item"><div class="modal"><button class="xb" data-close>&times;</button><div id="itemBody"></div></div></div>
 <div class="toast" id="toast"></div>
 
@@ -154,7 +160,7 @@ function seedNotion(){
 }
 function setTab(t, id){
   TAB = t; CUR = id || null;
-  document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === t));
+  document.querySelectorAll('.nav,.cbar a[data-tab]').forEach(n => n.classList.toggle('on', n.dataset.tab === t));
   history.replaceState(null, '', '/coach' + (t !== 'home' ? '?tab=' + t + (id ? '&id=' + id : '') : ''));
   render(); window.scrollTo(0, 0);
 }
@@ -660,7 +666,8 @@ document.addEventListener('change', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tasktext) { e.preventDefault(); e.target.blur(); } });
 
 const q = new URLSearchParams(location.search); TAB = ['home', 'clients', 'youtube', 'pipeline', 'reels'].includes(q.get('tab')) ? q.get('tab') : 'home'; CUR = q.get('id');
-document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.tab === TAB));
+document.querySelectorAll('.nav,.cbar a[data-tab]').forEach(n => n.classList.toggle('on', n.dataset.tab === TAB));
+$('cbar').addEventListener('click', e => { const a = e.target.closest('a[data-tab]'); if (a) { e.preventDefault(); setTab(a.dataset.tab); } });
 load();
 </script>
 <div class="mask" id="m-tpl"><div class="modal" style="max-width:640px"><h3 style="margin-top:0">Call template</h3>
