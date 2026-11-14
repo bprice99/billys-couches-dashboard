@@ -693,7 +693,7 @@ function parseThankYou(subs, formId) {
 async function schedCards() {
   const m = await kget('bcd:sched', {}).catch(() => ({}));
   return Object.values(m).filter(o => o.booking).map(o => ({ id: 's' + o.token, form: 'hq', name: o.name,
-    line1: o.type === 'delivery' ? o.booking.address : '', line2: o.type === 'delivery' ? `${o.booking.city}, MO ${o.booking.zip}` : '',
+    line1: o.booking.address || '', line2: o.booking.address ? `${o.booking.city || ''}, MO ${o.booking.zip || ''}`.replace(/^, /, '') : '',
     type: o.type === 'delivery' ? 'Delivery' : 'Pick up', date: o.booking.date, submitted: new Date(o.booking.at || o.created).toISOString().slice(0, 10) }));
 }
 // Pick-up-today buyers from the Signature & Agreement form -> the Customers sheet (once each).
