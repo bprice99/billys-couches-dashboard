@@ -620,7 +620,8 @@ const TEAM = ['Zach', 'Luke', 'Collin', 'Finley', 'Gunnarr', 'Joey'];
 async function workLog(force) {
   const jf = await jotformWorkLog(force).catch(e => ({ entries: [], fieldsSeen: {}, error: e.message }));
   const mine = ((await kget(HQLOG_KEY, [])) || []).map(e => ({ id: e.id, date: e.date, name: e.name, hours: e.hours, deep: e.deep, spot: e.spot, sold: e.sold, shows: e.shows, tip: e.tip, pickups: e.pickups, deliveries: e.deliveries, start: e.start, end: e.end, src: 'hq' }));
-  return { ...jf, entries: (jf.entries || []).concat(mine), error: mine.length && jf.error && /JOTFORM_API_KEY/.test(jf.error) ? undefined : jf.error };
+  const hid = new Set(((await kget('bcd:wlHidden', [])) || []).map(String));
+  return { ...jf, entries: (jf.entries || []).filter(e => !hid.has(String(e.id))).concat(mine), error: mine.length && jf.error && /JOTFORM_API_KEY/.test(jf.error) ? undefined : jf.error };
 }
 async function jotformWorkLog(force) {
   if (!CFG.JOTFORM_KEY) return { entries: [], fieldsSeen: {}, error: 'Add JOTFORM_API_KEY in Railway to load the Work Log.' };
@@ -1719,13 +1720,13 @@ async function salesLogRows() {
   const H = sh.map(x => String(x).toLowerCase().trim());
   const col = (keys, not) => { for (const k of keys) { const i = H.indexOf(k); if (i > -1) return i; }
     for (const k of keys) { const i = H.findIndex(x => x.includes(k) && !(not || []).some(n => x.includes(n))); if (i > -1) return i; } return -1; };
-  const C = { date: col(['date']), name: col(['customer', 'name'], ['first']), price: col(['couch price', 'price'], ['total', 'sale']), disc: col(['discount']), receipt: col(['receipt']) };
+  const C = { date: col(['date']), name: col(['customer', 'name'], ['first']), price: col(['couch price', 'price'], ['total', 'sale']), disc: col(['discount']), receipt: col(['receipt']), couch: (() => { const i = H.findIndex(x => x === 'couch' || x === 'couch name' || x === 'couch title'); return i > -1 ? i : (!H[18] ? 18 : -1); })() };
   const num = v => Number(String(v ?? '').replace(/[^\d.\-]/g, '')) || 0;
   rows.forEach((r, i) => {
     const m = String(C.receipt > -1 ? r[C.receipt] : '').match(/receipt\/(\d{13})/), ts = m ? Number(m[1]) : null;
     const d = ts ? new Date(ts) : new Date(String(r[C.date] || '')); if (isNaN(d)) return;
     const price = num(r[C.price]), net = price - Math.abs(num(r[C.disc]));
-    const l = { i, day: d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), ts, name: String(r[C.name] || '').trim(), price, net, used: false };
+    const l = { i, day: d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), ts, name: String(r[C.name] || '').trim(), price, net, used: false, couchTitle: C.couch > -1 ? String(r[C.couch] || '').trim() : '' };
     l.key = saleKey(l); log.push(l);
   });
   return log;
@@ -1777,6 +1778,7 @@ async function recentOrders(days) {
     let title = '', photo = '', from = '';
     if (pick && pick.title) { title = pick.title; photo = pick.img || ''; from = 'picked'; }
     else if (l.drop) { title = l.drop.title; photo = (l.drop.photos || [])[0] ? dropPhotoUrl(l.drop.photos[0]) : ''; from = 'drops'; }
+    else if (l.couchTitle) { const m = bestSiteMatch(l.couchTitle, drops.filter(d => (d.photos || []).length).map(d => ({ title: d.title, img: dropPhotoUrl(d.photos[0]) })).concat(site)); title = m ? m.title : l.couchTitle; photo = m && m.img ? m.img : ''; from = 'order'; }
     if (pick && pick.photo) { photo = `/public/justsold-photo/${pick.photo}?v=${pick.at}`; if (!title && c) { title = cleanCouchName(c.name); from = 'tracker'; } }
     else if (c && !photo) {
       title = cleanCouchName(c.name); from = 'tracker';
@@ -3229,7 +3231,9 @@ app.post('/public/worklog', async (req, res) => {
 // HQ: remove a mistaken shift from the HQ work log
 app.post('/api/worklog/delete', async (req, res) => {
   const id = String((req.body || {}).id || ''); const list = (await kget(HQLOG_KEY, [])) || [];
-  await kset(HQLOG_KEY, list.filter(e => e.id !== id)); res.json({ ok: true });
+  if (list.some(e => e.id === id)) await kset(HQLOG_KEY, list.filter(e => e.id !== id));
+  else if (id) { const h = (await kget('bcd:wlHidden', [])) || []; if (!h.includes(id)) h.push(id); await kset('bcd:wlHidden', h.slice(-500)); wl.at = 0; }   // old-form (Jotform) entries: hide, never delete
+  res.json({ ok: true });
 });
 
 // ---------- weekly pay for the team scorecard ("My pay") ----------
