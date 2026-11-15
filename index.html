@@ -3666,4 +3666,12 @@ document.addEventListener('change', async e => {
   } catch (err) { msg.textContent = err.message; }
 });
 </script>
+<script>
+// Number-only fields: show the number keypad and avoid the iPhone cursor jump that type=number causes.
+(() => {
+  const fix = root => (root.querySelectorAll ? root.querySelectorAll('input[type="number"]') : []).forEach(i => { i.type = 'text'; i.inputMode = 'decimal'; i.autocomplete = 'off'; });
+  fix(document);
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="number"]')) fix(n.parentNode || document); else fix(n); }))).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
 </body></html>
