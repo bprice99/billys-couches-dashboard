@@ -710,6 +710,8 @@ async function logSignatureCustomers(cards) {
 async function thankYouList(force) {
   if (!force && ty.data && Date.now() - ty.at < 2 * 60 * 1000) return ty.data;
   const hq = [...await schedCards(), ...(await kget('bcd:manualCards', []).catch(() => []))];   // + cards added by hand in HQ
+  // "Bought it today" buyers from the new signature form (proxy /sign) give their address there.
+  hq.push(...await newSignForm(false).then(cs => cs.map(c => ({ id: 'ns' + c.id, form: 'sign', name: c.name, line1: c.line1, line2: c.line2, type: 'Pick up today', date: c.submitted, submitted: c.submitted }))).catch(() => []));
   if (!CFG.JOTFORM_KEY) return { cards: hq, error: hq.length ? '' : 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
   const forms = await thankYouForms();
   const lists = await Promise.all(forms.map(async id => {
@@ -744,16 +746,20 @@ app.get('/api/thankyou/sigcheck', async (req, res) => {
 });
 // Signed "Signature and Agreement" forms for HQ (top of Thank You Cards). Links cover buyers who signed under another
 // name (spouse), on paper, or got a card added by hand.
+// The new signature form (proxy /sign) keeps each signed agreement on the proxy; HQ reads them with SIGN_FEED_KEY.
+async function newSignForm(all) {
+  const key = (process.env.SIGN_FEED_KEY || '').trim(); if (!key) throw new Error('Set SIGN_FEED_KEY in HQ (same value as the proxy) to read the signature form.');
+  const r = await fetch(SCHED_PROXY + '/api/sign/cards' + (all ? '?all=1' : ''), { headers: { 'x-sign-key': key }, signal: AbortSignal.timeout(15000) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error('Signature form: ' + (j.error || r.status));
+  return j.cards || [];
+}
 app.get('/api/signed', async (req, res) => {
+  const links = await kget('bcd:sigLinks', {}).catch(() => ({})), formUrl = SCHED_PROXY + '/sign';
   try {
-    if (!CFG.JOTFORM_KEY) return res.json({ ok: true, signed: [], links: await kget('bcd:sigLinks', {}), error: 'Add JOTFORM_API_KEY in Railway to see signed forms.' });
-    await thankYouForms(); const out = [];
-    for (const id of (ty.sigForms || [])) {
-      const r = await fetch(`${CFG.JOTFORM_BASE}/form/${id}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=150&orderby=created_at`); const j = await r.json();
-      parseThankYou(j.content || [], id).forEach(c => out.push({ id: c.id, form: id, name: c.name, phone: c.phone, line1: c.line1, line2: c.line2, type: c.type, created: c.submitted }));
-    }
-    res.json({ ok: true, signed: out.sort((a, b) => b.created.localeCompare(a.created)), formIds: ty.sigForms || [], links: await kget('bcd:sigLinks', {}) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const signed = (await newSignForm(true)).map(c => ({ id: 'ns' + c.id, form: 'sign', name: c.name || 'Unknown', phone: c.phone || '', line1: c.line1 || '', line2: c.line2 || '',
+      type: c.method || '', created: c.submitted || String(c.at || '').slice(0, 10), photo: SCHED_PROXY + '/sign/photo/' + encodeURIComponent(c.id) + '.jpg' }));
+    res.json({ ok: true, signed: signed.sort((a, b) => b.created.localeCompare(a.created)), formUrl, links });
+  } catch (e) { res.json({ ok: true, signed: [], formUrl, links, error: e.message }); }
 });
 app.post('/api/signed/link', async (req, res) => {
   try { const k = clean(req.body.key, 120); if (!k) return res.status(400).json({ error: 'key required' });
