@@ -553,7 +553,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     </section>
     <section id="tab-cash" hidden><div id="cashBody"></div><div id="bankBody"></div></section>
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
-    <section id="tab-thanks" hidden><div id="tyBody"></div></section>
+    <section id="tab-thanks" hidden><div id="sigBody"></div><div id="tyBody"></div></section>
     <section id="tab-sched" hidden>
       <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small><span style="flex:1"></span><button class="btn sm" id="scTest">Preview</button><button class="btn sm p" id="scNew">+ New scheduling link</button></h2>
         <div id="scNewBox" hidden style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px">
@@ -3223,7 +3223,65 @@ async function loadThanks(fresh){
   tyBadge(); if (tab === 'thanks') renderThanks();
 }
 function tyBadge(){ const n = TY ? TY.cards.filter(c => !TY.written[c.id]).length : 0; $('tyBadge').hidden = !n; $('tyBadge').textContent = n; }
+// ---------- Signed agreement forms (top of Thank You Cards): who signed, and who bought but never signed ----------
+let SG = null, SGF = 'all';
+async function loadSigned(){
+  try { const r = await fetch('/api/signed', { cache: 'no-store' }); SG = await r.json(); if (SG.error && !SG.signed) throw new Error(SG.error); }
+  catch (e) { SG = { signed: [], links: {}, error: e.message }; }
+  if (tab === 'thanks') renderSigned();
+}
+const sgW = s => String(s || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+const sgDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function sgRows(){
+  const L = SG.links || {}, signed = SG.signed || [], cut = Date.now() - 14 * 864e5, seen = {}, sales = [];
+  ((RAW && RAW.sales) || []).forEach(s => { const d = new Date(s.date); if (!s.name || isNaN(d) || d < cut || d > Date.now() + 864e5) return;
+    const key = ymd(d) + '|' + s.name.trim().toLowerCase(); if (seen[key]) { seen[key].price += Number(s.price) || 0; return; }
+    seen[key] = { key, d, name: s.name.trim(), price: Number(s.price) || 0, type: s.type || '' }; sales.push(seen[key]); });
+  const used = new Set();
+  sales.forEach(s => { const v = L[s.key]; if (v) { s.link = v; if (v !== 'paper' && v !== 'manual') used.add(v); return; }
+    const w = sgW(s.name), last = w[w.length - 1];
+    const g = signed.find(g => !used.has(g.id) && last && sgW(g.name).includes(last) && Math.abs(new Date(g.created + 'T12:00:00') - s.d) <= 10 * 864e5);
+    if (g) { s.link = g.id; used.add(g.id); } });
+  const byId = Object.fromEntries(signed.map(g => [g.id, g])), saleFor = {}; sales.forEach(s => { if (s.link && byId[s.link]) saleFor[s.link] = s; });
+  return { sales, signed, saleFor, unsigned: sales.filter(s => !s.link), byId };
+}
+function renderSigned(){
+  const el = $('sigBody'); if (!el) return;
+  if (!SG) { el.innerHTML = '<div class="card" style="margin-bottom:16px"><p class="empty">Loading signed forms…</p></div>'; loadSigned(); return; }
+  const R = sgRows(), W = (TY && TY.written) || {}, cards = new Set(((TY && TY.cards) || []).map(c => c.id));
+  const fid = (SG.formIds || [])[0] || '240938770806061';
+  const cardPill = g => !g.line1 ? '<span class="pill">No address</span>' : W[g.id] ? '<span class="pill ok">Card written</span>' : cards.has(g.id) ? '<span class="pill" style="background:#fdf1dc;color:#a8700f">Card to write</span>' : '<span class="pill">–</span>';
+  const signedRow = g => { const s = R.saleFor[g.id]; return `<tr><td>${sgDay(new Date(g.created + 'T12:00:00'))}</td><td><b>${esc(g.name)}</b>${s && sgW(s.name).join(' ') !== sgW(g.name).join(' ') ? `<br><small style="color:var(--muted)">for ${esc(s.name)}</small>` : ''}${g.line1 ? `<br><small style="color:var(--muted)">${esc(g.line1)}</small>` : ''}</td><td>${esc(g.type || '')}</td>
+    <td>${s ? `<span class="pill ok">✓ ${esc(s.name)} · ${money(s.price)}</span>` : '<span class="pill">No sale in last 14 days</span>'}</td><td>${cardPill(g)}</td>
+    <td class="n" style="white-space:nowrap"><a class="btn sm" href="https://www.jotform.com/submission/${esc(g.id)}" target="_blank" rel="noopener" style="text-decoration:none">View form</a></td></tr>`; };
+  const unsignedRow = s => `<tr><td>${sgDay(s.d)}</td><td><b>${esc(s.name)}</b><br><small style="color:var(--muted)">${money(s.price)}${s.type ? ' · ' + esc(s.type) : ''}</small></td><td>${esc(s.type || '')}</td>
+    <td><span class="pill d">Sold, not signed</span>${R.signed.length ? `<select class="lksel" data-sglink="${esc(s.key)}" style="max-width:260px"><option value="">Signed under another name…</option>${R.signed.filter(g => !R.saleFor[g.id]).slice(0, 25).map(g => `<option value="${esc(g.id)}">${esc(g.name)} · ${sgDay(new Date(g.created + 'T12:00:00'))}</option>`).join('')}</select>` : ''}</td><td>–</td>
+    <td class="n" style="white-space:nowrap"><button class="btn sm" data-sgcopy="https://form.jotform.com/${esc(fid)}">Copy form link</button> <button class="btn sm" data-sgcard="${esc(s.key)}" data-name="${esc(s.name)}" data-type="${esc(s.type)}" data-date="${ymd(s.d)}">Add card by hand</button> <button class="btn sm" data-sgpaper="${esc(s.key)}" title="They signed a paper copy">Signed on paper</button></td></tr>`;
+  const rows = [...R.signed.slice(0, 40).map(g => ({ d: new Date(g.created + 'T12:00:00'), h: signedRow(g), k: 'signed' })), ...R.unsigned.map(s => ({ d: s.d, h: unsignedRow(s), k: 'unsigned' }))]
+    .filter(r => SGF === 'all' || r.k === SGF).sort((a, b) => b.d - a.d);
+  el.innerHTML = `<div class="card" style="margin-bottom:16px"><h2>Signed agreement forms <small>newest first · checked against the last 14 days of sales</small></h2>
+    ${SG.error ? `<div class="err" style="display:block">${esc(SG.error)}</div>` : ''}
+    <div class="ofilters"><button data-sgf="all" class="${SGF === 'all' ? 'on' : ''}">All</button><button data-sgf="signed" class="${SGF === 'signed' ? 'on' : ''}">Signed</button><button data-sgf="unsigned" class="${SGF === 'unsigned' ? 'on' : ''}">Sold, not signed (${R.unsigned.length})</button></div>
+    <div style="overflow-x:auto;max-height:460px"><table><tr><th>Date</th><th>Name</th><th>Getting it</th><th>Matches sale</th><th>Card</th><th></th></tr>${rows.map(r => r.h).join('') || '<tr><td colspan="6" class="empty">Nothing here.</td></tr>'}</table></div></div>`;
+}
+document.addEventListener('click', async e => {
+  const f = e.target.closest && e.target.closest('[data-sgf]'); if (f) { SGF = f.dataset.sgf; renderSigned(); return; }
+  const c = e.target.closest && e.target.closest('[data-sgcopy]'); if (c) { navigator.clipboard.writeText(c.dataset.sgcopy).then(() => toast('Form link copied'), () => toast('Copy failed')); return; }
+  const p = e.target.closest && e.target.closest('[data-sgpaper]'); if (p) { try { const j = await post('/api/signed/link', { key: p.dataset.sgpaper, val: 'paper' }); SG.links = j.links; renderSigned(); toast('Marked signed on paper'); } catch (err) { toast(err.message); } return; }
+  const m = e.target.closest && e.target.closest('[data-sgcard]'); if (m) {
+    const name = prompt('Name for the card', m.dataset.name); if (!name) return;
+    const line1 = prompt('Street address', ''); if (line1 == null) return;
+    const line2 = prompt('City, state, ZIP', ''); if (line2 == null) return;
+    try { await post('/api/thankyou/manual', { name, line1, line2, type: /deliv/i.test(m.dataset.type) ? 'Delivery' : 'Pick up', date: m.dataset.date });
+      const j = await post('/api/signed/link', { key: m.dataset.sgcard, val: 'manual' }); SG.links = j.links; toast('Card added to To write'); loadThanks(true); }
+    catch (err) { toast(err.message); } }
+});
+document.addEventListener('change', async e => {
+  const s = e.target.closest && e.target.closest('[data-sglink]'); if (!s || !s.value) return;
+  try { const j = await post('/api/signed/link', { key: s.dataset.sglink, val: s.value }); SG.links = j.links; renderSigned(); toast('Linked'); } catch (err) { toast(err.message); s.value = ''; }
+});
 function renderThanks(){
+  renderSigned();
   if (!TY) { $('tyBody').innerHTML = '<p class="empty">Loading thank-you cards…</p>'; loadThanks(); return; }
   const W = TY.written || {}, all = TY.cards.slice().sort((a, b) => (b.submitted || b.date).localeCompare(a.submitted || a.date));
   const todo = all.filter(c => !W[c.id]), done = all.filter(c => W[c.id]).sort((a, b) => W[b.id].localeCompare(W[a.id]));
