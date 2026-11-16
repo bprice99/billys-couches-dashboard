@@ -709,7 +709,7 @@ async function logSignatureCustomers(cards) {
 }
 async function thankYouList(force) {
   if (!force && ty.data && Date.now() - ty.at < 2 * 60 * 1000) return ty.data;
-  const hq = await schedCards();
+  const hq = [...await schedCards(), ...(await kget('bcd:manualCards', []).catch(() => []))];   // + cards added by hand in HQ
   if (!CFG.JOTFORM_KEY) return { cards: hq, error: hq.length ? '' : 'Add JOTFORM_API_KEY in Railway to load thank-you cards.' };
   const forms = await thankYouForms();
   const lists = await Promise.all(forms.map(async id => {
@@ -740,6 +740,33 @@ app.get('/api/thankyou/sigcheck', async (req, res) => {
     const fr = await fetch(`${CFG.JOTFORM_BASE}/user/forms?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=500`); const fj = await fr.json();
     const forms = (fj.content || []).filter(f => f.status !== 'DELETED').sort((a, b) => String(b.last_submission || '').localeCompare(String(a.last_submission || ''))).slice(0, 15).map(f => [f.id, f.title, f.status, f.last_submission, f.count]);
     res.json({ ok: true, out, forms });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Signed "Signature and Agreement" forms for HQ (top of Thank You Cards). Links cover buyers who signed under another
+// name (spouse), on paper, or got a card added by hand.
+app.get('/api/signed', async (req, res) => {
+  try {
+    if (!CFG.JOTFORM_KEY) return res.json({ ok: true, signed: [], links: await kget('bcd:sigLinks', {}), error: 'Add JOTFORM_API_KEY in Railway to see signed forms.' });
+    await thankYouForms(); const out = [];
+    for (const id of (ty.sigForms || [])) {
+      const r = await fetch(`${CFG.JOTFORM_BASE}/form/${id}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=150&orderby=created_at`); const j = await r.json();
+      parseThankYou(j.content || [], id).forEach(c => out.push({ id: c.id, form: id, name: c.name, phone: c.phone, line1: c.line1, line2: c.line2, type: c.type, created: c.submitted }));
+    }
+    res.json({ ok: true, signed: out.sort((a, b) => b.created.localeCompare(a.created)), formIds: ty.sigForms || [], links: await kget('bcd:sigLinks', {}) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/signed/link', async (req, res) => {
+  try { const k = clean(req.body.key, 120); if (!k) return res.status(400).json({ error: 'key required' });
+    const m = await kget('bcd:sigLinks', {}); if (req.body.val) m[k] = clean(req.body.val, 40); else delete m[k];
+    await kset('bcd:sigLinks', m); res.json({ ok: true, links: m }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/thankyou/manual', async (req, res) => {
+  try {
+    const name = clean(req.body.name, 80); if (!name) return res.status(400).json({ error: 'Add a name' });
+    const list = await kget('bcd:manualCards', []), date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : new Date().toISOString().slice(0, 10);
+    const c = { id: 'm' + crypto.randomBytes(5).toString('hex'), form: 'manual', name, line1: clean(req.body.line1, 120), line2: clean(req.body.line2, 120), type: clean(req.body.type, 30) || 'Pick up', date, submitted: date };
+    list.unshift(c); await kset('bcd:manualCards', list.slice(0, 500)); ty.at = 0; res.json({ ok: true, card: c });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/api/thankyou', async (req, res) => {
