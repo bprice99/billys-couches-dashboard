@@ -3623,6 +3623,18 @@ setInterval(() => load(), 5 * 60 * 1000);
 </script>
 
 <script>
+// iPhone: pin the bottom bar to the bottom of what's actually on screen (Safari can report a stale height).
+(function(){
+  const vv = window.visualViewport; if (!vv) return;
+  const pin = () => { document.querySelectorAll('.mbar,.cbar').forEach(b => { if (getComputedStyle(b).position !== 'fixed') return; const a = document.activeElement, typing = a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && vv.height < window.innerHeight * 0.8; b.style.visibility = typing ? 'hidden' : ''; b.style.bottom = 'auto'; b.style.top = Math.round(vv.offsetTop + vv.height - b.offsetHeight) + 'px'; }); };
+  vv.addEventListener('resize', pin); vv.addEventListener('scroll', pin); window.addEventListener('scroll', pin, { passive: true }); window.addEventListener('resize', pin);
+  window.addEventListener('pageshow', () => setTimeout(pin, 100)); document.addEventListener('visibilitychange', () => setTimeout(pin, 100));
+  document.addEventListener('focusin', () => setTimeout(pin, 300)); document.addEventListener('focusout', () => setTimeout(pin, 300));
+  setInterval(pin, 1000); pin();
+})();
+</script>
+
+<script>
 // Tax export: one CSV per year, every business expense tagged with its Schedule C line, plus cost of goods (loads + couch purchases).
 (function(){
   const LINE={'Advertising':'8 Advertising','Fuel':'9 Car and truck','Truck':'9 Car and truck','Fees':'10 Commissions and fees','Contract labor':'11 Contract labor','Payroll':'11 Contract labor','Equipment':'13 Depreciation / Sec 179 (ask CPA)','Insurance':'15 Insurance','Interest':'16b Interest','Legal & professional':'17 Legal and professional','Equipment rental':'20a Rent - vehicles/equipment','Rent':'20b Rent - other property','Repairs':'21 Repairs and maintenance','Supplies':'22 Supplies','Taxes & licenses':'23 Taxes and licenses','Travel':'24a Travel','Meals':'24b Meals (50%)','Utilities':'25 Utilities','Software':'27a Other - software','Coaching & education':'27a Other - coaching/education','Other':'27a Other','Freight':'COGS - freight in'};
