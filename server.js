@@ -3116,7 +3116,7 @@ app.post('/api/sched/delete', async (req, res) => {
 // ===================== END SCHEDULING =====================
 // ---------- Brand New: reserve-before-it-lands page (hq.billyscouches.com/brand-new) ----------
 // Countdown to BN_LAUNCH, $100 Stripe deposit holds one of the 4 units, then the page flips to a normal shop.
-const BN_LAUNCH = Date.parse(process.env.BN_LAUNCH || '2026-12-01T06:00:00Z'); // Dec 1, 12:00 AM Central
+const BN_LAUNCH = Date.parse(process.env.BN_LAUNCH || '2026-12-04T06:00:00Z'); // Dec 4, 12:00 AM Central
 const BN_DEPOSIT = 100;
 const BN_PRODUCTS = [
   { id: 'harmont', name: 'Harmont 5-Piece Sectional', brand: 'Behold Home', color: 'Camel', tagline: 'Ottoman + pillows included · deepest seats · plush reversible cushions', price: 2486, launch: 2286, units: 4,
@@ -3187,7 +3187,7 @@ app.post('/public/brand-new/confirm', async (req, res) => {
     if ((st.res || []).some(x => x.sid === sid)) return res.json({ ok: true, item: r.item, name: r.name, price: r.price });
     r.status = 'paid'; r.sid = sid; r.paidAt = Date.now(); await kset(BN_KEY, st);
     const first = r.name.split(/\s+/)[0], left = Math.max(0, (p.units || 4) - bnCount(st, r.item));
-    sendText(r.phone, `Hey ${first}, this is Billy with Billy's Couches! Your ${p.name || 'sectional'} (${p.color || ''}) is reserved. $${BN_DEPOSIT} deposit received, $${(r.price - BN_DEPOSIT).toLocaleString()} due when it arrives. Estimated arrival is Dec 1, and I'll text you the day it lands.`).catch(() => {});
+    sendText(r.phone, `Hey ${first}, this is Billy with Billy's Couches! Your ${p.name || 'sectional'} (${p.color || ''}) is reserved. $${BN_DEPOSIT} deposit received, $${(r.price - BN_DEPOSIT).toLocaleString()} due when it arrives. Estimated arrival is Dec 4, and I'll text you the day it lands.`).catch(() => {});
     textAlert(`New deposit: ${r.name} reserved a ${p.name} ($${BN_DEPOSIT}). ${left} left. ${r.phone}`).catch(() => {});
     res.json({ ok: true, item: r.item, name: r.name, price: r.price });
   } catch (e) { console.log('[brand-new] confirm failed', e.message); res.status(500).json({ error: 'Something went wrong. Text Billy at (314) 899-7503.' }); }
