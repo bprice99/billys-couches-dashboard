@@ -2801,6 +2801,9 @@ app.post('/public/checkin', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { console.error('checkin failed', e.message); res.status(500).json({ error: 'Something went wrong. Please text Billy.' }); }
 });
+app.post('/api/checkins/hide', async (req, res) => {
+  try { const list = (await kget('bcd:checkins', [])) || [], e = list.find(x => x.id === String(req.body.id || '')); if (!e) return res.status(404).json({ error: 'Not found' }); e.hidden = req.body.hidden !== false; await kset('bcd:checkins', list); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/checkins', async (req, res) => {
   try { res.json({ ok: true, checkins: (await kget('bcd:checkins', [])) || [] }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
