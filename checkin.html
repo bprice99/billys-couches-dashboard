@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Employee Check-in · Billy's Couches</title>
+<link rel="icon" href="/favicon.png">
+<style>
+:root{--ink:#2b1d16;--mut:#7d7069;--line:#e6dccf;--red:#b0524c;--bg:#f6f1ea}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
+.w{max-width:560px;margin:0 auto;padding:22px 16px 40px}
+.hd{display:flex;align-items:center;gap:10px;margin-bottom:6px}.hd img{height:38px}
+h1{font-size:22px;margin:6px 0 2px}.sub{font-size:13px;color:var(--mut);margin:0 0 16px}
+.q{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.q label,.q .t{display:block;font-size:14px;font-weight:700;margin-bottom:8px}
+.two{display:flex;gap:8px}.two input{flex:1;min-width:0}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;font:inherit;font-size:16px;background:#fff}
+textarea{min-height:70px;resize:vertical}
+.sc{display:flex;gap:6px}.sc button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 0;font:inherit;font-weight:700;font-size:16px;color:var(--ink);cursor:pointer}
+.sc button.on{border-color:var(--red);background:#fbeeec;color:var(--red)}
+.ends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-top:5px}
+.btn{width:100%;background:var(--red);color:#fff;border:0;border-radius:12px;padding:15px;font-weight:700;font-size:16px;cursor:pointer;margin-top:6px}
+.btn:disabled{opacity:.6}.err{color:var(--red);font-size:14px;font-weight:600;margin:8px 0;min-height:1em}
+.done{text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 18px;margin-top:20px}
+.done b{font-size:20px;display:block;margin-bottom:6px}
+</style></head><body><div class="w">
+<div class="hd"><img src="/logo.png" alt="Billy's Couches"></div>
+<div id="form">
+<h1>Employee Check-in</h1><p class="sub">Takes about 2 minutes. Be honest — only Billy sees this, and it's how we make the job better.</p>
+<div class="q"><span class="t">Name</span><div class="two"><input id="first" placeholder="First name" autocomplete="given-name"><input id="last" placeholder="Last name" autocomplete="family-name"></div></div>
+<div id="scales"></div>
+<div id="texts"></div>
+<div class="err" id="err"></div>
+<button class="btn" id="go">Submit check-in</button>
+</div>
+<div class="done" id="done" hidden><b>Thanks! 🙌</b>Your check-in was sent to Billy.</div>
+</div>
+<script>
+const S=[['pay','Pay — how do you feel about the pay?'],['work','Workload — how do you feel about the work?'],['train','Training — do you feel you have enough training to do the work?'],['supp','Supplies — do you have enough supplies to do the work?'],['stay','How likely are you to still be here in 12 months?']];
+const T=[['timeTask','Which task in your week is the most time-consuming?'],['change','If you could change one thing about the job, what would it be?'],['overall','How do you feel about your position overall? Is there anything Billy can do to make your job easier?'],['problems','Name the 2 biggest problems getting in your way.'],['stress','Which task in your week is the most stressful?']];
+const V={};
+document.getElementById('scales').innerHTML=S.map(([k,l])=>`<div class="q"><span class="t">${l}</span><div class="sc" data-k="${k}">${[1,2,3,4,5].map(n=>`<button type="button" data-n="${n}">${n}</button>`).join('')}</div><div class="ends"><span>1 = Worst</span><span>5 = Best</span></div></div>`).join('');
+document.getElementById('texts').innerHTML=T.map(([k,l])=>`<div class="q"><label for="${k}">${l}</label><textarea id="${k}"></textarea></div>`).join('');
+document.querySelectorAll('.sc').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;V[g.dataset.k]=+b.dataset.n;g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}));
+document.getElementById('go').onclick=async()=>{
+ const err=document.getElementById('err'),btn=document.getElementById('go');err.textContent='';
+ const body={first:first.value.trim(),last:last.value.trim(),...V};T.forEach(([k])=>body[k]=document.getElementById(k).value.trim());
+ if(!body.first){err.textContent='Please enter your name.';return;}
+ if(S.some(([k])=>!V[k])){err.textContent='Please answer every 1–5 question.';return;}
+ btn.disabled=true;btn.textContent='Sending…';
+ try{const r=await fetch('/public/checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.error||'Something went wrong.');
+  document.getElementById('form').hidden=true;document.getElementById('done').hidden=false;window.scrollTo(0,0);}
+ catch(e){err.textContent=e.message;btn.disabled=false;btn.textContent='Submit check-in';}
+};
+</script></body></html>
