@@ -464,7 +464,7 @@ app.post('/api/loads/unit', async (req, res) => {
     u.soldAt = status === 'sold' ? (u.soldAt || new Date().toISOString()) : '';
     saleDetails(u, req.body || {}, status);
     await kset(KEYS.loads, loads);
-    const off = status === 'sold' ? await soldOffWebsite(u.name, u.soldCustomer) : '';
+    const off = status === 'sold' ? await soldOffWebsite({ kind: 'load', id, uid }, u.soldCustomer) : '';
     res.json({ ok: true, offWebsite: off });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -502,17 +502,15 @@ app.post('/api/couch/rename', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// When a couch is marked sold in the Sales Tracker, take its listing off the website too.
-// Matches by the couch's name (e.g. "Ellendale"); only acts when exactly one live listing matches.
-const DROP_GENERIC = new Set('the and with set sectional sectionals couch sofa sofas fabric leather power reclining recliner modular piece pc pcs 2pc 3pc 4pc 5pc 6pc 7pc convertible sleeper loveseat chaise ottoman left right facing raf laf gray grey cream brown black white beige tan blue green new'.split(' '));
-const dropWords = t => String(t || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 2 && !DROP_GENERIC.has(w) && !/^\d+$/.test(w));
-async function soldOffWebsite(name, who) {
+// When a couch is marked sold in the Sales Tracker, take its website listing off too.
+// Only the listing linked to that exact unit (no name guessing, so look-alike couches stay up).
+const refKey = r => !r ? '' : r.kind === 'load' ? `load:${r.id}:${r.uid}` : r.kind === 'purchase' ? `purchase:${r.id}` : '';
+async function soldOffWebsite(ref, who) {
   try {
-    const want = dropWords(name); if (!want.length) return '';
-    const list = await getDrops(), live = list.filter(d => ['live', 'emailed'].includes(d.status));
-    const hits = live.filter(d => { const w = dropWords(d.title); return w.length && w[0] && want.includes(w[0]); });
-    if (hits.length !== 1) return '';
-    const d = hits[0], now = Date.now(); d.status = 'sold'; d.soldAt = now; d.updatedAt = now; d.soldVia = 'sales tracker'; if (who) d.soldCustomer = who;
+    const k = refKey(ref); if (!k) return '';
+    const list = await getDrops(), d = list.find(x => refKey(x.unitRef) === k && ['live', 'emailed', 'held'].includes(x.status));
+    if (!d) return '';
+    const now = Date.now(); d.status = 'sold'; d.soldAt = now; d.updatedAt = now; d.soldVia = 'sales tracker'; if (who) d.soldCustomer = who; delete d.heldFrom; delete d.heldRef;
     await setDrops(list); dropsAt = now; recentCache.at = 0; return d.title;
   } catch (e) { console.log('Sold-off-website failed', e.message); return ''; }
 }
@@ -538,7 +536,7 @@ app.post('/api/purchases/sale', async (req, res) => {
     p.soldDate = p.status === 'sold' ? (/^\d{4}-\d{2}-\d{2}$/.test(soldDate) ? soldDate : new Date().toISOString().slice(0, 10)) : '';
     saleDetails(p, req.body || {}, p.status);
     await kset(KEYS.purchases, list);
-    const off = p.status === 'sold' ? await soldOffWebsite(p.item, p.soldCustomer) : '';
+    const off = p.status === 'sold' ? await soldOffWebsite({ kind: 'purchase', id }, p.soldCustomer) : '';
     res.json({ ok: true, offWebsite: off });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1880,7 +1878,7 @@ app.get('/public/sale-photo/:t', async (req, res) => {
 // ---------- Drops: one place to list couches (First Dibs email, website, Marketplace/Craigslist) ----------
 // Couches live in bcd:drops. Status: draft -> emailed (First Dibs only) -> live (on the website) -> sold / hidden.
 // Photos uploaded in HQ are stored as bcd:dphoto:<id> and served publicly so emails and the website can show them.
-const DROP_STATUS = ['draft', 'emailed', 'live', 'sold', 'hidden'];
+const DROP_STATUS = ['draft', 'emailed', 'live', 'held', 'sold', 'hidden'];
 const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || 'https://hq.billyscouches.com').trim().replace(/\/$/, '');
 const dropPhotoUrl = ph => /^https?:/.test(ph) ? ph : `${PUBLIC_BASE}/public/dphoto/${ph}.jpg`;
 const getDrops = () => kget('bcd:drops', []);
@@ -1926,6 +1924,16 @@ app.post('/api/drops/save', async (req, res) => {
     if (b.id && !d) return res.status(404).json({ error: 'Couch not found' });
     const next = cleanDrop(b, d);
     if (!next.title) return res.status(400).json({ error: 'Add a title' });
+    // Link to its exact unit in the Sales Tracker (one website couch per unit).
+    if (b.unitRef !== undefined) {
+      if (!b.unitRef) next.unitRef = null;
+      else {
+        const r = await validUnitRef(b.unitRef); if (!r) return res.status(400).json({ error: "That unit wasn't found in the Sales Tracker" });
+        const dup = list.find(x => x !== d && x.status !== 'hidden' && refKey(x.unitRef) === refKey(r));
+        if (dup) return res.status(400).json({ error: `That unit is already linked to "${dup.title}"` });
+        next.unitRef = r;
+      }
+    }
     if (d) Object.assign(d, next, { updatedAt: Date.now() });
     else { d = { id: crypto.randomBytes(6).toString('hex'), status: 'draft', createdAt: Date.now(), updatedAt: Date.now(), photos: [], details: [], imperfections: [], ...next }; list.unshift(d); }
     await setDrops(list); dropsAt = Date.now(); res.json({ ok: true, drop: d });
@@ -2651,11 +2659,164 @@ app.post('/public/order-sold', async (req, res) => {
   if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
   try {
     const ids = new Set((req.body.ids || []).map(String).slice(0, 10)), who = clean(req.body.customer, 60), list = await getDrops(), now = Date.now(); let n = 0;
-    list.forEach(d => { if (!ids.has(d.id) || !['live', 'emailed'].includes(d.status)) return; d.status = 'sold'; d.soldAt = now; d.updatedAt = now; if (who) d.soldCustomer = who; d.soldVia = 'order app'; n++; });
+    const done = [];
+    list.forEach(d => { if (!ids.has(d.id) || !['live', 'emailed', 'held'].includes(d.status)) return; d.status = 'sold'; d.soldAt = now; d.updatedAt = now; if (who) d.soldCustomer = who; d.soldVia = 'order app'; delete d.heldFrom; delete d.heldRef; done.push(d); n++; });
     if (n) { await setDrops(list); dropsAt = now; recentCache.at = 0; }
+    for (const d of done) if (d.unitRef) await markUnitSold(d.unitRef, { price: d.price, customer: who });
     res.json({ ok: true, marked: n });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ===================================================================
+// UNIT LINKS + PENDING PAYMENTS
+// Each website couch can be linked to its exact unit (a B-Stock load unit, or a used/new pickup), so a sale
+// marks THAT unit sold. No name guessing, so look-alike couches never get mixed up.
+// Orders that aren't paid yet wait in bcd:pending and keep the couch off the website (drop status "held").
+// Card checkouts become sales only when Stripe confirms payment (unpaid ones release after 30 minutes).
+// Venmo / Zelle / cash / Stripe links wait for ✓ Paid in HQ, with a text nudge after 24 hours.
+// ===================================================================
+const PEND_KEY = 'bcd:pending', CARD_HOLD_MS = 30 * 60e3, NUDGE_MS = 24 * 3600e3;
+const getPending = () => kget(PEND_KEY, []);
+const setPending = list => kset(PEND_KEY, list.filter(o => o.status === 'pending' || Date.now() - (o.doneAt || o.at) < 45 * 864e5).slice(0, 400));
+async function validUnitRef(r) {
+  if (!r || typeof r !== 'object') return null;
+  if (r.kind === 'load') { const u = ((await getLoads()).find(l => l.id === String(r.id)) || { units: [] }).units.find(x => x.uid === String(r.uid)); return u ? { kind: 'load', id: String(r.id), uid: String(r.uid) } : null; }
+  if (r.kind === 'purchase') { const p = (await getPurchases()).find(x => x.id === String(r.id)); return p ? { kind: 'purchase', id: String(r.id) } : null; }
+  return null;
+}
+// Mark one exact unit sold with the order's price, delivery, add-ons and customer. Returns ok / already / missing.
+async function markUnitSold(ref, s) {
+  const body = { delivery: s.delivery, upsells: s.upsells || [], customer: s.customer }, today = ctYmd(new Date()), at = new Date().toISOString();
+  const apply = x => { x.status = 'sold'; x.soldPrice = Math.max(0, Number(s.price) || 0); x.soldDate = today; x.soldAt = at; saleDetails(x, body, 'sold'); };
+  if (ref && ref.kind === 'load') {
+    const loads = await getLoads(), u = (loads.find(l => l.id === ref.id) || { units: [] }).units.find(x => x.uid === ref.uid);
+    if (!u) return 'missing'; if (u.status === 'sold') return 'already';
+    apply(u); await kset(KEYS.loads, loads); return 'ok';
+  }
+  if (ref && ref.kind === 'purchase') {
+    const list = await getPurchases(), p = list.find(x => x.id === ref.id);
+    if (!p) return 'missing'; if (p.status === 'sold') return 'already';
+    apply(p); await kset(KEYS.purchases, list); return 'ok';
+  }
+  return 'missing';
+}
+function holdDrops(list, ids, ref) {
+  const now = Date.now(), busy = [];
+  list.forEach(d => { if (!ids.includes(d.id)) return;
+    if (['live', 'emailed'].includes(d.status)) { d.heldFrom = d.status; d.status = 'held'; d.heldRef = ref; d.updatedAt = now; }
+    else if (!(d.status === 'held' && d.heldRef === ref)) busy.push(d.title); });
+  return busy;
+}
+function releaseDrops(list, ref) {
+  const now = Date.now(); let n = 0;
+  list.forEach(d => { if (d.status !== 'held' || d.heldRef !== ref) return; d.status = d.heldFrom || 'live'; delete d.heldFrom; delete d.heldRef; d.updatedAt = now; n++; });
+  return n;
+}
+const pendTitles = o => (o.items || []).map(i => i.title).filter(Boolean).join(' + ') || 'their couch';
+const money = n => '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// The order is paid: couch(es) sold on the website, exact unit(s) sold in the Sales Tracker, Sales Log row(s) added.
+async function finalizeOrder(o, via) {
+  const list = await getDrops(), now = Date.now(), unlinked = [], clash = [];
+  const sold = [];
+  (o.items || []).forEach(it => {
+    const d = list.find(x => x.id === it.dropId);
+    if (!d) { unlinked.push(it.title || 'a couch'); return; }
+    if (d.status === 'sold' && d.soldRef && d.soldRef !== o.ref) clash.push(d.title);
+    else if (d.status !== 'sold' || !d.soldRef) { d.status = 'sold'; d.soldAt = now; d.updatedAt = now; d.soldVia = via; d.soldRef = o.ref; if (o.customer) d.soldCustomer = o.customer; delete d.heldFrom; delete d.heldRef; }
+    sold.push({ it, d });
+  });
+  await setDrops(list); dropsAt = now; recentCache.at = 0;
+  for (let i = 0; i < sold.length; i++) {
+    const { it, d } = sold[i];
+    if (clash.includes(d.title)) continue;
+    const r = d.unitRef ? await markUnitSold(d.unitRef, { price: it.price, customer: o.customer,
+      delivery: i === 0 ? o.delivery : 0, upsells: i === 0 ? o.addons : [] }) : 'missing';
+    if (r === 'missing') unlinked.push(d.title);
+  }
+  if (!o.logged && (o.rowIds || []).length) {
+    try { const r = await fetch(SCHED_PROXY + '/log-sale', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: o.rowIds }), signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => ({})); o.logged = !!(j && j.success); } catch (e) { console.log('log-sale failed', e.message); }
+    if (!o.logged) textAlert(`⚠️ ${o.customer || 'An order'} paid for ${pendTitles(o)} but it didn't reach the Sales Log. Add it by hand.`).catch(() => {});
+  }
+  o.status = 'paid'; o.doneAt = now; o.paidVia = via; o.unlinked = unlinked; o.clash = clash;
+  if (unlinked.length) textAlert(`⚠️ Sold online, not linked: ${unlinked.join(', ')} (${o.customer || 'customer'}). Mark its exact unit Sold in HQ > Sales Tracker.`).catch(() => {});
+  if (clash.length) textAlert(`🚨 ${o.customer || 'A customer'} paid for ${clash.join(', ')} but it was already sold to someone else. Refund or swap them.`).catch(() => {});
+  return o;
+}
+const cleanOrder = b => {
+  const items = (Array.isArray(b.items) ? b.items : []).slice(0, 10).map(i => ({ dropId: String(i.dropId || '').slice(0, 40), title: clean(i.title, 120), price: Math.max(0, Number(i.price) || 0) })).filter(i => i.dropId || i.title);
+  return { ref: clean(b.ref, 60) || crypto.randomBytes(6).toString('hex'), at: Date.now(), source: b.source === 'team' ? 'team' : 'website',
+    payment: clean(b.payment, 40), kind: ['card', 'manual', 'link', 'paid'].includes(b.kind) ? b.kind : 'manual', plink: /^plink_\w+$/.test(b.plink || '') ? b.plink : '',
+    customer: clean(b.customer, 60), phone: clean(b.phone, 20), orderType: clean(b.orderType, 40), total: Math.max(0, Number(b.total) || 0),
+    delivery: Math.max(0, Number(b.delivery) || 0), addons: (Array.isArray(b.addons) ? b.addons : []).slice(0, 10).map(a => ({ label: clean(a.label, 40), price: Math.max(0, Number(a.price) || 0) })).filter(a => a.label && a.price),
+    items, rowIds: (Array.isArray(b.rowIds) ? b.rowIds : []).map(String).filter(x => /^\d+-[a-z0-9]+$/.test(x)).slice(0, 10), logged: !!b.logged, status: 'pending' };
+};
+// Order apps: an order was placed. kind "paid" (team took payment in person) = sold right away; anything else waits.
+app.options('/public/order-hold', (req, res) => { orderCors(req, res); res.sendStatus(204); });
+app.post('/public/order-hold', async (req, res) => {
+  if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const o = cleanOrder(req.body || {}); if (!o.items.length) return res.status(400).json({ error: 'No couches' });
+    const pend = await getPending(); const old = pend.find(x => x.ref === o.ref);
+    if (old && old.status !== 'pending') return res.json({ ok: true, status: old.status });
+    if (old) pend.splice(pend.indexOf(old), 1);
+    if (o.kind === 'paid') { await finalizeOrder(o, o.source === 'team' ? 'order app' : 'website'); pend.unshift(o); await setPending(pend); return res.json({ ok: true, status: 'paid' }); }
+    const list = await getDrops(); o.busy = holdDrops(list, o.items.map(i => i.dropId), o.ref); await setDrops(list); dropsAt = Date.now(); recentCache.at = 0;
+    pend.unshift(o); await setPending(pend);
+    res.json({ ok: true, status: 'pending' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Public order app's Stripe webhook: the customer paid. HQ double-checks the Checkout session with Stripe (via the proxy).
+app.options('/public/order-paid', (req, res) => { orderCors(req, res); res.sendStatus(204); });
+app.post('/public/order-paid', async (req, res) => {
+  orderCors(req, res);
+  try {
+    const id = String((req.body || {}).session || ''); if (!/^cs_\w+$/.test(id)) return res.status(400).json({ error: 'bad session' });
+    const r = await fetch(SCHED_PROXY + '/stripe-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }), signal: AbortSignal.timeout(15000) });
+    const s = await r.json().catch(() => ({}));
+    if (!s.paid || !s.link) return res.json({ ok: false, reason: 'not paid' });
+    const pend = await getPending(), o = pend.find(x => x.plink === s.link);
+    if (!o) return res.json({ ok: false, reason: 'no matching order' });
+    if (o.status === 'paid') return res.json({ ok: true, status: 'paid' });
+    await finalizeOrder(o, 'website card'); await setPending(pend);
+    res.json({ ok: true, status: 'paid' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/pending', async (req, res) => {
+  try { const pend = await getPending(), wk = Date.now() - 7 * 864e5;
+    res.json({ ok: true, pending: pend.filter(o => o.status === 'pending'), alerts: pend.filter(o => o.status === 'paid' && !o.ack && (o.doneAt || 0) > wk && ((o.unlinked || []).length || (o.clash || []).length)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/pending/paid', async (req, res) => {
+  try { const pend = await getPending(), o = pend.find(x => x.ref === String(req.body.ref || '') && x.status === 'pending'); if (!o) return res.status(404).json({ error: 'Order not found' });
+    await finalizeOrder(o, 'marked paid in HQ'); await setPending(pend); res.json({ ok: true, order: o });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/pending/release', async (req, res) => {
+  try { const pend = await getPending(), o = pend.find(x => x.ref === String(req.body.ref || '') && x.status === 'pending'); if (!o) return res.status(404).json({ error: 'Order not found' });
+    const list = await getDrops(); releaseDrops(list, o.ref); await setDrops(list); dropsAt = Date.now(); recentCache.at = 0;
+    o.status = 'released'; o.doneAt = Date.now(); await setPending(pend); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/pending/ack', async (req, res) => {
+  try { const pend = await getPending(), o = pend.find(x => x.ref === String(req.body.ref || '')); if (o) { o.ack = true; await setPending(pend); } res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Every 5 minutes: unpaid card checkouts go back on the website after 30 minutes; manual payments get one nudge at 24 hours.
+async function pendingSweep() {
+  const pend = await getPending(), now = Date.now(); let dirty = false, list = null;
+  for (const o of pend) {
+    if (o.status !== 'pending') continue;
+    if (o.kind === 'card' && now - o.at > CARD_HOLD_MS) {
+      list = list || await getDrops(); releaseDrops(list, o.ref); o.status = 'expired'; o.doneAt = now; dirty = true;
+    } else if (o.kind !== 'card' && !o.nudged && now - o.at > NUDGE_MS) {
+      o.nudged = now; dirty = true;
+      await textAlert(`⏰ ${o.customer || 'A customer'} still hasn't paid for ${pendTitles(o)} (${money(o.total)}, ${o.payment || 'pay later'}). It's been held off the site for 24 hrs. Mark Paid or Release in HQ.`).catch(() => {});
+    }
+  }
+  if (list) { await setDrops(list); dropsAt = now; recentCache.at = 0; }
+  if (dirty) await setPending(pend);
+}
+setInterval(() => pendingSweep().catch(e => console.log('Pending sweep failed', e.message)), 5 * 60 * 1000);
 // ===================================================================
 // SCHEDULING (replaces the Jotform scheduling form)
 // Order apps create an order here -> the receipt text links to /s/<token> -> the customer picks an open
