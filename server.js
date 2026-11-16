@@ -730,6 +730,18 @@ async function thankYouList(force) {
   ty.at = Date.now(); ty.data = { cards: [...lists.flat(), ...hq], forms };
   return ty.data;
 }
+// Read-only check of the Signature & Agreement form: what the latest submissions look like and how they parse.
+app.get('/api/thankyou/sigcheck', async (req, res) => {
+  try {
+    await thankYouForms(); const out = [];
+    for (const id of (ty.sigForms || [])) {
+      const r = await fetch(`${CFG.JOTFORM_BASE}/form/${id}/submissions?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=6&orderby=created_at`); const j = await r.json();
+      const subs = j.content || [], parsed = parseThankYou(subs, id);
+      out.push({ id, since: await kget('bcd:tySigSince', null), subs: subs.map((s, i) => ({ created: s.created_at, status: s.status, parsed: { name: parsed[i] && parsed[i].name, line1: parsed[i] && parsed[i].line1, submitted: parsed[i] && parsed[i].submitted, type: parsed[i] && parsed[i].type }, qs: Object.values(s.answers || {}).filter(q => q && q.text && q.answer !== undefined && q.answer !== '').map(q => q.type + ' | ' + q.text) })) });
+    }
+    res.json({ ok: true, out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/thankyou', async (req, res) => {
   try {
     let d; try { d = await thankYouList(req.query.fresh === '1'); } catch (e) { d = { cards: [], error: e.message }; }
