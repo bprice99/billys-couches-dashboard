@@ -2808,6 +2808,10 @@ function unitOptions(cur){
   return allUnits().filter(u => (u.status === 'in' && !used[u.key]) || u.key === cur)
     .map(u => `<option value="${esc(u.key)}" ${u.key === cur ? 'selected' : ''}>${esc(u.name)} · ${u.code} · ${esc(u.from)} · ${money(u.cost)}</option>`).join('');
 }
+function sameModelDrop(u){
+  const list = ((DR && DR.drops) || []).filter(d => d.unitRef && d.status !== 'hidden' && (unitByKey(unitRefKey(d.unitRef)) || {}).name === u.name);
+  return list.sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0))[0] || null;
+}
 function linkHtml(d){
   if (!RAW || !['draft', 'emailed', 'live', 'held'].includes(d.status)) return '';
   if (d.unitRef) { const u = unitByKey(unitRefKey(d.unitRef)); return `<span class="lkp ok">Linked: ${u ? esc(u.code + ' · ' + u.from) : 'unit'}</span>`; }
@@ -2898,7 +2902,14 @@ function openDrop(id){
   FITS = ''; FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces();
   $('fitArrNote').textContent = d && d.fitShape ? '✓ Showroom shape saved (modular)' : 'For modular sectionals'; DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
   $('drUnit').innerHTML = '<option value="">Not linked</option>' + unitOptions(d ? unitRefKey(d.unitRef) : (PREUNIT ? PREUNIT.key : ''));
-  if (!d && PREUNIT) { $('drUnit').value = PREUNIT.key; $('drName').value = PREUNIT.name; } PREUNIT = null;
+  if (!d && PREUNIT) { $('drUnit').value = PREUNIT.key; $('drName').value = PREUNIT.name;
+    // Same model already listed (or sold) before? Copy its title, price, details, imperfections, size and pieces. Photos stay empty: shoot this one.
+    const tpl = sameModelDrop(PREUNIT);
+    if (tpl) { $('drName').value = tpl.title; $('drPrice').value = tpl.price || ''; $('drRetail').value = tpl.retail || ''; $('drGrade').value = tpl.grade || '';
+      $('drDetails').value = (tpl.details || []).join('\n'); $('drImp').value = (tpl.imperfections || []).join('\n'); $('drDims').value = tpl.dimensions || '';
+      FITP = (tpl.pieces && tpl.pieces.length ? tpl.pieces : (tpl.guessPieces || [])).map(x => ({ ...x })); drawFitPieces();
+      toast('Copied the details from the other ' + tpl.title.split(' ').slice(0, 3).join(' ') + '. Check imperfections + add photos of this one.'); }
+  } PREUNIT = null;
   $('m-drop').classList.add('on');
 }
 window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.fitShapeSaved) { $('fitArrNote').textContent = '✓ Showroom shape saved (modular)'; toast('Shape saved'); loadDrops(); } });
