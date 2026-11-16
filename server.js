@@ -2719,7 +2719,7 @@ async function finalizeOrder(o, via) {
   const sold = [];
   (o.items || []).forEach(it => {
     const d = list.find(x => x.id === it.dropId);
-    if (!d) { unlinked.push(it.title || 'a couch'); return; }
+    if (!d) { if (it.dropId) unlinked.push(it.title || 'a couch'); return; }   // no dropId = couch that was never on the website
     if (d.status === 'sold' && d.soldRef && d.soldRef !== o.ref) clash.push(d.title);
     else if (d.status !== 'sold' || !d.soldRef) { d.status = 'sold'; d.soldAt = now; d.updatedAt = now; d.soldVia = via; d.soldRef = o.ref; if (o.customer) d.soldCustomer = o.customer; delete d.heldFrom; delete d.heldRef; }
     sold.push({ it, d });
