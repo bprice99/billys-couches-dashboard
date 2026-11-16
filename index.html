@@ -1458,7 +1458,7 @@ function renderBstock(){
 let PAY = null;
 // Weeks before the dashboard took over payroll were already paid (and are in the Ivy Flip expenses).
 const PAID_BEFORE = '2026-10-19';
-const VENMO = { zach: 'zpierce54', gunnarr: 'wildflowertimes', finley: 'Finley-Lotzin', collin: 'Collin-Comer', luke: 'Lmp9412', joey: 'joey-menendez-0' };
+const VENMO = { zach: 'zpierce54', gunnarr: 'Gunnarr-Caldwell', finley: 'Finley-Lotzin', collin: 'Collin-Comer', luke: 'Lmp9412', joey: 'joey-menendez-0' };
 const venmoLink = (user, amt, note) => `https://venmo.com/${encodeURIComponent(user)}?txn=pay&amount=${amt.toFixed(2)}&note=${encodeURIComponent(note)}`;
 function sentSet(wkey){ try { return new Set(JSON.parse(localStorage.getItem('bcdVenmo:' + wkey) || '[]')); } catch { return new Set(); } }
 function saveSent(wkey, set){ try { localStorage.setItem('bcdVenmo:' + wkey, JSON.stringify([...set])); } catch {} }
