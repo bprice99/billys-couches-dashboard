@@ -113,11 +113,11 @@ const P = id => D.products.find(p => p.id === id);
 const shortName = p => p.name.replace(' 5-Piece Sectional', '');
 function priceRow(p){
   return D.live ? `<div class="pr"><b>${money(p.price)}</b></div>`
-    : `<div class="pr"><b>${money(p.launch)}</b><s>${money(p.price)}</s><span class="save">Launch price · save ${money(p.price - p.launch)}</span></div><div class="lp">Reserve before Dec 1. Goes to ${money(p.price)} when it lands.</div>`;
+    : `<div class="pr"><b>${money(p.launch)}</b><s>${money(p.price)}</s><span class="save">Launch price · save ${money(p.price - p.launch)}</span></div><div class="lp">Reserve before Dec 4. Goes to ${money(p.price)} when it lands.</div>`;
 }
 function stockBar(p){
   if (D.live) return `<div class="left"><span>${p.left ? 'In stock in Pacific' : 'Sold out'}</span><span>${p.left} left</span></div>`;
-  return `<div class="left"><span>${!p.left ? 'All reserved' : p.left < p.units ? 'Only ' + p.left + ' left' : p.left + ' left'}</span><span>Arriving Dec 1</span></div>`;
+  return `<div class="left"><span>${!p.left ? 'All reserved' : p.left < p.units ? 'Only ' + p.left + ' left' : p.left + ' left'}</span><span>Arriving Dec 4</span></div>`;
 }
 function ctas(p, big){
   if (D.live) return p.left ? `<a class="btn" href="${BUY}" target="_top">Buy now</a><a class="btn o" href="${SHOWING}" target="_top">Come sit on it</a>` : `<a class="btn o" href="sms:+13148997503" target="_top">Text Billy for the waitlist</a>`;
@@ -135,14 +135,14 @@ function grid(){
   const L = D.live;
   const hero = L ? `<div class="hero"><span class="tag">Brand new · never sat on</span><h1 class="serif">New sectionals, without the <br>big-store markup.</h1><p>Hand-picked new sectionals, in stock in Pacific. Sit on them today, and have yours in your living room this week.</p>
       <div class="chips"><span>✓ In stock, not special order</span><span>✓ $${D.deliveryFee} white-glove delivery</span><span>✓ Sit on it first</span></div></div>`
-    : `<div class="hero"><span class="tag">Brand new · first truckload · arriving Dec 1</span><h1 class="serif">Reserve a brand-new sectional <br>before it lands.</h1><p>Only 4 of each are coming on this truck. Hold yours with a $${D.deposit} deposit, and it's set aside with your name on it.</p>
+    : `<div class="hero"><span class="tag">Brand new · first truckload · arriving Dec 4</span><h1 class="serif">Reserve a brand-new sectional <br>before it lands.</h1><p>Only 4 of each are coming on this truck. Hold yours with a $${D.deposit} deposit, and it's set aside with your name on it.</p>
       <div class="cd" data-cd="big"></div>
       <div class="chips"><span>✓ Brand new, never sat on</span><span>✓ $${D.deliveryFee} white-glove delivery</span><span>✓ Deposit comes off your price</span><span>✓ Refundable until it arrives</span></div></div>`;
   const cards = D.products.map(p => `<div class="card"><div class="ph" data-view="${p.id}" style="background-image:url(${p.photos[0]})${/^https?:/.test(p.photos[0]) ? '' : ';background-size:contain;background-position:center'}"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span></div>
     <div class="bd"><h3>${esc(p.name)}</h3><div class="br">${esc(p.brand)}</div>${sw(p)}${p.tagline ? `<div class="tl">${esc(p.tagline)}</div>` : ''}${priceRow(p)}
     <div class="specs">${p.specs.filter(s => ['Overall size', 'Fabric', 'Pieces'].includes(s[0])).map(s => `<span>${esc(s[0])}</span><b>${esc(s[1])}</b>`).join('')}</div>
     ${stockBar(p)}<div class="row">${ctas(p)}</div></div></div>`).join('');
-  const how = L ? '' : `<div class="how"><div><em>1</em><b>Reserve with $${D.deposit}</b><p>Your sectional comes off the list the second you pay. The $${D.deposit} comes off your total.</p></div><div><em>2</em><b>We text you when it lands</b><p>Estimated Dec 1. If the truck runs late, you'll hear from Billy first.</p></div><div><em>3</em><b>Pay the rest and get it home</b><p>Pick it up, or get $${D.deliveryFee} white-glove delivery. Change your mind before it lands? Full refund.</p></div></div>`;
+  const how = L ? '' : `<div class="how"><div><em>1</em><b>Reserve with $${D.deposit}</b><p>Your sectional comes off the list the second you pay. The $${D.deposit} comes off your total.</p></div><div><em>2</em><b>We text you when it lands</b><p>Estimated Dec 4. If the truck runs late, you'll hear from Billy first.</p></div><div><em>3</em><b>Pay the rest and get it home</b><p>Pick it up, or get $${D.deliveryFee} white-glove delivery. Change your mind before it lands? Full refund.</p></div></div>`;
   return `<div class="wrap">${hero}<div class="grid">${cards}</div>${compare()}${how}<div class="band"><div><h3 class="serif">Looking for a bigger deal?</h3><p>Our Like New floor has name-brand sectionals up to 50% off retail.</p></div><a class="btn" href="https://www.billyscouches.com/currentinventory" target="_top">Shop Like New →</a></div></div>`;
 }
 function detail(p){
@@ -150,7 +150,7 @@ function detail(p){
   const specs = `<div class="box"><h3>Specs</h3><table>${p.specs.map(s => `<tr><td>${esc(s[0])}</td><td>${esc(s[1])}</td></tr>`).join('')}</table></div>`;
   const right = L
     ? `<div class="stack"><div><span>Brand new, never sat on</span><b>✓</b></div><div><span>Delivered and set up</span><b>$${D.deliveryFee}</b></div><div><span>Sit on it before you buy</span><b>✓</b></div></div>`
-    : `<div class="cdbox"><div><small>LANDS IN PACIFIC IN</small><div class="t" data-cd="small"></div></div><div style="text-align:right"><small>EST. ARRIVAL</small><div style="font-weight:800">Dec 1</div></div></div>
+    : `<div class="cdbox"><div><small>LANDS IN PACIFIC IN</small><div class="t" data-cd="small"></div></div><div style="text-align:right"><small>EST. ARRIVAL</small><div style="font-weight:800">Dec 4</div></div></div>
        <div class="dep"><div><span>Launch price</span><b>${money(p.launch)}</b></div><div><span>Reserve today</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(p.launch - D.deposit)}</b></div></div><div class="fine">Plus sales tax. Pickup is free, or $${D.deliveryFee} for white-glove delivery.</div>`;
   return `<div class="wrap"><button class="back" data-view="">← All brand-new sectionals</button>
   <div class="det"><div><div class="main" id="mainPic" style="background-image:url(${pic});background-size:${/^https?:/.test(pic) ? 'cover' : 'contain'}"><span class="badge${L ? ' g' : ''}">${L ? (p.left ? 'IN STOCK' : 'SOLD OUT') : 'ARRIVING DEC 1'}</span>${p.photos.length > 1 ? `<button class="arr l" data-step="-1" aria-label="Previous photo">‹</button><button class="arr r" data-step="1" aria-label="Next photo">›</button><span class="cnt" id="picN">${PIC + 1} / ${p.photos.length}</span>` : ''}</div>
@@ -197,7 +197,7 @@ function terms(){
   return `<div class="terms"><h3>What your $${D.deposit} deposit means</h3><ul>
   <li>This exact sectional is set aside for you. Nobody else can buy it.</li>
   <li>The $${D.deposit} comes off your price. You pay the rest, plus sales tax, when it lands.</li>
-  <li>Estimated arrival is Dec 1. Billy texts you the day it lands.</li>
+  <li>Estimated arrival is Dec 4. Billy texts you the day it lands.</li>
   <li>Change your mind before it arrives? Full refund, no questions.</li>
   <li>Once it lands, you have 7 days to pick up or book delivery.</li></ul></div>`;
 }
@@ -235,7 +235,7 @@ async function confirmDeposit(){
   $('app').innerHTML = `<div class="ok"><span class="tag">Reserved</span><h1 class="serif">Your ${esc(shortName(p))} is yours, ${esc(String(j.name).split(' ')[0])}.</h1>
     <p>We got your $${D.deposit} deposit and pulled this ${esc(shortName(p))} (${esc(p.color)}) off the list. You'll get a text from Billy in a minute.</p>
     <div class="dep" style="text-align:left;margin:18px 0 6px"><div><span>Price</span><b>${money(j.price)}</b></div><div><span>Deposit paid</span><b>$${D.deposit}</b></div><div><span>Due when it lands</span><b>${money(j.price - D.deposit)}</b></div></div><div class="fine" style="margin-bottom:14px">Plus sales tax when it arrives. Pickup is free, or $${D.deliveryFee} for white-glove delivery.</div>
-    <p>Estimated arrival is <b>Dec 1</b>. Billy texts you the day it lands so you can pick it up or book delivery. Change your mind before then? Text Billy for a full refund.</p>
+    <p>Estimated arrival is <b>Dec 4</b>. Billy texts you the day it lands so you can pick it up or book delivery. Change your mind before then? Text Billy for a full refund.</p>
     <p><a class="btn o" href="https://www.billyscouches.com/" target="_top">Back to Billy's Couches</a></p></div>`;
   history.replaceState(null, '', '/brand-new'); postHeight();
 }
