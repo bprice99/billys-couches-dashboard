@@ -321,7 +321,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <a class="nav" data-tab="cash">Buying Power</a>
     <a class="nav" data-tab="ppl">Personal P&amp;L</a>
     <a class="nav" data-tab="goals">Goals</a>
-    <a class="nav" data-tab="payroll">Payroll<span class="obadge" id="nb-payroll" hidden></span></a>
+    <a class="nav" data-tab="payroll">Employees<span class="obadge" id="nb-payroll" hidden></span></a>
     <div class="navh">Inventory</div>
     <a class="nav" data-tab="drops">Drops<span class="obadge" id="nb-drops" hidden></span></a>
     <a class="nav" data-tab="bstock">B-Stock</a>
@@ -448,6 +448,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
         <div class="card"><h2>Work Log entries this week</h2><div style="overflow-x:auto"><table id="payLog"></table></div></div>
         <div class="card"><h2 id="payTrendTitle">Last 8 weeks</h2><div style="overflow-x:auto"><table id="payTrend"></table></div></div>
       </div>
+      <div class="card" id="ciCard" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Employee Check-ins</h2><button class="btn" id="ciCopy" type="button">🔗 Copy check-in link</button></div><div class="kpis" id="ciKpis" style="margin-top:12px"></div><div style="overflow-x:auto"><table id="ciTbl"></table></div><div id="ciOpen"></div></div>
     </section>
 
     <!-- SALES & SOURCING -->
@@ -2191,7 +2192,7 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { weekly: 'Weekly Cash', sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Payroll', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
+const TITLES = { weekly: 'Weekly Cash', sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Employees', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -2451,7 +2452,7 @@ $('payBtn').onclick = async () => {
 document.querySelectorAll('.nav[data-tab]').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 // ---------- Phone navigation: bottom bar (4 tabs + More) and a More sheet with every other tab ----------
 const MB_ICON = { sales: '\u{1F4B0}', showings: '\u{1F6CB}\u{FE0F}', fit: '\u{1F4CF}', drops: '\u{1F4E6}', content: '\u{1F3AC}', ppl: '\u{1F464}', openhouse: '\u{1F3E0}', cash: '\u{1F4B5}', goals: '\u{1F3AF}', payroll: '\u{1F9FE}', bstock: '\u{1F69A}', cuts: '✂\u{FE0F}', offers: '\u{1F91D}', sched: '\u{1F4C5}', upsells: '➕', sources: '\u{1F4CA}', thanks: '\u{1F48C}', meta: '\u{1F4C8}', ads: '\u{1F5BC}\u{FE0F}' };
-const MB_SHORT = { sales: 'Sales', showings: 'Showings', fit: 'Will It Fit', drops: 'Drops', content: 'Content', ppl: 'Personal', openhouse: 'Open House', cash: 'Buying Power', payroll: 'Payroll', sched: 'Scheduling', offers: 'Offers', cuts: 'Price Cuts', sources: 'Sourcing', thanks: 'Thank Yous', meta: 'Ads', ads: 'Ad Library' };
+const MB_SHORT = { sales: 'Sales', showings: 'Showings', fit: 'Will It Fit', drops: 'Drops', content: 'Content', ppl: 'Personal', openhouse: 'Open House', cash: 'Buying Power', payroll: 'Employees', sched: 'Scheduling', offers: 'Offers', cuts: 'Price Cuts', sources: 'Sourcing', thanks: 'Thank Yous', meta: 'Ads', ads: 'Ad Library' };
 // Live directly under <body> so iPhone keeps them pinned to the bottom while scrolling.
 document.body.append($('msheet'), $('mbar'));
 const MB_ALL = [...document.querySelectorAll('.side .nav[data-tab]')].map(n => n.dataset.tab);
@@ -3684,6 +3685,33 @@ document.addEventListener('change', async e => {
   const fix = root => (root.querySelectorAll ? root.querySelectorAll('input[type="number"]') : []).forEach(i => { i.type = 'text'; i.inputMode = 'decimal'; i.autocomplete = 'off'; });
   fix(document);
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="number"]')) fix(n.parentNode || document); else fix(n); }))).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
+<script>
+// Employee Check-ins (hq.billyscouches.com/checkin): averages, flags (any score 2 or less), tap a row to read answers.
+(function(){
+  let at = 0, L = [], open = '';
+  const E = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const K = [['pay', 'Pay'], ['work', 'Workload'], ['train', 'Training'], ['supp', 'Supplies'], ['stay', 'Stay 12 mo']];
+  const Q = [['timeTask', 'Most time-consuming task'], ['change', 'Change one thing'], ['overall', 'How they feel overall'], ['problems', '2 biggest problems'], ['stress', 'Most stressful task']];
+  const col = n => n <= 2 ? '#b0524c' : n == 3 ? '#c98a1b' : '#3c8d5a';
+  const dot = n => '<span style="display:inline-block;min-width:24px;text-align:center;border-radius:6px;color:#fff;font-weight:700;font-size:12px;padding:2px 0;background:' + col(n) + '">' + n + '</span>';
+  const dt = t => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  function draw() {
+    const k = document.getElementById('ciKpis'), t = document.getElementById('ciTbl'), o = document.getElementById('ciOpen'); if (!k) return;
+    if (!L.length) { k.innerHTML = ''; t.innerHTML = '<tr><td class="empty">No check-ins yet. Copy the link and text it to your team.</td></tr>'; o.innerHTML = ''; return; }
+    const rec = L.filter(x => x.at > Date.now() - 90 * 864e5), src = rec.length ? rec : L;
+    k.innerHTML = kpiHtml(K.map(([key, l]) => [l, (src.reduce((s, x) => s + x[key], 0) / src.length).toFixed(1), '<div class="c flat">avg, last 90 days</div>']));
+    t.innerHTML = '<tr><th>Date</th><th>Employee</th>' + K.map(x => '<th>' + x[1] + '</th>').join('') + '<th></th></tr>' + L.slice(0, 60).map(x => { const low = K.filter(([key]) => x[key] <= 2).map(([, l]) => l); return '<tr data-ci="' + x.id + '" style="cursor:pointer' + (open === x.id ? ';background:#fbeeec' : '') + '"><td>' + dt(x.at) + '</td><td><b>' + E(x.first) + ' ' + E(x.last) + '</b></td>' + K.map(([key]) => '<td>' + dot(x[key]) + '</td>').join('') + '<td style="color:#b0524c;font-weight:700;font-size:12px">' + (low.length ? 'Low: ' + low.join(', ') : '') + '</td></tr>'; }).join('');
+    const x = L.find(y => y.id === open);
+    o.innerHTML = x ? '<div style="background:#f6f1ea;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13.5px"><b>' + E(x.first) + ' ' + E(x.last) + ' · ' + dt(x.at) + '</b>' + Q.map(([key, l]) => '<p style="margin:6px 0"><b>' + l + ':</b> ' + (E(x[key]) || '<span style="color:#9a8f88">—</span>') + '</p>').join('') + '</div>' : '';
+  }
+  async function load() { at = Date.now(); try { const j = await fetch('/api/checkins').then(r => r.json()); L = j.checkins || []; draw(); } catch (e) {} }
+  document.addEventListener('click', e => {
+    const r = e.target.closest('[data-ci]'); if (r) { open = open === r.dataset.ci ? '' : r.dataset.ci; draw(); return; }
+    if (e.target.closest('#ciCopy')) { const u = location.origin + '/checkin'; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast('Check-in link copied: ' + u)).catch(() => prompt('Check-in link', u)); }
+  });
+  setInterval(() => { const s = document.getElementById('tab-payroll'); if (s && !s.hidden && Date.now() - at > 60000) load(); }, 1500);
 })();
 </script>
 </body></html>
