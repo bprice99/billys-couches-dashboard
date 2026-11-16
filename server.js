@@ -2783,6 +2783,27 @@ app.post('/public/order-create', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, 'schedule.html')));
+// Employee Check-in (replaces the Jotform): public form at /checkin, answers saved in bcd:checkins, shown on the Employees tab.
+app.get('/checkin', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'checkin.html')));
+app.post('/public/checkin', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const tx = (k, n = 1500) => String(b[k] || '').trim().slice(0, n);
+    const sc = k => { const n = parseInt(b[k], 10); return n >= 1 && n <= 5 ? n : null; };
+    const first = tx('first', 40), last = tx('last', 40);
+    if (!first) return res.status(400).json({ error: 'Please enter your name.' });
+    const s = { pay: sc('pay'), work: sc('work'), train: sc('train'), supp: sc('supp'), stay: sc('stay') };
+    if (Object.values(s).some(x => x == null)) return res.status(400).json({ error: 'Please answer every 1-5 question.' });
+    const e = { id: crypto.randomBytes(6).toString('hex'), at: Date.now(), first, last, ...s, timeTask: tx('timeTask'), change: tx('change'), overall: tx('overall'), problems: tx('problems'), stress: tx('stress') };
+    const list = (await kget('bcd:checkins', [])) || [];
+    list.unshift(e);
+    await kset('bcd:checkins', list.slice(0, 1000));
+    res.json({ ok: true });
+  } catch (e) { console.error('checkin failed', e.message); res.status(500).json({ error: 'Something went wrong. Please text Billy.' }); }
+});
+app.get('/api/checkins', async (req, res) => {
+  try { res.json({ ok: true, checkins: (await kget('bcd:checkins', [])) || [] }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // One link for everyone (the old Jotform points here): type your phone, we text you your own scheduling link.
 // Never shows order details on the page, so a stranger typing someone's number learns nothing.
 const findHits = new Map();
