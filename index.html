@@ -226,7 +226,12 @@ table.pct{width:100%;font-size:13.5px}table.pct td,table.pct th{text-align:left;
 .drlist{display:grid;gap:10px}.drc{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px}
 .drc .im{flex:none;width:84px;height:64px;border-radius:10px;background:#eee center/cover no-repeat}.drc .mm{flex:1;min-width:0}.drc .mm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.drc .mm small{color:var(--muted)}
 .drc .ac{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.drc input[type=checkbox]{width:20px;height:20px;flex:none}
-.dst{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:4px;vertical-align:1px}.dst.draft{background:#eee;color:#555}.dst.emailed{background:#fff3d6;color:#8a5a00}.dst.live{background:#dff2e5;color:#1f6b3d}.dst.sold{background:#fbe4e0;color:var(--red2)}.dst.hidden{background:#e9e9e9;color:#777}
+.dst{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:4px;vertical-align:1px}.dst.draft{background:#eee;color:#555}.dst.emailed{background:#fff3d6;color:#8a5a00}.dst.live{background:#dff2e5;color:#1f6b3d}.dst.sold{background:#fbe4e0;color:var(--red2)}.dst.hidden{background:#e9e9e9;color:#777}.dst.held{background:#fdf1dc;color:#a8700f}
+.lkp{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;margin:4px 4px 0 0}.lkp.ok{background:#e3f1e8;color:#1f6b3d}.lkp.warn{background:#fdf1dc;color:#a8700f}
+.lksel{display:block;width:100%;max-width:420px;margin-top:6px;border:1px solid #e0b25a;border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fffdf7}
+.pord{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;gap:12px;align-items:center}.pord .pim{width:58px;height:46px;border-radius:8px;background:#e8e1d8 center/cover;flex:none}.pord .pin{flex:1;min-width:0;font-size:13px}.pord .pin b{display:block;font-size:14px}.pord .pm{color:var(--muted);font-size:12px;margin-top:2px}.pord .pbt{display:flex;flex-direction:column;gap:6px}
+.ppay{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-top:4px;background:#eef2f6;color:#3a5a7a}.ppay.venmo{background:#e6f0fb;color:#1d6fc2}.ppay.zelle{background:#efe7fb;color:#6b3fbf}.ppay.cash{background:#e7f3ec;color:#2f7a4b}
+.pbadge{background:#c98a1b;color:#fff;border-radius:999px;font-size:11px;padding:2px 8px;margin-left:6px;vertical-align:2px}.palert{background:#fbe4e0;color:var(--red2);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:8px;display:flex;gap:10px;align-items:center}
 .gb{display:inline-block;font-size:11px;font-weight:700;color:#fff;border-radius:99px;padding:1px 7px;margin-right:4px}.gb.A{background:#2e7d4f}.gb.B{background:#2f5d8a}.gb.C{background:#b7791f}
 .kitgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kitb{text-align:center;text-decoration:none;padding:13px 10px!important}
 @media(max-width:800px){.drsteps{display:none}.drc{flex-wrap:wrap}.drc .mm b{white-space:normal}.drc .ac{width:100%;justify-content:flex-start}}
@@ -352,6 +357,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
         <span id="rCustom" hidden><input class="rd" type="date" id="rFrom" aria-label="From"> – <input class="rd" type="date" id="rTo" aria-label="To"></span></div>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn p" data-open="purchase" data-only="sales">+ Used pickup</button>
+      <button class="btn p" data-open="purchase" data-newcouch="1" data-only="sales">+ New couch</button>
       <button class="btn p" data-open="expense" data-only="sales">+ Expense</button>
       <button class="btn p" data-open="load" data-only="bstock">+ Load</button>
       <button class="btn p" id="ohAdd" data-only="openhouse">+ Open house</button>
@@ -368,6 +374,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <!-- SALES -->
     <section id="tab-sales">
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
+      <div id="pendCard"></div>
       <div id="delToday"></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
@@ -575,16 +582,17 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
 </div>
 
 <div class="mask" id="m-purchase"><form class="modal" data-action="addPurchase">
-  <h3>Log a used pickup</h3>
+  <h3 id="purTitle">Log a used pickup</h3>
   <div class="two">
     <label>Pickup date<input type="date" name="date" required></label>
-    <label>Where from<select name="source"><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Google</option><option>Other</option></select></label>
+    <label>Where from<select name="source"><option>Marketplace</option><option>Facebook</option><option>Previous Customer</option><option>Referral</option><option>Yard Signs</option><option>Google</option><option>New couch</option><option>Other</option></select></label>
   </div>
   <label>Couch<input name="item" required placeholder="e.g. Ashley gray 3pc sectional"></label>
   <div class="two">
     <label>Paid ($)<input type="number" step="0.01" name="cost" required placeholder="0 if free"></label>
     <label>Notes<input name="notes" placeholder="optional"></label>
   </div>
+  <label id="purQty" hidden>How many (each gets its own unit ID)<input type="number" name="qty" min="1" max="20" value="1"></label>
   <p class="empty" style="font-size:12.5px;margin:-4px 0 12px">B-Stock loads go on the B-Stock tab with + Load.</p>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
@@ -698,6 +706,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
   <label class="drl">Details <small>one per line (color, power recline, pieces, smoke/pet free...)</small><textarea id="drDetails" rows="4"></textarea></label>
   <label class="drl">Imperfections <small>one per line, leave blank for none</small><textarea id="drImp" rows="2"></textarea></label>
   <label class="drl">Dimensions<input id="drDims" placeholder="L: 128 x 115 in. | H: 42 in." maxlength="200"></label>
+  <label class="drl">Sales Tracker unit <small>the exact couch this listing sells, so a sale marks that unit sold</small><select id="drUnit"><option value="">Not linked</option></select></label>
   <div style="margin:-6px 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="btn sm" style="cursor:pointer">📷 Fill from dimension photo<input type="file" id="drDimsFile" accept="image/*" hidden></label><small id="drDimsMsg" style="color:var(--muted)">Upload the diagram with measurements; it fills Dimensions and the pieces below.</small></div>
   <div class="drl">Will it fit? pieces <small>pick the shape, then type the inches</small></div>
   <div id="fitPieces" style="margin-bottom:6px"></div>
@@ -1211,7 +1220,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-delo
   setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
 let COMBINE = null;
 function renderSales(){
-  renderDeliveries(); renderTxReview('business');
+  renderDeliveries(); renderTxReview('business'); renderPending(); if (!DR) loadDrops();
+  const byU = dropByUnit();
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
   $('histNote').textContent = A.allHist ? "This range comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export."
@@ -1247,7 +1257,7 @@ function renderSales(){
   $('stockTbl').innerHTML = `<tr><th></th><th>Couch</th><th class="hide-m">From</th><th class="n">Cost</th><th class="n hide-m">Comp</th><th class="n">Days</th><th></th></tr>` +
     (shown.length ? shown.map(x => `<tr><td style="width:64px">${photoCell(x)}</td><td>${nameCell(x)}</td><td class="hide-m" style="color:var(--muted)">${esc(x.src)}</td><td class="n">${money(x.cost)}</td>
       <td class="n hide-m">${x.comp ? money(x.comp) : '–'}</td><td class="n">${x.days >= 21 ? `<span class="pill d">${x.days}</span>` : x.days}</td>
-      <td class="n" style="white-space:nowrap"><button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button> ${COMBINE ? (COMBINE.id === x.id && COMBINE.uid !== x.uid ? `<button class="btn sm g" data-combine-into="${esc(x.uid)}" title="Fold this into ${esc(COMBINE.name)}">＋ Into set</button>` : COMBINE.uid === x.uid ? `<button class="btn sm" data-combine-cancel>Cancel</button>` : '') : `<button class="btn sm" data-combine="${esc(x.id)}:${esc(x.uid)}" data-name="${esc(x.name)}" title="Combine with another piece from this load (sofa + loveseat = set)">Combine</button>`}` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
+      <td class="n" style="white-space:nowrap">${(k => { if (!DR) return ''; const w = byU[k]; return w ? `<span class="lkp ok" title="${esc(w.title)}">${esc(DRST[w.status] || w.status)} · ${money(w.price || 0)}</span> ` : `<button class="btn sm" data-putweb="${esc(k)}">+ Put on website</button> `; })(x.kind === 'used' ? 'purchase:' + x.id : `load:${x.id}:${x.uid}`)}<button class="btn sm p" data-sold="${esc(x.id)}:${esc(x.uid)}" data-target="${x.kind === 'used' ? 'purchase' : 'unit'}" data-name="${esc(x.name)}" data-comp="${x.comp || ''}">Sold</button>${x.kind === 'bstock' ? ` <button class="btn sm" data-unit="${esc(x.id)}:${esc(x.uid)}:dud">Dud</button> ${COMBINE ? (COMBINE.id === x.id && COMBINE.uid !== x.uid ? `<button class="btn sm g" data-combine-into="${esc(x.uid)}" title="Fold this into ${esc(COMBINE.name)}">＋ Into set</button>` : COMBINE.uid === x.uid ? `<button class="btn sm" data-combine-cancel>Cancel</button>` : '') : `<button class="btn sm" data-combine="${esc(x.id)}:${esc(x.uid)}" data-name="${esc(x.name)}" title="Combine with another piece from this load (sofa + loveseat = set)">Combine</button>`}` : ` <button class="btn sm" data-del="purchases:${esc(x.id)}">Delete</button>`}</td></tr>`).join('')
       : `<tr><td colspan="7" class="empty">Nothing in stock here. Add used pickups with + Used pickup; B-Stock couches come from the B-Stock tab.</td></tr>`);
   const soldR = stock.filter(x => x.status === 'sold' && inR(x.sold, R)).sort((a, b2) => b2.sold - a.sold);
   const sRev = soldR.reduce((a, x) => a + x.soldPrice + x.up, 0), sCost = soldR.reduce((a, x) => a + x.cost, 0), liveOrders = RAW.sales.filter(x => inR(x.date, R) && !isHistDay(x.date)).length;
@@ -2493,7 +2503,8 @@ document.addEventListener('contextmenu', e => { const b = e.target.closest && e.
 new MutationObserver(() => { clearTimeout(mbarRender.t); mbarRender.t = setTimeout(mbarRender, 50); }).observe(document.querySelector('.side'), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
-document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open), f = m.querySelector('form'); f.reset(); if (f.elements.id) f.elements.id.value = ''; if ($('expTitle')) $('expTitle').textContent = 'Log an expense'; m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr(); });
+document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open), f = m.querySelector('form'); f.reset(); if (f.elements.id) f.elements.id.value = ''; if ($('expTitle')) $('expTitle').textContent = 'Log an expense'; m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr();
+  if (b.dataset.open === 'purchase') { const nw = !!b.dataset.newcouch; $('purTitle').textContent = nw ? 'Log a new couch' : 'Log a used pickup'; $('purQty').hidden = !nw; if (nw) f.elements.source.value = 'New couch'; } });
 document.querySelectorAll('.mask').forEach(m => {
   const box = m.querySelector('.modal');
   if (box && !box.querySelector('.xbtn')) box.insertAdjacentHTML('afterbegin', '<button type="button" class="xbtn" data-close aria-label="Close">&times;</button>');
@@ -2525,9 +2536,12 @@ document.querySelectorAll('.mask').forEach(m => {
       if (Number(data.upOther) > 0) ups.push({ label: 'Other', price: Number(data.upOther) });
       body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date, delivery: data.delivery, upsells: ups, customer: data.customer };
     }
+    const reps = f.dataset.action === 'addPurchase' ? Math.min(20, Math.max(1, parseInt(data.qty) || 1)) : 1;
     try {
+      for (let k = 0; k < reps; k++) {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Save failed');
+      }
       m.classList.remove('on'); f.reset(); toast('Saved');
       if (f.dataset.kind === 'cash') { cashDraft = null; loadCash(); } else load(true);
     } catch (err) { toast(err.message); }
@@ -2662,7 +2676,7 @@ document.addEventListener('change', async e => {
 
 // ---------- Drops: list couches once -> First Dibs email, website, Marketplace/Craigslist ----------
 let DR = null, DRF = 'active', DRSEL = new Set(), DRPH = [];
-const DRST = { draft: 'Draft', emailed: 'First Dibs', live: 'On website', sold: 'Sold', hidden: 'Hidden' };
+const DRST = { draft: 'Draft', emailed: 'First Dibs', live: 'On website', held: 'Pending payment', sold: 'Sold', hidden: 'Hidden' };
 const dPhoto = (ph, w) => /^https?:/.test(ph) ? ph + (w ? '?format=' + w + 'w' : '') : (DR && DR.base || location.origin) + '/public/dphoto/' + ph + '.jpg';
 const dLocalPhoto = ph => /^https?:/.test(ph) ? ph + '?format=300w' : '/public/dphoto/' + ph + '.jpg';
 
@@ -2772,19 +2786,85 @@ document.addEventListener('change', async e => { const t = e.target; if (!t.data
 async function loadDrops(){
   try { const r = await fetch('/api/drops', { cache: 'no-store' }); const d = await r.json(); if (d.error) throw new Error(d.error); DR = d; }
   catch (e) { DR = { drops: [], error: e.message }; }
-  if (tab === 'drops') renderDrops(); if (tab === 'cuts') renderCuts(); pcBadge(); newBadges();
+  if (tab === 'drops') renderDrops(); if (tab === 'cuts') renderCuts(); if (tab === 'sales' && RAW) renderSales(); pcBadge(); newBadges();
 }
+// ---------- Exact unit links: each website couch points at one unit in the Sales Tracker ----------
+let PREUNIT = null;
+const unitRefKey = r => !r ? '' : r.kind === 'load' ? `load:${r.id}:${r.uid}` : r.kind === 'purchase' ? `purchase:${r.id}` : '';
+function allUnits(){
+  const out = []; if (!RAW) return out;
+  (RAW.loads || []).forEach(l => (l.units || []).forEach((u, i) => { const m = /^u(\d+)/.exec(u.uid || ''), n = m ? +m[1] + 1 : i + 1;
+    out.push({ key: `load:${l.id}:${u.uid}`, ref: { kind: 'load', id: l.id, uid: u.uid }, name: u.name, status: u.status, cost: u.cost || 0,
+      code: 'U-' + (String(l.loadId || '').replace(/\D/g, '').slice(-7) || String(l.id).slice(-5).toUpperCase()) + '-' + String(n).padStart(2, '0'),
+      from: 'B-Stock ' + (l.loadId || '') + (l.arrived ? ' · landed ' + fmtD(l.arrived) : '') }); }));
+  (RAW.purchases || []).forEach(p => out.push({ key: `purchase:${p.id}`, ref: { kind: 'purchase', id: p.id }, name: p.item || 'Couch', status: p.status === 'sold' ? 'sold' : 'in', cost: p.cost || 0,
+    code: (/^new/i.test(p.source || '') ? 'N-' : 'P-') + String(p.id).slice(-5).toUpperCase(), from: (p.source || 'Used') + (p.date ? ' · ' + fmtD(p.date) : '') }));
+  return out;
+}
+const unitByKey = k => k ? allUnits().find(u => u.key === k) : null;
+function dropByUnit(){ const m = {}; ((DR && DR.drops) || []).forEach(d => { const k = unitRefKey(d.unitRef); if (k && d.status !== 'hidden') m[k] = d; }); return m; }
+function unitOptions(cur){
+  const used = dropByUnit();
+  return allUnits().filter(u => (u.status === 'in' && !used[u.key]) || u.key === cur)
+    .map(u => `<option value="${esc(u.key)}" ${u.key === cur ? 'selected' : ''}>${esc(u.name)} · ${u.code} · ${esc(u.from)} · ${money(u.cost)}</option>`).join('');
+}
+function linkHtml(d){
+  if (!RAW || !['draft', 'emailed', 'live', 'held'].includes(d.status)) return '';
+  if (d.unitRef) { const u = unitByKey(unitRefKey(d.unitRef)); return `<span class="lkp ok">Linked: ${u ? esc(u.code + ' · ' + u.from) : 'unit'}</span>`; }
+  return `<span class="lkp warn">Not linked</span><select class="lksel" data-drlink="${d.id}"><option value="">Pick its exact unit…</option>${unitOptions('')}</select>`;
+}
+document.addEventListener('change', async e => {
+  const s = e.target.closest && e.target.closest('[data-drlink]'); if (!s || !s.value) return;
+  const d = DR.drops.find(x => x.id === s.dataset.drlink), u = unitByKey(s.value); if (!d || !u) return;
+  try { const j = await post('/api/drops/save', { id: d.id, title: d.title, unitRef: u.ref }); Object.assign(d, j.drop); toast('Linked to ' + u.code); renderDrops(); }
+  catch (err) { toast(err.message); s.value = ''; }
+});
+// ---------- Pending payment (Venmo / Zelle / cash / Stripe links not paid yet) ----------
+let PEND = null, PENDAT = 0;
+async function loadPending(){
+  PENDAT = Date.now();
+  try { const r = await fetch('/api/pending', { cache: 'no-store' }); PEND = await r.json(); if (PEND.error) throw new Error(PEND.error); } catch (e) { PEND = { pending: [], alerts: [] }; }
+  renderPending();
+}
+function renderPending(){
+  const el = $('pendCard'); if (!el) return;
+  if (!PEND || Date.now() - PENDAT > 60e3) { if (Date.now() - PENDAT > 5e3) loadPending(); if (!PEND) return; }
+  const P = PEND.pending || [], A = PEND.alerts || [];
+  if (!P.length && !A.length) { el.innerHTML = ''; return; }
+  const ago = t => { const h = (Date.now() - t) / 36e5; return h < 1 ? Math.max(1, Math.round(h * 60)) + ' min' : Math.round(h) + ' hrs'; };
+  const when = t => new Date(t).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  const pcls = p => /venmo/i.test(p) ? 'venmo' : /zelle/i.test(p) ? 'zelle' : /cash/i.test(p) ? 'cash' : '';
+  el.innerHTML = `<div class="card" style="margin-bottom:16px">` +
+    A.map(o => `<div class="palert"><span style="flex:1">${(o.clash || []).length ? `🚨 ${esc(o.customer)} paid for ${esc(o.clash.join(', '))}, but it was already sold to someone else. Refund or swap them.` : ''}${(o.unlinked || []).length ? `⚠️ Sold online, not linked: ${esc(o.unlinked.join(', '))} (${esc(o.customer)}). Tap Sold on its exact unit under Couches in stock.` : ''}</span><button class="btn sm" data-pend="ack" data-ref="${esc(o.ref)}">Got it</button></div>`).join('') +
+    (P.length ? `<h2>Pending payment <span class="pbadge">${P.length}</span></h2><p class="empty" style="font-size:12.5px;margin:-6px 0 10px">Held off the website. Not a sale (no Sales Log row, no Just Sold pop-up) until you tap <b>✓ Paid</b>. <b>Release</b> puts the couch back on the website.</p>` +
+    P.map(o => { const d = ((DR && DR.drops) || []).find(x => x.id === (o.items[0] || {}).dropId), ph = d && (d.photos || [])[0];
+      return `<div class="pord"><div class="pim" style="${ph ? `background-image:url('${esc(dLocalPhoto(ph))}')` : ''}"></div><div class="pin"><b>${esc(o.items.map(i => i.title).join(' + '))}</b>${esc(o.customer || 'Customer')} · ${esc(o.orderType || '')} · <b style="display:inline">${money(o.total)}</b>
+        <div class="pm">${Date.now() - o.at > 864e5 ? `<span style="color:var(--red2);font-weight:700">Unpaid ${ago(o.at)}</span>` : 'Ordered ' + when(o.at)} · ${o.source === 'team' ? 'Order app (team)' : 'Website'}${o.kind === 'card' ? ' · waiting on card checkout, auto-releases at 30 min' : ''}${(o.busy || []).length ? ` · <span style="color:var(--red2)">already sold/held: ${esc(o.busy.join(', '))}</span>` : ''}</div>
+        <span class="ppay ${pcls(o.payment)}">${esc(o.payment || 'Pay later')}</span></div>
+        <div class="pbt"><button class="btn sm p" data-pend="paid" data-ref="${esc(o.ref)}">✓ Paid</button><button class="btn sm" data-pend="release" data-ref="${esc(o.ref)}">Release</button></div></div>`; }).join('') : '') + `</div>`;
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-pend]'); if (b) {
+    b.disabled = true;
+    try { await post('/api/pending/' + b.dataset.pend, { ref: b.dataset.ref }); toast(b.dataset.pend === 'paid' ? 'Marked paid: sold + logged' : b.dataset.pend === 'release' ? 'Released: back on the website' : 'OK'); }
+    catch (err) { toast(err.message); b.disabled = false; return; }
+    PENDAT = 0; await loadPending(); loadDrops(); if (b.dataset.pend === 'paid') load(true); return;
+  }
+  const w = e.target.closest && e.target.closest('[data-putweb]'); if (w) { PREUNIT = unitByKey(w.dataset.putweb); if (!PREUNIT) return toast('Unit not found'); openDrop(null); }
+});
 function renderDrops(){
   renderJustSold();
   const el = $('drBody'); if (!el) return;
   if (!DR) { el.innerHTML = '<p class="empty">Loading couches…</p>'; loadDrops(); return; }
   const all = DR.drops, cnt = k => all.filter(d => d.status === k).length;
-  const groups = { active: d => ['draft', 'emailed', 'live'].includes(d.status), draft: d => d.status === 'draft', emailed: d => d.status === 'emailed', live: d => d.status === 'live', sold: d => d.status === 'sold', hidden: d => d.status === 'hidden' };
+  const groups = { active: d => ['draft', 'emailed', 'live', 'held'].includes(d.status), draft: d => d.status === 'draft', emailed: d => d.status === 'emailed', live: d => d.status === 'live', sold: d => d.status === 'sold', hidden: d => d.status === 'hidden' };
   const labels = { active: 'Active', draft: 'Drafts', emailed: 'First Dibs', live: 'On website', sold: 'Sold', hidden: 'Hidden' };
   const list = all.filter(groups[DRF]);
   [...DRSEL].forEach(id => { if (!list.some(d => d.id === id)) DRSEL.delete(id); });
   const nSel = DRSEL.size;
+  const unl = RAW ? all.filter(d => ['live', 'emailed'].includes(d.status) && !d.unitRef).length : 0;
   el.innerHTML = (DR.error ? `<div class="err" style="display:block">${esc(DR.error)}</div>` : '') +
+    (unl ? `<div class="palert" style="background:#fdf1dc;color:#8a5a00">⚠️ ${unl} couch${unl === 1 ? ' is' : 'es are'} for sale but not linked to an exact unit. Pick each one's unit below (one time) so sales mark the right couch sold.</div>` : '') +
     `<div class="drsteps"><div class="drstep"><b>1. Add couches</b><span>+ New couch, photos straight from your phone. Saves as a draft.</span></div>
       <div class="drstep"><b>2. First Dibs email</b><span>Check the drafts, tap Build email, copy into TextMagic.</span></div>
       <div class="drstep"><b>3. Go live</b><span>3 hrs later, check them and tap Go live. They show on /currentinventory.</span></div>
@@ -2804,7 +2884,7 @@ function renderDrops(){
         `<button class="btn sm" data-drkit="${d.id}">Post kit</button><button class="btn sm" data-dredit="${d.id}">Edit</button>`;
       return `<div class="drc"><input type="checkbox" data-drsel="${d.id}" ${DRSEL.has(d.id) ? 'checked' : ''}>
         <div class="im" style="${ph ? `background-image:url('${esc(dLocalPhoto(ph))}')` : ''}"></div>
-        <div class="mm"><b>${esc(d.title)}</b><small>${d.grade ? `<span class="gb ${d.grade}">${d.grade}</span>` : ''}${money(d.price || 0)}${d.retail > d.price ? ' <s>' + money(d.retail) + '</s>' : ''} · ${(d.photos || []).length} photo${(d.photos || []).length === 1 ? '' : 's'}<span class="dst ${d.status}">${DRST[d.status]}</span>${d.status === 'sold' && d.soldAt ? ' ' + fmtD(new Date(d.soldAt), true) : ''}</small></div>
+        <div class="mm"><b>${esc(d.title)}</b><small>${d.grade ? `<span class="gb ${d.grade}">${d.grade}</span>` : ''}${money(d.price || 0)}${d.retail > d.price ? ' <s>' + money(d.retail) + '</s>' : ''} · ${(d.photos || []).length} photo${(d.photos || []).length === 1 ? '' : 's'}<span class="dst ${d.status}">${DRST[d.status]}</span>${d.status === 'sold' && d.soldAt ? ' ' + fmtD(new Date(d.soldAt), true) : ''}</small>${linkHtml(d)}</div>
         <div class="ac">${btns}</div></div>`; }).join('')}</div>`
       : `<div class="card"><p class="empty">${all.length ? 'Nothing here.' : 'No couches yet. Tap <b>+ New couch</b>, or pull in everything that is on your website now:'}</p>${all.length ? '' : '<button class="btn p" id="drImport" style="margin-top:8px">Import couches from billyscouches.com</button>'}</div>`) +
     (all.length ? `<p class="empty" style="font-size:12px;margin-top:14px">Website: couches marked <b>On website</b> show on billyscouches.com/currentinventory within a minute. <a href="#" id="drImport2">Re-import from website</a> (adds any couch not already here).</p>` : '');
@@ -2817,6 +2897,8 @@ function openDrop(id){
   $('drDims').value = d ? d.dimensions || '' : '';
   FITS = ''; FITP = d ? (d.pieces && d.pieces.length ? d.pieces : (d.guessPieces || [])).map(x => ({ ...x })) : []; drawFitPieces();
   $('fitArrNote').textContent = d && d.fitShape ? '✓ Showroom shape saved (modular)' : 'For modular sectionals'; DRPH = d ? [...(d.photos || [])] : []; drawDropPhotos();
+  $('drUnit').innerHTML = '<option value="">Not linked</option>' + unitOptions(d ? unitRefKey(d.unitRef) : (PREUNIT ? PREUNIT.key : ''));
+  if (!d && PREUNIT) { $('drUnit').value = PREUNIT.key; $('drName').value = PREUNIT.name; } PREUNIT = null;
   $('m-drop').classList.add('on');
 }
 window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.fitShapeSaved) { $('fitArrNote').textContent = '✓ Showroom shape saved (modular)'; toast('Shape saved'); loadDrops(); } });
@@ -2931,6 +3013,7 @@ async function saveDrop(keepOpen){
   const body = { id: $('drId').value || undefined, title: $('drName').value, price: $('drPrice').value, retail: $('drRetail').value, grade: $('drGrade').value,
     details: $('drDetails').value, imperfections: $('drImp').value, dimensions: $('drDims').value, photos: DRPH,
     pieces: readFitPieces() };
+  if (RAW) { const u = unitByKey($('drUnit').value); body.unitRef = u ? u.ref : null; }
   if (!body.title.trim()) return toast('Add a title'); if (!(Number(body.price) > 0)) return toast('Add a price');
   if (keepOpen === true) { const j = await post('/api/drops/save', body); return j.drop; }
   try { await post('/api/drops/save', body); $('m-drop').classList.remove('on'); toast('Saved'); if (!body.id) DRF = DRF === 'active' ? 'active' : 'draft'; loadDrops(); } catch (e) { toast(e.message); }
