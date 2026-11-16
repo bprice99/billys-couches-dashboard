@@ -667,7 +667,7 @@ document.addEventListener('click', async e => {
   const day = t.closest('.cal [data-day]'); if (day && !t.closest('[data-video]')) return openVideo(null, day.dataset.day);
   const dv = t.closest('[data-delvideo]'); if (dv) { if (!confirm('Delete this video?')) return; await post('/api/coach/videos/delete', { id: dv.dataset.delvideo }); D.videos = D.videos.filter(x => x.id !== dv.dataset.delvideo); $('m-item').classList.remove('on'); return render(); }
   if (t.closest('[data-newlead]')) return openLead(null);
-  const lc = t.closest('[data-lead]'); if (lc) return openLead(lc.dataset.lead);
+  const lc = t.closest('[data-lead]'); if (lc) return (window.openCall ? openCall(lc.dataset.lead) : openLead(lc.dataset.lead));
   if (t.id === 'lSave') { const item = { id: $('lId').value || undefined, name: $('lName').value.trim(), stage: $('lStage').value, contact: $('lContact').value, source: $('lSource').value, date: $('lDate').value, callDate: $('lCall').value, value: num($('lValue').value), notes: $('lNotes').value };
     if (!item.name) return toast('Add a name'); try { const j = await post('/api/coach/leads/save', { item }); const i = D.leads.findIndex(x => x.id === j.item.id); i > -1 ? D.leads[i] = j.item : D.leads.unshift(j.item); $('m-item').classList.remove('on'); render(); } catch (err) { toast(err.message); } return; }
   const dl = t.closest('[data-dellead]'); if (dl) { if (!confirm('Delete this lead?')) return; await post('/api/coach/leads/delete', { id: dl.dataset.dellead }); D.leads = D.leads.filter(x => x.id !== dl.dataset.dellead); $('m-item').classList.remove('on'); return render(); }
@@ -730,6 +730,119 @@ document.addEventListener('click', async e => {
   const fix = root => (root.querySelectorAll ? root.querySelectorAll('input[type="number"]') : []).forEach(i => { i.type = 'text'; i.inputMode = 'decimal'; i.autocomplete = 'off'; });
   fix(document);
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType !== 1) return; if (n.matches && n.matches('input[type="number"]')) fix(n.parentNode || document); else fix(n); }))).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
+<script>
+// Sales-call view: tap a lead in Pipeline -> your call script opens with a notes box under every question.
+// Script is editable ("Edit script"): lines starting with # are section titles, lines ending in ? get a notes box,
+// {name} becomes the lead's first name. Notes autosave onto the lead (callNotes + general notes).
+(function(){
+  const DEF = `# Pre-call mental frame
+Shout when speaking (increases conviction).
+I am doing them a favor. They aren't helping me. I'm being kind enough to help them.
+Mention their NAME: {name}
+
+# Qualification & Discovery
+Usually these calls are about 20-30 minutes. Is now still a good time?
+So obviously you said you want to make more money and [their goal], but what really motivated you to hop on a call and talk to me, {name}?
+Why now? What changed that made you finally book this call?
+Why couch flipping in particular?
+What have you tried in the past to start this business, or any business in general? (Dive deep after.)
+What's stopping you from doing this on your own?
+Tell me what your goals are with couch flipping. Quit job? Part time? Full time? Why?
+Where do you want to be 3, 6 months from now?
+If you start to make 5-10k or up to 12k per month, how would things change for you?
+If you keep doing what you're doing right now, where do you see yourself in 3-6 months?
+What do you think is causing the ads to not work?
+What's been stopping you from posting on social media?
+What's been the biggest struggle with scaling your business?
+As far as your life goes, would things change for you if you were able to bring on help and hire employees to run your business?
+
+# Program
+Instant course modules on Hiring, Paid Ads, B-Stock, Social Media, and my Warehouse Playbook
+Weekly 1-1 calls plus text access
+Personalized business plan around your market, the space you're working with, and your schedule
+Coming: monthly mastermind + private group chat with all students, lifetime access (even after 1-1 coaching ends)
+
+# Commitment
+{name}, obviously I can give you the best blueprints, text you every day, and hop on calls with you. But I can't actually do the work for you.
+On a scale of 1-10, how committed are you to putting in max effort and building a business that's sustainable long term?
+If not a 10, why?
+Say we started working together, you learn content, paid ads, and start to scale because of it. If that were the case, would you be willing to start the program today?
+
+# Packages
+3 Month Program: $3k. Weekly check-in calls (up to 45 min), 24/7 text access. Guarantee: you make your investment back or I keep working with you until you do (show up, hit weekly targets, stay coachable).
+6 Month Program: $5k. Same as the 3-month, but 6 months of weekly calls + 24/7 text. Same guarantee.
+Which one works best?
+Payment plan ("I usually don't do this, but we can break it up monthly"): 3 month $1k/month, 6 month $833/month
+
+# Close & Payment
+Sell the future: monthly masterminds with all members, available even after your 1-1 program expires.
+"Cool, here's how we get started: we handle payment, I add you on Telegram, sign off on DocuSign after this call, and we're rolling."
+"I'll text the payment details to your number right now. Can you fill that out while we're on?"
+
+# Onboarding
+Telegram
+Send over DocuSign
+I'll be in contact with more details and set up our first call`;
+
+  const E = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const key = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return 'q' + (h >>> 0).toString(36); };
+  const script = () => (typeof D !== 'undefined' && D.settings && D.settings.callScript) || DEF;
+  const parse = txt => { const out = []; let sec = null; String(txt).split('\n').forEach(raw => { const l = raw.trim(); if (!l) return; if (l.startsWith('#')) { sec = { h: l.replace(/^#+\s*/, ''), lines: [] }; out.push(sec); return; } if (!sec) { sec = { h: '', lines: [] }; out.push(sec); } sec.lines.push(l); }); return out; };
+  const css = document.createElement('style');
+  css.textContent = `#callv{position:fixed;inset:0;z-index:300;background:#f6f4f1;overflow:auto;-webkit-overflow-scrolling:touch}
+#callv .cw{max-width:820px;margin:0 auto;padding:16px 16px 80px}
+#callv .ch{position:sticky;top:0;z-index:2;background:#f6f4f1;padding:10px 0;border-bottom:1px solid #e6e0d8;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#callv .ch h2{margin:0;font-size:20px;flex:1;min-width:150px}#callv .ch small{display:block;font-size:12px;color:#776d65;font-weight:500}
+#callv button,#callv select{border:1px solid #e6e0d8;background:#fff;border-radius:9px;padding:7px 11px;font:inherit;font-size:13px;cursor:pointer}
+#callv .p{background:#b0524c;color:#fff;border-color:#b0524c}
+#callv .sec{background:#fff;border:1px solid #e6e0d8;border-radius:14px;padding:14px 16px;margin-top:12px}
+#callv .sec h3{margin:0 0 8px;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:#b0524c}
+#callv .ln{font-size:14.5px;margin:6px 0;color:#4a3d36}
+#callv .qq{margin:12px 0}#callv .qq b{display:block;font-size:15px;margin-bottom:5px}
+#callv textarea{width:100%;box-sizing:border-box;border:1px solid #e6e0d8;border-radius:10px;padding:9px;font:inherit;font-size:14px;min-height:44px;resize:vertical;background:#fffdf9}
+#callv textarea.big{min-height:120px}#callv .sv{font-size:12px;color:#776d65}
+#callv .hl{background:#fff3c4;border-radius:4px;padding:0 3px}`;
+  document.head.appendChild(css);
+  let L = null, timer = null;
+  const fill = s => E(s).replace(/\{name\}/g, '<b>' + E(((L && L.name) || '').split(' ')[0] || 'their name') + '</b>').replace(/\[([^\]]+)\]/g, '<span class="hl">[$1]</span>');
+  function el() { let v = document.getElementById('callv'); if (!v) { v = document.createElement('div'); v.id = 'callv'; document.body.appendChild(v); } v.hidden = false; document.body.style.overflow = 'hidden'; return v; }
+  function close() { const v = document.getElementById('callv'); if (v) v.hidden = true; document.body.style.overflow = ''; flush(); if (typeof render === 'function') render(); }
+  function saveSoon() { const s = document.getElementById('cvSaved'); if (s) s.textContent = 'Saving…'; clearTimeout(timer); timer = setTimeout(flush, 700); }
+  async function flush() {
+    clearTimeout(timer); if (!L) return; const v = document.getElementById('callv'); if (!v) return;
+    const notes = { ...(L.callNotes || {}) }; v.querySelectorAll('textarea[data-q]').forEach(t => { if (t.value.trim()) notes[t.dataset.q] = t.value; else delete notes[t.dataset.q]; });
+    const g = v.querySelector('#cvNotes'); const item = { id: L.id, callNotes: notes }; if (g) item.notes = g.value;
+    try { const j = await post('/api/coach/leads/save', { item }); const i = D.leads.findIndex(x => x.id === j.item.id); if (i > -1) D.leads[i] = j.item; L = j.item; const s = document.getElementById('cvSaved'); if (s) s.textContent = 'Saved ✓'; }
+    catch (e) { const s = document.getElementById('cvSaved'); if (s) s.textContent = 'Not saved: ' + e.message; }
+  }
+  window.openCall = function (id) {
+    L = D.leads.find(x => x.id === id); if (!L) return openLead(id);
+    const n = L.callNotes || {}, stages = (typeof LST !== 'undefined' ? LST : [L.stage]);
+    el().innerHTML = `<div class="cw"><div class="ch"><button data-cv="close">← Back</button><h2>${E(L.name)}<small>${E(L.contact || '')}${L.callDate ? ' · call ' + E(L.callDate) : ''}</small></h2>
+      <select id="cvStage">${stages.map(s => `<option ${L.stage === s ? 'selected' : ''}>${E(s)}</option>`).join('')}</select>
+      <button data-cv="details">Lead details</button><button data-cv="edit">✏️ Edit script</button><span class="sv" id="cvSaved"></span></div>
+      ${parse(script()).map(sec => `<div class="sec">${sec.h ? `<h3>${E(sec.h)}</h3>` : ''}${sec.lines.map(l => /\?["”]?\s*(\([^)]*\))?$/.test(l) ? `<div class="qq"><b>${fill(l)}</b><textarea data-q="${key(l)}" placeholder="Notes…">${E(n[key(l)] || '')}</textarea></div>` : `<p class="ln">${fill(l)}</p>`).join('')}</div>`).join('')}
+      <div class="sec"><h3>General notes</h3><textarea id="cvNotes" class="big" placeholder="Anything else from the call…">${E(L.notes || '')}</textarea></div></div>`;
+    document.getElementById('callv').scrollTop = 0;
+  };
+  function editScript() {
+    el().innerHTML = `<div class="cw"><div class="ch"><button data-cv="back">← Back to call</button><h2>Edit call script<small># Section title · lines ending in ? get a notes box · {name} = lead's first name · [text] = highlight</small></h2><button data-cv="reset">Reset to default</button><button class="p" data-cv="savescript">Save script</button></div>
+      <div class="sec"><textarea id="cvScript" style="min-height:70vh;font-size:14px;line-height:1.5">${E(script())}</textarea></div></div>`;
+  }
+  document.addEventListener('input', e => { if (e.target.closest && e.target.closest('#callv') && (e.target.dataset.q || e.target.id === 'cvNotes')) saveSoon(); });
+  document.addEventListener('change', async e => { if (e.target.id !== 'cvStage' || !L) return; try { const j = await post('/api/coach/leads/save', { item: { id: L.id, stage: e.target.value } }); const i = D.leads.findIndex(x => x.id === j.item.id); if (i > -1) D.leads[i] = j.item; L = j.item; toast('Stage: ' + j.item.stage); } catch (err) { toast(err.message); } });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest && e.target.closest('[data-cv]'); if (!b) return; const a = b.dataset.cv;
+    if (a === 'close') return close();
+    if (a === 'details') { const id = L.id; await flush(); close(); return openLead(id); }
+    if (a === 'edit') { await flush(); return editScript(); }
+    if (a === 'back') return openCall(L.id);
+    if (a === 'reset') { if (confirm('Replace your script with the original one?')) document.getElementById('cvScript').value = DEF; return; }
+    if (a === 'savescript') { const txt = document.getElementById('cvScript').value; try { const j = await post('/api/coach/settings', { callScript: txt }); D.settings = { ...(D.settings || {}), ...(j.settings || {}), callScript: txt }; toast('Script saved'); openCall(L.id); } catch (err) { toast(err.message); } }
+  });
+  document.addEventListener('keydown', e => { const v = document.getElementById('callv'); if (e.key === 'Escape' && v && !v.hidden && !e.target.closest('textarea')) close(); });
 })();
 </script>
 </body></html>
