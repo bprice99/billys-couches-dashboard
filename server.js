@@ -3132,6 +3132,7 @@ app.post('/api/coach/client/save', async (req, res) => {
 app.post('/api/coach/settings', async (req, res) => {
   try { const cur = (await kget(COACH.settings, {})) || {}, t = req.body.callTemplate;
     if (typeof t === 'string') cur.callTemplate = t.slice(0, 8000);
+    if (typeof req.body.callScript === 'string') cur.callScript = req.body.callScript.slice(0, 30000);
     await kset(COACH.settings, cur); res.json({ ok: true, settings: cur }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/coach/client/delete', async (req, res) => {
