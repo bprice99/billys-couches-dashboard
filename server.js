@@ -739,7 +739,9 @@ app.get('/api/thankyou/sigcheck', async (req, res) => {
       const subs = j.content || [], parsed = parseThankYou(subs, id);
       out.push({ id, since: await kget('bcd:tySigSince', null), subs: subs.map((s, i) => ({ created: s.created_at, status: s.status, parsed: { name: parsed[i] && parsed[i].name, line1: parsed[i] && parsed[i].line1, submitted: parsed[i] && parsed[i].submitted, type: parsed[i] && parsed[i].type }, qs: Object.values(s.answers || {}).filter(q => q && q.text && q.answer !== undefined && q.answer !== '').map(q => q.type + ' | ' + q.text) })) });
     }
-    res.json({ ok: true, out });
+    const fr = await fetch(`${CFG.JOTFORM_BASE}/user/forms?apiKey=${encodeURIComponent(CFG.JOTFORM_KEY)}&limit=500`); const fj = await fr.json();
+    const forms = (fj.content || []).filter(f => f.status !== 'DELETED').sort((a, b) => String(b.last_submission || '').localeCompare(String(a.last_submission || ''))).slice(0, 15).map(f => [f.id, f.title, f.status, f.last_submission, f.count]);
+    res.json({ ok: true, out, forms });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/api/thankyou', async (req, res) => {
