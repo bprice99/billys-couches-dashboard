@@ -147,7 +147,7 @@
     + '#bc-new iframe{display:block;width:100%;border:0;min-height:900px}';
   document.head.appendChild(segCss);
   var seg = document.createElement('div'); seg.className = 'bci-seg';
-  seg.innerHTML = '<div role="tablist"><button type="button" role="tab" data-t="used" class="on">Like New<small>Up to 50% off retail</small></button><button type="button" role="tab" data-t="new">Brand New<small>Reserve before Dec 1</small></button></div>';
+  seg.innerHTML = '<div role="tablist"><button type="button" role="tab" data-t="used" class="on">Like New<small>Up to 50% off retail</small></button><button type="button" role="tab" data-t="new">Brand New<small>Reserve before Dec 4</small></button></div>';
   root.parentNode.insertBefore(seg, root);
   var nw = document.createElement('div'); nw.id = 'bc-new'; nw.style.display = 'none';
   root.parentNode.insertBefore(nw, root.nextSibling);
