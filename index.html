@@ -3233,7 +3233,7 @@ async function loadSigned(){
 const sgW = s => String(s || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1);
 const sgDay = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 function sgRows(){
-  const L = SG.links || {}, signed = SG.signed || [], cut = Date.now() - 14 * 864e5, seen = {}, sales = [];
+  const L = SG.links || {}, signed = SG.signed || [], cut = Math.max(Date.now() - 14 * 864e5, Date.parse('2026-11-16T00:00:00-06:00')), seen = {}, sales = [];
   ((RAW && RAW.sales) || []).forEach(s => { const d = new Date(s.date); if (!s.name || isNaN(d) || d < cut || d > Date.now() + 864e5) return;
     const key = ymd(d) + '|' + s.name.trim().toLowerCase(); if (seen[key]) { seen[key].price += Number(s.price) || 0; return; }
     seen[key] = { key, d, name: s.name.trim(), price: Number(s.price) || 0, type: s.type || '' }; sales.push(seen[key]); });
@@ -3249,14 +3249,14 @@ function renderSigned(){
   const el = $('sigBody'); if (!el) return;
   if (!SG) { el.innerHTML = '<div class="card" style="margin-bottom:16px"><p class="empty">Loading signed forms…</p></div>'; loadSigned(); return; }
   const R = sgRows(), W = (TY && TY.written) || {}, cards = new Set(((TY && TY.cards) || []).map(c => c.id));
-  const fid = (SG.formIds || [])[0] || '240938770806061';
+  const formUrl = SG.formUrl || 'https://billys-couches-proxy-production.up.railway.app/sign';
   const cardPill = g => !g.line1 ? '<span class="pill">No address</span>' : W[g.id] ? '<span class="pill ok">Card written</span>' : cards.has(g.id) ? '<span class="pill" style="background:#fdf1dc;color:#a8700f">Card to write</span>' : '<span class="pill">–</span>';
   const signedRow = g => { const s = R.saleFor[g.id]; return `<tr><td>${sgDay(new Date(g.created + 'T12:00:00'))}</td><td><b>${esc(g.name)}</b>${s && sgW(s.name).join(' ') !== sgW(g.name).join(' ') ? `<br><small style="color:var(--muted)">for ${esc(s.name)}</small>` : ''}${g.line1 ? `<br><small style="color:var(--muted)">${esc(g.line1)}</small>` : ''}</td><td>${esc(g.type || '')}</td>
     <td>${s ? `<span class="pill ok">✓ ${esc(s.name)} · ${money(s.price)}</span>` : '<span class="pill">No sale in last 14 days</span>'}</td><td>${cardPill(g)}</td>
-    <td class="n" style="white-space:nowrap"><a class="btn sm" href="https://www.jotform.com/submission/${esc(g.id)}" target="_blank" rel="noopener" style="text-decoration:none">View form</a></td></tr>`; };
+    <td class="n" style="white-space:nowrap"><a class="btn sm" href="${esc(g.photo || '#')}" target="_blank" rel="noopener" style="text-decoration:none">Couch photo</a></td></tr>`; };
   const unsignedRow = s => `<tr><td>${sgDay(s.d)}</td><td><b>${esc(s.name)}</b><br><small style="color:var(--muted)">${money(s.price)}${s.type ? ' · ' + esc(s.type) : ''}</small></td><td>${esc(s.type || '')}</td>
     <td><span class="pill d">Sold, not signed</span>${R.signed.length ? `<select class="lksel" data-sglink="${esc(s.key)}" style="max-width:260px"><option value="">Signed under another name…</option>${R.signed.filter(g => !R.saleFor[g.id]).slice(0, 25).map(g => `<option value="${esc(g.id)}">${esc(g.name)} · ${sgDay(new Date(g.created + 'T12:00:00'))}</option>`).join('')}</select>` : ''}</td><td>–</td>
-    <td class="n" style="white-space:nowrap"><button class="btn sm" data-sgcopy="https://form.jotform.com/${esc(fid)}">Copy form link</button> <button class="btn sm" data-sgcard="${esc(s.key)}" data-name="${esc(s.name)}" data-type="${esc(s.type)}" data-date="${ymd(s.d)}">Add card by hand</button> <button class="btn sm" data-sgpaper="${esc(s.key)}" title="They signed a paper copy">Signed on paper</button></td></tr>`;
+    <td class="n" style="white-space:nowrap"><button class="btn sm" data-sgcopy="${esc(formUrl)}">Copy form link</button> <button class="btn sm" data-sgcard="${esc(s.key)}" data-name="${esc(s.name)}" data-type="${esc(s.type)}" data-date="${ymd(s.d)}">Add card by hand</button> <button class="btn sm" data-sgpaper="${esc(s.key)}" title="They signed a paper copy">Signed on paper</button></td></tr>`;
   const rows = [...R.signed.slice(0, 40).map(g => ({ d: new Date(g.created + 'T12:00:00'), h: signedRow(g), k: 'signed' })), ...R.unsigned.map(s => ({ d: s.d, h: unsignedRow(s), k: 'unsigned' }))]
     .filter(r => SGF === 'all' || r.k === SGF).sort((a, b) => b.d - a.d);
   el.innerHTML = `<div class="card" style="margin-bottom:16px"><h2>Signed agreement forms <small>newest first · checked against the last 14 days of sales</small></h2>
