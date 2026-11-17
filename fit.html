@@ -393,8 +393,14 @@ body.arr .wrap>.k,body.arr h1,body.arr .logo,body.arr .g>div:first-child,body.ar
       var cx = it.x + b.w / 2, cy = it.y + b.h / 2;
       if (it.ret || it.ch) { var L = local(it), arm = rot([L.bw / 2, it.d / 2], it.r, L.bw, L.bh); cx = arm[0] + it.x; cy = arm[1] + it.y; }
       var vert = it.r % 180 && !it.ret && !it.ch, size = Math.round(it.w) + '"' + (it.ret ? ' × ' + Math.round(it.ret) + '"' : '') + (it.ch ? ' · chaise ' + Math.round(it.ch) + '"' : '');
-      out.push('<text x="' + cx + '" y="' + cy + '" font-size="' + fs * 0.82 + '" text-anchor="middle" fill="#fff" font-weight="700"' + (vert ? ' transform="rotate(90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(it.name) +
-        '<tspan x="' + cx + '" dy="' + fs * 0.95 + '" font-weight="400" font-size="' + fs * 0.7 + '">' + size + '</tspan></text></g>');
+      // Labels shrink / shorten to fit inside the piece so neighbours never overlap ("Armless (middle)" -> "Armless").
+      var room = (vert ? b.h : (it.ret || it.ch ? it.w : b.w)) * 0.9, cw = 0.58;
+      var fitTxt = function (t, f0, fmin) { var f = f0; if (t.length * cw * f > room) f = Math.max(fmin, room / (t.length * cw));
+        if (t.length * cw * f > room) { var n = Math.max(1, Math.floor(room / (cw * f)) - 1); t = n < t.length ? t.slice(0, n).replace(/\s+$/, '') + '…' : t; } return [t, f]; };
+      var nm = String(it.name || ''); if (nm.length * cw * fs * 0.82 > room) nm = nm.replace(/\s*\([^)]*\)/g, '').trim() || nm;
+      var N = fitTxt(nm, fs * 0.82, fs * 0.5), Z = fitTxt(size, fs * 0.7, fs * 0.45);
+      out.push('<text x="' + cx + '" y="' + cy + '" font-size="' + N[1] + '" text-anchor="middle" fill="#fff" font-weight="700"' + (vert ? ' transform="rotate(90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(N[0]) +
+        '<tspan x="' + cx + '" dy="' + Math.max(N[1], Z[1]) * 1.15 + '" font-weight="400" font-size="' + Z[1] + '">' + esc(Z[0]) + '</tspan></text></g>');
     });
     // Space to each wall for the selected piece
     var selIt = S.items[S.sel], lockedSel = selIt && selIt.kind === 'couch' && S.locked && S.modular;
