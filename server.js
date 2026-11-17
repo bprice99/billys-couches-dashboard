@@ -511,7 +511,7 @@ async function soldOffWebsite(ref, who) {
     const list = await getDrops(), d = list.find(x => refKey(x.unitRef) === k && ['live', 'emailed', 'held'].includes(x.status));
     if (!d) return '';
     const now = Date.now(); d.status = 'sold'; d.soldAt = now; d.updatedAt = now; d.soldVia = 'sales tracker'; if (who) d.soldCustomer = who; delete d.heldFrom; delete d.heldRef;
-    await setDrops(list); dropsAt = now; recentCache.at = 0; return d.title;
+    await setDrops(list); dropsAt = now; recentCache.at = 0; queueSoldStory(d, who); return d.title;
   } catch (e) { console.log('Sold-off-website failed', e.message); return ''; }
 }
 // Couch price, delivery fee and upsells recorded when a couch is marked sold.
@@ -2149,6 +2149,96 @@ app.get('/public/dphoto/:id', async (req, res) => {
     dropCors(res); res.set('Cache-Control', 'public, max-age=604800, immutable').type(m[1]).send(Buffer.from(m[2], 'base64'));
   } catch (e) { res.sendStatus(404); }
 });
+// ===================== AUTO "SOLD" INSTAGRAM STORY (one per couch) =====================
+// When a website couch sells, HQ makes a 1080x1920 story (couch photo + SOLD stamp + thank-you) and posts it to
+// Billy's Instagram Story. The buyer's first name + last initial shows only if they left "OK to shout you out" checked
+// on the signature form; if no signed form shows up within 48 hours, it posts without a name.
+// Needs IG_USER_ID and IG_TOKEN (instagram_content_publish) in Railway. Without them, stories wait in the queue.
+const IGS_KEY = 'bcd:igStories', IG_WAIT_MS = 48 * 3600e3, IG_API = 'https://graph.facebook.com/v21.0';
+const igName = full => { const w = String(full || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return '';
+  const f = w[0][0].toUpperCase() + w[0].slice(1).toLowerCase(); return w.length > 1 ? `${f} ${w[w.length - 1][0].toUpperCase()}.` : f; };
+async function queueSoldStory(d, customer) {
+  try {
+    if (!d || (!(d.photos || []).length && !d.img)) return;
+    const list = await kget(IGS_KEY, []); if (list.some(s => s.dropId === d.id)) return;
+    list.unshift({ id: crypto.randomBytes(6).toString('hex'), dropId: d.id, title: d.title, photo: (d.photos || [])[0] || d.img,
+      customer: clean(customer || d.soldCustomer || '', 60), at: Date.now(), status: 'waiting' });
+    await kset(IGS_KEY, list.slice(0, 300));
+  } catch (e) { console.log('Story queue failed', e.message); }
+}
+async function storyPhoto(ph) {
+  if (/^[a-f0-9]{16}$/.test(ph)) { const m = String(await kget('bcd:dphoto:' + ph, '')).match(/^data:image\/\w+;base64,(.+)$/); return m ? Buffer.from(m[1], 'base64') : null; }
+  const r = await fetch(ph, { signal: AbortSignal.timeout(20000) }); return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+}
+const xmlEsc = s => String(s).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+function wrapLines(t, max, n) {
+  const out = []; let cur = '';
+  String(t || '').split(/\s+/).forEach(w => { if ((cur + ' ' + w).trim().length > max && cur) { out.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); });
+  if (cur) out.push(cur); if (out.length > n) { out.length = n; out[n - 1] = out[n - 1].replace(/\s*\S*$/, '') + '…'; } return out;
+}
+async function storyImage(s, name) {
+  if (!sharp) throw new Error('sharp is not installed');
+  const W = 1080, H = 1920, PH = 1280, buf = await storyPhoto(s.photo); if (!buf) throw new Error('No couch photo');
+  const ph = await sharp(buf).rotate().resize(W, PH, { fit: 'cover' }).toBuffer();
+  const F = 'font-family="DejaVu Sans, Liberation Sans, Arial, Helvetica, sans-serif"', top = PH - 70;
+  const title = wrapLines(s.title, 28, 3), ty = top + 200 + title.length * 64 + 40;
+  const thanks = name ? [`Thank you ${name}`, 'for supporting my small business!'] : ['Thank you for supporting', 'my small business!'];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+<g transform="translate(540 640) rotate(-10)"><rect x="-300" y="-120" width="600" height="240" rx="30" fill="#b0524c" fill-opacity="0.92" stroke="#ffffff" stroke-width="16"/>
+<text x="0" y="62" text-anchor="middle" ${F} font-size="170" font-weight="bold" fill="#ffffff" letter-spacing="14">SOLD</text></g>
+<rect x="0" y="${top}" width="${W}" height="${H - top + 60}" rx="60" fill="#f6f1ea"/>
+<text x="540" y="${top + 110}" text-anchor="middle" ${F} font-size="40" font-weight="bold" fill="#b0524c" letter-spacing="6">BILLY'S COUCHES</text>
+${title.map((l, i) => `<text x="540" y="${top + 200 + i * 64}" text-anchor="middle" ${F} font-size="54" font-weight="bold" fill="#2b1d16">${xmlEsc(l)}</text>`).join('')}
+${thanks.map((l, i) => `<text x="540" y="${ty + i * 58}" text-anchor="middle" ${F} font-size="44" fill="#2b1d16">${xmlEsc(l)}</text>`).join('')}
+<rect x="150" y="${H - 175}" width="780" height="100" rx="50" fill="#2b1d16"/>
+<text x="540" y="${H - 110}" text-anchor="middle" ${F} font-size="36" font-weight="bold" fill="#ffffff">More couches: billyscouches.com</text></svg>`;
+  return sharp({ create: { width: W, height: H, channels: 3, background: '#2b1d16' } })
+    .composite([{ input: ph, top: 0, left: 0 }, { input: Buffer.from(svg), top: 0, left: 0 }]).jpeg({ quality: 88 }).toBuffer();
+}
+// Instagram fetches the picture from here when it posts.
+app.get('/public/igstory/:id', async (req, res) => {
+  try { const id = String(req.params.id).replace(/\.jpg$/, ''); const s = (await kget(IGS_KEY, [])).find(x => x.id === id); if (!s) return res.sendStatus(404);
+    res.type('image/jpeg').set('Cache-Control', 'public, max-age=3600').send(await storyImage(s, s.name || '')); }
+  catch (e) { res.status(500).send(e.message); }
+});
+// HQ: the queue, and a sample render (newest live couch, sample name) to check the look.
+app.get('/api/igstories', async (req, res) => { try { res.json({ ok: true, connected: !!(process.env.IG_USER_ID && process.env.IG_TOKEN), stories: (await kget(IGS_KEY, [])).slice(0, 50) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/igstories/sample.jpg', async (req, res) => {
+  try { const d = (await getDrops()).filter(x => x.status === 'live' && (x.photos || []).length).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0]; if (!d) return res.sendStatus(404);
+    res.type('image/jpeg').send(await storyImage({ title: d.title, photo: d.photos[0] }, req.query.noname ? '' : 'Jessica R.')); }
+  catch (e) { res.status(500).send(e.message); }
+});
+async function igPost(s) {
+  const uid = (process.env.IG_USER_ID || '').trim(), tok = (process.env.IG_TOKEN || '').trim(); if (!uid || !tok) throw new Error('Instagram not connected');
+  const c = await fetch(`${IG_API}/${uid}/media`, { method: 'POST', body: new URLSearchParams({ image_url: `${PUBLIC_BASE}/public/igstory/${s.id}.jpg`, media_type: 'STORIES', access_token: tok }) }).then(r => r.json());
+  if (!c.id) throw new Error((c.error && c.error.message) || 'Instagram did not accept the picture');
+  for (let i = 0; i < 10; i++) {
+    const st = await fetch(`${IG_API}/${c.id}?fields=status_code&access_token=${encodeURIComponent(tok)}`).then(r => r.json()).catch(() => ({}));
+    if (st.status_code === 'FINISHED') break; if (st.status_code === 'ERROR') throw new Error('Instagram could not read the picture');
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  const p = await fetch(`${IG_API}/${uid}/media_publish`, { method: 'POST', body: new URLSearchParams({ creation_id: c.id, access_token: tok }) }).then(r => r.json());
+  if (!p.id) throw new Error((p.error && p.error.message) || 'Instagram publish failed'); return p.id;
+}
+// Every 10 minutes: post stories whose buyer has signed (name per their OK) or that have waited 48 hours (no name).
+async function storySweep() {
+  if (!(process.env.IG_USER_ID && process.env.IG_TOKEN)) return;
+  const list = await kget(IGS_KEY, []), waiting = list.filter(s => s.status === 'waiting'); if (!waiting.length) return;
+  let signed = []; try { signed = await newSignForm(true); } catch (e) {}
+  const done = [];
+  for (const s of waiting.slice(0, 3)) {
+    const last = (String(s.customer || '').trim().split(/\s+/).pop() || '').toLowerCase();
+    const g = last.length > 1 && signed.find(c => String(c.name || '').toLowerCase().split(/\s+/).includes(last) && Math.abs(Date.parse(c.at || c.submitted) - s.at) < 12 * 864e5);
+    if (!g && Date.now() - s.at < IG_WAIT_MS) continue;
+    s.name = g && g.shoutout !== false && g.shoutout !== 'no' ? igName(s.customer) : '';
+    try { s.postId = await igPost(s); s.status = 'posted'; s.postedAt = Date.now(); }
+    catch (e) { s.tries = (s.tries || 0) + 1; s.error = e.message; if (s.tries >= 3) { s.status = 'failed'; textAlert(`Instagram story for ${s.title} didn't post: ${e.message}`).catch(() => {}); } }
+    done.push(s);
+  }
+  if (!done.length) return;
+  const fresh = await kget(IGS_KEY, []); done.forEach(s => { const f = fresh.find(x => x.id === s.id); if (f) Object.assign(f, s); }); await kset(IGS_KEY, fresh);
+}
+setInterval(() => storySweep().catch(e => console.log('Story sweep failed', e.message)), 10 * 60 * 1000);
 // ===================== AI ROOM PREVIEW ("See it in your living room") =====================
 // The website page sends a room photo + which couch + name/phone. HQ asks Google's image model to put that
 // exact couch into the room, saves the picture, shows it on the page and texts the link. Every request is a lead.
@@ -2695,7 +2785,7 @@ app.post('/public/order-sold', async (req, res) => {
     const done = [];
     list.forEach(d => { if (!ids.has(d.id) || !['live', 'emailed', 'held'].includes(d.status)) return; d.status = 'sold'; d.soldAt = now; d.updatedAt = now; if (who) d.soldCustomer = who; d.soldVia = 'order app'; delete d.heldFrom; delete d.heldRef; done.push(d); n++; });
     if (n) { await setDrops(list); dropsAt = now; recentCache.at = 0; }
-    for (const d of done) if (d.unitRef) await markUnitSold(d.unitRef, { price: d.price, customer: who });
+    for (const d of done) { if (d.unitRef) await markUnitSold(d.unitRef, { price: d.price, customer: who }); queueSoldStory(d, who); }
     res.json({ ok: true, marked: n });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2764,6 +2854,7 @@ async function finalizeOrder(o, via) {
     const r = d.unitRef ? await markUnitSold(d.unitRef, { price: it.price, customer: o.customer,
       delivery: i === 0 ? o.delivery : 0, upsells: i === 0 ? o.addons : [] }) : 'missing';
     if (r === 'missing') unlinked.push(d.title);
+    queueSoldStory(d, o.customer);
   }
   if (!o.logged && (o.rowIds || []).length) {
     try { const r = await fetch(SCHED_PROXY + '/log-sale', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: o.rowIds }), signal: AbortSignal.timeout(15000) });
