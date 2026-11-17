@@ -2176,22 +2176,34 @@ function wrapLines(t, max, n) {
   String(t || '').split(/\s+/).forEach(w => { if ((cur + ' ' + w).trim().length > max && cur) { out.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); });
   if (cur) out.push(cur); if (out.length > n) { out.length = n; out[n - 1] = out[n - 1].replace(/\s*\S*$/, '') + '…'; } return out;
 }
+// Railway has no system fonts, so story text is drawn as outlines from the bundled Poppins font.
+let otFonts = null;
+function storyFonts() {
+  if (otFonts) return otFonts;
+  const ot = require('opentype.js'), dir = path.dirname(require.resolve('@fontsource/poppins/package.json')) + '/files/';
+  const load = f => { const b = fs.readFileSync(dir + f); return ot.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); };
+  return (otFonts = { reg: load('poppins-latin-400-normal.woff'), bold: load('poppins-latin-700-normal.woff') });
+}
+function svgText(str, x, y, size, fill, opt = {}) {
+  const f = storyFonts()[opt.bold ? 'bold' : 'reg'], ls = (opt.spacing || 0) / size;
+  const w = f.getAdvanceWidth(str, size, { letterSpacing: ls }), left = opt.anchor === 'start' ? x : x - w / 2;
+  return `<path d="${f.getPath(str, left, y, size, { letterSpacing: ls }).toPathData(1)}" fill="${fill}"/>`;
+}
 async function storyImage(s, name) {
   if (!sharp) throw new Error('sharp is not installed');
   const W = 1080, H = 1920, PH = 1280, buf = await storyPhoto(s.photo); if (!buf) throw new Error('No couch photo');
   const ph = await sharp(buf).rotate().resize(W, PH, { fit: 'cover' }).toBuffer();
-  const F = 'font-family="DejaVu Sans, Liberation Sans, Arial, Helvetica, sans-serif"', top = PH - 70;
-  const title = wrapLines(s.title, 28, 3), ty = top + 200 + title.length * 64 + 40;
+  const top = PH - 70, title = wrapLines(s.title, 26, 3), ty = top + 200 + title.length * 66 + 40;
   const thanks = name ? [`Thank you ${name}`, 'for supporting my small business!'] : ['Thank you for supporting', 'my small business!'];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
 <g transform="translate(540 640) rotate(-10)"><rect x="-300" y="-120" width="600" height="240" rx="30" fill="#b0524c" fill-opacity="0.92" stroke="#ffffff" stroke-width="16"/>
-<text x="0" y="62" text-anchor="middle" ${F} font-size="170" font-weight="bold" fill="#ffffff" letter-spacing="14">SOLD</text></g>
+${svgText('SOLD', 0, 62, 170, '#ffffff', { bold: true, spacing: 14 })}</g>
 <rect x="0" y="${top}" width="${W}" height="${H - top + 60}" rx="60" fill="#f6f1ea"/>
-<text x="540" y="${top + 110}" text-anchor="middle" ${F} font-size="40" font-weight="bold" fill="#b0524c" letter-spacing="6">BILLY'S COUCHES</text>
-${title.map((l, i) => `<text x="540" y="${top + 200 + i * 64}" text-anchor="middle" ${F} font-size="54" font-weight="bold" fill="#2b1d16">${xmlEsc(l)}</text>`).join('')}
-${thanks.map((l, i) => `<text x="540" y="${ty + i * 58}" text-anchor="middle" ${F} font-size="44" fill="#2b1d16">${xmlEsc(l)}</text>`).join('')}
+${svgText("BILLY'S COUCHES", 540, top + 110, 40, '#b0524c', { bold: true, spacing: 6 })}
+${title.map((l, i) => svgText(l, 540, top + 200 + i * 66, 54, '#2b1d16', { bold: true })).join('')}
+${thanks.map((l, i) => svgText(l, 540, ty + i * 60, 44, '#2b1d16')).join('')}
 <rect x="150" y="${H - 175}" width="780" height="100" rx="50" fill="#2b1d16"/>
-<text x="540" y="${H - 110}" text-anchor="middle" ${F} font-size="36" font-weight="bold" fill="#ffffff">More couches: billyscouches.com</text></svg>`;
+${svgText('More couches: billyscouches.com', 540, H - 112, 36, '#ffffff', { bold: true })}</svg>`;
   return sharp({ create: { width: W, height: H, channels: 3, background: '#2b1d16' } })
     .composite([{ input: ph, top: 0, left: 0 }, { input: Buffer.from(svg), top: 0, left: 0 }]).jpeg({ quality: 88 }).toBuffer();
 }
