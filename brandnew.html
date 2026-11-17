@@ -23,7 +23,7 @@ a{color:inherit}.serif{font-family:Georgia,"Times New Roman",serif;font-weight:4
 .badge{position:absolute;top:12px;left:12px;color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em;padding:6px 10px;border-radius:999px;background:var(--red)}.badge.g{background:var(--green)}
 .bd{padding:18px 20px 20px;display:flex;flex-direction:column;flex:1}.bd h3{margin:0 0 4px;font-size:20px}.br{font-size:13.5px;color:var(--muted)}
 .pr{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:12px 0 2px}.pr b{font-size:26px;font-weight:800}.pr s{color:#9a8f86;font-size:14px}.save{background:#e3efe6;color:var(--green);font-weight:800;font-size:12.5px;padding:4px 9px;border-radius:999px}
-.lp{font-size:13px;color:var(--muted)}.tl{display:inline-block;align-self:flex-start;margin-top:8px;background:#f3ece6;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;color:var(--ink)}
+.lp{font-size:13px;color:var(--muted)}.snapl{font-size:13px;color:var(--muted);margin-top:4px}.snapl a{color:#1f5f8b;font-weight:700}.tl{display:inline-block;align-self:flex-start;margin-top:8px;background:#f3ece6;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;color:var(--ink)}
 .specs{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:14px 0 4px;font-size:13.5px}.specs span{color:var(--muted)}.specs b{font-weight:600}
 .left{display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:var(--red);margin:14px 0 6px}.bar{height:8px;background:#f3ece6;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--red)}
 .row{display:flex;gap:10px;margin-top:auto;padding-top:16px}.row .btn{flex:1;padding:13px 10px}
@@ -111,7 +111,10 @@ function tick(){
 }
 const P = id => D.products.find(p => p.id === id);
 const shortName = p => p.name.replace(' 5-Piece Sectional', '');
-function priceRow(p){
+// Snap Finance lease-to-own under every price.
+const SNAP_LINE = '<div class="snapl">Or lease-to-own with <b>Snap</b> &middot; <a href="https://bk.snapfinance.com/origination?paramId=3w%2FEWVFzVGcQioSdKn1vuqdr2hNr3A1xiMt4CtG%2BqOUszvGSlDph262lEkK1hZ0tog9ZSjNG2GyQln5HQrzShOzYiaK%2FnFnEZXfXtyBXVEw%3D" target="_blank" rel="noopener noreferrer">Apply</a></div>';
+function priceRow(p){ return priceRow0(p) + SNAP_LINE; }
+function priceRow0(p){
   return D.live ? `<div class="pr"><b>${money(p.price)}</b></div>`
     : `<div class="pr"><b>${money(p.launch)}</b><s>${money(p.price)}</s><span class="save">Launch price · save ${money(p.price - p.launch)}</span></div><div class="lp">Reserve before Dec 4. Goes to ${money(p.price)} when it lands.</div>`;
 }
