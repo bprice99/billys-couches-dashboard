@@ -50,6 +50,7 @@
     + '.bci-del{display:none;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#2e5c3e;margin:0 0 6px}.bci-del .dot{width:8px;height:8px;border-radius:50%;background:#22a15a;flex-shrink:0}'
     + '.bci-km{display:flex;align-items:center;gap:12px}.bci-ki{flex:1;min-width:0}.bci-kr{font-size:14px;line-height:1.35}'
     + '.bci-kf{font-size:11px;color:#8a7f75;margin-top:3px;line-height:1.3}'
+    + '.bci-kdiv{border-top:1px solid #e3d9ce;margin:10px 0}.bci-kb.bci-snap{background:#1f5f8b}'
     + '.bci-kb{flex:0 0 auto;background:#b0524c;font-size:12px;font-weight:600;line-height:1;padding:7px 12px;border-radius:999px;white-space:nowrap;color:#fff!important;text-decoration:none!important}'
     + '.bci-acc{margin-top:26px;max-width:440px;border-top:1px solid #222}'
     + '.bci-acc details{border-bottom:1px solid #222}'
@@ -112,7 +113,10 @@
         : '<div class="bci-price">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div>')
       + (g ? '<div class="bci-grade"><span class="bci-badge" style="background:' + g[2] + '">Grade <b>' + c.grade + '</b> &middot; ' + g[0] + '</span><span class="bci-gtxt">' + g[1] + ' <button type="button" class="bci-q">What do grades mean?</button></span></div>' : '')
       + '<div class="bci-k"><div class="bci-del"></div><div class="bci-km"><div class="bci-ki"><div class="bci-kr">Or 4 payments of <b>$' + per + '</b></div><div class="bci-kf">Incl. tax + 6% fee. Subject to approval.</div></div>'
-      + '<a class="bci-kb" href="' + ORDER_URL + '">Pay with Klarna</a></div></div>'
+      + '<a class="bci-kb" href="' + ORDER_URL + '">Pay with Klarna</a></div>'
+      // Snap Finance (lease-to-own): catches the buyers Klarna turns down.
+      + '<div class="bci-kdiv"></div><div class="bci-km"><div class="bci-ki"><div class="bci-kr">Or lease-to-own with <b>Snap</b></div><div class="bci-kf">Approval looks beyond credit score. Lease-to-own, not a loan.</div></div>'
+      + '<a class="bci-kb bci-snap" href="https://bk.snapfinance.com/origination?paramId=3w%2FEWVFzVGcQioSdKn1vuqdr2hNr3A1xiMt4CtG%2BqOUszvGSlDph262lEkK1hZ0tog9ZSjNG2GyQln5HQrzShOzYiaK%2FnFnEZXfXtyBXVEw%3D" target="_blank" rel="noopener noreferrer">Apply</a></div></div>'
       + '</div><div class="bci-accw"><div class="bci-acc"><details><summary>Details</summary><div class="in">' + details + '</div></details>'
       + '<details><summary>Imperfections</summary><div class="in">' + (c.imperfections.length ? (c.imperfections.length > 1 ? '<ul>' + c.imperfections.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(c.imperfections[0]) + '</p>') : '<p>None</p>') + '</div></details>'
       + '<details><summary>Dimensions</summary><div class="in"><p>' + (esc(c.dimensions) || 'Ask Billy for exact measurements.') + '</p><a class="bci-fitl" href="' + FIT_URL + '?couch=' + encodeURIComponent(c.id) + '">Will it fit your room? See it to scale &rarr;</a></div></details></div>'
