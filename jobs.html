@@ -17,6 +17,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .posted{background:#e3f1e8;color:#1f6b3d;border-radius:10px;padding:10px;font-weight:700;font-size:14px;margin-top:10px}
 .jobh{font-weight:800;font-size:13px;margin:12px 0 4px}.x{color:#8f2b23;cursor:pointer;font-size:12px;margin-left:6px}
 @media(max-width:780px){.w{grid-template-columns:1fr}}
+.emb{background:transparent}.emb header{background:none;color:inherit;padding:0 0 10px}.emb header a,.emb header h1{visibility:hidden}.emb .w{padding:0;max-width:none}
 </style></head><body>
 <header><a href="/">← HQ</a><h1>Daily Job Board</h1><input type="date" id="date"></header>
 <div class="w">
@@ -73,4 +74,5 @@ $('jadd').onclick=async()=>render(await api('/api/jobboard/job',{kind:$('jk').va
 const q=new URLSearchParams(location.search).get('date');
 $('date').value=q||new Date(Date.now()+864e5).toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
 $('date').onchange=load;load();
+if(new URLSearchParams(location.search).get('embed')==='1'&&parent!==window){document.body.classList.add('emb');new ResizeObserver(()=>parent.postMessage({jbH:document.documentElement.scrollHeight},location.origin)).observe(document.body)}
 </script></body></html>
