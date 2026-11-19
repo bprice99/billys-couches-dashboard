@@ -2742,6 +2742,15 @@ app.get('/api/ai-leads.csv', async (req, res) => {
 // The website's Current Inventory page reads this (see /public/inventory.js).
 // Website prices during the sale: sale price + the old price + how much off. Back to normal when it ends.
 // (Only the website feed. The public order app applies the sale itself, so /public/orderable stays at full price.)
+// Black Friday prices shown on the website: the 4 hand-priced couches show their pre-sale price crossed out and their real
+// discount; other sectionals/sofas get the $150; chairs and anything else stay full price.
+const BF_WAS = { e5da102a0294: 700, '2ffd0f1748de': 1670, cce09a3338ea: 1250, '56153d8a1b15': 930 };
+function bfPrice(d) {
+  const was = BF_WAS[d.id];
+  if (was && saleLive() && was > d.price) return { price: d.price, was, saleOff: was - d.price, saleEnds: new Date(SALE_WIN.end).toISOString() };
+  if (SALE_SKIP.has(d.id) || !/sectional|sofa|loveseat|sleeper/i.test(d.title || '')) return { price: d.price };
+  return salePrice(d.price);
+}
 function salePrice(p) { const price = Number(p) || 0; if (!saleLive() || !price) return { price }; const off = saleSaved(0, price); return { price: Math.max(price - off, 0), was: price, saleOff: off, saleEnds: new Date(SALE_WIN.end).toISOString() }; }
 // Will it fit?: every piece of the couch (sofa, loveseat, each modular section). Uses the pieces typed in Drops,
 // else a best guess from the Dimensions line. ret = the other side of an L-shaped piece (chaise / corner).
@@ -2778,7 +2787,7 @@ app.get('/public/inventory', async (req, res) => {
     const list = (await getDrops()).filter(d => d.status === 'live');
     // The sizing tool (?fit=1) also gets the brand-new sectionals so people can try them in their room.
     let bnFit = []; if (req.query.fit) { try { const st = await bnGet(); bnFit = BN_PRODUCTS.filter(p => bnCount(st, p.id) < p.units).map(p => ({ id: 'bn-' + p.id, title: p.name.replace(' 5-Piece', '') + ' (Brand New, ' + p.color + ')', price: bnLive() ? p.price : p.launch, retail: 0, pieces: p.pieces, shape: null, photos: ['/public/bn/' + (p.fitPhoto || p.photos[0])] })); } catch {} }
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...(SALE_SKIP.has(d.id) || !/sectional|sofa|loveseat|sleeper/i.test(d.title || '') ? { price: d.price } : salePrice(d.price)), retail: d.retail || 0, grade: d.grade || '',
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...bfPrice(d), retail: d.retail || 0, grade: d.grade || '',
       details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: null, photos: (d.photos || []).map(dropPhotoUrl) }))) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
