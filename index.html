@@ -326,7 +326,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <a class="nav" data-tab="cash">Buying Power</a>
     <a class="nav" data-tab="ppl">Personal P&amp;L</a>
     <a class="nav" data-tab="goals">Goals</a>
-    <a class="nav" data-tab="payroll">Employees<span class="obadge" id="nb-payroll" hidden></span></a>
+    <a class="nav" data-tab="payroll">Team<span class="obadge" id="nb-payroll" hidden></span></a>
     <div class="navh">Inventory</div>
     <a class="nav" data-tab="drops">Drops<span class="obadge" id="nb-drops" hidden></span></a>
     <a class="nav" data-tab="bstock">B-Stock</a>
@@ -445,6 +445,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
 
     <!-- PAYROLL -->
     <section id="tab-payroll" hidden>
+      <div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Daily Job Board</h2><a class="btn" href="/jobs" target="_blank">Open full page</a></div><iframe id="jbFrame" title="Daily Job Board" loading="lazy" src="/jobs?embed=1" style="width:100%;border:0;height:820px;margin-top:10px;display:block"></iframe></div>
       <div class="top" style="margin-top:-6px;justify-content:flex-end"><button class="btn p" id="payBtn">Mark week paid</button></div>
       <div class="err" id="payWarn" hidden></div>
       <div class="kpis" id="payKpis"></div>
@@ -2202,7 +2203,8 @@ document.getElementById('adPull').addEventListener('click', async () => {
 });
 
 // ---------- shell ----------
-const TITLES = { weekly: 'Weekly Cash', sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Employees', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
+window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.jbH) { const f = document.getElementById('jbFrame'); if (f) f.style.height = Math.max(400, e.data.jbH + 10) + 'px'; } });
+const TITLES = { weekly: 'Weekly Cash', sales: 'Sales Tracker', goals: 'Goals', sources: 'Sales & Sourcing', upsells: 'Upsells', showings: 'Showing Tracker', openhouse: 'Open Houses', meta: 'Ad Performance', ads: 'Ad Library', bstock: 'B-Stock', payroll: 'Team', cash: 'Buying Power', ppl: 'Personal P&L', offers: 'Couch Offers', content: 'Content', thanks: 'Thank You Cards', drops: 'Drops', sched: 'Scheduling', cuts: 'Price Cuts', fit: 'Will It Fit' };
 DEFAULT_KIND.content = 'week'; DEFAULT_KIND.sources = 'month'; DEFAULT_KIND.upsells = 'month'; DEFAULT_KIND.goals = 'month'; DEFAULT_KIND.openhouse = 'all'; DEFAULT_KIND.ads = 'all';
 function syncRangeBar(){
   const R = getR(tab);
@@ -2462,7 +2464,7 @@ $('payBtn').onclick = async () => {
 document.querySelectorAll('.nav[data-tab]').forEach(n => n.onclick = () => setTab(n.dataset.tab));
 // ---------- Phone navigation: bottom bar (4 tabs + More) and a More sheet with every other tab ----------
 const MB_ICON = { sales: '\u{1F4B0}', showings: '\u{1F6CB}\u{FE0F}', fit: '\u{1F4CF}', drops: '\u{1F4E6}', content: '\u{1F3AC}', ppl: '\u{1F464}', openhouse: '\u{1F3E0}', cash: '\u{1F4B5}', goals: '\u{1F3AF}', payroll: '\u{1F9FE}', bstock: '\u{1F69A}', cuts: '✂\u{FE0F}', offers: '\u{1F91D}', sched: '\u{1F4C5}', upsells: '➕', sources: '\u{1F4CA}', thanks: '\u{1F48C}', meta: '\u{1F4C8}', ads: '\u{1F5BC}\u{FE0F}' };
-const MB_SHORT = { sales: 'Sales', showings: 'Showings', fit: 'Will It Fit', drops: 'Drops', content: 'Content', ppl: 'Personal', openhouse: 'Open House', cash: 'Buying Power', payroll: 'Employees', sched: 'Scheduling', offers: 'Offers', cuts: 'Price Cuts', sources: 'Sourcing', thanks: 'Thank Yous', meta: 'Ads', ads: 'Ad Library' };
+const MB_SHORT = { sales: 'Sales', showings: 'Showings', fit: 'Will It Fit', drops: 'Drops', content: 'Content', ppl: 'Personal', openhouse: 'Open House', cash: 'Buying Power', payroll: 'Team', sched: 'Scheduling', offers: 'Offers', cuts: 'Price Cuts', sources: 'Sourcing', thanks: 'Thank Yous', meta: 'Ads', ads: 'Ad Library' };
 // Live directly under <body> so iPhone keeps them pinned to the bottom while scrolling.
 document.body.append($('msheet'), $('mbar'));
 const MB_ALL = [...document.querySelectorAll('.side .nav[data-tab]')].map(n => n.dataset.tab);
