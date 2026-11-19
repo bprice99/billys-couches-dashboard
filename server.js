@@ -3030,6 +3030,50 @@ app.post('/api/pending/release', async (req, res) => {
     o.status = 'released'; o.doneAt = Date.now(); await setPending(pend); res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ---------- Follow up: abandoned quotes (sent by the order site) + orders that never got paid ----------
+// Shows in HQ > Sales Tracker under Today's deliveries, each with a one-tap prefilled text for Billy to send himself.
+const ABAND_KEY = 'bcd:abandons', FU_KEY = 'bcd:followups';
+app.options('/public/abandon', (req, res) => { orderCors(req, res); res.sendStatus(204); });
+app.post('/public/abandon', async (req, res) => {
+  if (!orderCors(req, res)) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const b = req.body || {}, phone = String(b.phone || '').replace(/\D/g, '').slice(-10); if (phone.length !== 10) return res.status(400).json({ error: 'phone' });
+    const list = (await kget(ABAND_KEY, [])) || [], id = 'a' + (clean(b.rid, 20).replace(/\W/g, '') || phone);
+    const rec = { id, phone, name: clean(b.name, 60), couches: (Array.isArray(b.couches) ? b.couches : []).slice(0, 6).map(c => ({ name: clean(c && c.name, 120), price: Number(c && c.price) || 0 })),
+      total: Number(b.total) || 0, orderType: clean(b.orderType, 20), zip: clean(b.zip, 10), source: clean(b.source, 60), at: Number(b.at) || Date.now(),
+      link: /^https:\/\/order\.billyscouches\.com\//.test(b.link || '') ? String(b.link).slice(0, 200) : '' };
+    const old = list.findIndex(x => x.id === id || (x.phone === phone && Date.now() - x.at < 864e5));
+    if (old >= 0) list.splice(old, 1, { ...list[old], ...rec }); else list.unshift(rec);
+    await kset(ABAND_KEY, list.filter(x => Date.now() - x.at < 14 * 864e5).slice(0, 200)); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/followups', async (req, res) => {
+  try {
+    const now = Date.now(), since = now - 7 * 864e5, st = (await kget(FU_KEY, {})) || {}, pend = await getPending(), ab = (await kget(ABAND_KEY, [])) || [];
+    const d10 = p => String(p || '').replace(/\D/g, '').slice(-10), paid = new Set(pend.filter(o => o.status === 'paid').map(o => d10(o.phone)));
+    const first = n => { const f = String(n || '').trim().split(/\s+/)[0] || 'there'; return f.charAt(0).toUpperCase() + f.slice(1).toLowerCase(); };
+    const items = [];
+    pend.filter(o => o.at > since && d10(o.phone).length === 10 && (o.status === 'expired' || (o.status === 'pending' && o.kind !== 'card' && now - o.at > 2 * 3600e3))).forEach(o => {
+      const ph = d10(o.phone); if (paid.has(ph)) return;
+      const couch = (o.items || []).length === 1 ? 'the ' + o.items[0].title : 'your couches';
+      items.push({ id: 'o' + o.ref, kind: 'unpaid', at: o.at, name: o.customer || '', phone: ph, what: pendTitles(o), total: o.total, detail: o.status === 'expired' ? 'card checkout' : (o.payment || 'pay later'),
+        text: `Hey ${first(o.customer)}, it's Billy from Billy's Couches. Looks like your order for ${couch} didn't go through. Want me to send a new checkout link, or is Venmo/Zelle easier?` }); });
+    ab.filter(a => a.at > since && !paid.has(a.phone)).forEach(a => {
+      const couch = a.couches.length === 1 ? 'the ' + a.couches[0].name : 'those couches';
+      items.push({ id: a.id, kind: 'abandoned', at: a.at, name: a.name, phone: a.phone, what: a.couches.map(c => c.name).join(' + '), total: a.total, detail: /deliver/i.test(a.orderType) ? 'delivery ' + a.zip : 'pickup',
+        text: `Hey ${first(a.name)}, it's Billy from Billy's Couches. Saw you were looking at ${couch}. Any questions I can answer? Happy to hold it for you or set up a time to come sit on it.` }); });
+    const seen = new Set();   // same person on both lists: keep the unpaid order (it comes first)
+    const out = items.filter(x => { if (seen.has(x.phone)) return false; seen.add(x.phone); return true; }).filter(x => !(st[x.id] || {}).hidden)
+      .map(x => ({ ...x, texted: (st[x.id] || {}).texted || null })).sort((a, b) => b.at - a.at);
+    res.json({ ok: true, items: out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/followups/mark', async (req, res) => {
+  try { const b = req.body || {}, id = clean(b.id, 80), st = (await kget(FU_KEY, {})) || {}; if (!id) return res.status(400).json({ error: 'id' });
+    st[id] = { ...(st[id] || {}), ...(b.hide ? { hidden: Date.now() } : { texted: Date.now() }) };
+    Object.keys(st).forEach(k => { const t = st[k].hidden || st[k].texted || 0; if (Date.now() - t > 30 * 864e5) delete st[k]; });
+    await kset(FU_KEY, st); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/pending/ack', async (req, res) => {
   try { const pend = await getPending(), o = pend.find(x => x.ref === String(req.body.ref || '')); if (o) { o.ack = true; await setPending(pend); } res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
