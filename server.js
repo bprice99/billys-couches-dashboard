@@ -939,7 +939,7 @@ app.post('/api/cash/delete', async (req, res) => {
 const ADS = {
   TOKEN: (process.env.APIFY_TOKEN || '').trim(),
   ACTOR: process.env.APIFY_ACTOR || 'apify~facebook-ads-scraper',
-  PER_BRAND: Number(process.env.RESULTS_PER_BRAND || 100),
+  PER_BRAND: Number(process.env.RESULTS_PER_BRAND || 20),
   HOUR_CT: Number(process.env.RUN_HOUR_CT || 6),
   BASE: process.env.APIFY_BASE || 'https://api.apify.com',
   // Point these at the old Ad Tracker's Upstash to keep its history (defaults to the dashboard's).
@@ -1031,7 +1031,7 @@ const ctHour = () => Number(new Date().toLocaleString('en-US', { timeZone: 'Amer
 if (ADS.TOKEN) {
   setInterval(async () => {
     const s = await adsLoad();
-    if ((!s.lastRun || Date.now() - s.lastRun > 20 * 3600 * 1000) && ctHour() === ADS.HOUR_CT) adsRefresh().catch(e => console.error('Scheduled ads refresh failed:', e.message));
+    if ((!s.lastRun || Date.now() - s.lastRun > 6.5 * 24 * 3600 * 1000) && ctHour() === ADS.HOUR_CT) adsRefresh().catch(e => console.error('Scheduled ads refresh failed:', e.message));
   }, 10 * 60 * 1000);
 }
 app.get('/api/ads', async (req, res) => {
