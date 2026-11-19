@@ -24,14 +24,14 @@
     + '#bc-inventory *{box-sizing:border-box}'
     + '.bci-top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:center;font-size:14px;color:var(--mut);margin:6px 0 28px;text-align:center}'
     + '.bci-top b{color:var(--ink)}'
-    + '.bci-fit{display:flex;align-items:center;gap:14px;max-width:820px;margin:-12px auto 40px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:#faf7f3;color:var(--ink);text-decoration:none}'
+    + '.bci-fit{display:flex;align-items:center;gap:14px;max-width:820px;margin:8px auto 20px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:#faf7f3;color:var(--ink);text-decoration:none}'
     + '.bci-fit svg{flex:none;width:58px;height:42px}.bci-fit b{display:block;font-size:15px}.bci-fit span{font-size:13.5px;color:var(--mut)}.bci-fit i{margin-left:auto;font-style:normal;color:var(--red);font-weight:700;white-space:nowrap;font-size:14px}'
-    + '@media(max-width:600px){.bci-fit{margin:-14px 0 32px}.bci-fit i{display:none}}'
+    + '@media(max-width:600px){.bci-fit{margin:8px 0 20px}.bci-fit i{display:none}}'
     + '.bci-fitl{display:inline-block;margin-top:2px;color:var(--red);font-weight:600}'
-    + '.bci-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:-24px auto 40px}'
+    + '.bci-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:-14px auto 36px}'
     + '.bci-chips button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}'
     + '.bci-chips button i{font-style:normal;color:#8a7d73;font-weight:500;margin-left:4px}.bci-chips button.on{background:var(--ink);border-color:var(--ink);color:#fff}.bci-chips button.on i{color:#cfc4ba}'
-    + '@media(max-width:600px){.bci-chips{margin:-20px 0 30px;gap:5px}.bci-chips button{padding:5px 11px;font-size:12.5px}}'
+    + '@media(max-width:600px){.bci-chips{margin:-16px 0 28px;gap:5px}.bci-chips button{padding:5px 11px;font-size:12.5px}}'
     + '.bci-item{padding:0 0 56px;margin:0 0 56px;border-bottom:1px solid var(--line)}'
     + '.bci-item:last-child{border-bottom:0}'
     + '.bci-gal{position:relative;max-width:820px;margin:0 auto 28px;aspect-ratio:4/3;background:#f4efe9;border-radius:6px;overflow:hidden;touch-action:pan-y}'
@@ -197,10 +197,11 @@
     var upd = d.updated ? new Date(d.updated).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' }) : '';
     if (!list.length) { root.innerHTML = '<div class="bci-empty">Everything sold! New couches drop to the First Dibs list first. <a href="/firstdibs">Join First Dibs</a></div>'; return; }
     root.innerHTML = '<div class="bci-top"><span><b>' + list.length + '</b> couches available</span>' + (upd ? '<span>Last updated: ' + upd + '</span>' : '') + '<span>Sales tax applicable.</span></div>'
-      + '<a class="bci-fit" href="' + FIT_URL + '"><svg viewBox="0 0 58 42"><rect x="1.5" y="1.5" width="55" height="39" fill="#fff" stroke="#1f1a17" stroke-width="2"/><path d="M12 3 H46 V12 H20 V30 H12 Z" fill="#b48f74"/><path d="M3 8 H11 M47 8 H55" stroke="#2e7d4f" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>'
-      + '<div><b>Will it fit? Find out free.</b><span>Draw your room and try any couch below, to scale.</span></div><i>Try it &rarr;</i></a>'
       + chips(list)
-      + list.map(function (c) { return item(c, fee); }).join('');
+      + list.map(function (c) { return item(c, fee); }).join('')
+      // Will it fit? sits at the end now (people scroll the couches first); each couch's Dimensions also links to it.
+      + '<a class="bci-fit" href="' + FIT_URL + '"><svg viewBox="0 0 58 42"><rect x="1.5" y="1.5" width="55" height="39" fill="#fff" stroke="#1f1a17" stroke-width="2"/><path d="M12 3 H46 V12 H20 V30 H12 Z" fill="#b48f74"/><path d="M3 8 H11 M47 8 H55" stroke="#2e7d4f" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>'
+      + '<div><b>Will it fit? Find out free.</b><span>Draw your room and try any of these couches, to scale.</span></div><i>Try it &rarr;</i></a>';
     Array.prototype.forEach.call(root.querySelectorAll('.bci-gal'), slider);
     var ch = root.querySelector('.bci-chips'); if (ch) ch.addEventListener('click', function (e) { var b = e.target.closest('button[data-k]'); if (!b) return;
       var k = b.getAttribute('data-k'), n = 0; Array.prototype.forEach.call(ch.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
