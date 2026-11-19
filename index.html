@@ -137,6 +137,9 @@ select.rk,input.rd{border:1px solid var(--line);background:#fff;border-radius:10
 .dlv-h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}.dlv-h span{display:inline-block;background:var(--red);color:#fff;border-radius:99px;padding:0 7px;margin-left:4px;font-size:11px}
 .dlv-r{display:flex;align-items:center;gap:8px;font-size:13.5px;padding-left:14px;border-left:1px solid var(--line)}.dlv-t{font-weight:800;white-space:nowrap}.dlv-n{white-space:nowrap}.dlv-n i{font-style:normal;color:var(--muted);font-size:12.5px}
 .dlv-b{padding:3px 10px!important;font-size:12px!important;text-decoration:none}.dlv-b.ok{background:#e3f1e8;border-color:#bfe0cb;color:var(--green)}
+.fu{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:12px}.fu-r{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}.fu-r:first-of-type{border-top:0}
+.fu-p{font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px;white-space:nowrap}.fu-p.ab{background:#fff4e0;color:#8a5a00}.fu-p.un{background:#fde8e5;color:#8f2b23}
+.fu-w{flex:1;min-width:0}.fu-w b{display:block}.fu-w small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fu-x{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;padding:0 4px}
 @media(max-width:700px){.dlv{display:block;padding:8px 12px}.dlv-r{border:0;padding:6px 0 0;justify-content:space-between}.dlv-n{flex:1;overflow:hidden;text-overflow:ellipsis}}
 .pill.r{background:#fbf0ee;color:var(--red)}.pplpie{display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:center}.pplpie .pw{height:200px;position:relative}@media(max-width:600px){.pplpie{grid-template-columns:1fr}}.pplpl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.pplpl:last-child{border:0}.pplpl i{width:10px;height:10px;border-radius:3px;flex:none}.pplpl span{flex:1}.pplpl em{font-style:normal;color:var(--muted);font-size:12px;width:38px;text-align:right}.txsync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-4px 0 12px}.txsync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .txrev{background:#fff8f6;border:2px solid var(--red);border-radius:14px;padding:12px 14px;margin-bottom:14px}.txrev-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.txrev-h small{color:var(--muted);font-size:12px}
@@ -376,6 +379,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
       <div class="note" id="histNote" hidden>This month comes from your Ivy Flip export. Lead source and pickup/delivery weren't in that export.</div>
       <div id="pendCard"></div>
       <div id="delToday"></div>
+      <div id="fuCard"></div>
       <div class="kpis" id="kpis"></div>
       <div class="card"><h2>Running totals</h2><div class="chartwrap"><canvas id="chart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Sales insights</h2><div id="insights"></div></div>
@@ -1219,9 +1223,28 @@ function renderDeliveries(){
 document.addEventListener('click', e => { const b = e.target.closest('[data-delok]'); if (!b) return;
   try { const d = JSON.parse(localStorage.getItem('bcdDelOk') || '{}'); d[b.dataset.delok] = Date.now(); localStorage.setItem('bcdDelOk', JSON.stringify(d)); } catch {}
   setTimeout(() => { b.textContent = '✓ Sent'; b.classList.add('ok'); }, 300); });
+// Follow up: abandoned quotes + unpaid orders, each with a one-tap prefilled text (Billy presses send).
+let FU = null, FU_AT = 0;
+async function renderFollowups(force){
+  const el = $('fuCard'); if (!el) return;
+  if (force || !FU || Date.now() - FU_AT > 60000) { try { FU = (await fetch('/api/followups').then(r => r.json())).items || []; FU_AT = Date.now(); } catch { return; } }
+  if (!FU.length) { el.innerHTML = ''; return; }
+  const ago = t => { const m = (Date.now() - t) / 60000; return m < 60 ? Math.max(1, m | 0) + 'm ago' : m < 1440 ? (m / 60 | 0) + 'h ago' : m < 2880 ? 'yesterday' : (m / 1440 | 0) + 'd ago'; };
+  el.innerHTML = `<div class="fu"><b class="dlv-h">📲 Follow up <span>${FU.length}</span></b>${FU.map(x => `<div class="fu-r"><span class="fu-p ${x.kind === 'abandoned' ? 'ab' : 'un'}">${x.kind === 'abandoned' ? 'Abandoned' : "Didn't pay"}</span>
+    <div class="fu-w"><b>${esc(x.name || x.phone)} · ${ago(x.at)}</b><small>${esc(x.what)}${x.total ? ' · ' + money(x.total) : ''} · ${esc(x.detail)}</small></div>
+    <a class="btn sm dlv-b ${x.texted ? 'ok' : ''}" data-fu="${esc(x.id)}" href="sms:+1${x.phone}?&body=${encodeURIComponent(x.text)}">${x.texted ? '✓ Texted' : 'Text'}</a>
+    <button class="fu-x" data-fuhide="${esc(x.id)}" title="Hide">✕</button></div>`).join('')}</div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-fu]'), h = e.target.closest('[data-fuhide]');
+  if (t) { fetch('/api/followups/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: t.dataset.fu }) }).catch(() => {});
+    const x = (FU || []).find(y => y.id === t.dataset.fu); if (x) x.texted = Date.now(); setTimeout(() => { t.textContent = '✓ Texted'; t.classList.add('ok'); }, 300); }
+  if (h) { fetch('/api/followups/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: h.dataset.fuhide, hide: true }) }).catch(() => {});
+    FU = (FU || []).filter(y => y.id !== h.dataset.fuhide); renderFollowups(); }
+});
 let COMBINE = null;
 function renderSales(){
-  renderDeliveries(); renderTxReview('business'); renderPending(); if (!DR) loadDrops();
+  renderDeliveries(); renderFollowups(); renderTxReview('business'); renderPending(); if (!DR) loadDrops();
   const byU = dropByUnit();
   const R = getR('sales'), A = period(R), B = period(prevRange(R)), vs = vsLabel(R);
   $('histNote').hidden = !A.anyHist;
