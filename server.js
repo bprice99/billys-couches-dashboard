@@ -3750,6 +3750,7 @@ async function jbJobs(date, s) {
   if (dels.length) {
     run = { id: 'run', kind: 'run', start: Math.min(...dels.map(r => Date.parse(r[0]))) - 30 * 60e3, end: Math.max(...dels.map(r => Date.parse(r[1]))), count: dels.length,
       slots: ['drive', ...Array(Math.max(0, Number(s.helpers) || 1)).fill('help')] };
+    run.availFrom = run.start + 60 * 60e3;   // helpers can join up to 30 min after the first delivery starts
     jobs.push(run);
   }
   const loose = picks.filter(r => !run || Date.parse(r[0]) < run.start || Date.parse(r[0]) >= run.end);
@@ -3791,7 +3792,7 @@ async function jbBuild(date) {
   for (const j of jobs) {
     j.people = j.slots.map((role, i) => {
       const key = j.id + ':' + i, hrs = (j.end - j.start) / 3600e3;
-      const free = team.filter(p => p.can.includes(role) && !blocked(p.name, j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
+      const free = team.filter(p => p.can.includes(role) && !blocked(p.name, j.availFrom || j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
       const score = p => ((hours[p.name].total + (add[p.name] || 0)) / Math.max(1, p.target));
       free.sort((a, b) => score(a) - score(b) || hours[a.name].recent - hours[b.name].recent || a.name.localeCompare(b.name));
       let name = Object.prototype.hasOwnProperty.call(pick, key) ? pick[key] : (free[0] ? free[0].name : (role === 'host' ? 'Billy' : ''));
