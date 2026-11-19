@@ -78,6 +78,16 @@
     + '.bci-gmr{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid #eee5db}'
     + '.bci-gmr span{flex:0 0 auto;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;min-width:66px;text-align:center}'
     + '.bci-gmr p{margin:0;font-size:13px;line-height:1.45;color:#3d3833}.bci-gmf{font-size:12px;color:#8a7f75;margin:10px 0 0}'
+    + '.bci-pill{display:inline-flex;align-items:center;gap:8px;background:#2b211c;color:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:600;margin:0 0 10px}.bci-pill i{width:8px;height:8px;border-radius:50%;background:#5bd17f}'
+    + '.bci-pts{display:flex;flex-direction:column;gap:6px;margin:4px 0 12px}.bci-pts .bci-del{margin:0}.bci-pt{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#2e5c3e}.bci-pt .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}.bci-pt .bci-q{font-weight:500;color:var(--mut)}'
+    + '.bci-bf{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#2b211c;color:#fff;border-radius:12px;padding:10px 13px;font-size:13px;max-width:440px}.bci-bf b{color:#e8b44a;letter-spacing:.03em}.bci-bf .cd{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}'
+    + '.bci-ways{border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:2px 14px;margin:2px 0 12px}'
+    + '.bci-wh{padding:10px 0;border-bottom:1px solid #eee3d6;font-size:12px;font-weight:800;letter-spacing:2px;color:#5d4637}'
+    + '.bci-wr{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:11px 0;font-size:13.5px;line-height:1.4}.bci-wr+.bci-wr{border-top:1px solid #eee3d6}.bci-wr a{color:var(--red)!important;font-weight:700;text-decoration:none!important;white-space:nowrap}.bci-wr small{display:block;font-size:11px;color:#8a7f75;margin-top:2px}'
+    + '.bci-sw{display:block;width:100%;background:none;border:0;padding:4px 0;font:inherit;text-align:center;font-size:13.5px;color:#3d3833;cursor:pointer}.bci-sw b{color:#1f6b3d}.bci-sw u{color:#1f6b3d;font-weight:700;text-underline-offset:2px}'
+    + '.bci-sst{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid #eee5db;font-size:13.5px;line-height:1.4}.bci-sst span{flex:none;width:24px;height:24px;border-radius:50%;background:#2e7d4f;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}'
+    + '.bci-sfee{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.bci-sfee div{border:1px solid #e7ded4;border-radius:10px;padding:8px 10px;font-size:12px;color:#6b5d54}.bci-sfee b{display:block;color:#a74d4a;font-size:17px}'
+    + '.bci-gmf a{color:#a74d4a}'
     + '@media (max-width:767px){.bci-body{grid-template-columns:1fr;grid-template-areas:"info" "btns" "acc";gap:0}.bci-right{margin-top:16px}.bci-item{padding-bottom:40px;margin-bottom:40px}.bci-gal{margin-bottom:18px;border-radius:0}'
     + '.bci-acc{margin-top:18px}.bci-acc summary{font-size:19px;padding:15px 0}.bci-btn{min-height:54px}.bci-arr{width:36px;height:36px;line-height:36px;font-size:19px}}';
   var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -98,7 +108,26 @@
     if (e.target.closest && e.target.closest('.bci-q')) { e.preventDefault(); gm.classList.add('open'); }
     else if (e.target === gm || (e.target.closest && e.target.closest('.bci-gmx'))) gm.classList.remove('open');
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') gm.classList.remove('open'); });
+  var sm = document.createElement('div');
+  sm.className = 'bci-gm';
+  sm.innerHTML = '<div class="bci-gmb" role="dialog" aria-label="7-Day Swap"><button type="button" class="bci-gmx" aria-label="Close">&times;</button>'
+    + '<h3>7-Day Swap</h3><p class="sub">Doesn&rsquo;t fit or not loving it? Within 7 days of delivery or pickup, swap it for any couch we have, now or from our next drop.</p>'
+    + '<div class="bci-sst"><span>1</span>Text us within 7 days with a few photos.</div>'
+    + '<div class="bci-sst"><span>2</span>Pick a couch in stock or wait for the next drop.</div>'
+    + '<div class="bci-sst"><span>3</span>We pick up the old one and drop off the new one in one trip.</div>'
+    + '<div class="bci-sfee"><div><b>$99</b>Restocking fee</div><div><b>$199</b>Swap delivery</div></div>'
+    + '<p class="bci-gmf">Your credit is the couch price you paid. Pricier couch? Pay the difference + tax. Cheaper? The rest stays as credit for 30 days. No cash refunds. Couch must come back in the condition we delivered it. <a href="/policy">Full policy</a></p></div>';
+  document.body.appendChild(sm);
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.bci-sw')) { e.preventDefault(); sm.classList.add('open'); }
+    else if (e.target === sm || (e.target.closest && e.target.closest('.bci-gmx'))) sm.classList.remove('open');
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { gm.classList.remove('open'); sm.classList.remove('open'); } });
+  function tick() { Array.prototype.forEach.call(document.querySelectorAll('.bci-bf .cd'), function (el) {
+    var t = Date.parse(el.getAttribute('data-end')) - Date.now(); if (!(t > 0)) { el.textContent = 'Ends today'; return; }
+    var d = Math.floor(t / 864e5), h = Math.floor(t / 36e5) % 24, m = Math.floor(t / 6e4) % 60, x = Math.floor(t / 1e3) % 60, p = function (v) { return (v < 10 ? '0' : '') + v; };
+    el.textContent = (d ? d + 'd ' : '') + p(h) + ':' + p(m) + ':' + p(x); }); }
+  setInterval(tick, 1000);
 
   // Couch type for the filter pills: chairs/recliners, sectionals (incl. modulars), everything else is a sofa (sofas, loveseats, sets, sleepers).
   function kind(c) { var t = String(c.title || '');
@@ -111,7 +140,6 @@
     var per = Math.ceil(c.price * (1 + TAX) * (1 + FEE) / 4);
     var g = GRADE[c.grade];
     var photos = (c.photos || []).length ? c.photos : [];
-    var msg = 'Hi Billy, can I get a video tour of the ' + c.title + '? (A quick video or a live FaceTime works.)';
     var details = '<p>Delivery Pricing<br>&bull; Delivery within 50 miles of Pacific, MO: $' + fee + '<br>Further out? <a href="/contact">Contact Billy</a> for a quote.</p>'
       + '<p>Delivery pricing may increase for recliners, sleepers, or specialty deliveries.</p>'
       + (c.details.length ? '<p>' + c.details.map(esc).join('<br>') + '</p>' : '')
@@ -122,23 +150,22 @@
         + '</div>' + (photos.length > 1 ? '<button class="bci-arr l" aria-label="Previous photo">&#8249;</button><button class="bci-arr r" aria-label="Next photo">&#8250;</button><div class="bci-dots">' + photos.map(function (_, i) { return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join('') + '</div>' : '')
         + '</div>' : '')
       + '<div class="bci-body"><div class="bci-left">'
+      + '<span class="bci-pill"><i></i>In our showroom &middot; come sit on it</span>'
       + '<h2 class="bci-title">' + esc(c.title) + '</h2>'
-      + (c.was ? '<div class="bci-price">' + money(c.price) + '<s>' + money(c.was) + '</s><span class="bci-sale">BLACK FRIDAY &middot; $' + c.saleOff + ' OFF</span></div>' + (c.retail > c.price ? '<div class="bci-rt">Retail ' + money(c.retail) + ' &middot; You save ' + money(c.retail - c.price) + ' total</div>' : '')
-        : '<div class="bci-price">' + money(c.price) + (c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div>')
-      + (g ? '<div class="bci-grade"><span class="bci-badge" style="background:' + g[2] + '">Grade <b>' + c.grade + '</b> &middot; ' + g[0] + '</span><span class="bci-gtxt">' + g[1] + ' <button type="button" class="bci-q">What do grades mean?</button></span></div>' : '')
-      + '<div class="bci-k"><div class="bci-del"></div><div class="bci-km"><div class="bci-ki"><div class="bci-kr">Or 4 payments of <b>$' + per + '</b></div><div class="bci-kf">Incl. tax + 6% fee. Subject to approval.</div></div>'
-      + '<a class="bci-kb" href="' + ORDER_URL + '">Pay with Klarna</a></div>'
-      // Snap Finance (lease-to-own): catches the buyers Klarna turns down.
-      + '<div class="bci-kdiv"></div><div class="bci-km"><div class="bci-ki"><div class="bci-kr">Or lease-to-own with <b>Snap</b></div><div class="bci-kf">Approval looks beyond credit score. Lease-to-own, not a loan.</div></div>'
-      + '<a class="bci-kb bci-snap" href="https://bk.snapfinance.com/origination?paramId=3w%2FEWVFzVGcQioSdKn1vuqdr2hNr3A1xiMt4CtG%2BqOUszvGSlDph262lEkK1hZ0tog9ZSjNG2GyQln5HQrzShOzYiaK%2FnFnEZXfXtyBXVEw%3D" target="_blank" rel="noopener noreferrer">Apply</a></div></div>'
+      + '<div class="bci-price">' + money(c.price) + (c.was ? '<s>' + money(c.was) + '</s>' : c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div>'
+      + (c.was && c.retail > c.price ? '<div class="bci-rt">Retail ' + money(c.retail) + ' &middot; You save ' + money(c.retail - c.price) + '</div>' : '')
+      + '<div class="bci-pts">' + (g ? '<div class="bci-pt"><span class="dot" style="background:' + g[2] + '"></span>Grade ' + c.grade + ' &middot; ' + g[0] + ' <button type="button" class="bci-q">what&rsquo;s this?</button></div>' : '') + '<div class="bci-del"></div></div>'
+      + (c.was ? '<div class="bci-bf"><span><b>BLACK FRIDAY</b> &middot; $' + c.saleOff + ' off applied</span><span class="cd" data-end="' + esc(c.saleEnds || '') + '"></span></div>' : '')
       + '</div><div class="bci-accw"><div class="bci-acc"><details><summary>Details</summary><div class="in">' + details + '</div></details>'
       + '<details><summary>Imperfections</summary><div class="in">' + (c.imperfections.length ? (c.imperfections.length > 1 ? '<ul>' + c.imperfections.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(c.imperfections[0]) + '</p>') : '<p>None</p>') + '</div></details>'
       + '<details><summary>Dimensions</summary><div class="in"><p>' + (esc(c.dimensions) || 'Ask Billy for exact measurements.') + '</p><a class="bci-fitl" href="' + FIT_URL + '?couch=' + encodeURIComponent(c.id) + '">Will it fit your room? See it to scale &rarr;</a></div></details></div>'
       + '</div><div class="bci-right">'
       + '<a class="bci-btn bci-buy" href="' + ORDER_URL + '">Buy Now</a>'
       + '<a class="bci-btn bci-show" href="' + SHOWING_URL + '">Schedule a Showing</a>'
-      + '<a class="bci-swap" href="/policy"><span>&#128260;</span><span><b>7-Day Swap.</b> Doesn&rsquo;t fit? Swap it for another couch. Fees apply.</span><i>How it works</i></a>'
-      + '<div class="bci-ft"><span>Can\'t make it in?</span><a href="sms:' + PHONE + '?&body=' + encodeURIComponent(msg) + '"><svg viewBox="0 0 24 24" fill="none" stroke="#b0524c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>Request a video tour</a></div>'
+      + '<div class="bci-ways"><div class="bci-wh">WAYS TO PAY</div>'
+      + '<div class="bci-wr"><b>Pay in 4</b><span>4 &times; $' + per + ' with <b>Klarna</b>. <a href="' + ORDER_URL + '">Pay with Klarna &rarr;</a><small>Incl. tax + 6% fee. Subject to approval.</small></span></div>'
+      + '<div class="bci-wr"><b>No credit needed*</b><span>Lease-to-own. <a href="https://bk.snapfinance.com/origination?paramId=3w%2FEWVFzVGcQioSdKn1vuqdr2hNr3A1xiMt4CtG%2BqOUszvGSlDph262lEkK1hZ0tog9ZSjNG2GyQln5HQrzShOzYiaK%2FnFnEZXfXtyBXVEw%3D" target="_blank" rel="noopener noreferrer">Apply with Snap &rarr;</a><small>*Lease-to-own with Snap, not a loan. Not all applicants approved.</small></span></div></div>'
+      + '<button type="button" class="bci-sw">&#128260; <b>7-Day Swap</b> &middot; Doesn&rsquo;t fit? Swap it. <u>How it works</u></button>'
       + '</div></div></article>';
   }
 
@@ -205,7 +232,7 @@
       // Will it fit? sits at the end now (people scroll the couches first); each couch's Dimensions also links to it.
       + '<a class="bci-fit" href="' + FIT_URL + '"><svg viewBox="0 0 58 42"><rect x="1.5" y="1.5" width="55" height="39" fill="#fff" stroke="#1f1a17" stroke-width="2"/><path d="M12 3 H46 V12 H20 V30 H12 Z" fill="#b48f74"/><path d="M3 8 H11 M47 8 H55" stroke="#2e7d4f" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>'
       + '<div><b>Will it fit? Find out free.</b><span>Draw your room and try any of these couches, to scale.</span></div><i>Try it &rarr;</i></a>';
-    Array.prototype.forEach.call(root.querySelectorAll('.bci-gal'), slider);
+    Array.prototype.forEach.call(root.querySelectorAll('.bci-gal'), slider); tick();
     var ch = root.querySelector('.bci-chips'); if (ch) ch.addEventListener('click', function (e) { var b = e.target.closest('button[data-k]'); if (!b) return;
       var k = b.getAttribute('data-k'), n = 0; Array.prototype.forEach.call(ch.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
       Array.prototype.forEach.call(root.querySelectorAll('.bci-item'), function (el) { var show = k === 'all' || el.getAttribute('data-type') === k; el.style.display = show ? '' : 'none'; if (show) n++; });
