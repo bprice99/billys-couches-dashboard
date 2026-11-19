@@ -1399,9 +1399,9 @@ app.post('/api/txn/review', async (req, res) => {
   try {
     const inbox = (await kget(TXN.inbox, [])) || [], r = await txnRules(), exp = await kget(KEYS.expenses, []), ppl = (await kget(TXN.ppl, [])) || [];
     const todo = Array.isArray(req.body.items) ? req.body.items.slice(0, 300) : req.body.all ? inbox.filter(t => t.scope && !t.note && (t.suggest || t.scope === 'personal')).map(t => ({ id: t.id, scope: t.scope, cat: t.suggest || (t.scope === 'personal' ? 'otherOut' : ''), remember: false })) : [req.body];
-    let done = 0; const ign = (await kget(TXN.ignored, [])) || [];
+    let done = 0; const ign = (await kget(TXN.ignored, [])) || []; const amzN = (await kget(AMZ.notes, {})) || {};
     for (const q of todo) {
-      const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope; const note = String(q.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const i = inbox.findIndex(t => t.id === q.id); if (i < 0) continue; const t = inbox[i], scope = q.scope; const note = (String(q.note || '').replace(/\s+/g, ' ').trim() || amzN[t.id] || '').slice(0, 120);
       if (scope === 'business' && t.date < BIZ_FROM) { inbox.splice(i, 1); done++; continue; }   // before HQ tracked expenses: already on the tracker by hand
       if (scope === 'business') { const cat = BIZ_CATS.includes(q.cat) ? q.cat : ''; if (!cat) continue;
         exp.push({ id: 'tx_' + t.id, date: t.date, category: cat, amount: t.amount, vendor: t.name, notes: `${note ? note + ' · ' : ''}Auto · ${t.institution}${t.mask ? ' ••' + t.mask : ''}`, auto: true });
@@ -1419,13 +1419,14 @@ app.post('/api/txn/review', async (req, res) => {
 // Every synced transaction this month and where it went.
 app.get('/api/txn/all', async (req, res) => {
   try {
+    await amzApply().catch(() => {}); const amzNotes = (await kget(AMZ.notes, {})) || {};
     const [all, exp, ppl, inbox, ign, rules] = await Promise.all([kget(TXN.all, {}), kget(KEYS.expenses, []), kget(TXN.ppl, []), kget(TXN.inbox, []), kget(TXN.ignored, []), txnRules()]);
     const e = new Map((exp || []).filter(x => x.auto).map(x => [String(x.id).replace(/^tx_/, ''), x])), p = new Map((ppl || []).map(x => [x.id, x])), q = new Set((inbox || []).map(x => x.id)), g = new Set(ign || []);
     const month = (req.query.month || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }).slice(0, 7));
     const list = Object.values(all || {}).filter(t => t.date.startsWith(month)).map(t => {
       const x = e.get(t.id), y = p.get(t.id);
       const status = t.dupe ? 'Already on tracker' : x ? 'Business: ' + x.category : y ? 'Personal: ' + (PPL_CATS[y.cat] || y.cat) : q.has(t.id) ? 'In Review' : g.has(t.id) ? 'Ignored' : rules.vendors[vkey({ name: t.raw, merchant_name: t.name })] === 'ignore' ? 'Ignored by rule' : 'Not sorted';
-      const note = (y && y.note) || (x && x.notes && x.notes.includes(' · Auto') ? x.notes.split(' · Auto')[0] : '');
+      const note = (y && y.note) || (x && x.notes && x.notes.includes(' · Auto') ? x.notes.split(' · Auto')[0] : '') || amzNotes[t.id] || '';
       return { ...t, status, note, canRedo: !x && !y && !q.has(t.id) };
     }).sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
     res.json({ ok: true, list });
@@ -1494,6 +1495,88 @@ app.post('/api/txn/ppl', async (req, res) => {
     else if (cat === 'remove') l = l.filter(t => t.id !== x.id); else if (PPL_CATS[cat]) x.cat = cat;
     await kset(TXN.ppl, l); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ---------- Amazon item notes ----------
+// A Google Apps Script in Billy's Gmail posts each Amazon order email here. HQ pulls the order total + a 1-3 word
+// item name, matches it to the Amazon card charge (same amount, within ~10 days) and fills that transaction's note
+// (never overwrites a note Billy typed). Get the script at /api/amazon/script.
+const AMZ = { key: 'bcd:amzKey', orders: 'bcd:amzOrders', notes: 'bcd:amzNotes' };
+async function amzKey() { let k = await kget(AMZ.key, ''); if (!k) { k = crypto.randomBytes(18).toString('hex'); await kset(AMZ.key, k); } return k; }
+const isAmazon = t => /amazon|amzn/i.test((t.name || '') + ' ' + (t.raw || ''));
+function amzShortGuess(title) {
+  const stop = /^(the|a|an|for|with|and|of|by|pack|set|new|amazon|basics|premium|upgraded|\d+(pcs|pack|ct|count|oz|ft|in)?)$/i;
+  return String(title || '').replace(/["“”]/g, '').replace(/(\s[-–—]\s|[,(|:]).*$/, '').split(/\s+/).filter(w => w && !stop.test(w) && !/\d/.test(w)).slice(-3).join(' ');
+}
+async function amzRead(subject, body) {
+  const out = { orderId: (String(body).match(/\b\d{3}-\d{7}-\d{7}\b/) || [])[0] || '', total: 0, short: '' };
+  const tot = String(body).match(/(?:Order Total|Grand Total|Total)[^$\d]{0,30}\$\s?([\d,]+\.\d{2})/i); if (tot) out.total = Number(tot[1].replace(/,/g, ''));
+  const subj = String(subject).match(/Ordered:\s*["“]?(.+?)["”]?(?:\s+and \d+ more items?)?$/i); out.short = amzShortGuess(subj ? subj[1] : '');
+  try {
+    const model = (await dimsModels())[0]; if (!model) return out;
+    const j = await geminiQuick(model, [{ text: 'Amazon order email. Return JSON {"orderId": string, "total": number (order grand total charged, with tax, USD), "short": string (what was bought, 1-3 plain words like "Christmas Tree" or "Phone Charger"; if several items, name the main one)}.\nSubject: ' + subject + '\n\n' + String(body).slice(0, 6000) }]);
+    const t = (((j.candidates || [])[0] || {}).content || { parts: [] }).parts.map(x => x.text || '').join('');
+    const a = JSON.parse(t.replace(/^```(json)?|```$/g, '').trim());
+    if (a.orderId) out.orderId = String(a.orderId).slice(0, 40); if (Number(a.total) > 0) out.total = Math.round(Number(a.total) * 100) / 100;
+    if (a.short) out.short = String(a.short).replace(/\s+/g, ' ').trim().split(' ').slice(0, 3).join(' ').slice(0, 40);
+  } catch (e) { console.log('Amazon read (AI) failed, using basic read:', e.message); }
+  return out;
+}
+// Match unmatched orders to Amazon charges and fill notes that are still empty.
+async function amzApply() {
+  const [orders, all, notes, ppl, exp] = await Promise.all([kget(AMZ.orders, []), kget(TXN.all, {}), kget(AMZ.notes, {}), kget(TXN.ppl, []), kget(KEYS.expenses, [])]);
+  const used = new Set(Object.keys(notes || {})), tx = Object.values(all || {}).filter(isAmazon); let hit = 0, pplCh = false, expCh = false;
+  for (const o of orders || []) {
+    if (o.txId || !o.total || !o.short) continue;
+    const od = Date.parse(o.date || '') || 0;
+    const c = tx.filter(t => !used.has(t.id) && Math.abs(Math.abs(t.amount) - o.total) <= 0.02 && od && (Date.parse(t.date) - od) / 864e5 >= -2 && (Date.parse(t.date) - od) / 864e5 <= 10)
+      .sort((a, b) => Math.abs(Date.parse(a.date) - od) - Math.abs(Date.parse(b.date) - od))[0];
+    if (!c) continue;
+    o.txId = c.id; used.add(c.id); notes[c.id] = o.short; hit++;
+    const p = (ppl || []).find(x => x.id === c.id); if (p && !p.note) { p.note = o.short; pplCh = true; }
+    const e = (exp || []).find(x => x.id === 'tx_' + c.id); if (e && /^Auto ·/.test(e.notes || '')) { e.notes = o.short + ' · ' + e.notes; expCh = true; }
+  }
+  if (hit) await Promise.all([kset(AMZ.orders, orders), kset(AMZ.notes, notes), pplCh ? kset(TXN.ppl, ppl) : 0, expCh ? kset(KEYS.expenses, exp) : 0]);
+  return hit;
+}
+app.post('/public/amazon-order', async (req, res) => {
+  try {
+    const b = req.body || {}; if (!b.key || b.key !== await amzKey()) return res.status(403).json({ error: 'bad key' });
+    const orders = (await kget(AMZ.orders, [])) || [], mid = clean(b.id, 80);
+    if (orders.some(o => o.mid === mid)) return res.json({ ok: true, duplicate: true });
+    const r = await amzRead(clean(b.subject, 300), clean(b.body, 8000));
+    if (r.orderId && orders.some(o => o.orderId === r.orderId)) return res.json({ ok: true, duplicate: true });
+    orders.unshift({ mid, orderId: r.orderId, date: clean(b.date, 40), total: r.total, short: r.short, at: Date.now() });
+    await kset(AMZ.orders, orders.slice(0, 1500)); const hit = await amzApply().catch(() => 0);
+    res.json({ ok: true, total: r.total, short: r.short, matched: hit > 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/amazon/orders', async (req, res) => { try { await amzApply(); res.json({ ok: true, orders: ((await kget(AMZ.orders, [])) || []).slice(0, 100) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+// The Gmail script, with this HQ's key baked in. Open while logged in, copy everything, paste into script.google.com.
+app.get('/api/amazon/script', async (req, res) => {
+  const k = await amzKey();
+  res.type('text/plain').send(`// Billy's HQ: sends Amazon order emails to HQ so each Amazon charge gets a short item note.
+// Setup: script.google.com > New project > paste this > Save > pick "setup" in the top bar > Run > Allow.
+const HQ = '${PUBLIC_BASE}/public/amazon-order';
+const KEY = '${k}';
+function setup() {
+  ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('sendAmazonOrders').timeBased().everyHours(1).create();
+  sendAmazonOrders();
+}
+function sendAmazonOrders() {
+  const label = GmailApp.getUserLabelByName('HQ-amazon') || GmailApp.createLabel('HQ-amazon');
+  const threads = GmailApp.search('from:(auto-confirm@amazon.com) -label:HQ-amazon newer_than:45d', 0, 50);
+  threads.forEach(th => {
+    let ok = true;
+    th.getMessages().forEach(m => {
+      const r = UrlFetchApp.fetch(HQ, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        payload: JSON.stringify({ key: KEY, id: m.getId(), date: m.getDate().toISOString(), subject: m.getSubject(), body: m.getPlainBody().slice(0, 8000) }) });
+      if (r.getResponseCode() !== 200) ok = false;
+    });
+    if (ok) th.addLabel(label);
+  });
+}
+`);
 });
 // ===================== END AUTO EXPENSES =====================
 
@@ -1779,7 +1862,9 @@ async function salesLogRows() {
 // Every Sales Log order in the last 5 days becomes a pop-up. The couch comes from (1) what you picked in HQ,
 // (2) the couch marked Sold on the Sales Tracker for that order, else it says "a couch".
 // Sale window (same times as the public order app). While it runs, the Just Sold pop-up says how much each buyer saved.
-const SALE_WIN = { start: Date.parse(process.env.SALE_START || '2026-11-04T22:00:00-06:00'), end: Date.parse(process.env.SALE_END || '2026-11-06T23:59:00-06:00'), big: 250, small: 100, min: 999 };
+// Black Friday 2026: $150 off every website couch, Nov 18 6pm through Cyber Monday. The 4 Black Friday-priced couches keep their own price.
+const SALE_WIN = { start: Date.parse(process.env.SALE_START || '2026-11-18T18:00:00-06:00'), end: Date.parse(process.env.SALE_END || '2026-11-30T23:59:59-06:00'), big: Number(process.env.SALE_BIG || 150), small: Number(process.env.SALE_SMALL || 150), min: Number(process.env.SALE_MIN || 0) };
+const SALE_SKIP = new Set(String(process.env.SALE_SKIP || 'e5da102a0294,2ffd0f1748de,cce09a3338ea,56153d8a1b15').split(',').map(x => x.trim()).filter(Boolean));
 const saleLive = () => process.env.SALE !== 'off' && Date.now() >= SALE_WIN.start && Date.now() < SALE_WIN.end;
 const inSale = t => t >= SALE_WIN.start && t < SALE_WIN.end;
 const saleSaved = (salePrice, listPrice) => listPrice ? (listPrice >= SALE_WIN.min ? SALE_WIN.big : SALE_WIN.small) : (Number(salePrice) + SALE_WIN.big >= SALE_WIN.min ? SALE_WIN.big : SALE_WIN.small);
@@ -2693,7 +2778,7 @@ app.get('/public/inventory', async (req, res) => {
     const list = (await getDrops()).filter(d => d.status === 'live');
     // The sizing tool (?fit=1) also gets the brand-new sectionals so people can try them in their room.
     let bnFit = []; if (req.query.fit) { try { const st = await bnGet(); bnFit = BN_PRODUCTS.filter(p => bnCount(st, p.id) < p.units).map(p => ({ id: 'bn-' + p.id, title: p.name.replace(' 5-Piece', '') + ' (Brand New, ' + p.color + ')', price: bnLive() ? p.price : p.launch, retail: 0, pieces: p.pieces, shape: null, photos: ['/public/bn/' + (p.fitPhoto || p.photos[0])] })); } catch {} }
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...salePrice(d.price), retail: d.retail || 0, grade: d.grade || '',
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...(SALE_SKIP.has(d.id) ? { price: d.price } : salePrice(d.price)), retail: d.retail || 0, grade: d.grade || '',
       details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: null, photos: (d.photos || []).map(dropPhotoUrl) }))) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
