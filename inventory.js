@@ -65,6 +65,8 @@
     + '.bci-acc .in a{color:var(--red)}'
     + '.bci-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:60px;border-radius:300px;font-size:16px;text-decoration:none!important;margin:0 0 12px;transition:opacity .15s}'
     + '.bci-btn:hover{opacity:.9}.bci-buy{background:var(--red);color:#fff!important}.bci-show{border:1.5px solid var(--red);color:var(--red)!important;background:transparent}'
+    + '.bci-swap{display:flex;align-items:center;gap:8px;background:#f3f8f4;border:1px solid #cfe5d6;border-radius:10px;padding:9px 12px;font-size:13.5px;line-height:1.35;color:var(--ink)!important;text-decoration:none!important;margin:0 0 14px}'
+    + '.bci-swap b{color:#1f6b3d}.bci-swap i{margin-left:auto;font-style:normal;color:#1f6b3d;font-weight:700;white-space:nowrap;font-size:13px}'
     + '.bci-ft{text-align:center;font-size:14px;line-height:1.4;margin-top:6px}.bci-ft span{display:block;color:#777;font-size:13px;margin-bottom:2px}'
     + '.bci-ft a{color:#b0524c!important;font-weight:600;text-decoration:underline;text-underline-offset:3px}'
     + '.bci-ft svg{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:5px}'
@@ -135,6 +137,7 @@
       + '</div><div class="bci-right">'
       + '<a class="bci-btn bci-buy" href="' + ORDER_URL + '">Buy Now</a>'
       + '<a class="bci-btn bci-show" href="' + SHOWING_URL + '">Schedule a Showing</a>'
+      + '<a class="bci-swap" href="/policy"><span>&#128260;</span><span><b>7-Day Swap.</b> Doesn&rsquo;t fit? Swap it for another couch. Fees apply.</span><i>How it works</i></a>'
       + '<div class="bci-ft"><span>Can\'t make it in?</span><a href="sms:' + PHONE + '?&body=' + encodeURIComponent(msg) + '"><svg viewBox="0 0 24 24" fill="none" stroke="#b0524c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>Request a video tour</a></div>'
       + '</div></div></article>';
   }
