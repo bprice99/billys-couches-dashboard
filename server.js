@@ -2793,11 +2793,12 @@ app.get('/public/inventory', async (req, res) => {
 });
 // Public order app (order.billyscouches.com) reads this: everything a customer can buy right now,
 // including First Dibs couches that were emailed but aren't on the website yet.
+// ?sale=1 (team order app): prices with the live sale already taken off. Without it (public order app), full price.
 app.get('/public/orderable', async (req, res) => {
   dropCors(res);
   try {
     const list = (await getDrops()).filter(d => d.status === 'live' || d.status === 'emailed');
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, couches: list.map(d => ({ id: d.id, title: d.title, price: d.price, retail: d.retail || 0, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '' })) });
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, couches: list.map(d => ({ id: d.id, title: d.title, ...(req.query.sale === '1' ? bfPrice(d) : { price: d.price }), retail: d.retail || 0, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '' })) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
 // Private order app (team checkout): marks the couches it just sold as Sold in Drops, so they leave the
