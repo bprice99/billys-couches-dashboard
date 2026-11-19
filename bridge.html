@@ -6,7 +6,7 @@
 // the newest live couches (title, price, description, photos) so they can be posted without downloading anything.
 (async () => {
   const $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
-  const target = 'https://www.facebook.com';
+  const target = q.get('to') === 'cl' ? 'https://post.craigslist.org' : 'https://www.facebook.com';   // Craigslist posting uses the same helper
   if (!window.opener) { $('s').textContent = 'Open this from Facebook.'; return; }
   try {
     const d = (await fetch('/api/drops').then(r => r.json())).drops || [];
