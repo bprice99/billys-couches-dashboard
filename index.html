@@ -3782,7 +3782,7 @@ setInterval(() => load(), 5 * 60 * 1000);
 // iPhone: pin the bottom bar to the bottom of what's actually on screen (Safari can report a stale height).
 (function(){
   const vv = window.visualViewport; if (!vv) return;
-  const pin = () => { document.querySelectorAll('.mbar,.cbar').forEach(b => { if (getComputedStyle(b).position !== 'fixed') return; const a = document.activeElement, typing = a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && vv.height < window.innerHeight * 0.8; b.style.visibility = typing ? 'hidden' : ''; b.style.bottom = 'auto'; b.style.top = Math.round(vv.offsetTop + vv.height - b.offsetHeight) + 'px'; }); };
+  const pin = () => { document.querySelectorAll('.mbar,.cbar').forEach(b => { if (getComputedStyle(b).position !== 'fixed') return; const a = document.activeElement, typing = a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && vv.height < window.innerHeight * 0.8; b.style.visibility = typing ? 'hidden' : ''; b.style.bottom = ''; b.style.top = '';   // let CSS keep it on the bottom (the old JS pin could park it mid-screen) }); };
   vv.addEventListener('resize', pin); vv.addEventListener('scroll', pin); window.addEventListener('scroll', pin, { passive: true }); window.addEventListener('resize', pin);
   window.addEventListener('pageshow', () => setTimeout(pin, 100)); document.addEventListener('visibilitychange', () => setTimeout(pin, 100));
   document.addEventListener('focusin', () => setTimeout(pin, 300)); document.addEventListener('focusout', () => setTimeout(pin, 300));
