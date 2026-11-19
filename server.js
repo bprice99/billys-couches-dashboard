@@ -2599,7 +2599,7 @@ app.post('/public/fit', async (req, res) => {
     const pre = String(b.couch || '').replace(/[^a-z0-9]/gi, '').slice(0, 20); if (pre && !sess.meas.couch) sess.meas.couch = pre;
     Object.assign(sess, { name, first, phone, smsOk: b.smsOk !== false });
     await kset(fitKey(id), sess);
-    if (!old) { leads.push({ id, at: sess.at, name, phone, smsOk: sess.smsOk, page: clean(b.page, 120), couch: pre }); fitCount('signups'); await kset('bcd:fitLeads', leads.slice(-3000)); }
+    if (!old) { leads.push({ id, at: sess.at, name, phone, smsOk: sess.smsOk, page: clean(b.page, 120), couch: pre }); fitCount('signups'); await kset('bcd:fitLeads', leads.slice(-3000)); setTimeout(() => syncWarmLeads().catch(() => {}), 5000); }
     const sent = await sendText(phone, `Hi ${first}, it's Billy with Billy's Couches! Here's your free sizing tool. Tap any couch we have and see if it fits your space:\n${fitLink(id)}\n\nYour measurements save on that link, so come back when new couches land.`);
     if (!sent) { console.log('fit text failed', phone); return res.status(502).json({ error: "We couldn't text that number. Double-check it, or text Billy at (314) 899-7503." }); }
     res.json({ ok: true });
@@ -2839,6 +2839,8 @@ async function syncWarmLeads() {
       const inWin = x.status === 'canceled' ? x.at >= from && x.at <= to : (x.status === 'noshow' || x.status === 'showed') && x.at >= from && x.at <= now;
       if (inWin && (!want.has(x.phone) || want.get(x.phone).at < x.at)) want.set(x.phone, x);
     }
+    // Will It Fit leads (who didn't opt out of texts and haven't bought) stay on the list too.
+    try { ((await kget('bcd:fitLeads', [])) || []).forEach(l => { const phone = tmPhone(l.phone); if (!phone || l.smsOk === false || l.bought || buyers.has(phone) || want.has(phone)) return; want.set(phone, { at: Date.parse(l.at) || now, status: 'fit', phone, name: String(l.name || '') }); }); } catch {}
     const st = await kget('bcd:tmWarm', { listId: null, people: {} });
     if (!st.listId) {
       const f = await tmApi('GET', `/api/v2/lists/search?query=${encodeURIComponent(WARM_LIST)}&limit=50`);
@@ -3816,17 +3818,20 @@ async function jbBuild(date) {
   });
   const assign = jobs.flatMap(j => j.people.filter(x => x.name && x.name !== 'Billy').map(x => ({ name: x.name, hours: Math.round(x.hours * 100) / 100, job: j.id })));
   const weekTeam = jbTeam(s).map(p => ({ name: p.name, full: p.full, target: p.target, can: p.can, off: !!p.off, logged: hours[p.name].logged, planned: hours[p.name].planned, tomorrow: Math.round((add[p.name] || 0) * 10) / 10 }));
-  return { ok: true, date, mon, text: L.join('\n'), jobs, assign, team: weekTeam, missing, helpers: s.helpers, posted: board.posted || null, manual: s.jobs[date] || [], tg: !!(process.env.TG_BOT_TOKEN && process.env.TG_TEAM_CHAT) };
+  return { ok: true, date, mon, text: L.join('\n'), jobs, assign, team: weekTeam, missing, helpers: s.helpers, posted: board.posted || null, manual: s.jobs[date] || [], tg: !!(TG() && jbChat(s)), tgToken: !!TG(), tgCode: TG() && !jbChat(s) ? await jbCode(s) : '' };
 }
 
 const TG = () => (process.env.TG_BOT_TOKEN || '').trim();
+// The team group is linked by typing /connect <code> in it (code shows on the job board), or TG_TEAM_CHAT in Railway.
+const jbChat = s => String(process.env.TG_TEAM_CHAT || s.tgChat || '');
+async function jbCode(s) { if (!s.tgCode) { s.tgCode = crypto.randomBytes(3).toString('hex'); await kset(JB_KEY, s); } return s.tgCode; }
 async function tgCall(method, body) {
   const r = await fetch(`https://api.telegram.org/bot${TG()}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({})); if (!j.ok) throw new Error('Telegram: ' + (j.description || r.status)); return j.result;
 }
 async function jbPost(date) {
   const b = await jbBuild(date), s = await jbState();
-  if (TG() && process.env.TG_TEAM_CHAT) await tgCall('sendMessage', { chat_id: process.env.TG_TEAM_CHAT, text: b.text });
+  if (TG() && jbChat(s)) await tgCall('sendMessage', { chat_id: jbChat(s), text: b.text });
   s.boards[date] = { ...(s.boards[date] || {}), posted: Date.now(), assign: b.assign, text: b.text };
   await kset(JB_KEY, s);
   return b;
@@ -3875,6 +3880,8 @@ app.post('/public/tg/:hook', async (req, res) => {
   res.json({ ok: true });
   try {
     if (!TG() || req.params.hook !== TG_HOOK()) return;
+    const msg = (req.body || {}).message, cm = msg && String(msg.text || '').match(/^\/connect(?:@\w+)?\s+([a-f0-9]{6})\b/i);
+    if (cm) { const s = await jbState(); if (s.tgCode && cm[1].toLowerCase() === s.tgCode) { s.tgChat = String(msg.chat.id); s.tgChatName = clean(msg.chat.title || '', 80); delete s.tgCode; await kset(JB_KEY, s); await tgCall('sendMessage', { chat_id: msg.chat.id, text: "✅ Connected. Billy's daily job board will post here." }); } return; }
     const cb = (req.body || {}).callback_query; if (!cb || !/^jbpost:\d{4}-\d{2}-\d{2}$/.test(cb.data || '')) return;
     if (String(cb.from && cb.from.id) !== String(process.env.TG_BILLY_CHAT || '')) return tgCall('answerCallbackQuery', { callback_query_id: cb.id, text: 'Only Billy can post this.' });
     const date = cb.data.slice(7), s = await jbState();
@@ -3884,7 +3891,7 @@ app.post('/public/tg/:hook', async (req, res) => {
     await tgCall('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, reply_markup: { inline_keyboard: [[{ text: '✅ Posted', callback_data: 'noop' }]] } });
   } catch (e) { console.log('[job board] telegram button failed:', e.message); }
 });
-if (TG()) setTimeout(() => tgCall('setWebhook', { url: `${PUBLIC_BASE}/public/tg/${TG_HOOK()}`, allowed_updates: ['callback_query'] }).then(() => console.log('[job board] Telegram button ready')).catch(e => console.log('[job board]', e.message)), 20000);
+if (TG()) setTimeout(() => tgCall('setWebhook', { url: `${PUBLIC_BASE}/public/tg/${TG_HOOK()}`, allowed_updates: ['callback_query', 'message'] }).then(() => console.log('[job board] Telegram button ready')).catch(e => console.log('[job board]', e.message)), 20000);
 
 function demoData() {
   const H = ['Date', 'Source', 'Customer', 'Phone', 'Payment', 'Order Type', 'ZIP', 'Tax Rate', 'Couch Price',
