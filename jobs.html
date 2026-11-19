@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Job Board · Billy's HQ</title><link rel="icon" href="/favicon.png">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#efe9e2;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b1d16}
+header{background:#111;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px}header a{color:#e8b44a;text-decoration:none;font-size:14px}header h1{font-size:17px;margin:0;flex:1}
+.w{max-width:1050px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.lbl{font-size:12px;font-weight:800;color:#8f2b23;letter-spacing:1px;text-transform:uppercase;margin:4px 0 8px}
+.card{background:#fff;border-radius:12px;padding:14px;border:1px solid #e6dccf;margin-bottom:14px}
+.tg{background:#eaf6dc;border-radius:12px;padding:14px;font-size:14px;line-height:1.5;white-space:pre-wrap}
+.btn{border:0;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer}.ok{background:#1f6b3d;color:#fff;width:100%}.sec{background:#fff;border:1.5px solid #2b1d16}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}.row b{min-width:110px;font-size:14px}
+select,input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid #ccc;border-radius:8px;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid #eee;text-align:left;vertical-align:middle}th{font-size:11px;color:#8a8078;text-transform:uppercase}
+.bar{height:8px;background:#eee;border-radius:9px;overflow:hidden;width:80px}.bar i{display:block;height:100%;background:#e8b44a}.bar.low i{background:#c0392b}
+.small{font-size:12.5px;color:#5d524b}.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:2px 7px;background:#f3ece2;margin:1px}
+.tag.on{background:#2b1d16;color:#fff;cursor:pointer}.tag.offt{cursor:pointer}.warn{background:#fff4e0;border:1px solid #e8b44a;border-radius:10px;padding:10px;font-size:13px;margin-bottom:12px}
+.posted{background:#e3f1e8;color:#1f6b3d;border-radius:10px;padding:10px;font-weight:700;font-size:14px;margin-top:10px}
+.jobh{font-weight:800;font-size:13px;margin:12px 0 4px}.x{color:#8f2b23;cursor:pointer;font-size:12px;margin-left:6px}
+@media(max-width:780px){.w{grid-template-columns:1fr}}
+</style></head><body>
+<header><a href="/">← HQ</a><h1>Daily Job Board</h1><input type="date" id="date"></header>
+<div class="w">
+<div>
+  <p class="lbl">What the team will see</p>
+  <div class="tg" id="txt">Loading…</div>
+  <div style="margin-top:10px" id="act"></div>
+  <p class="lbl" style="margin-top:20px">Who's on each job (tap to swap)</p>
+  <div class="card" id="jobs"></div>
+  <p class="lbl">Add a job</p>
+  <div class="card">
+    <div class="row"><select id="jk"><option value="clean">Cleaning</option><option value="truck">Truckload</option><option value="warehouse">Warehouse work</option></select>
+    <input type="time" id="jt" value="16:00"><input type="number" id="jh" value="2" min="0.5" step="0.5" style="width:64px" title="Hours"> hrs</div>
+    <div class="row"><input type="number" id="jp" value="1" min="1" max="4" style="width:56px"> people · <input type="number" id="jc" value="1" min="1" style="width:56px"> couches/items</div>
+    <div class="row"><input id="jn" placeholder="Note (optional)" style="flex:1"><button class="btn sec" id="jadd">Add</button></div>
+  </div>
+</div>
+<div>
+  <p class="lbl">Team hours this week</p>
+  <div id="miss"></div>
+  <div class="card"><table id="team"></table>
+  <p class="small">Target = hours you want them to get each week. "Can do" tags: tap to turn a job on/off for that person. Hours come from the work log; approved days not logged yet count as planned.</p>
+  <div class="row small">Helpers per delivery run: <select id="helpers"><option>0</option><option>1</option><option>2</option><option>3</option></select></div></div>
+  <div class="card small"><b>How it picks:</b> for each spot it skips anyone with a red "Unavailable" block on the Billy's Couches calendar at that time, skips anyone who can't do that job, then gives it to whoever is furthest below their weekly target. Ties go to whoever worked least the last 2 weeks. At 7pm you get a text to approve tomorrow's board. Nothing posts on its own.</div>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id), ROLES={drive:'Driver',help:'Helper',host:'Host',clean:'Cleaner',truck:'Truckload',warehouse:'Warehouse'};
+const KIND={run:'🚚 Delivery run',pick:'📦 Pickups',show:'🏠 Showings',clean:'🧽 Cleaning',truck:'🚛 Truckload',warehouse:'🏭 Warehouse work'};
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let B=null;
+const fmt=ms=>new Date(ms).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'});
+async function api(u,body){const r=await fetch(u,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:$('date').value,...body})}:{});const j=await r.json();if(!r.ok){alert(j.error||'Error');throw 0}return j}
+async function load(){render(await api('/api/jobboard?date='+$('date').value))}
+function render(b){B=b;$('txt').textContent=b.text;$('helpers').value=b.helpers;
+ $('act').innerHTML=b.posted?`<div class="posted">✅ Posted ${new Date(b.posted).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'})}</div><button class="btn sec" style="width:100%;margin-top:8px" id="post">${b.tg?'Post again':'Copy again'}</button>`
+  :`<button class="btn ok" id="post">${b.tg?'✅ Post to team Telegram':'✅ Approve + copy for Telegram'}</button>${b.tg?'':'<p class="small">Auto-posting turns on once the Telegram bot is connected. For now this copies the board so you paste it in the group.</p>'}`;
+ $('post').onclick=post;
+ $('jobs').innerHTML=b.jobs.length?b.jobs.map(j=>`<div class="jobh">${KIND[j.kind]||j.kind} · ${fmt(j.start)}–${fmt(j.end)} (${j.count})${j.manual?` <span class="x" data-rm="${j.id}">remove</span>`:''}</div>`+
+  j.people.map(p=>`<div class="row"><b>${esc(p.label)}</b><select data-key="${p.key}"><option value="__auto">Auto${p.auto&&p.name?' ('+esc(p.name)+')':''}</option>${[...new Set([...p.options,...(p.name&&!p.options.includes(p.name)?[p.name]:[])])].map(n=>`<option ${!p.auto&&n===p.name?'selected':''}>${esc(n)}</option>`).join('')}<option value="" ${!p.auto&&!p.name?'selected':''}>Nobody</option></select>${!p.name?'<span class="small" style="color:#c0392b">nobody free</span>':''}</div>`).join('')).join(''):'<p class="small">No deliveries, pickups or showings on the calendar for this day yet.</p>';
+ document.querySelectorAll('[data-key]').forEach(s=>s.onchange=async()=>render(await api('/api/jobboard/pick',s.value==='__auto'?{key:s.dataset.key,auto:true}:{key:s.dataset.key,name:s.value})));
+ document.querySelectorAll('[data-rm]').forEach(s=>s.onclick=async()=>render(await api('/api/jobboard/job',{remove:s.dataset.rm})));
+ $('team').innerHTML='<tr><th>Team</th><th>Target</th><th>Week</th><th></th><th>Next day</th><th>Can do</th></tr>'+b.team.map(t=>{const tot=t.logged+t.planned,pct=Math.min(100,t.target?tot/t.target*100:0);
+  return `<tr style="${t.off?'opacity:.45':''}"><td><b>${esc(t.name)}</b><br><span class="tag offt" data-off="${t.name}">${t.off?'paused':'active'}</span></td><td><input type="number" value="${t.target}" min="0" max="40" style="width:56px" data-tgt="${t.name}"></td><td>${tot.toFixed(1)}${t.planned?`<br><span class="small">${t.planned} planned</span>`:''}</td><td><div class="bar ${pct<50?'low':''}"><i style="width:${pct}%"></i></div></td><td>${t.tomorrow||''}</td><td>${Object.keys(ROLES).map(r=>`<span class="tag ${t.can.includes(r)?'on':''}" data-can="${t.name}" data-r="${r}">${ROLES[r]}</span>`).join('')}</td></tr>`}).join('');
+ document.querySelectorAll('[data-tgt]').forEach(i=>i.onchange=async()=>render(await api('/api/jobboard/settings',{name:i.dataset.tgt,target:i.value})));
+ document.querySelectorAll('[data-off]').forEach(i=>i.onclick=async()=>{const t=b.team.find(x=>x.name===i.dataset.off);render(await api('/api/jobboard/settings',{name:t.name,off:!t.off}))});
+ document.querySelectorAll('[data-can]').forEach(i=>i.onclick=async()=>{const t=b.team.find(x=>x.name===i.dataset.can),r=i.dataset.r,can=t.can.includes(r)?t.can.filter(x=>x!==r):[...t.can,r];render(await api('/api/jobboard/settings',{name:t.name,can}))});
+ $('miss').innerHTML=b.missing.length?`<div class="warn">⚠️ No hours logged yet: ${b.missing.map(m=>esc(m.name)+' ('+m.date.slice(5).replace('-','/')+')').join(', ')}. Until they log, the board counts their planned hours.</div>`:'';
+}
+async function post(){if(!B.tg){try{await navigator.clipboard.writeText(B.text)}catch(e){}}
+ const r=await api('/api/jobboard/post',{});render(r);if(!r.tg)alert('Copied. Paste it in the team Telegram group.')}
+$('helpers').onchange=async()=>render(await api('/api/jobboard/settings',{helpers:$('helpers').value}));
+$('jadd').onclick=async()=>render(await api('/api/jobboard/job',{kind:$('jk').value,time:$('jt').value,hours:$('jh').value,people:$('jp').value,count:$('jc').value,note:$('jn').value}));
+const q=new URLSearchParams(location.search).get('date');
+$('date').value=q||new Date(Date.now()+864e5).toLocaleDateString('en-CA',{timeZone:'America/Chicago'});
+$('date').onchange=load;load();
+</script></body></html>
