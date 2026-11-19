@@ -3710,6 +3710,182 @@ app.get('/public/team-pay', async (req, res) => {
 });
 
 // ---------- demo data (only before SHEETS_API_URL is set) ----------
+// ===================================================================
+// DAILY JOB BOARD (hq.billyscouches.com/jobs)
+// HQ builds tomorrow's job board from the Billy's Couches calendar and spreads hours evenly:
+// each spot goes to whoever (1) has no red "Unavailable" block at that time, (2) can do that job,
+// (3) is furthest below their weekly hours target (hours from the work log). Ties go to whoever
+// worked least in the last 2 weeks. At 7pm Billy gets a text/Telegram to approve; nothing posts on its own.
+// Telegram posting turns on when TG_BOT_TOKEN + TG_TEAM_CHAT (+ TG_BILLY_CHAT for the 7pm DM) are in Railway.
+// ===================================================================
+const JB_KEY = 'bcd:jobBoard';
+const JB_TEAM = {
+  Zach: { full: 'Zach Pierce', target: 22, can: ['drive', 'host', 'warehouse'] },
+  Luke: { full: 'Luke Peters', target: 10, can: ['help', 'truck', 'warehouse'] },
+  Joey: { full: 'Joey Menendez', target: 10, can: ['help', 'truck', 'warehouse'] },
+  Collin: { full: 'Collin Comer', target: 10, can: ['clean', 'help'] },
+  Finley: { full: 'Finley Lotzin', target: 12, can: ['clean', 'help'] },
+  Gunnarr: { full: 'Gunnarr Caldwell', target: 10, can: ['help', 'clean'] },
+};
+const JB_ROLES = { drive: 'Driver', help: 'Helper', host: 'Host', clean: 'Cleaner', truck: 'Truckload Help', warehouse: 'Warehouse' };
+const JB_MANUAL = { clean: { label: 'CLEANINGS', icon: '🧽', role: 'clean' }, truck: { label: 'TRUCKLOAD', icon: '🚛', role: 'truck' }, warehouse: { label: 'WAREHOUSE WORK', icon: '🏭', role: 'warehouse' } };
+async function jbState() { const s = (await kget(JB_KEY, {})) || {}; s.team = s.team || {}; s.jobs = s.jobs || {}; s.boards = s.boards || {}; s.helpers = s.helpers || 1; return s; }
+const jbTeam = s => Object.keys(JB_TEAM).map(n => ({ name: n, ...JB_TEAM[n], ...(s.team[n] || {}) }));
+const jbMin = ms => { const p = ctParts(new Date(ms)); return +p.hour * 60 + +p.minute; };
+const jbTime = ms => { const m = jbMin(ms), h = Math.floor(m / 60), mm = m % 60; return (h % 12 || 12) + (mm ? ':' + String(mm).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm'); };
+const jbMon = ymd => { const t = new Date(ymd + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+const jbAdd = (ymd, n) => { const t = new Date(ymd + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const jbWho = (entryName, n) => lc(entryName).split(/\s+/)[0].replace(/[^a-z]/g, '') === lc(n) || (lc(n) === 'gunnarr' && /^gunnar/.test(lc(entryName)));
+
+// The jobs on one day: delivery run (from the calendar), pickups outside the run, showings, plus jobs Billy adds.
+async function jbJobs(date, s) {
+  const g = await google(false).catch(() => ({}));
+  const on = iso => ctYmd(new Date(iso)) === date, isPick = t => /pick\s*-?\s*up/i.test(t || '');
+  const rows = (g.deliveries || []).filter(r => on(r[0]) && !/cancel/i.test(r[2] || ''));
+  const dels = rows.filter(r => !isPick(r[2])), picks = rows.filter(r => isPick(r[2]));
+  const jobs = [];
+  let run = null;
+  if (dels.length) {
+    run = { id: 'run', kind: 'run', start: Math.min(...dels.map(r => Date.parse(r[0]))) - 30 * 60e3, end: Math.max(...dels.map(r => Date.parse(r[1]))), count: dels.length,
+      slots: ['drive', ...Array(Math.max(0, Number(s.helpers) || 1)).fill('help')] };
+    jobs.push(run);
+  }
+  const loose = picks.filter(r => !run || Date.parse(r[0]) < run.start || Date.parse(r[0]) >= run.end);
+  if (loose.length) jobs.push({ id: 'pick', kind: 'pick', start: Math.min(...loose.map(r => Date.parse(r[0]))) - 15 * 60e3, end: Math.max(...loose.map(r => Date.parse(r[1]))), count: loose.length, slots: ['warehouse'] });
+  const shows = (g.showings || []).filter(r => on(r[0]) && !/cancel|no.?show/i.test(r[1] || ''));
+  if (shows.length) jobs.push({ id: 'show', kind: 'show', start: Math.min(...shows.map(r => Date.parse(r[0]))), end: Math.max(...shows.map(r => Date.parse(r[0]))) + 20 * 60e3, count: shows.length, slots: ['host'] });
+  (s.jobs[date] || []).forEach(j => {
+    const [h, m] = String(j.time || '16:00').split(':').map(Number), st = ctAt(date, h * 60 + (m || 0)).getTime();
+    jobs.push({ id: j.id, kind: j.kind, manual: true, start: st, end: st + (Number(j.hours) || 2) * 3600e3, count: Number(j.count) || 1, note: j.note || '', slots: Array(Math.max(1, Number(j.people) || 1)).fill(JB_MANUAL[j.kind] ? JB_MANUAL[j.kind].role : j.kind) });
+  });
+  jobs.sort((a, b) => a.start - b.start);
+  return { jobs, pickups: picks.length, unavail: g.unavail || [] };
+}
+
+// Hours this week per person: logged hours, plus approved-board hours on days they haven't logged yet.
+async function jbHours(date, s) {
+  const mon = jbMon(date), log = await workLog(false).catch(() => ({ entries: [] })), out = {}, missing = [];
+  const today = ctYmd(new Date()), from14 = jbAdd(date, -14);
+  for (const p of jbTeam(s)) {
+    const mine = (log.entries || []).filter(e => jbWho(e.name, p.name));
+    const loggedDays = new Set(mine.map(e => e.date));
+    let hrs = mine.filter(e => e.date >= mon && e.date < date).reduce((a, e) => a + (Number(e.hours) || 0), 0), planned = 0, recent = mine.filter(e => e.date >= from14 && e.date < date).reduce((a, e) => a + (Number(e.hours) || 0), 0);
+    Object.entries(s.boards).forEach(([d, b]) => {
+      if (!b.posted || !b.assign || d >= date || loggedDays.has(d)) return;
+      const h = b.assign.filter(a => a.name === p.name).reduce((x, a) => x + a.hours, 0); if (!h) return;
+      if (d >= mon) planned += h; if (d >= from14) recent += h;
+      if (d < today) missing.push({ name: p.name, date: d });
+    });
+    out[p.name] = { logged: Math.round(hrs * 10) / 10, planned: Math.round(planned * 10) / 10, total: hrs + planned, recent };
+  }
+  return { hours: out, missing, mon };
+}
+
+async function jbBuild(date) {
+  const s = await jbState(), team = jbTeam(s).filter(p => !p.off), { jobs, pickups, unavail } = await jbJobs(date, s), { hours, missing, mon } = await jbHours(date, s);
+  const board = s.boards[date] || {}, pick = board.pick || {}, busy = {}, add = {};
+  const blocked = (n, a, b) => unavail.some(([st, en, title]) => new RegExp('\\b' + n + '\\b', 'i').test(title || '') && Date.parse(st) < b && Date.parse(en) > a);
+  const why = {};
+  for (const j of jobs) {
+    j.people = j.slots.map((role, i) => {
+      const key = j.id + ':' + i, hrs = (j.end - j.start) / 3600e3;
+      const free = team.filter(p => p.can.includes(role) && !blocked(p.name, j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
+      const score = p => ((hours[p.name].total + (add[p.name] || 0)) / Math.max(1, p.target));
+      free.sort((a, b) => score(a) - score(b) || hours[a.name].recent - hours[b.name].recent || a.name.localeCompare(b.name));
+      let name = Object.prototype.hasOwnProperty.call(pick, key) ? pick[key] : (free[0] ? free[0].name : (role === 'host' ? 'Billy' : ''));
+      if (name && name !== 'Billy') { (busy[name] = busy[name] || []).push([j.start, j.end]); add[name] = (add[name] || 0) + hrs; }
+      return { key, role, label: JB_ROLES[role] || role, name, hours: hrs, auto: !Object.prototype.hasOwnProperty.call(pick, key), options: free.map(p => p.name).concat(role === 'host' ? ['Billy'] : []) };
+    });
+  }
+  const full = n => n === 'Billy' ? 'Billy' : n ? ((jbTeam(s).find(p => p.name === n) || {}).full || n) : '';
+  const d = new Date(date + 'T12:00:00Z'), line = '__________________________';
+  const L = [`📋 Billy's Couches — Daily Job Board`, `📅 ${d.getUTCMonth() + 1}/${d.getUTCDate()}/${String(d.getUTCFullYear()).slice(2)}`, line];
+  const run = jobs.find(j => j.kind === 'run'), pk = jobs.find(j => j.kind === 'pick'), sh = jobs.find(j => j.kind === 'show');
+  L.push(`🚚 DELIVERIES: ${run ? run.count : ''}`, `📦 PICKUPS: ${pickups || ''}`);
+  if (run) { run.people.forEach(x => L.push(`👤 ${x.label}: ${full(x.name)}`)); L.push(`⏰ Start Time: ${jbTime(run.start)}`); }
+  if (pk) { pk.people.forEach(x => L.push(`👤 Pickup Help: ${full(x.name)}`)); L.push(`⏰ Pickup Time: ${jbTime(pk.start + 15 * 60e3)}`); }
+  if (!run && !pk) L.push('👤 Driver:', '⏰ Start Time:');
+  L.push(line, `🏠 WAREHOUSE SHOWINGS: ${sh ? sh.count : ''}`);
+  if (sh) { L.push(`👤 Host: ${full(sh.people[0].name)}`, `⏰ Start Time: ${jbTime(sh.start)}`); } else L.push('👤 Host:', '⏰ Start Time:');
+  Object.entries(JB_MANUAL).forEach(([k, m]) => {
+    const list = jobs.filter(j => j.kind === k);
+    if (!list.length && k !== 'clean') return;
+    L.push(line, `${m.icon} ${m.label}: ${list.reduce((a, j) => a + j.count, 0) || ''}`);
+    if (!list.length) L.push(`👤 ${JB_ROLES[m.role]}:`, '⏰ Start Time:');
+    list.forEach(j => { j.people.forEach(x => L.push(`👤 ${x.label}: ${full(x.name)}`)); L.push(`⏰ Start Time: ${jbTime(j.start)}` + (j.note ? `\n📝 ${j.note}` : '')); });
+  });
+  const assign = jobs.flatMap(j => j.people.filter(x => x.name && x.name !== 'Billy').map(x => ({ name: x.name, hours: Math.round(x.hours * 100) / 100, job: j.id })));
+  const weekTeam = jbTeam(s).map(p => ({ name: p.name, full: p.full, target: p.target, can: p.can, off: !!p.off, logged: hours[p.name].logged, planned: hours[p.name].planned, tomorrow: Math.round((add[p.name] || 0) * 10) / 10 }));
+  return { ok: true, date, mon, text: L.join('\n'), jobs, assign, team: weekTeam, missing, helpers: s.helpers, posted: board.posted || null, manual: s.jobs[date] || [], tg: !!(process.env.TG_BOT_TOKEN && process.env.TG_TEAM_CHAT) };
+}
+
+const TG = () => (process.env.TG_BOT_TOKEN || '').trim();
+async function tgCall(method, body) {
+  const r = await fetch(`https://api.telegram.org/bot${TG()}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})); if (!j.ok) throw new Error('Telegram: ' + (j.description || r.status)); return j.result;
+}
+async function jbPost(date) {
+  const b = await jbBuild(date), s = await jbState();
+  if (TG() && process.env.TG_TEAM_CHAT) await tgCall('sendMessage', { chat_id: process.env.TG_TEAM_CHAT, text: b.text });
+  s.boards[date] = { ...(s.boards[date] || {}), posted: Date.now(), assign: b.assign, text: b.text };
+  await kset(JB_KEY, s);
+  return b;
+}
+const jbTomorrow = () => jbAdd(ctYmd(new Date()), 1);
+const jbDate = q => /^\d{4}-\d{2}-\d{2}$/.test(q || '') ? q : jbTomorrow();
+
+app.get('/jobs', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, authed(req) ? 'jobs.html' : 'login.html')));
+app.get('/api/jobboard', async (req, res) => { try { res.json(await jbBuild(jbDate(req.query.date))); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/jobboard/pick', async (req, res) => {
+  try { const b = req.body || {}, date = jbDate(b.date), s = await jbState(); s.boards[date] = s.boards[date] || {}; const p = s.boards[date].pick = s.boards[date].pick || {};
+    if (b.auto) delete p[b.key]; else p[String(b.key)] = clean(b.name, 30); await kset(JB_KEY, s); res.json(await jbBuild(date)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/jobboard/job', async (req, res) => {
+  try { const b = req.body || {}, date = jbDate(b.date), s = await jbState(), list = s.jobs[date] = s.jobs[date] || [];
+    if (b.remove) s.jobs[date] = list.filter(j => j.id !== b.remove);
+    else { if (!JB_MANUAL[b.kind]) return res.status(400).json({ error: 'Pick a job type' }); if (!/^\d{1,2}:\d{2}$/.test(b.time || '')) return res.status(400).json({ error: 'Pick a start time' });
+      list.push({ id: 'j' + Date.now().toString(36), kind: b.kind, time: b.time, hours: Math.min(12, Math.max(0.5, Number(b.hours) || 2)), people: Math.min(4, Math.max(1, Number(b.people) || 1)), count: Math.max(1, Number(b.count) || 1), note: clean(b.note, 120) }); }
+    await kset(JB_KEY, s); res.json(await jbBuild(date)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/jobboard/settings', async (req, res) => {
+  try { const b = req.body || {}, s = await jbState();
+    if (b.helpers != null) s.helpers = Math.min(3, Math.max(0, Number(b.helpers) || 0));
+    if (b.name && JB_TEAM[b.name]) { const t = s.team[b.name] = s.team[b.name] || {};
+      if (b.target != null) t.target = Math.min(40, Math.max(0, Number(b.target) || 0));
+      if (Array.isArray(b.can)) t.can = b.can.filter(r => JB_ROLES[r]);
+      if (b.off != null) t.off = !!b.off; }
+    await kset(JB_KEY, s); res.json(await jbBuild(jbDate(b.date))); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/jobboard/post', async (req, res) => { try { res.json({ ...(await jbPost(jbDate((req.body || {}).date))), justPosted: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
+
+// 7pm Central: tell Billy tomorrow's board is ready (Telegram DM with a Post button if set up, otherwise a text).
+setInterval(async () => {
+  try {
+    const p = ctParts(new Date()); if (+p.hour < 19 || +p.hour >= 22 || process.env.JOBBOARD === 'off') return;
+    const date = jbTomorrow(), s = await jbState(); if ((s.boards[date] || {}).notified || (s.boards[date] || {}).posted) return;
+    s.boards[date] = { ...(s.boards[date] || {}), notified: Date.now() }; await kset(JB_KEY, s);
+    const b = await jbBuild(date), link = `${PUBLIC_BASE}/jobs?date=${date}`;
+    if (TG() && process.env.TG_BILLY_CHAT) await tgCall('sendMessage', { chat_id: process.env.TG_BILLY_CHAT, text: `Tomorrow's job board is ready:\n\n${b.text}`, reply_markup: { inline_keyboard: [[{ text: '✅ Post to team', callback_data: 'jbpost:' + date }, { text: '🔁 Swap someone', url: link }]] } });
+    else await textAlert(`Tomorrow's job board is ready. Tap to check it and post it to the team: ${link}`);
+  } catch (e) { console.log('[job board] 7pm notice failed:', e.message); }
+}, 10 * 60 * 1000);
+// Telegram "Post to team" button (only Billy's chat can press it).
+const TG_HOOK = () => crypto.createHash('sha256').update('tg:' + TG()).digest('hex').slice(0, 24);
+app.post('/public/tg/:hook', async (req, res) => {
+  res.json({ ok: true });
+  try {
+    if (!TG() || req.params.hook !== TG_HOOK()) return;
+    const cb = (req.body || {}).callback_query; if (!cb || !/^jbpost:\d{4}-\d{2}-\d{2}$/.test(cb.data || '')) return;
+    if (String(cb.from && cb.from.id) !== String(process.env.TG_BILLY_CHAT || '')) return tgCall('answerCallbackQuery', { callback_query_id: cb.id, text: 'Only Billy can post this.' });
+    const date = cb.data.slice(7), s = await jbState();
+    if ((s.boards[date] || {}).posted) return tgCall('answerCallbackQuery', { callback_query_id: cb.id, text: 'Already posted.' });
+    await jbPost(date);
+    await tgCall('answerCallbackQuery', { callback_query_id: cb.id, text: 'Posted to the team ✅' });
+    await tgCall('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, reply_markup: { inline_keyboard: [[{ text: '✅ Posted', callback_data: 'noop' }]] } });
+  } catch (e) { console.log('[job board] telegram button failed:', e.message); }
+});
+if (TG()) setTimeout(() => tgCall('setWebhook', { url: `${PUBLIC_BASE}/public/tg/${TG_HOOK()}`, allowed_updates: ['callback_query'] }).then(() => console.log('[job board] Telegram button ready')).catch(e => console.log('[job board]', e.message)), 20000);
+
 function demoData() {
   const H = ['Date', 'Source', 'Customer', 'Phone', 'Payment', 'Order Type', 'ZIP', 'Tax Rate', 'Couch Price',
     'Discount', 'Delivery', 'Subtotal', 'Tax', 'Fee', 'Total', 'Receipt', 'Add-Ons', 'Add-Ons $'];
