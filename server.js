@@ -65,7 +65,7 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
   // The sizing tool's "Arrange pieces" screen opens inside HQ itself, so /fit may be framed by HQ (same site only).
-  if (req.path === '/fit') res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  if (req.path === '/fit' || req.path === '/jobs') res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   else if (!req.path.startsWith('/public/') && req.path !== '/brand-new') res.setHeader('X-Frame-Options', 'DENY');
   next();
 });
