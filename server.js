@@ -2778,7 +2778,7 @@ app.get('/public/inventory', async (req, res) => {
     const list = (await getDrops()).filter(d => d.status === 'live');
     // The sizing tool (?fit=1) also gets the brand-new sectionals so people can try them in their room.
     let bnFit = []; if (req.query.fit) { try { const st = await bnGet(); bnFit = BN_PRODUCTS.filter(p => bnCount(st, p.id) < p.units).map(p => ({ id: 'bn-' + p.id, title: p.name.replace(' 5-Piece', '') + ' (Brand New, ' + p.color + ')', price: bnLive() ? p.price : p.launch, retail: 0, pieces: p.pieces, shape: null, photos: ['/public/bn/' + (p.fitPhoto || p.photos[0])] })); } catch {} }
-    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...(SALE_SKIP.has(d.id) ? { price: d.price } : salePrice(d.price)), retail: d.retail || 0, grade: d.grade || '',
+    res.set('Cache-Control', 'public, max-age=30').json({ ok: true, deliveryFee: deliveryFee(), updated: list.reduce((m, d) => Math.max(m, d.updatedAt || 0), 0) || null, couches: bnFit.concat(list.map(d => ({ id: d.id, title: d.title, ...(SALE_SKIP.has(d.id) || !/sectional|sofa|loveseat|sleeper/i.test(d.title || '') ? { price: d.price } : salePrice(d.price)), retail: d.retail || 0, grade: d.grade || '',
       details: d.details || [], imperfections: d.imperfections || [], dimensions: d.dimensions || '', pieces: piecesOf(d), shape: null, photos: (d.photos || []).map(dropPhotoUrl) }))) });
   } catch (e) { res.status(500).json({ error: 'unavailable' }); }
 });
