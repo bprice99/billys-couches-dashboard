@@ -28,6 +28,10 @@
     + '.bci-fit svg{flex:none;width:58px;height:42px}.bci-fit b{display:block;font-size:15px}.bci-fit span{font-size:13.5px;color:var(--mut)}.bci-fit i{margin-left:auto;font-style:normal;color:var(--red);font-weight:700;white-space:nowrap;font-size:14px}'
     + '@media(max-width:600px){.bci-fit{margin:-14px 0 32px}.bci-fit i{display:none}}'
     + '.bci-fitl{display:inline-block;margin-top:2px;color:var(--red);font-weight:600}'
+    + '.bci-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:-24px auto 40px}'
+    + '.bci-chips button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}'
+    + '.bci-chips button i{font-style:normal;color:#8a7d73;font-weight:500;margin-left:4px}.bci-chips button.on{background:var(--ink);border-color:var(--ink);color:#fff}.bci-chips button.on i{color:#cfc4ba}'
+    + '@media(max-width:600px){.bci-chips{margin:-20px 0 30px;gap:5px}.bci-chips button{padding:5px 11px;font-size:12.5px}}'
     + '.bci-item{padding:0 0 56px;margin:0 0 56px;border-bottom:1px solid var(--line)}'
     + '.bci-item:last-child{border-bottom:0}'
     + '.bci-gal{position:relative;max-width:820px;margin:0 auto 28px;aspect-ratio:4/3;background:#f4efe9;border-radius:6px;overflow:hidden;touch-action:pan-y}'
@@ -94,6 +98,13 @@
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') gm.classList.remove('open'); });
 
+  // Couch type for the filter pills: chairs/recliners, sectionals (incl. modulars), everything else is a sofa (sofas, loveseats, sets, sleepers).
+  function kind(c) { var t = String(c.title || '');
+    if (/\b(chair|recliner)\b/i.test(t) && !/sofa|sectional|loveseat/i.test(t)) return 'chair';
+    return /sectional|modular/i.test(t) ? 'sectional' : 'sofa'; }
+  function chips(list) { var n = { sectional: 0, sofa: 0, chair: 0 }; list.forEach(function (c) { n[kind(c)]++; });
+    var b = function (k, label, cnt) { return cnt ? '<button type="button" data-k="' + k + '"' + (k === 'all' ? ' class="on"' : '') + '>' + label + '<i>' + cnt + '</i></button>' : ''; };
+    return '<div class="bci-chips">' + b('all', 'All', list.length) + b('sectional', 'Sectionals', n.sectional) + b('sofa', 'Sofas', n.sofa) + b('chair', 'Chairs', n.chair) + '</div>'; }
   function item(c, fee) {
     var per = Math.ceil(c.price * (1 + TAX) * (1 + FEE) / 4);
     var g = GRADE[c.grade];
@@ -103,7 +114,7 @@
       + '<p>Delivery pricing may increase for recliners, sleepers, or specialty deliveries.</p>'
       + (c.details.length ? '<p>' + c.details.map(esc).join('<br>') + '</p>' : '')
       + (g ? '<p>Condition: Grade ' + c.grade + ' &ndash; ' + g[0] + '</p>' : '');
-    return '<article class="bci-item" id="couch-' + esc(c.id) + '">'
+    return '<article class="bci-item" data-type="' + kind(c) + '" id="couch-' + esc(c.id) + '">'
       + (photos.length ? '<div class="bci-gal" data-n="' + photos.length + '"><div class="bci-track">'
         + photos.map(function (u, i) { return '<img src="' + esc(img(u, 1500)) + '" srcset="' + esc(img(u, 750)) + ' 750w, ' + esc(img(u, 1500)) + ' 1500w" sizes="(max-width:767px) 100vw, 820px" alt="' + esc(c.title) + (i ? ' photo ' + (i + 1) : '') + '"' + (i ? ' loading="lazy"' : '') + '>'; }).join('')
         + '</div>' + (photos.length > 1 ? '<button class="bci-arr l" aria-label="Previous photo">&#8249;</button><button class="bci-arr r" aria-label="Next photo">&#8250;</button><div class="bci-dots">' + photos.map(function (_, i) { return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join('') + '</div>' : '')
@@ -188,8 +199,13 @@
     root.innerHTML = '<div class="bci-top"><span><b>' + list.length + '</b> couches available</span>' + (upd ? '<span>Last updated: ' + upd + '</span>' : '') + '<span>Sales tax applicable.</span></div>'
       + '<a class="bci-fit" href="' + FIT_URL + '"><svg viewBox="0 0 58 42"><rect x="1.5" y="1.5" width="55" height="39" fill="#fff" stroke="#1f1a17" stroke-width="2"/><path d="M12 3 H46 V12 H20 V30 H12 Z" fill="#b48f74"/><path d="M3 8 H11 M47 8 H55" stroke="#2e7d4f" stroke-width="1.5" stroke-dasharray="2 1.5"/></svg>'
       + '<div><b>Will it fit? Find out free.</b><span>Draw your room and try any couch below, to scale.</span></div><i>Try it &rarr;</i></a>'
+      + chips(list)
       + list.map(function (c) { return item(c, fee); }).join('');
     Array.prototype.forEach.call(root.querySelectorAll('.bci-gal'), slider);
+    var ch = root.querySelector('.bci-chips'); if (ch) ch.addEventListener('click', function (e) { var b = e.target.closest('button[data-k]'); if (!b) return;
+      var k = b.getAttribute('data-k'), n = 0; Array.prototype.forEach.call(ch.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
+      Array.prototype.forEach.call(root.querySelectorAll('.bci-item'), function (el) { var show = k === 'all' || el.getAttribute('data-type') === k; el.style.display = show ? '' : 'none'; if (show) n++; });
+      var c0 = root.querySelector('.bci-top span'); if (c0) c0.innerHTML = '<b>' + n + '</b> ' + (k === 'all' ? 'couches' : k === 'chair' ? (n === 1 ? 'chair' : 'chairs') : (n === 1 ? k : k + 's')) + ' available'; });
     if (location.hash && location.hash !== '#new') { var t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
     fetch('https://order.billyscouches.com/api/delivery-status').then(function (r) { return r.json(); }).then(function (s) {
       if (!s || !s.nextDate) return;
