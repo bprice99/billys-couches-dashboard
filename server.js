@@ -1899,7 +1899,7 @@ async function recentOrders(days) {
     const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= (manual ? -1 : -2) && dayDiff(sd, l.day) <= (manual ? 1 : 4) && (near(l.price, d.price) || near(l.net, d.price)) && (!manual || sameCouch(l)));
     const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
     if (hit) hit.drop = d;
-    else if (d.soldAt > cutoff && d.soldAt <= Date.now() && !hidden.has('d' + d.id)) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops' });
+    else if (d.soldAt > cutoff && d.soldAt <= Date.now() && !hidden.has('d' + d.id)) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops', saved: inSale(d.soldAt) ? saleSaved(0, d.price) : 0 });
   });
   return log.map(l => {
     const at = l.ts || Math.min(Date.now(), Date.parse(l.day + 'T12:00:00-05:00'));
@@ -1923,7 +1923,7 @@ function manualRows(list, picks, cutoff) {
   return (list || []).filter(m => m.at > cutoff && m.at <= Date.now()).map(m => {
     const key = 'm' + m.id, pick = picks[key] || {};
     const photo = pick.photo ? `/public/justsold-photo/${pick.photo}?v=${pick.at}` : (pick.img || '');
-    return { key, at: new Date(m.at).toISOString(), exact: true, customer: m.customer, price: m.price || 0, title: pick.title || '', photo, from: 'manual' };
+    return { key, at: new Date(m.at).toISOString(), exact: true, customer: m.customer, price: m.price || 0, title: pick.title || '', photo, from: 'manual', saved: inSale(m.at) ? saleSaved(m.price || 0) : 0 };
   });
 }
 app.post('/api/justsold/add', async (req, res) => {
