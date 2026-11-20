@@ -52,7 +52,7 @@
       if (s.photo) { ic.innerHTML = ''; var im = new Image(); im.alt = ''; im.src = /^https?:/.test(s.photo) ? s.photo : BASE + s.photo; ic.appendChild(im); } else ic.innerHTML = '&#128715;';
       var who = s.who ? s.who.replace(/[<>&]/g, '') : '';
       document.getElementById('bc-sold-s').innerHTML = s.saved
-        ? '<b style="color:#2e7d4f">' + (who || 'Someone') + ' saved $' + s.saved + '</b> ' + ago(s) + ' &middot; <a href="https://order.billyscouches.com">Shop the sale</a>'
+        ? '<b style="color:#2e7d4f">' + (who || 'Someone') + ' saved $' + s.saved + ' on their couch</b> ' + ago(s) + ' &middot; <a href="https://order.billyscouches.com">Shop the sale</a>'
         : (who ? who + ' bought it ' : 'Sold ') + ago(s) + ' &middot; <a href="/currentinventory">See what&rsquo;s left</a>';
       if (s.saved) document.getElementById('bc-sold-h').textContent = 'Just sold \u00b7 $' + s.saved + ' off';
       lift(); box.classList.add('on');
