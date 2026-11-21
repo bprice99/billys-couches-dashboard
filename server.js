@@ -1794,6 +1794,44 @@ const cleanCouchName = n => String(n || '')
   .replace(/\bMod\b/gi, 'Modular').replace(/\bSect?\b/gi, 'Sectional').replace(/\bTMV\b/g, 'Thomasville').replace(/\bLTG\b/g, 'Light Gray')
   .replace(/\b(\d+)\s*PC\b/gi, '$1-Piece').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
 app.get('/public/just-sold.js', (req, res) => res.set('Cache-Control', 'public, max-age=60').type('application/javascript').sendFile(path.join(__dirname, 'just-sold.js')));
+// ===================== FIRST DIBS UNSUBSCRIBE =====================
+// Link at the bottom of every First Dibs email. They type their email, HQ takes them off every First Dibs list in
+// TextMagic, keeps a record (bcd:unsubs) and texts Billy.
+const UNSUB_KEY = 'bcd:unsubs';
+app.get('/public/unsubscribe', (req, res) => {
+  res.set('X-Frame-Options', 'DENY').type('html').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe | Billy's Couches</title>
+<style>body{margin:0;background:#f6f2ed;font-family:Helvetica,Arial,sans-serif;color:#2b1d16}.c{max-width:420px;margin:60px auto;background:#fff;border-radius:14px;padding:26px 22px;text-align:center}
+h1{font-size:22px;margin:0 0 8px}p{color:#5a524b;font-size:15px;line-height:22px;margin:0 0 16px}input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #d9d0c6;border-radius:10px;font-size:16px;margin-bottom:12px}
+button{width:100%;background:#b0524c;color:#fff;border:0;border-radius:99px;padding:13px;font-size:16px;font-weight:bold;cursor:pointer}</style></head><body><div class="c" id="c">
+<h1>Unsubscribe from First Dibs</h1><p>Enter your email and you won't get any more couch drop emails.</p>
+<form id="f"><input type="email" id="e" placeholder="you@email.com" required autocomplete="email"><button>Unsubscribe</button></form></div>
+<script>document.getElementById('f').onsubmit=async function(ev){ev.preventDefault();var b=this.querySelector('button');b.disabled=true;b.textContent='One sec...';
+try{var r=await fetch('/public/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('e').value})});if(!r.ok)throw 0;
+document.getElementById('c').innerHTML='<h1>You\'re unsubscribed</h1><p>You won\'t get First Dibs emails anymore. Changed your mind? Sign up again anytime at billyscouches.com.</p>';}
+catch(e){b.disabled=false;b.textContent='Unsubscribe';alert('Something went wrong. Text us at (314) 899-7503 and we\'ll remove you.');}};</script></body></html>`);
+});
+const unsubHits = new Map();
+app.post('/public/unsubscribe', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email' });
+  const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0], n = (unsubHits.get(ip) || 0) + 1; unsubHits.set(ip, n);
+  if (n > 20) return res.status(429).json({ error: 'Too many tries' });
+  let removed = 0, note = '';
+  try {
+    const f = await tmApi('GET', `/api/v2/contacts/search?query=${encodeURIComponent(email)}&limit=20`);
+    const ids = ((f.j && f.j.resources) || []).filter(c => String(c.email || '').toLowerCase() === email).map(c => c.id);
+    for (const id of ids) {
+      const l = await tmApi('GET', `/api/v2/contacts/${id}/lists?limit=100`);
+      for (const list of ((l.j && l.j.resources) || []).filter(x => /first\s*dibs/i.test(x.name || ''))) {
+        const d = await tmApi('DELETE', `/api/v2/lists/${list.id}/contacts`, { contacts: String(id) }); if (d.ok) removed++;
+      }
+    }
+    if (!ids.length) note = 'not found in TextMagic';
+  } catch (e) { note = 'TextMagic error: ' + e.message; }
+  try { const list = await kget(UNSUB_KEY, []); list.push({ email, at: Date.now(), removed, note }); await kset(UNSUB_KEY, list.slice(-1000)); } catch (e) {}
+  textAlert(`First Dibs unsubscribe: ${email}. ${removed ? 'Removed from ' + removed + ' list(s) in TextMagic.' : 'Remove them in TextMagic by hand (' + (note || 'no First Dibs list found') + ').'}`).catch(() => {});
+  res.json({ ok: true });
+});
 app.options('/public/recent-sales', (req, res) => { offerCors(req, res); res.sendStatus(204); });
 app.get('/public/recent-sales', async (req, res) => {
   offerCors(req, res);
