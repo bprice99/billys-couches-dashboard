@@ -2365,7 +2365,7 @@ async function storySweep() {
     const last = (String(s.customer || '').trim().split(/\s+/).pop() || '').toLowerCase();
     const g = last.length > 1 && signed.find(c => String(c.name || '').toLowerCase().split(/\s+/).includes(last) && Math.abs(Date.parse(c.at || c.submitted) - s.at) < 12 * 864e5);
     if (!g && Date.now() - s.at < IG_WAIT_MS) continue;
-    s.name = g && g.shoutout !== false && g.shoutout !== 'no' ? igName(s.customer) : '';
+    s.name = igName(s.customer);   // no opt-in checkbox anymore: always first name + last initial
     try { s.postId = await igPost(s); s.status = 'posted'; s.postedAt = Date.now(); }
     catch (e) { s.tries = (s.tries || 0) + 1; s.error = e.message; if (s.tries >= 3) { s.status = 'failed'; textAlert(`Instagram story for ${s.title} didn't post: ${e.message}`).catch(() => {}); } }
     done.push(s);
@@ -3877,9 +3877,11 @@ async function jbBuild(date) {
       const free = team.filter(p => p.can.includes(role) && !blocked(p.name, j.availFrom || j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
       const score = p => ((hours[p.name].total + (add[p.name] || 0)) / Math.max(1, p.target));
       free.sort((a, b) => score(a) - score(b) || hours[a.name].recent - hours[b.name].recent || a.name.localeCompare(b.name));
-      let name = Object.prototype.hasOwnProperty.call(pick, key) ? pick[key] : (free[0] ? free[0].name : (role === 'host' ? 'Billy' : ''));
+      // Fixed defaults: Zach always drives, Billy hosts showings and does loose warehouse pickups (swap still overrides).
+      const fixed = role === 'drive' ? 'Zach' : (role === 'host' || j.kind === 'pick') ? 'Billy' : '';
+      let name = Object.prototype.hasOwnProperty.call(pick, key) ? pick[key] : (fixed || (free[0] ? free[0].name : ''));
       if (name && name !== 'Billy') { (busy[name] = busy[name] || []).push([j.start, j.end]); add[name] = (add[name] || 0) + hrs; }
-      return { key, role, label: JB_ROLES[role] || role, name, hours: hrs, auto: !Object.prototype.hasOwnProperty.call(pick, key), options: free.map(p => p.name).concat(role === 'host' ? ['Billy'] : []) };
+      return { key, role, label: JB_ROLES[role] || role, name, hours: hrs, auto: !Object.prototype.hasOwnProperty.call(pick, key), options: [...new Set([fixed, ...free.map(p => p.name), ...(role === 'host' || j.kind === 'pick' ? ['Billy'] : [])].filter(Boolean))] };
     });
   }
   const full = n => n === 'Billy' ? 'Billy' : n ? ((jbTeam(s).find(p => p.name === n) || {}).full || n) : '';
