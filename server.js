@@ -3146,7 +3146,7 @@ const SCHED_TAX = Number(process.env.SCHED_TAX_RATE || 9.738), SCHED_FEE = 0.03;
 const HOLD_FREE_DAYS = 5, HOLD_RATE = 20, HOLD_START = Date.parse('2026-11-08T12:00:00-06:00');
 const dayDiff = (a, b) => Math.round((Date.parse(a + 'T12:00:00Z') - Date.parse(b + 'T12:00:00Z')) / 864e5);
 function holdInfo(o) {
-  if (!o.created || o.created < HOLD_START) return { applies: false };
+  if (o.noHold || !o.created || o.created < HOLD_START) return { applies: false };
   const freeUntil = ctYmd(new Date(o.created + HOLD_FREE_DAYS * 864e5));
   return { applies: true, freeUntil, rate: HOLD_RATE, freeDays: HOLD_FREE_DAYS,
     freeLabel: new Date(freeUntil + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }) };
@@ -3235,7 +3235,9 @@ async function openSlots(kind, skipToken) {
     const w = parseWin(b.win); if (w) busy.push({ s: ctAt(b.date, w[0]).getTime(), e: ctAt(b.date, w[1]).getTime() }); });
   if (skipToken && sched[skipToken] && sched[skipToken].booking && sched[skipToken].booking.eventId) { const own = sched[skipToken].booking.eventId; for (let i = busy.length - 1; i >= 0; i--) if (busy[i].id === own) busy.splice(i, 1); }
   const now = Date.now(), days = [], blocked = new Set(cfg.blocked || []);
-  for (let i = 0; i <= (cfg.maxDays || 14); i++) {
+  // A customer link can be opened further out (o.until, set from HQ) than the normal booking window.
+  const own = skipToken && sched[skipToken], lastDay = own && own.until ? Math.max(cfg.maxDays || 14, dayDiff(own.until, ctYmd(new Date()))) : (cfg.maxDays || 14);
+  for (let i = 0; i <= lastDay; i++) {
     const ymd = ctYmd(new Date(now + i * 864e5)); if (blocked.has(ymd)) continue;
     const dow = new Date(ymd + 'T12:00:00Z').getUTCDay(), d = conf[dow]; if (!d || !d.on) continue;
     // Pick ups: the windows are open hours, split into 30-minute times (slotMins in the settings).
@@ -3419,6 +3421,14 @@ app.get('/api/sched', async (req, res) => {
   try { const m = await getSched(), list = Object.values(m).sort((a, b) => (b.booking ? b.booking.date : '').localeCompare(a.booking ? a.booking.date : '') || b.created - a.created).slice(0, 200)
     .map(o => ({ token: o.token, name: o.name, phone: o.phone, type: o.type, couch: o.couches.map(c => c.title).join(' + '), photo: (o.couches[0] || {}).photo || '', addons: [...o.addons, ...((o.booking || {}).extras || [])], created: o.created, booking: o.booking || null, link: schedLink(o.token), extraDue: o.extraDue || 0 }));
     res.json({ ok: true, list, cfg: await slotCfg(), defaults: SLOT_DEFAULT }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// HQ: let one customer book further out (through `until`) and/or skip the holding fee.
+app.post('/api/sched/extend', async (req, res) => {
+  try { const b = req.body || {}, m = await getSched(), o = m[String(b.token || '')]; if (!o) return res.status(404).json({ error: 'not found' });
+    if (/^\d{4}-\d{2}-\d{2}$/.test(b.until || '')) o.until = b.until; else if (b.until === null) delete o.until;
+    if (b.noHold !== undefined) o.noHold = !!b.noHold;
+    await setSched(m); res.json({ ok: true, token: o.token, until: o.until || null, noHold: !!o.noHold, url: schedLink(o.token) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // HQ: remove a booking (and its calendar event).
