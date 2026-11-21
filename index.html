@@ -3074,6 +3074,7 @@ ${img ? `<tr><td><a href="https://order.billyscouches.com/"><img src="${dPhoto(i
 ${g ? `<span style="display:inline-block;background-color:${g[1]};color:#ffffff;font-size:12px;font-weight:bold;padding:4px 10px;border-radius:99px;">Grade ${c.grade} - ${g[0]}</span>` : ''}
 <p style="margin:10px 0 4px 0;font-size:19px;line-height:25px;font-weight:bold;color:${DARK};">${ah(c.title)}</p>
 ${(c.details || []).length ? `<p style="margin:0 0 6px 0;font-size:14px;line-height:21px;color:${TXT};">${(c.details || []).slice(0, 5).map(ah).join(' | ')}</p>` : ''}
+${c.dimensions ? `<p style="margin:0 0 6px 0;font-size:13px;line-height:19px;color:${TXT};"><b style="color:${DARK};">Dimensions:</b> ${ah(c.dimensions)}</p>` : ''}
 ${(c.imperfections || []).length ? `<p style="margin:0 0 6px 0;font-size:13px;line-height:19px;color:${TXT};">Flaws: ${(c.imperfections || []).map(ah).join('; ')}</p>` : ''}
 <p style="margin:8px 0 14px 0;font-size:24px;line-height:28px;font-weight:bold;color:${DARK};">${m(c.price)}${c.retail > c.price ? ` <span style="font-size:16px;font-weight:normal;color:${RED};text-decoration:line-through;">${m(c.retail)} retail</span>` : ''}</p>
 <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
@@ -3104,7 +3105,7 @@ ${soldHtml}
 <p style="margin:14px 0 0 0;color:${DARK};">- Billy</p></td></tr>
 <tr><td align="center" style="background-color:${CREAM};padding:18px 24px;color:${TXT};font-size:12px;line-height:18px;font-family:Helvetica,Arial,sans-serif;border-radius:0 0 14px 14px;">
 <p style="margin:0;">You're getting this because you signed up for First Dibs at billyscouches.com.</p>
-<p style="margin:6px 0 0 0;">Reply "unsubscribe" to be removed.</p>
+<p style="margin:6px 0 0 0;"><a href="https://hq.billyscouches.com/public/unsubscribe" style="color:${TXT};text-decoration:underline;">Unsubscribe</a></p>
 <p style="margin:6px 0 0 0;">Billy's Couches LLC | 126 E Orleans St, Pacific, MO 63069</p></td></tr>
 </table></td></tr></table></body></html>`);
 }
