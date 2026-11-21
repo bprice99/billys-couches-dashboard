@@ -3835,7 +3835,7 @@ async function jbJobs(date, s) {
     run.availFrom = run.start + 60 * 60e3;   // helpers can join up to 30 min after the first delivery starts
     jobs.push(run);
   }
-  const loose = picks.filter(r => !run || Date.parse(r[0]) < run.start || Date.parse(r[0]) >= run.end);
+  const loose = picks;   // "Pick up" on the calendar = a customer picking up at the warehouse (its own job, not part of the run)
   if (loose.length) jobs.push({ id: 'pick', kind: 'pick', start: Math.min(...loose.map(r => Date.parse(r[0]))) - 15 * 60e3, end: Math.max(...loose.map(r => Date.parse(r[1]))), count: loose.length, slots: ['warehouse'] });
   const shows = (g.showings || []).filter(r => on(r[0]) && !/cancel|no.?show/i.test(r[1] || ''));
   if (shows.length) jobs.push({ id: 'show', kind: 'show', start: Math.min(...shows.map(r => Date.parse(r[0]))), end: Math.max(...shows.map(r => Date.parse(r[0]))) + 20 * 60e3, count: shows.length, slots: ['host'] });
@@ -3881,17 +3881,17 @@ async function jbBuild(date) {
       const fixed = role === 'drive' ? 'Zach' : (role === 'host' || j.kind === 'pick') ? 'Billy' : '';
       let name = Object.prototype.hasOwnProperty.call(pick, key) ? pick[key] : (fixed || (free[0] ? free[0].name : ''));
       if (name && name !== 'Billy') { (busy[name] = busy[name] || []).push([j.start, j.end]); add[name] = (add[name] || 0) + hrs; }
-      return { key, role, label: JB_ROLES[role] || role, name, hours: hrs, auto: !Object.prototype.hasOwnProperty.call(pick, key), options: [...new Set([fixed, ...free.map(p => p.name), ...(role === 'host' || j.kind === 'pick' ? ['Billy'] : [])].filter(Boolean))] };
+      return { key, role, label: j.kind === 'pick' ? 'Host' : (JB_ROLES[role] || role), name, hours: hrs, auto: !Object.prototype.hasOwnProperty.call(pick, key), options: [...new Set([fixed, ...free.map(p => p.name), ...(role === 'host' || j.kind === 'pick' ? ['Billy'] : [])].filter(Boolean))] };
     });
   }
   const full = n => n === 'Billy' ? 'Billy' : n ? ((jbTeam(s).find(p => p.name === n) || {}).full || n) : '';
   const d = new Date(date + 'T12:00:00Z'), line = '__________________________';
   const L = [`📋 Billy's Couches — Daily Job Board`, `📅 ${d.getUTCMonth() + 1}/${d.getUTCDate()}/${String(d.getUTCFullYear()).slice(2)}`, line];
   const run = jobs.find(j => j.kind === 'run'), pk = jobs.find(j => j.kind === 'pick'), sh = jobs.find(j => j.kind === 'show');
-  L.push(`🚚 DELIVERIES: ${run ? run.count : ''}`, `📦 PICKUPS: ${pickups || ''}`);
+  L.push(`🚚 DELIVERIES: ${run ? run.count : ''}`, `📦 PICKUPS:`);
   if (run) { run.people.forEach(x => L.push(`👤 ${x.label}: ${full(x.name)}`)); L.push(`⏰ Start Time: ${jbTime(run.start)}`); }
-  if (pk) { pk.people.forEach(x => L.push(`👤 Pickup Help: ${full(x.name)}`)); L.push(`⏰ Pickup Time: ${jbTime(pk.start + 15 * 60e3)}`); }
-  if (!run && !pk) L.push('👤 Driver:', '⏰ Start Time:');
+  if (!run) L.push('👤 Driver:', '⏰ Start Time:');
+  if (pk) { L.push(line, `🙋 CUSTOMER PICKUPS: ${pk.count}`); pk.people.forEach(x => L.push(`👤 Host: ${full(x.name)}`)); L.push(`⏰ Pickup Time: ${jbTime(pk.start + 15 * 60e3)}`); }
   L.push(line, `🏠 WAREHOUSE SHOWINGS: ${sh ? sh.count : ''}`);
   if (sh) { L.push(`👤 Host: ${full(sh.people[0].name)}`, `⏰ Start Time: ${jbTime(sh.start)}`); } else L.push('👤 Host:', '⏰ Start Time:');
   Object.entries(JB_MANUAL).forEach(([k, m]) => {
