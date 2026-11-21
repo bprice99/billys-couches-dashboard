@@ -3808,7 +3808,9 @@ setInterval(() => load(), 5 * 60 * 1000);
   const vv = window.visualViewport; if (!vv) return;
   const pin = () => { document.querySelectorAll('.mbar,.cbar').forEach(b => { if (getComputedStyle(b).position !== 'fixed') return; const a = document.activeElement, typing = a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && vv.height < window.innerHeight * 0.8; b.style.visibility = typing ? 'hidden' : ''; b.style.bottom = ''; b.style.top = '';   // let CSS keep it on the bottom
     // If iPhone still parks it mid-screen (stale height after the keyboard / app switch), re-layout it, and if that doesn't work pin it to what's on screen.
-    if (!typing) { const want = vv.offsetTop + vv.height, off = () => Math.abs(want - b.getBoundingClientRect().bottom) > 4;
+    // When nothing is focused the keyboard is closed, so the bottom of the screen is the larger of the two heights.
+    // (Home-screen app: after coming back from Messages, visualViewport can keep the keyboard-open height and park the bar mid-screen.)
+    if (!typing) { const want = Math.max(vv.offsetTop + vv.height, window.innerHeight, document.documentElement.clientHeight), off = () => Math.abs(want - b.getBoundingClientRect().bottom) > 4;
       if (off()) { b.style.position = 'static'; void b.offsetHeight; b.style.position = ''; }
       if (off()) { b.style.bottom = 'auto'; b.style.top = Math.round(want - b.offsetHeight) + 'px'; } } }); };
   vv.addEventListener('resize', pin); vv.addEventListener('scroll', pin); window.addEventListener('scroll', pin, { passive: true }); window.addEventListener('resize', pin);
