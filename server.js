@@ -3386,7 +3386,7 @@ app.post('/public/sched/:token', async (req, res) => {
       `Couch: ${couch}`, `Add-ons: ${allAdds.length ? allAdds.join(', ') : 'None'}`, room ? `Room: ${room}` : '', notes ? `Notes: ${notes}` : '',
       extrasNew.length ? `Added when scheduling: ${extrasNew.map(a => a.label).join(', ')} (paid by card link)` : '',
       holdDays ? `Holding fee: ${holdDays} day${holdDays > 1 ? 's' : ''} past the free ${HOLD_FREE_DAYS} ($${holdDays * HOLD_RATE})${holdFee ? ' - paid by card link' : ''}` : '',
-      o.couches[0] && o.couches[0].photo ? `Photo: ${o.couches[0].photo}` : ''].filter(x => x !== '').join('\n');
+      ...(o.couches || []).filter(c => c && c.photo).map((c, i, all) => all.length > 1 ? `Photo ${i + 1}: ${c.photo}` : `Photo: ${c.photo}`)].filter(x => x !== '').join('\n');
     const row = [new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago' }), o.name, fmtPhone(phone), isDel ? address : '', isDel ? city : '', isDel ? zip : '', isDel ? 'Delivery' : 'Pickup', couch, allAdds.join(', '), `${date} ${winLabel(win)}`, o.from || 'Order app'];
     const j = await sheetsBook({ eventId: prev.eventId || '', title: `${isDel ? 'Delivery' : 'Pick up'} for ${o.name}`, start: start.toISOString(), end: end.toISOString(),
       location: isDel ? `${address}, ${city}, MO ${zip}` : '126 E Orleans St, Pacific, MO 63069', desc, photo: (o.couches[0] && o.couches[0].photo) || '', photoName: (couch || 'couch').replace(/[^\w -]/g, '').slice(0, 60) + '.jpg', row: JSON.stringify(row) });
