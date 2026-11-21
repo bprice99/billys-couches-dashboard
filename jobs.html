@@ -46,7 +46,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 </div>
 <script>
 const $=id=>document.getElementById(id), ROLES={drive:'Driver',help:'Helper',host:'Host',clean:'Cleaner',truck:'Truckload',warehouse:'Warehouse'};
-const KIND={run:'🚚 Delivery run',pick:'📦 Pickups',show:'🏠 Showings',clean:'🧽 Cleaning',truck:'🚛 Truckload',warehouse:'🏭 Warehouse work'};
+const KIND={run:'🚚 Delivery run',pick:'🙋 Customer pickups',show:'🏠 Showings',clean:'🧽 Cleaning',truck:'🚛 Truckload',warehouse:'🏭 Warehouse work'};
 const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let B=null;
 const fmt=ms=>new Date(ms).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'});
