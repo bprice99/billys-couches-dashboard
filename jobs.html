@@ -23,11 +23,11 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .avg>div{border-top:1px solid #eee5db;border-left:1px solid #eee5db;padding:5px;min-height:44px;min-width:0}
 .avg .hd{background:#faf7f3;font-weight:700;text-align:center;min-height:auto;border-top:0;cursor:pointer}.avg .hd small{display:block;color:#8a7d73;font-weight:500}.avg .hd.sel{background:#2b1d16;color:#fff}.avg .hd.sel small{color:#d9cfc6}
 .avg .nm{font-weight:700;border-left:0;display:flex;flex-direction:column;justify-content:center;font-size:12.5px}.avg .nm small{font-weight:600;font-size:10.5px}
-.ev{display:block;background:#d9453b;color:#fff;border-radius:6px;padding:2px 4px;font-size:11px;font-weight:600;margin-bottom:3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev.all{background:#a33a2f}.ev.cal{background:#e06666}
+.ev{display:block;background:#2e7d4f;color:#fff;border-radius:6px;padding:2px 4px;font-size:11px;font-weight:600;margin-bottom:3px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev.all{background:#1f5c37}.ev.cal{background:#d9453b}
 .avg .nr{grid-column:span 7;display:flex;align-items:center;color:#8a5a00;font-weight:700;background:#fffaf0}
 .lg{display:flex;gap:14px;font-size:12px;color:#5d524b;margin-top:8px;flex-wrap:wrap}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .tl h4{margin:14px 0 6px;font-size:13px}.trow{display:grid;grid-template-columns:84px 1fr;align-items:center;gap:8px;margin-bottom:6px;font-size:12.5px;font-weight:700}
-.tbar{position:relative;height:20px;background:#e3f1e8;border-radius:6px;overflow:hidden}.tbar span{position:absolute;top:0;bottom:0;background:#d9453b}.tbar.nr{background:repeating-linear-gradient(45deg,#fff1dc 0 6px,#fbe6c4 6px 12px)}
+.tbar{position:relative;height:20px;background:#ece6df;border-radius:6px;overflow:hidden}.tbar span{position:absolute;top:0;bottom:0;background:#4caf6e}.tbar span.cal{background:#d9453b}.tbar.na{background:#f6f3ef}.tbar.nr{background:repeating-linear-gradient(45deg,#fff1dc 0 6px,#fbe6c4 6px 12px)}
 .axis{display:grid;grid-template-columns:84px 1fr;gap:8px;font-size:10.5px;color:#8a7d73}.axis div:last-child{display:flex;justify-content:space-between}
 .avp td{font-size:13px}.avp input{width:130px}.avp .lnk{font-size:12px;color:#5d524b;word-break:break-all}
 @media(max-width:780px){.avg{grid-template-columns:62px repeat(7,minmax(0,1fr));font-size:10.5px}.ev{font-size:9.5px;padding:2px 2px}}
@@ -56,7 +56,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
   <div class="card"><table id="team"></table>
   <p class="small">Target = hours you want them to get each week. "Can do" tags: tap to turn a job on/off for that person. Hours come from the work log; approved days not logged yet count as planned.</p>
   <div class="row small">Helpers per delivery run: <select id="helpers"><option>0</option><option>1</option><option>2</option><option>3</option></select></div></div>
-  <div class="card small"><b>How it picks:</b> for each spot it skips anyone who's busy then (availability app or a red "Unavailable" calendar block), anyone who hasn't confirmed that week's availability, skips anyone who can't do that job, then gives it to whoever is furthest below their weekly target. Ties go to whoever worked least the last 2 weeks. At 7pm you get a text to approve tomorrow's board. Nothing posts on its own.</div>
+  <div class="card small"><b>How it picks:</b> for each spot it only uses people whose availability covers that whole time and who don't have a red "Unavailable" calendar block (from 11/30, anyone who hasn't confirmed their week is skipped), skips anyone who can't do that job, then gives it to whoever is furthest below their weekly target. Ties go to whoever worked least the last 2 weeks. At 7pm you get a text to approve tomorrow's board. Nothing posts on its own.</div>
 </div>
 </div>
 <div class="av" id="avSec">
@@ -64,12 +64,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
   <div class="card">
     <div class="avh"><b id="avTitle">Loading…</b><span class="avnav"><button id="avPrev">‹</button> <button id="avNow">This week</button> <button id="avNext">›</button></span></div>
     <div id="avGrid"></div>
-    <div class="lg"><span><i style="background:#d9453b"></i>Busy (app)</span><span><i style="background:#a33a2f"></i>All day off</span><span><i style="background:#e06666"></i>Red calendar event</span><span>↻ repeats weekly</span><span><i style="background:#fff1dc"></i>Not confirmed = off the board</span></div>
+    <div class="lg"><span><i style="background:#2e7d4f"></i>Can work</span><span><i style="background:#1f5c37"></i>All day</span><span><i style="background:#d9453b"></i>Red calendar event (busy)</span><span><i style="background:#ece6df"></i>Not available</span><span>↻ repeats weekly</span><span><i style="background:#fff1dc"></i>Not confirmed = off the board</span></div>
     <div class="tl" id="avDay"></div>
   </div>
   <p class="lbl">Availability links</p>
   <div class="card"><table class="avp" id="avPeople"></table>
-  <p class="small">Each person's link is private. Sunday 6pm everyone gets a text with their link; Monday noon anyone who hasn't confirmed gets one reminder. You get a text (or Telegram) every time someone saves. "New link" kills the old one.</p></div>
+  <p class="small">Each person's link is private. Sunday 6pm everyone gets a text to mark when they CAN work; Monday noon anyone who hasn't confirmed gets one reminder. You get a text (or Telegram) every time someone saves. "New link" kills the old one.</p></div>
 </div>
 <script>
 const $=id=>document.getElementById(id), ROLES={drive:'Driver',help:'Helper',host:'Host',clean:'Cleaner',truck:'Truckload',warehouse:'Warehouse'};
@@ -121,7 +121,9 @@ function avRender(){const W=AV.week,days=[0,1,2,3,4,5,6].map(i=>avAdd(W,i));
  const S=8*60,E=21*60,pct=m=>Math.max(0,Math.min(100,(m-S)/(E-S)*100));const di=days.indexOf(avSel);
  let t=`<h4>${AVD[new Date(avSel+'T12:00:00Z').getUTCDay()]} ${avLbl(avSel)} · who's free when</h4><div class="axis"><div></div><div><span>8a</span><span>10a</span><span>12p</span><span>2p</span><span>4p</span><span>6p</span><span>8p</span></div></div>`;
  AV.people.forEach(p=>{const nr=p.required&&!p.confirmed, d=p.days[di]||{items:[]};
-  t+=`<div class="trow">${esc(p.name)}<div class="tbar${nr?' nr':''}" title="${nr?'Not confirmed: off the board':''}">`+(nr?'':d.items.map(it=>it.allDay?'<span style="left:0;width:100%"></span>':`<span style="left:${pct(it.s)}%;width:${pct(it.e)-pct(it.s)}%"></span>`).join(''))+'</div></div>'});
+  const sp=it=>{const c=it.src==='cal'?' class="cal"':'';return it.allDay?`<span${c} style="left:0;width:100%"></span>`:`<span${c} style="left:${pct(it.s)}%;width:${pct(it.e)-pct(it.s)}%"></span>`};
+  const app=d.items.filter(i=>i.src!=='cal'),cal=d.items.filter(i=>i.src==='cal'),noInfo=!p.confirmed&&!p.required;
+  t+=`<div class="trow">${esc(p.name)}<div class="tbar${nr?' nr':noInfo?' na':''}" title="${nr?'Not confirmed: off the board':noInfo?'Not confirmed yet':''}">`+(nr?'':app.map(sp).join('')+cal.map(sp).join(''))+'</div></div>'});
  $('avDay').innerHTML=t;
  $('avPeople').innerHTML='<tr><th>Name</th><th>Phone</th><th>This week</th><th></th></tr>'+AV.people.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td><input data-ph="${esc(p.name)}" value="${esc(p.phone)}" placeholder="Cell number" inputmode="tel"></td><td>${p.confirmed?'✅ '+new Date(p.confirmed).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'}):'—'}</td><td style="white-space:nowrap"><button class="btn sec" style="padding:6px 9px;font-size:12.5px" data-copy="${esc(p.link)}">Copy link</button> <button class="btn sec" style="padding:6px 9px;font-size:12.5px" data-send="${esc(p.name)}">Text it</button> <span class="x" data-new="${esc(p.name)}">new link</span></td></tr>`).join('');
 }
