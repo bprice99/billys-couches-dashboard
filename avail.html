@@ -22,11 +22,11 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
 .dh{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .dh b{font-size:16px}.dh small{color:#8a7d73;font-size:12.5px;margin-left:6px;font-weight:500}
 .pill{font-size:12px;font-weight:700;border-radius:99px;padding:6px 10px;white-space:nowrap}
-.ok2{background:#e3f1e8;color:#1f6b3d}.no2{background:#fde3df;color:#a33a2f}.part{background:#fff1dc;color:#8a5a00}
+.ok2{background:#e3f1e8;color:#1f6b3d}.no2{background:#f1ece6;color:#8a7d73}.part{background:#fff1dc;color:#8a5a00}
 .blk{border-top:1px solid #f0e8de;margin-top:9px;padding-top:9px}
 .tr{display:flex;align-items:center;gap:6px;font-size:13px;color:#5d524b}
-.tr input[type=time]{flex:1;min-width:0;border:1px solid #e3d7ca;border-radius:9px;padding:8px 6px;background:#faf7f3;font-size:15px;font-family:inherit;color:#1f1a17}
-.allday{flex:1;font-weight:700;color:#a33a2f;font-size:14px}
+.tr input[type=time]{flex:1;min-width:0;border:1px solid #cfe5d6;border-radius:9px;padding:8px 6px;background:#f3f8f4;font-size:15px;font-family:inherit;color:#1f1a17}
+.allday{flex:1;font-weight:700;color:#1f6b3d;font-size:14px}
 .x{border:0;background:none;color:#a33a2f;font-size:22px;line-height:1;padding:2px 6px}
 .rep{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:12.5px;color:#5d524b}
 .tg{width:34px;height:20px;border-radius:99px;background:#cfc6bd;position:relative;flex:none;border:0;padding:0}
@@ -47,7 +47,7 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
 .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#1f6b3d;color:#fff;border-radius:99px;padding:10px 16px;font-weight:700;font-size:14px;display:none;z-index:10}
 </style>
 </head><body>
-<div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">My availability</h1><p>Only add times you <b>can't</b> work. Then tap confirm, even if nothing changed.</p></div>
+<div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">My availability</h1><p>Add the times you <b>can</b> work. Days left empty = not available. Then tap confirm.</p></div>
 <div class="in" id="app"><p style="color:#8a7d73">Loading…</p></div>
 <div class="bar" id="bar" style="display:none"><button class="save" id="save">Confirm my availability</button></div>
 <div class="modal" id="modal"><div class="mb"><b id="mt">Change this repeat?</b><p id="mp">This is set to repeat every week.</p><button class="pri" id="mWeek">Just this week</button><button id="mAll">Every week</button><button id="mCancel">Cancel</button></div></div>
@@ -70,15 +70,15 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
       .then(function(j){
         st = j; removeAll = {};
         st.days.forEach(function(d){ d.blocks = d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.allDay ? '' : hm(b.s), end: b.allDay ? '' : hm(b.e), repeat: b.repeat, wasRepeat: b.repeat, scope: 'week' }; }); });
-        document.getElementById('hi').textContent = 'Hey ' + j.name + ', when can’t you work?';
+        document.getElementById('hi').textContent = 'Hey ' + j.name + ', when can you work?';
         render();
       }).catch(function(e){ app.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; document.getElementById('bar').style.display = 'none'; });
   }
   function status(d){
-    if (!d.blocks.length) return '<span class="pill ok2">Available</span>';
-    if (d.blocks.some(function(b){ return b.allDay; })) return '<span class="pill no2">Can’t work</span>';
+    if (!d.blocks.length) return '<span class="pill no2">Not available</span>';
+    if (d.blocks.some(function(b){ return b.allDay; })) return '<span class="pill ok2">All day</span>';
     var ok = d.blocks.filter(function(b){ return b.start && b.end; });
-    return '<span class="pill part">Busy ' + (ok.length === 1 ? nice(ok[0].start) + '–' + nice(ok[0].end) : ok.length + ' times') + '</span>';
+    return '<span class="pill ok2">' + (ok.length === 1 ? nice(ok[0].start) + '–' + nice(ok[0].end) : ok.length + ' times') + '</span>';
   }
   function render(){
     var maxWeek = addDays(st.thisWeek, 21), h = '';
@@ -89,11 +89,11 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
       h += '<div class="day' + (d.past ? ' past' : '') + '"><div class="dh"><b>' + dn.slice(0,3) + '<small>' + label(d.date) + '</small></b>' + status(d) + '</div>';
       d.blocks.forEach(function(b, bi){
         h += '<div class="blk">';
-        if (b.allDay) h += '<div class="tr"><span class="allday">Can’t work all day</span><button class="x" data-x="' + di + ':' + bi + '">×</button></div>';
+        if (b.allDay) h += '<div class="tr"><span class="allday">Available all day</span><button class="x" data-x="' + di + ':' + bi + '">×</button></div>';
         else h += '<div class="tr"><input type="time" step="900" value="' + b.start + '" data-s="' + di + ':' + bi + '"> to <input type="time" step="900" value="' + b.end + '" data-e="' + di + ':' + bi + '"><button class="x" data-x="' + di + ':' + bi + '">×</button></div>';
         h += '<div class="rep"><button class="tg' + (b.repeat ? ' on' : '') + '" data-r="' + di + ':' + bi + '" aria-label="Repeat every ' + dn + '"></button>Repeat every ' + dn + '</div></div>';
       });
-      if (!d.blocks.some(function(b){ return b.allDay; })) h += '<div class="acts"><button data-add="' + di + '">+ Busy time</button><button data-all="' + di + '">Can’t work all day</button></div>';
+      if (!d.blocks.some(function(b){ return b.allDay; })) h += '<div class="acts"><button data-add="' + di + '">+ Time I can work</button><button data-all="' + di + '">Available all day</button></div>';
       h += '</div>';
     });
     app.innerHTML = h; document.getElementById('bar').style.display = 'block';
