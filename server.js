@@ -3880,11 +3880,15 @@ async function jbBuild(date) {
   const s = await jbState(), team = jbTeam(s).filter(p => !p.off), { jobs, pickups, unavail } = await jbJobs(date, s), { hours, missing, mon } = await jbHours(date, s);
   const board = s.boards[date] || {}, pick = board.pick || {}, busy = {}, add = {};
   const blocked = (n, a, b) => unavail.some(([st, en, title]) => new RegExp('\\b' + n + '\\b', 'i').test(title || '') && Date.parse(st) < b && Date.parse(en) > a);
+  // Team availability app: their busy times, and anyone who hasn't confirmed this week is off the board (from AV_START).
+  const av = await avState(), avNoReply = n => avNeeds(date) && !((av.people[n] || {}).confirmed || {})[jbMon(date)];
+  const avBlocked = (n, a, b) => avNoReply(n) || avBusy(av.people[n] || { blocks: [] }, date).some(([x, y]) => x < b && y > a);
+  const blocked2 = (n, a, b) => blocked(n, a, b) || avBlocked(n, a, b);
   const why = {};
   for (const j of jobs) {
     j.people = j.slots.map((role, i) => {
       const key = j.id + ':' + i, hrs = (j.end - j.start) / 3600e3;
-      const free = team.filter(p => p.can.includes(role) && !blocked(p.name, j.availFrom || j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
+      const free = team.filter(p => p.can.includes(role) && !blocked2(p.name, j.availFrom || j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
       const score = p => ((hours[p.name].total + (add[p.name] || 0)) / Math.max(1, p.target));
       free.sort((a, b) => score(a) - score(b) || hours[a.name].recent - hours[b.name].recent || a.name.localeCompare(b.name));
       // Fixed defaults: Zach always drives, Billy hosts showings and does loose warehouse pickups (swap still overrides).
@@ -3958,6 +3962,144 @@ app.post('/api/jobboard/settings', async (req, res) => {
 });
 app.post('/api/jobboard/post', async (req, res) => { try { res.json({ ...(await jbPost(jbDate((req.body || {}).date))), justPosted: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
+// ===================== TEAM AVAILABILITY =====================
+// Each team member gets a private link (/a/<token>) to mark when they CAN'T work, Mon-Sun, with exact times and an
+// optional weekly repeat. Everyone must confirm every week. Until a person confirms a week, the job board treats them
+// as unavailable that week (starting AV_START). Billy gets a text/Telegram on every save. Red calendar events still count.
+const AV_KEY = 'bcd:avail';
+const AV_START = '2026-11-30';   // first week the "no reply = unavailable" rule applies
+async function avState() { const a = (await kget(AV_KEY, {})) || {}; a.people = a.people || {}; return a; }
+function avPerson(a, name) {
+  const p = a.people[name] = a.people[name] || {};
+  if (!p.token) p.token = crypto.randomBytes(9).toString('base64url');
+  p.blocks = p.blocks || []; p.confirmed = p.confirmed || {}; return p;
+}
+const avHM = v => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})$/); if (!m || +m[1] > 23 || +m[2] > 59) return null; return +m[1] * 60 + +m[2]; };
+const avFmt = min => { const h = Math.floor(min / 60), m = min % 60; return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'a' : 'p'); };
+const avDow = ymd => new Date(ymd + 'T12:00:00Z').getUTCDay();
+const AV_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Blocks that apply on a date: one-offs for that date, plus weekly repeats (unless skipped that date).
+const avOn = (p, ymd) => (p.blocks || []).filter(b => b.date ? b.date === ymd : (b.dow === avDow(ymd) && ymd >= (b.from || '') && (!b.until || ymd <= b.until) && !(b.skip || []).includes(ymd)));
+const avLabel = b => b.allDay ? 'all day' : `${avFmt(b.s)}–${avFmt(b.e)}`;
+// Busy ranges (ms) for a person on a date, for the job board.
+function avBusy(p, ymd) { return avOn(p, ymd).map(b => b.allDay ? [ctAt(ymd, 0).getTime(), ctAt(ymd, 24 * 60 - 1).getTime()] : [ctAt(ymd, b.s).getTime(), ctAt(ymd, b.e).getTime()]); }
+const avNeeds = ymd => jbMon(ymd) >= AV_START;
+const avTeam = async () => jbTeam(await jbState()).filter(p => !p.off);
+function avSummary(p, mon) {
+  const out = [];
+  for (let i = 0; i < 7; i++) { const d = jbAdd(mon, i), bl = avOn(p, d); if (bl.length) out.push(AV_DAYS[avDow(d)] + ' ' + bl.map(b => avLabel(b) + (b.dow != null ? ' ↻' : '')).join(', ')); }
+  return out.length ? out.join(' · ') : 'available all week';
+}
+async function avNotify(text) {
+  try { if (TG() && process.env.TG_BILLY_CHAT) return await tgCall('sendMessage', { chat_id: process.env.TG_BILLY_CHAT, text }); } catch (e) {}
+  return textAlert(text).catch(() => {});
+}
+app.get('/a/:token', (req, res) => res.set('Cache-Control', 'no-cache').set('X-Robots-Tag', 'noindex').sendFile(path.join(__dirname, 'avail.html')));
+async function avFind(token) { const a = await avState(); const name = Object.keys(a.people).find(n => a.people[n].token === token); return name ? { a, name, p: avPerson(a, name) } : null; }
+app.get('/public/avail/:token', async (req, res) => {
+  try {
+    const f = await avFind(String(req.params.token)); if (!f) return res.status(404).json({ error: 'This link is no longer active. Ask Billy for a new one.' });
+    const today = ctYmd(new Date()), mon = /^\d{4}-\d{2}-\d{2}$/.test(req.query.week || '') ? jbMon(req.query.week) : jbMon(jbAdd(today, 1));
+    const days = []; for (let i = 0; i < 7; i++) { const d = jbAdd(mon, i); days.push({ date: d, dow: avDow(d), past: d < today, blocks: avOn(f.p, d).map(b => ({ id: b.id, allDay: !!b.allDay, start: b.allDay ? '' : avFmt(b.s), s: b.s, e: b.e, repeat: b.dow != null })) }); }
+    res.json({ name: f.name, week: mon, thisWeek: jbMon(today), days, confirmed: f.p.confirmed[mon] || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Save one week. Body: { week, days: [{ date, blocks: [{ id?, allDay, s, e, repeat, scope }] }] }
+// scope on an existing repeat: 'week' = change just this week (skip the repeat that date), 'all' = change the repeat itself.
+const avHits = new Map();
+app.post('/public/avail/:token', async (req, res) => {
+  try {
+    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0], n = (avHits.get(ip) || 0) + 1; avHits.set(ip, n); if (n > 120) return res.status(429).json({ error: 'Too many saves. Try again later.' });
+    const f = await avFind(String(req.params.token)); if (!f) return res.status(404).json({ error: 'This link is no longer active.' });
+    const b = req.body || {}, mon = jbMon(String(b.week || '')), today = ctYmd(new Date()); if (!/^\d{4}-\d{2}-\d{2}$/.test(mon)) return res.status(400).json({ error: 'Bad week' });
+    const p = f.p, before = avSummary(p, mon), dates = new Set(); for (let i = 0; i < 7; i++) dates.add(jbAdd(mon, i));
+    for (const day of (Array.isArray(b.days) ? b.days : [])) {
+      const d = String(day.date || ''); if (!dates.has(d) || d < today) continue;
+      const wanted = (Array.isArray(day.blocks) ? day.blocks : []).slice(0, 8).map(x => ({ id: clean(x.id, 20), allDay: !!x.allDay, s: avHM(x.start), e: avHM(x.end), repeat: !!x.repeat, scope: x.scope === 'all' ? 'all' : 'week' }))
+        .filter(x => x.allDay || (x.s != null && x.e != null && x.e > x.s));
+      const keepIds = new Set(wanted.map(x => x.id).filter(Boolean));
+      // Existing blocks on this date that were removed
+      // Removed blocks: a one-off just goes; a weekly repeat is skipped for this date unless they chose "every week".
+      const allGone = new Set((Array.isArray(day.removeAll) ? day.removeAll : []).map(String));
+      for (const old of avOn(p, d)) {
+        if (keepIds.has(old.id)) continue;
+        if (old.date || allGone.has(old.id)) p.blocks = p.blocks.filter(x => x !== old);
+        else (old.skip = old.skip || []).push(d);
+      }
+      for (const x of wanted) {
+        const old = x.id && p.blocks.find(y => y.id === x.id);
+        const vals = { allDay: x.allDay, s: x.allDay ? null : x.s, e: x.allDay ? null : x.e };
+        if (old) {
+          if (old.dow != null) {
+            const same = old.allDay === vals.allDay && old.s === vals.s && old.e === vals.e;
+            if (!x.repeat) { (old.skip = old.skip || []).push(d); old.until = d; p.blocks.push({ id: crypto.randomBytes(5).toString('hex'), date: d, ...vals }); }   // repeat turned off: ends here
+            else if (!same && x.scope === 'all') Object.assign(old, vals);
+            else if (!same) { (old.skip = old.skip || []).push(d); p.blocks.push({ id: crypto.randomBytes(5).toString('hex'), date: d, ...vals }); }
+          } else if (x.repeat) { p.blocks = p.blocks.filter(y => y !== old); p.blocks.push({ id: crypto.randomBytes(5).toString('hex'), dow: avDow(d), from: d, ...vals }); }
+          else Object.assign(old, vals);
+        } else p.blocks.push(x.repeat ? { id: crypto.randomBytes(5).toString('hex'), dow: avDow(d), from: d, ...vals } : { id: crypto.randomBytes(5).toString('hex'), date: d, ...vals });
+      }
+    }
+    p.blocks = p.blocks.filter(x => x.date ? x.date >= jbAdd(today, -14) : true).slice(-200);
+    p.confirmed[mon] = Date.now(); p.updated = Date.now();
+    await kset(AV_KEY, f.a);
+    const after = avSummary(p, mon), wk = `${+mon.slice(5, 7)}/${+mon.slice(8)}`;
+    // Changing tomorrow (or today) after the 7pm board went out: flag it.
+    const s = await jbState(), tom = jbTomorrow(), late = [today, tom].filter(d => dates.has(d) && (s.boards[d] || {}).notified && avOn(p, d).length);
+    avNotify(`🗓 ${f.name} ${before === after ? 'confirmed' : 'updated'} availability (week of ${wk}): ${after}` + (late.length ? `\n⚠️ This changes ${late.includes(today) ? 'today' : 'tomorrow'}'s job board. Check it: ${PUBLIC_BASE}/jobs?date=${late[late.length - 1]}` : ''));
+    res.json({ ok: true, confirmed: p.confirmed[mon] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Team tab: everyone's week (app blocks + red calendar events), who hasn't confirmed, and link/phone management.
+app.get('/api/avail', async (req, res) => {
+  try {
+    const a = await avState(), team = await avTeam(), today = ctYmd(new Date());
+    const mon = /^\d{4}-\d{2}-\d{2}$/.test(req.query.week || '') ? jbMon(req.query.week) : jbMon(today);
+    let cal = []; try { cal = (await google(false)).unavail || []; } catch (e) {}
+    const people = team.map(t => {
+      const p = avPerson(a, t.name), days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = jbAdd(mon, i), dayStart = ctAt(d, 0).getTime(), dayEnd = ctAt(d, 24 * 60 - 1).getTime();
+        const items = avOn(p, d).map(b => ({ allDay: !!b.allDay, s: b.s, e: b.e, label: avLabel(b), repeat: b.dow != null, src: 'app' }));
+        cal.filter(([st, en, title]) => new RegExp('\\b' + t.name + '\\b', 'i').test(title || '') && Date.parse(st) < dayEnd && Date.parse(en) > dayStart).forEach(([st, en, , allDay]) => {
+          if (allDay || (Date.parse(st) <= dayStart && Date.parse(en) >= dayEnd)) items.push({ allDay: true, label: 'all day', src: 'cal' });
+          else { const s = Math.max(0, jbMin(Math.max(Date.parse(st), dayStart))), e = Math.min(1439, jbMin(Math.min(Date.parse(en), dayEnd))); items.push({ allDay: false, s, e, label: `${avFmt(s)}–${avFmt(e)}`, src: 'cal' }); }
+        });
+        days.push({ date: d, items });
+      }
+      return { name: t.name, full: t.full, phone: p.phone || '', link: `${PUBLIC_BASE}/a/${p.token}`, confirmed: p.confirmed[mon] || null, required: avNeeds(mon), days };
+    });
+    await kset(AV_KEY, a);   // saves any newly created tokens
+    res.json({ week: mon, thisWeek: jbMon(today), start: AV_START, people });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/avail/person', async (req, res) => {
+  try {
+    const b = req.body || {}, a = await avState(), team = await avTeam(); if (!team.some(t => t.name === b.name)) return res.status(400).json({ error: 'Unknown team member' });
+    const p = avPerson(a, b.name);
+    if (b.phone != null) { const d = String(b.phone).replace(/\D/g, ''); p.phone = d.length === 10 ? d : d.length === 11 && d[0] === '1' ? d.slice(1) : ''; }
+    if (b.newLink) p.token = crypto.randomBytes(9).toString('base64url');
+    if (b.sendLink) { if (!p.phone) return res.status(400).json({ error: 'Add their phone first' }); await sendText(p.phone, `Hey ${b.name}, it's Billy. Mark when you can't work so the job board is right (takes a minute): ${PUBLIC_BASE}/a/${p.token}`); p.lastSent = Date.now(); }
+    await kset(AV_KEY, a); res.json({ ok: true, phone: p.phone || '', link: `${PUBLIC_BASE}/a/${p.token}` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Sunday 6pm: everyone gets their link for next week. Monday noon: one reminder to anyone who hasn't confirmed this week.
+setInterval(async () => {
+  try {
+    if (process.env.AVAIL_TEXTS === 'off') return;
+    const p = ctParts(new Date()), today = ctYmd(new Date()), dow = avDow(today), hr = +p.hour;
+    const kind = dow === 0 && hr >= 18 && hr < 21 ? 'sun' : dow === 1 && hr >= 12 && hr < 15 ? 'mon' : ''; if (!kind) return;
+    const mon = kind === 'sun' ? jbAdd(today, 1) : today, a = await avState(), team = await avTeam(); let changed = false;
+    for (const t of team) {
+      const per = avPerson(a, t.name); per.sent = per.sent || {}; const key = kind + ':' + mon;
+      if (per.sent[key] || !per.phone) continue; if (kind === 'mon' && per.confirmed[mon]) continue;
+      const link = `${PUBLIC_BASE}/a/${per.token}`;
+      const msg = kind === 'sun' ? `Hey ${t.name}, mark when you can't work this week (Mon–Sun) and tap confirm, even if nothing changed: ${link}` : `Reminder ${t.name}: you're off the job board until you confirm this week's availability: ${link}`;
+      if (await sendText(per.phone, msg)) { per.sent[key] = Date.now(); changed = true; }
+    }
+    if (changed) await kset(AV_KEY, a);
+  } catch (e) { console.log('[avail] weekly texts failed:', e.message); }
+}, 10 * 60 * 1000);
 // 7pm Central: tell Billy tomorrow's board is ready (Telegram DM with a Post button if set up, otherwise a text).
 setInterval(async () => {
   try {
