@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>My Availability · Billy's Couches</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f1a17;-webkit-text-size-adjust:100%}
+.top{background:#2b1d16;color:#fff;padding:18px 16px 16px}
+.top small{font-size:11px;letter-spacing:2px;color:#e8b44a;font-weight:700}
+.top h1{margin:4px 0 2px;font-size:22px;line-height:1.2}
+.top p{margin:0;font-size:13.5px;color:#d9cfc6}
+.in{max-width:520px;margin:0 auto;padding:14px 14px 120px}
+.wk{display:flex;justify-content:space-between;align-items:center;margin:2px 0 10px}
+.wk b{font-size:15px}
+.wk button{border:1px solid #e3d7ca;background:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;color:#5d524b}
+.wk button:disabled{opacity:.35}
+.conf{border-radius:12px;padding:10px 12px;font-size:13.5px;margin-bottom:10px;font-weight:600}
+.conf.ok{background:#e3f1e8;color:#1f6b3d}.conf.no{background:#fff1dc;color:#8a5a00}
+.day{background:#fff;border:1px solid #e7ded4;border-radius:14px;padding:11px 12px;margin-bottom:8px}
+.day.past{opacity:.45;pointer-events:none}
+.dh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dh b{font-size:16px}.dh small{color:#8a7d73;font-size:12.5px;margin-left:6px;font-weight:500}
+.pill{font-size:12px;font-weight:700;border-radius:99px;padding:6px 10px;white-space:nowrap}
+.ok2{background:#e3f1e8;color:#1f6b3d}.no2{background:#fde3df;color:#a33a2f}.part{background:#fff1dc;color:#8a5a00}
+.blk{border-top:1px solid #f0e8de;margin-top:9px;padding-top:9px}
+.tr{display:flex;align-items:center;gap:6px;font-size:13px;color:#5d524b}
+.tr input[type=time]{flex:1;min-width:0;border:1px solid #e3d7ca;border-radius:9px;padding:8px 6px;background:#faf7f3;font-size:15px;font-family:inherit;color:#1f1a17}
+.allday{flex:1;font-weight:700;color:#a33a2f;font-size:14px}
+.x{border:0;background:none;color:#a33a2f;font-size:22px;line-height:1;padding:2px 6px}
+.rep{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:12.5px;color:#5d524b}
+.tg{width:34px;height:20px;border-radius:99px;background:#cfc6bd;position:relative;flex:none;border:0;padding:0}
+.tg:after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.tg.on{background:#2e7d4f}.tg.on:after{left:16px}
+.acts{display:flex;gap:6px;margin-top:9px}
+.acts button{flex:1;border:1px solid #e3d7ca;background:#fff;border-radius:10px;padding:9px 6px;font-size:13px;font-weight:700;color:#5d524b}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(247,243,238,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid #e7ded4;padding:12px 14px calc(12px + env(safe-area-inset-bottom))}
+.save{display:block;width:100%;max-width:520px;margin:0 auto;background:#a74d4a;color:#fff;border:0;border-radius:99px;padding:15px;font-size:16px;font-weight:700}
+.save:disabled{opacity:.6}
+.err{background:#fde3df;color:#a33a2f;border-radius:12px;padding:14px;font-weight:600}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.modal.open{display:flex}
+.mb{background:#fff;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:520px}
+.mb b{font-size:16px;display:block;margin-bottom:4px}.mb p{margin:0 0 12px;color:#5d524b;font-size:13.5px}
+.mb button{display:block;width:100%;border-radius:12px;padding:13px;font-size:15px;font-weight:700;margin-top:8px;border:1px solid #e3d7ca;background:#fff;color:#1f1a17}
+.mb button.pri{background:#2b1d16;color:#fff;border-color:#2b1d16}
+.toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#1f6b3d;color:#fff;border-radius:99px;padding:10px 16px;font-weight:700;font-size:14px;display:none;z-index:10}
+</style>
+</head><body>
+<div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">My availability</h1><p>Only add times you <b>can't</b> work. Then tap confirm, even if nothing changed.</p></div>
+<div class="in" id="app"><p style="color:#8a7d73">Loading…</p></div>
+<div class="bar" id="bar" style="display:none"><button class="save" id="save">Confirm my availability</button></div>
+<div class="modal" id="modal"><div class="mb"><b id="mt">Change this repeat?</b><p id="mp">This is set to repeat every week.</p><button class="pri" id="mWeek">Just this week</button><button id="mAll">Every week</button><button id="mCancel">Cancel</button></div></div>
+<div class="toast" id="toast">Saved ✓</div>
+<script>
+(function(){
+  var token = location.pathname.split('/').pop(), DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var st = null, removeAll = {}, app = document.getElementById('app');
+  function hm(m){ return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); }
+  function nice(v){ var p = String(v||'').split(':'), h = +p[0], m = +p[1]; if (isNaN(h)) return ''; return (h%12||12) + (m ? ':' + String(m).padStart(2,'0') : '') + (h<12?'am':'pm'); }
+  function addDays(ymd, n){ var t = new Date(ymd + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0,10); }
+  function label(ymd){ var t = new Date(ymd + 'T12:00:00Z'); return MON[t.getUTCMonth()] + ' ' + t.getUTCDate(); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function toast(t){ var e = document.getElementById('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(function(){ e.style.display = 'none'; }, 2200); }
+  function ask(title, text, cb){ var m = document.getElementById('modal'); document.getElementById('mt').textContent = title; document.getElementById('mp').textContent = text; m.classList.add('open');
+    function done(v){ m.classList.remove('open'); document.getElementById('mWeek').onclick = document.getElementById('mAll').onclick = document.getElementById('mCancel').onclick = null; if (v) cb(v); }
+    document.getElementById('mWeek').onclick = function(){ done('week'); }; document.getElementById('mAll').onclick = function(){ done('all'); }; document.getElementById('mCancel').onclick = function(){ done(null); }; }
+  function load(week){
+    fetch('/public/avail/' + encodeURIComponent(token) + (week ? '?week=' + week : '')).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not load'); return j; }); })
+      .then(function(j){
+        st = j; removeAll = {};
+        st.days.forEach(function(d){ d.blocks = d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.allDay ? '' : hm(b.s), end: b.allDay ? '' : hm(b.e), repeat: b.repeat, wasRepeat: b.repeat, scope: 'week' }; }); });
+        document.getElementById('hi').textContent = 'Hey ' + j.name + ', when can’t you work?';
+        render();
+      }).catch(function(e){ app.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; document.getElementById('bar').style.display = 'none'; });
+  }
+  function status(d){
+    if (!d.blocks.length) return '<span class="pill ok2">Available</span>';
+    if (d.blocks.some(function(b){ return b.allDay; })) return '<span class="pill no2">Can’t work</span>';
+    var ok = d.blocks.filter(function(b){ return b.start && b.end; });
+    return '<span class="pill part">Busy ' + (ok.length === 1 ? nice(ok[0].start) + '–' + nice(ok[0].end) : ok.length + ' times') + '</span>';
+  }
+  function render(){
+    var maxWeek = addDays(st.thisWeek, 21), h = '';
+    h += '<div class="wk"><button id="prev"' + (st.week <= st.thisWeek ? ' disabled' : '') + '>‹</button><b>' + (st.week === st.thisWeek ? 'This week' : st.week === addDays(st.thisWeek, 7) ? 'Next week' : 'Week of ' + label(st.week)) + ' · ' + label(st.week) + '–' + label(addDays(st.week, 6)) + '</b><button id="next"' + (st.week >= maxWeek ? ' disabled' : '') + '>›</button></div>';
+    h += st.confirmed ? '<div class="conf ok">✓ Confirmed. Change anything below and confirm again.</div>' : '<div class="conf no">Not confirmed yet. You’re off the job board for this week until you confirm.</div>';
+    st.days.forEach(function(d, di){
+      var dn = DAYS[d.dow];
+      h += '<div class="day' + (d.past ? ' past' : '') + '"><div class="dh"><b>' + dn.slice(0,3) + '<small>' + label(d.date) + '</small></b>' + status(d) + '</div>';
+      d.blocks.forEach(function(b, bi){
+        h += '<div class="blk">';
+        if (b.allDay) h += '<div class="tr"><span class="allday">Can’t work all day</span><button class="x" data-x="' + di + ':' + bi + '">×</button></div>';
+        else h += '<div class="tr"><input type="time" step="900" value="' + b.start + '" data-s="' + di + ':' + bi + '"> to <input type="time" step="900" value="' + b.end + '" data-e="' + di + ':' + bi + '"><button class="x" data-x="' + di + ':' + bi + '">×</button></div>';
+        h += '<div class="rep"><button class="tg' + (b.repeat ? ' on' : '') + '" data-r="' + di + ':' + bi + '" aria-label="Repeat every ' + dn + '"></button>Repeat every ' + dn + '</div></div>';
+      });
+      if (!d.blocks.some(function(b){ return b.allDay; })) h += '<div class="acts"><button data-add="' + di + '">+ Busy time</button><button data-all="' + di + '">Can’t work all day</button></div>';
+      h += '</div>';
+    });
+    app.innerHTML = h; document.getElementById('bar').style.display = 'block';
+    document.getElementById('prev').onclick = function(){ load(addDays(st.week, -7)); };
+    document.getElementById('next').onclick = function(){ load(addDays(st.week, 7)); };
+  }
+  function at(k){ var p = k.split(':'); return { d: st.days[+p[0]], b: st.days[+p[0]].blocks[+p[1]], bi: +p[1] }; }
+  app.addEventListener('click', function(e){
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.add != null) { st.days[+t.dataset.add].blocks.push({ id: '', allDay: false, start: '09:00', end: '17:00', repeat: false, scope: 'week' }); render(); }
+    else if (t.dataset.all != null) { st.days[+t.dataset.all].blocks.push({ id: '', allDay: true, start: '', end: '', repeat: false, scope: 'week' }); render(); }
+    else if (t.dataset.x) { var a = at(t.dataset.x);
+      var rm = function(scope){ if (scope === 'all' && a.b.id) { removeAll[a.d.date] = (removeAll[a.d.date] || []).concat(a.b.id); } a.d.blocks.splice(a.bi, 1); render(); };
+      if (a.b.wasRepeat && a.b.id) ask('Remove this repeat?', 'It repeats every ' + DAYS[a.d.dow] + '.', rm); else rm('week'); }
+    else if (t.dataset.r) { var r = at(t.dataset.r); r.b.repeat = !r.b.repeat; if (r.b.wasRepeat && r.b.repeat) r.b.scope = 'all'; render(); }
+  });
+  app.addEventListener('change', function(e){
+    var k = e.target.dataset.s || e.target.dataset.e; if (!k) return; var a = at(k), field = e.target.dataset.s ? 'start' : 'end';
+    var apply = function(scope){ a.b[field] = e.target.value; a.b.scope = scope; render(); };
+    if (a.b.wasRepeat && a.b.id && a.b.repeat) ask('Change this repeat?', 'It repeats every ' + DAYS[a.d.dow] + '.', apply); else apply('week');
+  });
+  document.getElementById('save').onclick = function(){
+    var bad = null;
+    st.days.forEach(function(d){ d.blocks.forEach(function(b){ if (!b.allDay && (!b.start || !b.end || b.end <= b.start)) bad = DAYS[d.dow]; }); });
+    if (bad) { alert('Check the times on ' + bad + ': the end has to be after the start.'); return; }
+    var btn = this; btn.disabled = true; btn.textContent = 'Saving…';
+    var body = { week: st.week, days: st.days.filter(function(d){ return !d.past; }).map(function(d){ return { date: d.date, removeAll: removeAll[d.date] || [], blocks: d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.start, end: b.end, repeat: b.repeat, scope: b.scope }; }) }; }) };
+    fetch('/public/avail/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not save'); return j; }); })
+      .then(function(){ toast('Confirmed ✓ Thanks!'); btn.disabled = false; btn.textContent = 'Confirm my availability'; load(st.week); })
+      .catch(function(e){ alert(e.message + ' Try again, or text Billy.'); btn.disabled = false; btn.textContent = 'Confirm my availability'; });
+  };
+  load('');
+})();
+</script>
+</body></html>
