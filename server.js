@@ -3880,9 +3880,10 @@ async function jbBuild(date) {
   const s = await jbState(), team = jbTeam(s).filter(p => !p.off), { jobs, pickups, unavail } = await jbJobs(date, s), { hours, missing, mon } = await jbHours(date, s);
   const board = s.boards[date] || {}, pick = board.pick || {}, busy = {}, add = {};
   const blocked = (n, a, b) => unavail.some(([st, en, title]) => new RegExp('\\b' + n + '\\b', 'i').test(title || '') && Date.parse(st) < b && Date.parse(en) > a);
-  // Team availability app: their busy times, and anyone who hasn't confirmed this week is off the board (from AV_START).
-  const av = await avState(), avNoReply = n => avNeeds(date) && !((av.people[n] || {}).confirmed || {})[jbMon(date)];
-  const avBlocked = (n, a, b) => avNoReply(n) || avBusy(av.people[n] || { blocks: [] }, date).some(([x, y]) => x < b && y > a);
+  // Team availability app: once someone confirms a week, they're only scheduled inside the times they said they CAN work.
+  // Anyone who hasn't confirmed is off the board (from AV_START). Before that, unconfirmed people fall back to the calendar.
+  const av = await avState(), avConf = n => !!((av.people[n] || {}).confirmed || {})[jbMon(date)];
+  const avBlocked = (n, a, b) => avConf(n) ? !avFree(av.people[n], date).some(([x, y]) => x <= a && y >= b) : avNeeds(date);
   const blocked2 = (n, a, b) => blocked(n, a, b) || avBlocked(n, a, b);
   const why = {};
   for (const j of jobs) {
@@ -3963,8 +3964,8 @@ app.post('/api/jobboard/settings', async (req, res) => {
 app.post('/api/jobboard/post', async (req, res) => { try { res.json({ ...(await jbPost(jbDate((req.body || {}).date))), justPosted: true }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
 // ===================== TEAM AVAILABILITY =====================
-// Each team member gets a private link (/a/<token>) to mark when they CAN'T work, Mon-Sun, with exact times and an
-// optional weekly repeat. Everyone must confirm every week. Until a person confirms a week, the job board treats them
+// Each team member gets a private link (/a/<token>) to mark when they CAN work, Mon-Sun, with exact times and an
+// optional weekly repeat. Blocks = available windows; a day with none = not available. Everyone must confirm every week. Until a person confirms a week, the job board treats them
 // as unavailable that week (starting AV_START). Billy gets a text/Telegram on every save. Red calendar events still count.
 const AV_KEY = 'bcd:avail';
 const AV_START = '2026-11-30';   // first week the "no reply = unavailable" rule applies
@@ -3981,14 +3982,14 @@ const AV_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 // Blocks that apply on a date: one-offs for that date, plus weekly repeats (unless skipped that date).
 const avOn = (p, ymd) => (p.blocks || []).filter(b => b.date ? b.date === ymd : (b.dow === avDow(ymd) && ymd >= (b.from || '') && (!b.until || ymd <= b.until) && !(b.skip || []).includes(ymd)));
 const avLabel = b => b.allDay ? 'all day' : `${avFmt(b.s)}–${avFmt(b.e)}`;
-// Busy ranges (ms) for a person on a date, for the job board.
-function avBusy(p, ymd) { return avOn(p, ymd).map(b => b.allDay ? [ctAt(ymd, 0).getTime(), ctAt(ymd, 24 * 60 - 1).getTime()] : [ctAt(ymd, b.s).getTime(), ctAt(ymd, b.e).getTime()]); }
+// Available windows (ms) for a person on a date, for the job board.
+function avFree(p, ymd) { return avOn(p, ymd).map(b => b.allDay ? [ctAt(ymd, 0).getTime(), ctAt(ymd, 24 * 60 - 1).getTime()] : [ctAt(ymd, b.s).getTime(), ctAt(ymd, b.e).getTime()]); }
 const avNeeds = ymd => jbMon(ymd) >= AV_START;
 const avTeam = async () => jbTeam(await jbState()).filter(p => !p.off);
 function avSummary(p, mon) {
   const out = [];
   for (let i = 0; i < 7; i++) { const d = jbAdd(mon, i), bl = avOn(p, d); if (bl.length) out.push(AV_DAYS[avDow(d)] + ' ' + bl.map(b => avLabel(b) + (b.dow != null ? ' ↻' : '')).join(', ')); }
-  return out.length ? out.join(' · ') : 'available all week';
+  return out.length ? 'can work ' + out.join(' · ') : 'not available all week';
 }
 async function avNotify(text) {
   try { if (TG() && process.env.TG_BILLY_CHAT) return await tgCall('sendMessage', { chat_id: process.env.TG_BILLY_CHAT, text }); } catch (e) {}
@@ -4045,7 +4046,7 @@ app.post('/public/avail/:token', async (req, res) => {
     await kset(AV_KEY, f.a);
     const after = avSummary(p, mon), wk = `${+mon.slice(5, 7)}/${+mon.slice(8)}`;
     // Changing tomorrow (or today) after the 7pm board went out: flag it.
-    const s = await jbState(), tom = jbTomorrow(), late = [today, tom].filter(d => dates.has(d) && (s.boards[d] || {}).notified && avOn(p, d).length);
+    const s = await jbState(), tom = jbTomorrow(), late = before === after ? [] : [today, tom].filter(d => dates.has(d) && (s.boards[d] || {}).notified);
     avNotify(`🗓 ${f.name} ${before === after ? 'confirmed' : 'updated'} availability (week of ${wk}): ${after}` + (late.length ? `\n⚠️ This changes ${late.includes(today) ? 'today' : 'tomorrow'}'s job board. Check it: ${PUBLIC_BASE}/jobs?date=${late[late.length - 1]}` : ''));
     res.json({ ok: true, confirmed: p.confirmed[mon] });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -4079,7 +4080,7 @@ app.post('/api/avail/person', async (req, res) => {
     const p = avPerson(a, b.name);
     if (b.phone != null) { const d = String(b.phone).replace(/\D/g, ''); p.phone = d.length === 10 ? d : d.length === 11 && d[0] === '1' ? d.slice(1) : ''; }
     if (b.newLink) p.token = crypto.randomBytes(9).toString('base64url');
-    if (b.sendLink) { if (!p.phone) return res.status(400).json({ error: 'Add their phone first' }); await sendText(p.phone, `Hey ${b.name}, it's Billy. Mark when you can't work so the job board is right (takes a minute): ${PUBLIC_BASE}/a/${p.token}`); p.lastSent = Date.now(); }
+    if (b.sendLink) { if (!p.phone) return res.status(400).json({ error: 'Add their phone first' }); await sendText(p.phone, `Hey ${b.name}, it's Billy. Mark when you CAN work so you get put on the job board (takes a minute): ${PUBLIC_BASE}/a/${p.token}`); p.lastSent = Date.now(); }
     await kset(AV_KEY, a); res.json({ ok: true, phone: p.phone || '', link: `${PUBLIC_BASE}/a/${p.token}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4094,7 +4095,7 @@ setInterval(async () => {
       const per = avPerson(a, t.name); per.sent = per.sent || {}; const key = kind + ':' + mon;
       if (per.sent[key] || !per.phone) continue; if (kind === 'mon' && per.confirmed[mon]) continue;
       const link = `${PUBLIC_BASE}/a/${per.token}`;
-      const msg = kind === 'sun' ? `Hey ${t.name}, mark when you can't work this week (Mon–Sun) and tap confirm, even if nothing changed: ${link}` : `Reminder ${t.name}: you're off the job board until you confirm this week's availability: ${link}`;
+      const msg = kind === 'sun' ? `Hey ${t.name}, mark when you CAN work this week (Mon–Sun) and tap confirm, even if nothing changed: ${link}` : `Reminder ${t.name}: you're off the job board until you confirm this week's availability: ${link}`;
       if (await sendText(per.phone, msg)) { per.sent[key] = Date.now(); changed = true; }
     }
     if (changed) await kset(AV_KEY, a);
