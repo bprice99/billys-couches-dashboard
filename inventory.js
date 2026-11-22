@@ -129,10 +129,10 @@
     el.textContent = (d ? d + 'd ' : '') + p(h) + ':' + p(m) + ':' + p(x); }); }
   setInterval(tick, 1000);
 
-  // Couch type for the filter pills: chairs/recliners, sectionals (incl. modulars), everything else is a sofa (sofas, loveseats, sets, sleepers).
+  // Couch type for the filter pills: chairs/recliners, sectionals (incl. modulars and anything with a chaise), everything else is a sofa (sofas, loveseats, sets, sleepers).
   function kind(c) { var t = String(c.title || '');
     if (/\b(chair|recliner)\b/i.test(t) && !/sofa|sectional|loveseat/i.test(t)) return 'chair';
-    return /sectional|modular/i.test(t) ? 'sectional' : 'sofa'; }
+    return /sectional|modular|chaise/i.test(t) ? 'sectional' : 'sofa'; }
   function chips(list) { var n = { sectional: 0, sofa: 0, chair: 0 }; list.forEach(function (c) { n[kind(c)]++; });
     var b = function (k, label, cnt) { return cnt ? '<button type="button" data-k="' + k + '"' + (k === 'all' ? ' class="on"' : '') + '>' + label + '<i>' + cnt + '</i></button>' : ''; };
     return '<div class="bci-chips">' + b('all', 'All', list.length) + b('sectional', 'Sectionals', n.sectional) + b('sofa', 'Sofas', n.sofa) + b('chair', 'Chairs', n.chair) + '</div>'; }
