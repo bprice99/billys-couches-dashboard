@@ -140,6 +140,6 @@ function done(j){
 load();
 // Embedded on the website: no header, no full-screen height, and tell the page how tall to make the frame.
 if (parent !== window) { document.querySelector('.wrap').style.minHeight = '0'; document.querySelector('.top').style.display = 'none';
-  if (window.ResizeObserver) new ResizeObserver(() => parent.postMessage({ bcShowH: document.documentElement.scrollHeight }, '*')).observe(document.body); }
+  if (window.ResizeObserver) new ResizeObserver(() => parent.postMessage({ bcShowH: document.querySelector('.wrap').offsetHeight }, '*')).observe(document.querySelector('.wrap')); }
 </script>
 </body></html>
