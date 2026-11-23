@@ -129,6 +129,7 @@ async function book(){
   } catch (e) { step2('Something went wrong. Text Billy at (314) 899-7503.'); }
 }
 function done(j){
+  if (parent !== window) parent.postMessage({ bcShowing: j.when }, '*');   // embedded on billyscouches.com: it sends them to /showingthanks (ad conversion)
   steps(3); const c = D.couches.find(x => x.id === ST.couch);
   $('app').innerHTML = `<div class="pad done"><div class="ck">✓</div>
     <div class="h">See you then, ${esc(j.first)}!</div><p class="p">We just texted you a confirmation.</p>
@@ -137,5 +138,8 @@ function done(j){
     <a class="ghost" href="https://www.billyscouches.com/currentinventory">Browse the couches</a></div>`;
 }
 load();
+// Embedded on the website: no header, no full-screen height, and tell the page how tall to make the frame.
+if (parent !== window) { document.querySelector('.wrap').style.minHeight = '0'; document.querySelector('.top').style.display = 'none';
+  if (window.ResizeObserver) new ResizeObserver(() => parent.postMessage({ bcShowH: document.documentElement.scrollHeight }, '*')).observe(document.body); }
 </script>
 </body></html>
