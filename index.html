@@ -1207,7 +1207,7 @@ const shTx = () => (RAW && RAW.store && RAW.store.shTexted && typeof RAW.store.s
 function renderShowUp(){
   const el = $('shUp'); if (!el || !RAW) return;
   const d0 = new Date(), t0 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate()), t1 = new Date(+t0 + 864e5), t2 = new Date(+t0 + 2 * 864e5), TX = shTx();
-  const list = RAW.showings.filter(x => x.at >= t0 && x.at < t2 && x.status !== 'Canceled').sort((a, b) => a.at - b.at);
+  const list = RAW.showings.filter(x => x.at < t2 && x.status === 'Upcoming').sort((a, b) => a.at - b.at);
   if (!list.length) { el.innerHTML = '<p class="empty">No showings today or tomorrow.</p>'; return; }
   const tm = x => x.at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   let last = '';
