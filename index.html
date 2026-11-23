@@ -406,8 +406,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <!-- SHOWINGS -->
     <section id="tab-showings" hidden>
       <div class="kpis k7" id="shKpis"></div>
-      <div class="card" style="margin-bottom:16px"><h2>Every showing this month</h2><div style="overflow-x:auto"><table id="shTbl"></table></div>
-        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled; add a reason like "(Canceled - Schedule)". Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div>
+      <div class="card" style="margin-bottom:16px"><h2>Next 7 days <small><a href="#" data-gotab="sched">edit hours &amp; days off</a></small></h2><div id="shNext"><p class="empty">Loading...</p></div></div>
       <div class="card"><h2>Showings by day <small>from the Billy's Couches calendar</small></h2><div class="chartwrap"><canvas id="shChart"></canvas></div></div>
       <div class="card" style="margin-top:16px"><h2>Why they canceled <small id="shWhySub"></small></h2><div id="shWhy"></div>
         <p class="empty" style="margin-top:10px;font-size:12.5px">Add the reason in the title: (Canceled - Bought elsewhere), (Canceled - Couch sold), (Canceled - Schedule), (Canceled - Changed mind), (Canceled - No reason).</p></div>
@@ -415,6 +414,8 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
         <div class="card"><h2>By day of week</h2><div id="shDow"></div></div>
         <div class="card"><h2>Last 6 months</h2><div style="overflow-x:auto"><table id="shTrend"></table></div></div>
       </div>
+      <details class="card" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>Every showing this month</span><span style="color:var(--red);font-size:13px">Show</span></summary><div style="margin-top:12px"><div style="overflow-x:auto"><table id="shTbl"></table></div>
+        <p class="empty" style="margin-top:12px;font-size:12.5px">How it reads your calendar: "(Canceled)" in the title = canceled; add a reason like "(Canceled - Schedule)". Green event = bought. "(No show)" in the title or a gray (Graphite) event = no-show. Anything else in the past = showed up, didn't buy.</p></div></details>
     </section>
 
     <!-- META ADS -->
@@ -560,7 +561,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <section id="tab-offers" hidden><div id="offersBody"></div></section>
     <section id="tab-thanks" hidden><div id="sigBody"></div><div id="tyBody"></div></section>
     <section id="tab-sched" hidden>
-      <div class="card"><h2>Upcoming bookings <small>from the scheduling page customers get in their receipt text</small><span style="flex:1"></span><button class="btn sm" id="scTest">Preview</button><button class="btn sm p" id="scNew">+ New scheduling link</button></h2>
+      <div class="card"><h2>Scheduling links <small>make one for a customer, it goes in their receipt text</small><span style="flex:1"></span><button class="btn sm" id="scTest">Preview</button><button class="btn sm p" id="scNew">+ New scheduling link</button></h2>
         <div id="scNewBox" hidden style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
             <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Customer name<input id="snName" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
@@ -572,14 +573,17 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13.5px"><b style="font-size:12.5px;color:var(--muted)">Already on their order:</b>
             <label><input type="checkbox" class="snAdd" value="Scotchgard"> Scotchgard</label><label><input type="checkbox" class="snAdd" value="Plastic Wrap"> Plastic Wrap</label><label><input type="checkbox" class="snAdd" value="Couch Removal"> Couch Removal</label></div>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center"><button class="btn sm p" id="snGo">Create link</button><span id="snOut" style="font-size:13.5px"></span></div>
-        </div><div id="scBook"></div></div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="card"><h2>Delivery times <small>what customers can pick</small></h2><div id="scDel"></div></div>
-        <div class="card"><h2>Pick up times <small>open hours, split into 30-minute pick up times</small></h2><div id="scPick"></div></div>
+        </div></div>
+      <div class="grid2" style="margin-top:16px;display:none">
       </div>
-      <div class="card" style="margin-top:16px"><h2>Rules</h2><div id="scRules"></div>
-        <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
-      <div class="card" style="margin-top:16px"><h2>Warehouse showings <small><a href="/showing" target="_blank" rel="noopener">hq.billyscouches.com/showing</a></small></h2><div id="shfBody"><p class="empty">Loading...</p></div></div>
+      <div class="card" style="margin-top:16px"><h2>Hours <small>what customers can pick</small></h2>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm p" data-sctab="Del">Deliveries</button><button class="btn sm" data-sctab="Pick">Pick ups</button><button class="btn sm" data-sctab="Show">Showings</button></div>
+        <div id="scDel"></div><div id="scPick" hidden></div><div id="scShow" hidden></div>
+        <div id="scNoteDel"><p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
+        <p class="empty" id="scNoteShow" hidden style="font-size:12.5px;margin-top:10px">Type hours like 9am-9pm. Uncheck a day to close showings that day every week. Showings are 20 minutes. Customers book at <a href="/showing" target="_blank" rel="noopener">the showing form</a>.</p></div>
+      <div class="card" style="margin-top:16px"><h2>Showings: days off &amp; special hours</h2><div id="shfOff"><p class="empty">Loading...</p></div></div>
+      <div class="card" style="margin-top:16px"><h2>Rules <small>deliveries &amp; pick ups</small></h2><div id="scRules"></div></div>
+      <details class="card" id="scListCard" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span id="scListSum">Scheduling links</span><span style="color:var(--red);font-size:13px">Show</span></summary><div id="scBook" style="margin-top:12px"></div></details>
     </section>
     <section id="tab-drops" hidden><div id="drBody"></div><details class="card" id="jsCard" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>Website "Just sold" pop-ups <small id="jsNeed" style="font-weight:500;color:var(--muted)"></small></span><button class="btn sm" id="jsAdd" type="button">+ Add a sale</button></summary><div id="jsBody" style="margin-top:12px"></div></details></section>
     <section id="tab-fit" hidden><div id="fitBody"></div></section>
@@ -1149,14 +1153,21 @@ async function renderSched(){
   if (!SC) { $('scBook').innerHTML = '<p class="empty">Loading...</p>'; try { const r = await fetch('/api/sched', { cache: 'no-store' }); SC = await r.json(); } catch (e) { $('scBook').innerHTML = '<p class="empty">Could not load.</p>'; return; } }
   const cfg = SC.cfg, today = new Date().toLocaleDateString('en-CA');
   const up = SC.list.filter(o => o.booking && o.booking.date >= today).sort((a, b) => (a.booking.date + a.booking.win).localeCompare(b.booking.date + b.booking.win));
-  const waiting = SC.list.filter(o => !o.booking && Date.now() - o.created < 21 * 864e5);
+  // Not booked yet: newest first, and duplicate links for the same person + couch are folded into one row (hidden, not deleted).
+  const seen = {}, waiting = SC.list.filter(o => !o.booking && Date.now() - o.created < 21 * 864e5).sort((a, b) => b.created - a.created)
+    .filter(o => { const k = [o.name, o.phone, o.couch].map(x => String(x || '').toLowerCase().trim()).join('|'); if (seen[k]) { seen[k]++; return false; } seen[k] = 1; return true; });
+  const dupes = Object.values(seen).reduce((t, n) => t + n - 1, 0), q = (SCQ || '').toLowerCase().trim();
+  const match = o => !q || [o.name, o.phone, o.couch].join(' ').toLowerCase().includes(q), upF = up.filter(match), waitF = waiting.filter(match), cap = SCALL || q ? 999 : 10;
   const row = o => `<tr><td>${o.photo ? `<img src="${esc(o.photo)}" style="width:56px;height:38px;object-fit:cover;border-radius:6px;vertical-align:middle">` : ''}</td>
     <td><b>${esc(o.name)}</b><br><small style="color:var(--muted)">${o.type === 'delivery' ? 'Delivery' : 'Pick up'}${o.phone ? ' · ' + esc(o.phone) : ''}</small>${o.until || o.noHold ? `<br><span class="pill" style="background:#e3f1e8;color:#1f6b3d">${o.until ? 'Open thru ' + new Date(o.until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}${o.until && o.noHold ? ' · ' : ''}${o.noHold ? 'no hold fee' : ''}</span>` : ''}</td>
     <td>${o.booking ? `<b>${esc(o.booking.label)}</b>${o.booking.address ? `<br><small style="color:var(--muted)">${esc(o.booking.address)}, ${esc(o.booking.city)}</small>` : ''}` : '<span class="pill">Not booked yet</span>'}</td>
     <td class="hide-m">${esc(o.couch)}${o.addons.length ? `<br><small style="color:var(--muted)">${esc(o.addons.join(', '))}</small>` : ''}${o.extraDue ? `<br><small style="color:var(--green);font-weight:700">+${money(o.extraDue)} add-ons at scheduling</small>` : ''}</td>
     <td class="n" style="white-space:nowrap"><button class="xs" data-sccopy="${esc(o.link)}" title="Copy their scheduling link">Link</button> ${o.booking ? '' : `<button class="xs" data-scext="${esc(o.token)}" title="Let them book further out / skip the holding fee">Extend</button> `}<button class="xs" data-scdel="${esc(o.token)}" data-scname="${esc(o.name)}" title="Remove" style="color:var(--bad)">&times;</button></td></tr>`;
-  $('scBook').innerHTML = `<div style="overflow-x:auto"><table><tr><th></th><th>Customer</th><th>When</th><th class="hide-m">Couch</th><th></th></tr>${up.map(row).join('') || '<tr><td colspan="5" class="empty">No upcoming bookings from the scheduling page yet.</td></tr>'}</table></div>`
-    + (waiting.length ? `<h3 style="font-size:13px;margin:16px 0 4px;color:var(--muted)">SENT A LINK, NOT BOOKED YET (${waiting.length})</h3><div style="overflow-x:auto"><table>${waiting.map(row).join('')}</table></div>` : '');
+  $('scListSum').textContent = `Scheduling links · ${up.length} booked · ${waiting.length} not booked yet`;
+  $('scBook').innerHTML = `<input id="scQ" value="${esc(SCQ || '')}" placeholder="Search name, phone or couch" style="display:block;width:100%;margin-bottom:10px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit">`
+    + `<h3 style="font-size:13px;margin:4px 0 4px;color:var(--muted)">BOOKED (${upF.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Customer</th><th>When</th><th class="hide-m">Couch</th><th></th></tr>${upF.slice(0, cap).map(row).join('') || '<tr><td colspan="5" class="empty">None.</td></tr>'}</table></div>`
+    + (waitF.length ? `<h3 style="font-size:13px;margin:16px 0 4px;color:var(--muted)">SENT A LINK, NOT BOOKED YET (${waitF.length})${dupes ? ` <small style="font-weight:500">· ${dupes} duplicate link${dupes > 1 ? 's' : ''} hidden</small>` : ''}</h3><div style="overflow-x:auto"><table>${waitF.slice(0, cap).map(row).join('')}</table></div>` : '')
+    + ((upF.length > cap || waitF.length > cap) ? `<div style="text-align:center;margin-top:10px"><button class="btn sm" data-scall="1">Show all</button></div>` : '');
   const daysTbl = kind => `<table><tr><th>Day</th><th>Open</th><th>${kind === 'delivery' ? 'Windows' : 'Open hours'}</th><th class="n">${kind === 'delivery' ? 'Trucks' : 'Per 30 min'}</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const d = (cfg[kind].days || {})[dw] || { on: false, win: [], cap: 1 };
     return `<tr><td><b>${DOWS[dw]}</b></td><td><input type="checkbox" data-sck="${kind}" data-dw="${dw}" data-f="on" ${d.on ? 'checked' : ''}></td>
       <td><input data-sck="${kind}" data-dw="${dw}" data-f="win" value="${esc((d.win || []).map(scLabel).join(', '))}" placeholder="4–6pm, 6–8pm" style="width:100%;min-width:150px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit" ${d.on ? '' : 'disabled'}></td>
@@ -1168,21 +1179,50 @@ async function renderSched(){
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Blocked dates (closed)<input data-scr="blocked" value="${esc((cfg.blocked || []).join(', '))}" placeholder="2026-11-26, 2026-12-25" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label></div>`;
   renderShowForm();
 }
-// Warehouse showing form (hq.billyscouches.com/showing): next few days, hosts, and settings.
-let SHF = null;
+// Showings (hq.billyscouches.com/showing): weekly hours on the Hours card, plus days off & special hours. The Showings tab shows the next 7 days.
+let SHF = null, SCQ = '', SCALL = false;
+const shfParse = t => { const m = String(t).match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i); if (!m) return null;
+  const f = (h, mm, ap) => (Number(h) % 12 + (/p/i.test(ap) ? 12 : 0)) * 60 + Number(mm || 0), lo = f(m[1], m[2], m[3]), hi = f(m[4], m[5], m[6]); return hi > lo ? [lo, hi] : null; };
+const shfLbl = ([lo, hi]) => { const f = x => { const h = Math.floor(x / 60), mm = x % 60; return (h % 12 || 12) + (mm ? ':' + String(mm).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm'); }; return f(lo) + '-' + f(hi); };
+const shfDate = d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+async function shfLoad(){ try { SHF = await (await fetch('/api/showform', { cache: 'no-store' })).json(); if (!SHF.ok) throw 0; } catch (e) { SHF = null; } return SHF; }
 async function renderShowForm(){
-  const el = $('shfBody'); if (!el) return;
-  try { SHF = await (await fetch('/api/showform', { cache: 'no-store' })).json(); if (!SHF.ok) throw 0; } catch (e) { el.innerHTML = '<p class="empty">Could not load.</p>'; return; }
-  const inp = (k, v, ph) => `<input data-shf="${k}" value="${esc(v)}" placeholder="${ph}" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit">`;
-  const lab = 'style="font-size:12.5px;font-weight:600;color:var(--muted)"';
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
-      <label ${lab}>Closed, no showings (dates)${inp('closed', SHF.closed.join(', '), '2026-11-26')}</label>
-      <label ${lab}>Special hours for a date${inp('special', SHF.special, '2026-11-24 3:40pm-5:20pm')}</label></div>
-    <p class="empty" style="font-size:12.5px;margin-top:10px">Normal hours: Mon–Sat 9am–9pm, Sun 2–9pm, 20-minute showings. Bookings land on the Billy's Couches calendar as "Showing for …" and you get an HQ notification.</p>
-    ${SHF.recent.length ? `<h3 style="font-size:13px;margin:14px 0 4px;color:var(--muted)">BOOKED ON THE NEW FORM</h3><div style="overflow-x:auto"><table>${SHF.recent.slice(0, 10).map(b => `<tr><td style="white-space:nowrap">${esc(new Date(b.start).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</td><td><b>${esc(b.name)}</b><br><small style="color:var(--muted)">${esc(b.source)} · ${esc(b.soon)}</small></td><td class="hide-m">${esc(b.couch || '')}</td></tr>`).join('')}</table></div>` : ''}`;
+  if (!$('scShow')) return; await shfLoad(); if (!SHF) { $('shfOff').innerHTML = '<p class="empty">Could not load.</p>'; return; }
+  $('scShow').innerHTML = `<table><tr><th>Day</th><th>Open</th><th>Showing hours</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const h = SHF.hours[dw];
+    return `<tr><td><b>${DOWS[dw]}</b></td><td><input type="checkbox" data-shon="${dw}" ${h ? 'checked' : ''}></td><td><input data-shh="${dw}" value="${h ? shfLbl(h) : ''}" placeholder="9am-9pm" style="width:100%;min-width:150px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit" ${h ? '' : 'disabled'}></td></tr>`; }).join('')}</table>`;
+  const items = SHF.closed.map(d => ({ date: d, txt: 'Closed' })).concat(SHF.special.filter(s => !SHF.closed.includes(s.date)).map(s => ({ date: s.date, txt: s.range + ' only' }))).sort((a, b) => a.date.localeCompare(b.date));
+  $('shfOff').innerHTML = (items.map(i => `<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:14px"><span><b>${esc(shfDate(i.date))}</b> <span style="color:var(--muted)">· ${esc(i.txt)}</span></span><button class="xs" data-shfx="${i.date}" title="Remove">&times;</button></div>`).join('') || '<p class="empty" style="margin:0 0 8px">No days off or special hours coming up.</p>')
+    + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:6px">
+      <input type="date" id="shfD" min="${new Date().toLocaleDateString('en-CA')}" style="padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit">
+      <select id="shfK" style="padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"><option value="closed">Closed</option><option value="hours">Special hours</option></select>
+      <input id="shfH" placeholder="3pm-6pm" hidden style="padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit">
+      <button class="btn sm p" id="shfAdd">+ Add</button></div>`;
 }
-document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.shf) return;
-  try { await post('/api/showform/cfg', { [t.dataset.shf]: t.value }); toast('Saved'); renderShowForm(); } catch (err) { toast(err.message); } });
+async function shfSaveOff(closed, special){
+  try { await post('/api/showform/cfg', { closed: closed.join(', '), special: special.map(s => s.date + ' ' + s.range).join(', ') }); toast('Saved'); renderShowForm(); } catch (err) { toast(err.message); } }
+async function renderShowNext(){
+  const el = $('shNext'); if (!el) return; await shfLoad(); if (!SHF) { el.innerHTML = '<p class="empty">Could not load.</p>'; return; }
+  el.innerHTML = SHF.next7.map(d => `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px"><b>${esc(shfDate(d.date))}</b><span style="color:var(--muted)">${d.hours === 'Closed' ? '<span class="pill">Closed</span>' : `${d.booked} booked · ${esc(d.hours)}${d.special ? ' <span class="pill">special</span>' : ''}`}</span></div>`).join('');
+}
+document.addEventListener('click', e => { const t = e.target;
+  const tb = t.closest('[data-sctab]'); if (tb) { ['Del', 'Pick', 'Show'].forEach(k => { $('sc' + k).hidden = k !== tb.dataset.sctab; }); document.querySelectorAll('[data-sctab]').forEach(b => b.classList.toggle('p', b === tb));
+    $('scNoteDel').hidden = tb.dataset.sctab === 'Show'; $('scNoteShow').hidden = tb.dataset.sctab !== 'Show'; return; }
+  if (t.closest('[data-scall]')) { SCALL = true; renderSched(); return; }
+  if (t.closest('[data-gotab]')) { e.preventDefault(); const n = document.querySelector('.nav[data-tab=' + t.closest('[data-gotab]').dataset.gotab + ']'); if (n) n.click(); return; }
+  const x = t.closest('[data-shfx]'); if (x && SHF) { const d = x.dataset.shfx; shfSaveOff(SHF.closed.filter(c => c !== d), SHF.special.filter(s => s.date !== d)); return; }
+  if (t.id === 'shfAdd' && SHF) { const d = $('shfD').value; if (!d) return toast('Pick a date');
+    if ($('shfK').value === 'closed') return shfSaveOff([...SHF.closed.filter(c => c !== d), d], SHF.special.filter(s => s.date !== d));
+    const h = shfParse($('shfH').value); if (!h) return toast('Type hours like 3pm-6pm');
+    return shfSaveOff(SHF.closed.filter(c => c !== d), [...SHF.special.filter(s => s.date !== d), { date: d, range: shfLbl(h) }]); }
+});
+document.addEventListener('change', async e => { const t = e.target;
+  if (t.id === 'shfK') { $('shfH').hidden = t.value !== 'hours'; return; }
+  if (!SHF || !(t.dataset && (t.dataset.shon !== undefined || t.dataset.shh !== undefined))) return;
+  const hours = {}; for (let dw = 0; dw < 7; dw++) { const on = document.querySelector(`[data-shon="${dw}"]`).checked, txt = document.querySelector(`[data-shh="${dw}"]`).value;
+    hours[dw] = on ? (shfParse(txt) || SHF.hours[dw] || [540, 1260]) : null; }
+  if (t.dataset.shh !== undefined && !shfParse(t.value)) toast('Type hours like 9am-9pm');
+  try { await post('/api/showform/cfg', { hours }); toast('Saved'); renderShowForm(); } catch (err) { toast(err.message); } });
+document.addEventListener('input', e => { if (e.target.id === 'scQ') { SCQ = e.target.value; clearTimeout(window._scqT); window._scqT = setTimeout(() => { renderSched().then(() => { const i = $('scQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }); }, 250); } });
 function scSave(){ RAW.store.slots = SC.cfg; clearTimeout(scSave.t); scSave.t = setTimeout(() => saveStore('slots', SC.cfg), 600); }
 // Phone boxes: format as (314) 555-0123 while typing.
 const fmtTel = v => { const d = String(v).replace(/\D/g, '').replace(/^1/, '').slice(0, 10); return d.length > 6 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : d.length > 3 ? `(${d.slice(0, 3)}) ${d.slice(3)}` : d; };
@@ -1410,6 +1450,7 @@ function shStats(list){
   return { booked, canceled, noshow, bought, upcoming, showed, showRate: past ? showed / past : NaN, conv: showed ? bought / showed : NaN };
 }
 function renderShowings(){
+  renderShowNext();
   const R = getR('showings'), list = RAW.showings.filter(x => inR(x.date, R)), PR = prevRange(R), vs = vsLabel(R);
   const A = shStats(list), B = shStats(RAW.showings.filter(x => inR(x.date, PR)));
   $('shKpis').innerHTML = kpiHtml([
