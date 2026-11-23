@@ -4167,14 +4167,12 @@ function demoData() {
 }
 
 // ===================== SHOWINGS: in-house showing form (replaces the Jotform "Warehouse Showing") =====================
-// Customers book at /showing. A time is open only when a host can cover it: Billy (unless that day is in "Billy away"
-// or he has a red calendar block), or the first team member in the host list who confirmed they CAN work that whole
-// slot (team availability app) and has no red block. On days without Billy, once anything is booked that day
-// (a showing or the delivery run), only times within stackMin minutes of it stay open, so nobody drives out for one visit.
-// Each booking becomes a "Showing for <name>" event on the Billy's Couches calendar in the same format Jotform used,
-// so the job board, no-show texts and the warm-leads list keep working.
+// Customers book at /showing (embedded on billyscouches.com/visitshowroom). Open times = the weekly hours, or the
+// special hours set for a date, minus closed dates and times already booked. Nobody is assigned here: hosts are
+// assigned the day before on the job board / work log. Each booking becomes a "Showing for <name>" event on the
+// Billy's Couches calendar in the same format Jotform used, so the job board, no-show texts and warm leads keep working.
 const SHF_KEY = 'bcd:showForm';
-const SHF_DEFAULT = { hosts: ['Finley', 'Collin', 'Gunnarr', 'Luke', 'Zach'], billyAway: [], closed: [], slot: 20, notice: 7, days: 3, stackMin: 60,
+const SHF_DEFAULT = { hosts: ['Finley', 'Collin', 'Gunnarr', 'Luke', 'Zach'], billyAway: [], closed: [], special: {}, slot: 20, notice: 7, days: 3,
   hours: { 0: [840, 1260], 1: [540, 1260], 2: [540, 1260], 3: [540, 1260], 4: [540, 1260], 5: [540, 1260], 6: [540, 1260] } };
 const SHF_SOON = ['ASAP', '1-3 weeks', '1-3 months'];
 const SHF_SRC = ['Facebook Marketplace', 'Craigslist', 'Facebook or Instagram Ad', 'TikTok', 'Google Search', 'Google Maps', 'Someone referred me', 'Other'];
@@ -4183,31 +4181,21 @@ const shfHm = m => { const h = Math.floor(m / 60), mm = m % 60; return `${h % 12
 const shfDay = ymd => new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
 const shfCap = w => String(w || '').trim().split(/\s+/).map(x => x ? x[0].toUpperCase() + x.slice(1) : '').join(' ');
 const shfEsc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const shfRange = (lo, hi) => shfHm(lo).replace(':00', '').replace(' ', '').toLowerCase() + '-' + shfHm(hi).replace(':00', '').replace(' ', '').toLowerCase();
 async function shfDays(s, onlyDate) {
-  const cfg = s.cfg, g = await google(false).catch(() => ({})), av = await avState(), today = ctYmd(new Date()), now = Date.now();
-  const unavail = g.unavail || [];
+  const cfg = s.cfg, g = await google(false).catch(() => ({})), today = ctYmd(new Date()), now = Date.now();
   const shows = (g.showings || []).filter(r => !/cancel/i.test(r[1] || '')).map(r => Date.parse(r[0]));
   Object.values(s.book).forEach(b => { if (!shows.some(t => Math.abs(t - b.start) < 60e3)) shows.push(b.start); });   // booked here but not on the calendar copy yet
-  const runs = (g.deliveries || []).filter(r => !/cancel|pick\s*-?\s*up/i.test(r[2] || '')).map(r => [Date.parse(r[0]), Date.parse(r[1])]);
-  const red = (n, a, b) => unavail.some(([st, en, title]) => new RegExp('\\b' + n + '\\b', 'i').test(title || '') && Date.parse(st) < b && Date.parse(en) > a);
-  const teamOk = (n, date, a, b) => { const p = av.people[n]; if (!p || !(p.confirmed || {})[jbMon(date)]) return false;
-    if (n === 'Zach' && runs.some(([x, y]) => x - 60 * 60e3 < b && y > a)) return false;   // Zach is driving
-    return !red(n, a, b) && avFree(p, date).some(([x, y]) => x <= a && y >= b); };
   const out = [];
   for (let i = 0; i < cfg.days; i++) {
     const date = jbAdd(today, i); if (onlyDate && date !== onlyDate) continue;
-    const dow = new Date(date + 'T12:00:00Z').getUTCDay(), hrs = cfg.hours[dow], day = { date, label: shfDay(date), slots: [] };
+    const dow = new Date(date + 'T12:00:00Z').getUTCDay(), hrs = (cfg.special || {})[date] || cfg.hours[dow], day = { date, label: shfDay(date), slots: [] };
     out.push(day);
     if (!hrs || cfg.closed.includes(date)) continue;
-    const billyDay = !cfg.billyAway.includes(date), onDay = t => ctYmd(new Date(t)) === date;
-    const anchors = shows.filter(onDay).concat(runs.filter(([x]) => onDay(x)).flat());
     for (let m = hrs[0]; m + cfg.slot <= hrs[1]; m += cfg.slot) {
       const a = ctAt(date, m).getTime(), b = a + cfg.slot * 60e3;
       if (a - now < cfg.notice * 3600e3 || shows.some(t => t >= a && t < b)) continue;
-      const near = anchors.some(t => Math.abs(t - a) <= cfg.stackMin * 60e3 || Math.abs(t - b) <= cfg.stackMin * 60e3);
-      let host = billyDay && !red('Billy', a, b) ? 'Billy' : '';
-      if (!host && (!anchors.length || near)) host = cfg.hosts.find(n => teamOk(n, date, a, b)) || '';
-      if (host) day.slots.push({ min: m, label: shfHm(m), pop: near, host });
+      day.slots.push({ min: m, label: shfHm(m) });
     }
   }
   return out;
@@ -4219,7 +4207,7 @@ app.get('/public/showing', async (req, res) => {
     const s = await shfState(), days = await shfDays(s), drops = await getDrops().catch(() => []);
     const couches = drops.filter(d => (d.status === 'live' || d.status === 'emailed') && (d.photos || []).length).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 40)
       .map(d => ({ id: d.id, title: d.title, price: d.price, photo: dropPhotoUrl(d.photos[0]) }));
-    res.json({ ok: true, days: days.map(d => ({ date: d.date, label: d.label, slots: d.slots.map(x => ({ min: x.min, label: x.label, pop: x.pop })) })), couches, soon: SHF_SOON, sources: SHF_SRC });
+    res.json({ ok: true, days: days.map(d => ({ date: d.date, label: d.label, slots: d.slots.map(x => ({ min: x.min, label: x.label })) })), couches, soon: SHF_SOON, sources: SHF_SRC });
   } catch (e) { console.log('Showing slots failed', e.message); res.status(500).json({ error: 'Could not load times. Text Billy at (314) 899-7503.' }); }
 });
 const shfHits = new Map();
@@ -4240,33 +4228,35 @@ app.post('/public/showing', async (req, res) => {
     const utm = {}; ['fbcamp', 'fbsource', 'utm_adset', 'utm_ad', 'utm_source', 'utm_campaign'].forEach(k => { if (b[k]) utm[k] = clean(b[k], 120); });
     const P = (k, v) => `<p><strong>${k}</strong></p><p>${shfEsc(v)}</p>`;
     const desc = P('Name:', name) + P('Phone Number:', fmtPhone(phone)) + P('How soon do you need a couch? :', soon) + (couch ? P('Coming to see:', couch.title) : '')
-      + P('How did you find us? :', src) + (Object.keys(utm).length ? P('Ad:', Object.entries(utm).map(([k, v]) => k + ' ' + v).join(' · ')) : '') + `<p>Host: ${shfEsc(slot.host)} · booked on HQ showing form</p>`;
+      + P('How did you find us? :', src) + (Object.keys(utm).length ? P('Ad:', Object.entries(utm).map(([k, v]) => k + ' ' + v).join(' · ')) : '') + '<p>Booked on the HQ showing form</p>';
     const j = await sheetsBook({ title: `Showing for ${name}`, start: start.toISOString(), end: end.toISOString(), location: '126 E Orleans St, Pacific, MO 63069', desc });
     const id = crypto.randomBytes(6).toString('hex');
-    s.book[id] = { id, name, phone, soon, source: src, couch: couch ? couch.title : '', start: start.getTime(), eventId: j.eventId || '', created: Date.now(), utm, host: slot.host };
+    s.book[id] = { id, name, phone, soon, source: src, couch: couch ? couch.title : '', start: start.getTime(), eventId: j.eventId || '', created: Date.now(), utm };
     Object.keys(s.book).forEach(k => { if (s.book[k].start < Date.now() - 45 * 864e5) delete s.book[k]; });
     await kset(SHF_KEY, s); refreshGoogle().catch(() => {});
     const when = `${shfDay(date)} at ${slot.label}`;
     sendText(phone, `Hi ${first}! You're booked to see couches ${when} at our showroom, 126 E Orleans St, Pacific. Can't make it? Text Billy at (314) 899-7503. - Billy's Couches`).catch(() => {});
-    textAlert(`NEW SHOWING: ${when}\n${name} ${fmtPhone(phone)}\n${soon} · ${src}${couch ? '\nWants to see: ' + couch.title : ''}\nHost: ${slot.host}`).catch(() => {});
+    pushAll('New showing', `${name} · ${when}${couch ? ' · ' + couch.title : ''}`, '/?tab=sched', 'showing').catch(() => {});   // HQ app notification only, no text
     res.json({ ok: true, when, first, couch: couch ? couch.title : '' });
   } catch (e) { console.log('Showing booking failed', e.message); res.status(500).json({ error: 'Could not book that time. Text Billy at (314) 899-7503.' }); }
 });
 // HQ: showing form settings + the next few days.
 app.get('/api/showform', async (req, res) => {
-  try { const s = await shfState(), days = await shfDays(s);
-    res.json({ ok: true, cfg: s.cfg, team: Object.keys(JB_TEAM), days: days.map(d => ({ date: d.date, label: d.label, open: d.slots.length, first: (d.slots[0] || {}).label || '', last: (d.slots[d.slots.length - 1] || {}).label || '', hosts: [...new Set(d.slots.map(x => x.host))] })),
+  try { const s = await shfState(), sp = s.cfg.special || {};
+    res.json({ ok: true, closed: s.cfg.closed, special: Object.keys(sp).sort().map(d => d + ' ' + shfRange(sp[d][0], sp[d][1])).join(', '),
       recent: Object.values(s.book).sort((a, b) => b.created - a.created).slice(0, 25) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Special hours, typed like "2026-11-24 3:40pm-5:20pm, 2026-11-25 10am-12:40pm".
+const shfMin = (h, m, ap) => (Number(h) % 12 + (/p/i.test(ap) ? 12 : 0)) * 60 + Number(m || 0);
 app.post('/api/showform/cfg', async (req, res) => {
-  try { const b = req.body || {}, s = await shfState(), c = s.cfg, dates = v => (Array.isArray(v) ? v : String(v || '').split(/[\s,]+/)).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).slice(0, 60);
-    if (b.hosts !== undefined) c.hosts = (Array.isArray(b.hosts) ? b.hosts : String(b.hosts).split(/[\s,]+/)).map(x => Object.keys(JB_TEAM).find(n => lc(n) === lc(x))).filter(Boolean);
-    if (b.billyAway !== undefined) c.billyAway = dates(b.billyAway);
-    if (b.closed !== undefined) c.closed = dates(b.closed);
-    [['notice', 0, 72], ['days', 1, 14], ['stackMin', 0, 240]].forEach(([k, lo, hi]) => { if (b[k] !== undefined && isFinite(b[k])) c[k] = Math.max(lo, Math.min(hi, Math.round(Number(b[k])))); });
-    if (b.hours && typeof b.hours === 'object') { const h = {}; for (let d = 0; d < 7; d++) { const v = b.hours[d]; h[d] = Array.isArray(v) && v.length === 2 && v[0] < v[1] ? [Math.max(0, +v[0]), Math.min(1440, +v[1])] : null; } c.hours = h; }
-    s.cfg = c; await kset(SHF_KEY, s); res.json({ ok: true, cfg: c }); }
+  try { const b = req.body || {}, s = await shfState(), c = s.cfg, today = ctYmd(new Date());
+    if (b.closed !== undefined) c.closed = String(b.closed || '').split(/[\s,]+/).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).slice(0, 60);
+    if (b.special !== undefined) { const sp = {}, re = /(\d{4}-\d{2}-\d{2})\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi; let m;
+      while ((m = re.exec(String(b.special)))) { const lo = shfMin(m[2], m[3], m[4]), hi = shfMin(m[5], m[6], m[7]); if (hi > lo && m[1] >= today) sp[m[1]] = [lo, hi]; }
+      if (String(b.special).trim() && !Object.keys(sp).length) return res.status(400).json({ error: 'Type it like 2026-11-24 3:40pm-5:20pm' });
+      c.special = sp; }
+    s.cfg = c; await kset(SHF_KEY, s); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ===================== END SHOWINGS =====================
