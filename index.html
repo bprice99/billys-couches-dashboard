@@ -715,7 +715,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
 <div class="mask" id="m-drop"><div class="modal" style="max-width:640px;max-height:92vh;overflow:auto">
   <h3 id="drTitle" style="margin:0 40px 12px 0">New couch</h3>
   <input type="hidden" id="drId">
-  <label class="drl">Title<input id="drName" placeholder="e.g. Karson Power Reclining Sectional, Gray" maxlength="120"></label>
+  <label class="drl">Title<input id="drName" list="drTitles" autocomplete="off" placeholder="e.g. Karson Power Reclining Sectional, Gray" maxlength="120"><datalist id="drTitles"></datalist></label>
   <div class="two"><label class="drl">Price ($)<input id="drPrice" type="number" inputmode="numeric" min="0"></label><label class="drl">Retail ($) <small>optional, shows crossed out</small><input id="drRetail" type="number" inputmode="numeric" min="0"></label></div>
   <label class="drl">Grade<select id="drGrade"><option value="">No grade</option><option value="A">A - Like New</option><option value="B">B - Excellent</option><option value="C">C - Good</option></select></label>
   <label class="drl">Details <small>one per line (color, power recline, pieces, smoke/pet free...)</small><textarea id="drDetails" rows="4"></textarea></label>
@@ -2906,6 +2906,24 @@ function unitOptions(cur){
   return allUnits().filter(u => (u.status === 'in' && !used[u.key]) || u.key === cur)
     .map(u => `<option value="${esc(u.key)}" ${u.key === cur ? 'selected' : ''}>${esc(u.name)} · ${u.code} · ${esc(u.from)} · ${money(u.cost)}</option>`).join('');
 }
+// New couch: when the title (or the Sales Tracker unit) matches a couch listed before, fill the blank fields from it:
+// dimensions, details, retail, price and the Will it fit pieces. Never overwrites anything already typed; photos and imperfections stay yours.
+const dropWords = t => String(t || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+function sameTitleDrop(title){
+  const w = dropWords(title); if (w.length < 2) return null; const cur = $('drId').value;
+  const c = ((DR && DR.drops) || []).filter(d => d.id !== cur && d.status !== 'hidden' && (d.dimensions || (d.details || []).length));
+  const exact = c.filter(d => dropWords(d.title).join(' ') === w.join(' ')), model = c.filter(d => { const x = dropWords(d.title); return x[0] === w[0] && x[1] === w[1]; });
+  return (exact.length ? exact : model).sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0))[0] || null;
+}
+function fillDropBlanks(tpl){
+  if (!tpl) return; const got = [], set = (id, v, lbl) => { if (!$(id).value.trim() && v) { $(id).value = v; got.push(lbl); } };
+  set('drDims', tpl.dimensions, 'dimensions'); set('drDetails', (tpl.details || []).join('\n'), 'details'); set('drRetail', tpl.retail || '', 'retail'); set('drPrice', tpl.price || '', 'price');
+  if (!FITP.length) { const p = tpl.pieces && tpl.pieces.length ? tpl.pieces : (tpl.guessPieces || []); if (p.length) { FITP = p.map(x => ({ ...x })); FITS = ''; drawFitPieces(); got.push('Will it fit pieces'); } }
+  if (got.length) toast('Filled ' + got.join(', ') + ' from the other ' + tpl.title.split(' ').slice(0, 3).join(' ') + '. Double-check them.');
+}
+document.addEventListener('change', e => { const id = e.target.id; if ((id !== 'drName' && id !== 'drUnit') || $('drId').value) return;
+  if (id === 'drName') fillDropBlanks(sameTitleDrop(e.target.value));
+  else if (RAW) { const u = unitByKey(e.target.value); if (u) fillDropBlanks(sameModelDrop(u) || sameTitleDrop(u.name)); } });
 function sameModelDrop(u){
   const list = ((DR && DR.drops) || []).filter(d => d.unitRef && d.status !== 'hidden' && (unitByKey(unitRefKey(d.unitRef)) || {}).name === u.name);
   return list.sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0))[0] || null;
@@ -3008,6 +3026,8 @@ function openDrop(id){
       FITP = (tpl.pieces && tpl.pieces.length ? tpl.pieces : (tpl.guessPieces || [])).map(x => ({ ...x })); drawFitPieces();
       toast('Copied the details from the other ' + tpl.title.split(' ').slice(0, 3).join(' ') + '. Check imperfections + add photos of this one.'); }
   } PREUNIT = null;
+  // Past titles as suggestions, so a repeat couch is one tap (and then its size fills in).
+  $('drTitles').innerHTML = [...new Set(((DR && DR.drops) || []).map(x => x.title).filter(Boolean))].sort().map(t => `<option value="${esc(t)}">`).join('');
   $('m-drop').classList.add('on');
 }
 window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.fitShapeSaved) { $('fitArrNote').textContent = '✓ Showroom shape saved (modular)'; toast('Shape saved'); loadDrops(); } });
