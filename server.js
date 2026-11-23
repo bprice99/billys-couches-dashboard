@@ -3030,6 +3030,22 @@ app.post('/public/order-hold', async (req, res) => {
     const pend = await getPending(); const old = pend.find(x => x.ref === o.ref);
     if (old && old.status !== 'pending') return res.json({ ok: true, status: old.status });
     if (old) pend.splice(pend.indexOf(old), 1);
+    // Change payment (order app): this order replaces one sent a few minutes ago. Same couches, so the old order's
+    // hold / sale moves over to the new one instead of clashing. The old order is marked "replaced" (kept, not deleted).
+    const rep = clean((req.body || {}).replaces, 60), prev = rep && pend.find(x => x.ref === rep && x.source === 'team' && x.status !== 'replaced');
+    if (prev) {
+      const list = await getDrops(), now = Date.now();
+      list.forEach(d => {
+        if (d.status === 'held' && d.heldRef === prev.ref) { d.heldRef = o.ref; d.updatedAt = now; }
+        else if (d.status === 'sold' && d.soldRef === prev.ref) {
+          if (o.kind === 'paid') d.soldRef = o.ref;
+          else { d.status = 'held'; d.heldFrom = 'live'; d.heldRef = o.ref; delete d.soldRef; delete d.soldAt; delete d.soldVia; delete d.soldCustomer; }
+          d.updatedAt = now;
+        }
+      });
+      await setDrops(list); dropsAt = now; recentCache.at = 0;
+      prev.status = 'replaced'; prev.doneAt = now; prev.replacedBy = o.ref; o.replaces = prev.ref;
+    }
     if (o.kind === 'paid') { await finalizeOrder(o, o.source === 'team' ? 'order app' : 'website'); pend.unshift(o); await setPending(pend); return res.json({ ok: true, status: 'paid' }); }
     const list = await getDrops(); o.busy = holdDrops(list, o.items.map(i => i.dropId), o.ref); await setDrops(list); dropsAt = Date.now(); recentCache.at = 0;
     pend.unshift(o); await setPending(pend);
@@ -3048,6 +3064,7 @@ app.post('/public/order-paid', async (req, res) => {
     const pend = await getPending(), o = pend.find(x => x.plink === s.link);
     if (!o) return res.json({ ok: false, reason: 'no matching order' });
     if (o.status === 'paid') return res.json({ ok: true, status: 'paid' });
+    if (o.status === 'replaced') { textAlert(`⚠️ ${o.customer || 'A customer'} paid an OLD card link (${money(o.total)}) after their payment was changed. Check they didn't pay twice.`).catch(() => {}); return res.json({ ok: false, reason: 'replaced' }); }
     await finalizeOrder(o, 'website card'); await setPending(pend);
     res.json({ ok: true, status: 'paid' });
   } catch (e) { res.status(500).json({ error: e.message }); }
