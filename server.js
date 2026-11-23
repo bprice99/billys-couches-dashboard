@@ -1934,7 +1934,7 @@ async function recentOrders(days) {
     // Marked Sold by hand (off-form sale): only pair with an order logged within a day at the same price that isn't
     // already a different couch. Otherwise it gets its own pop-up.
     const manual = !d.soldVia, sameCouch = l => !l.couch || bestSiteMatch(l.couch.name, [{ title: d.title }]);
-    const pool = log.filter(l => !l.drop && dayDiff(sd, l.day) >= (manual ? -1 : -2) && dayDiff(sd, l.day) <= (manual ? 1 : 4) && (near(l.price, d.price) || near(l.net, d.price)) && (!manual || sameCouch(l)));
+    const pool = log.filter(l => !l.drop && !hidden.has(l.key) && dayDiff(sd, l.day) >= (manual ? -1 : -2) && dayDiff(sd, l.day) <= (manual ? 1 : 4) && (near(l.price, d.price) || near(l.net, d.price)) && (!manual || sameCouch(l)));
     const hit = pool.sort((a, b) => Math.abs(dayDiff(sd, a.day)) - Math.abs(dayDiff(sd, b.day)))[0];
     if (hit) hit.drop = d;
     else if (d.soldAt > cutoff && d.soldAt <= Date.now() && !hidden.has('d' + d.id)) extra.push({ key: 'd' + d.id, at: new Date(d.soldAt).toISOString(), exact: true, customer: d.soldCustomer || '', price: d.price, title: d.title, photo: (d.photos || [])[0] ? dropPhotoUrl(d.photos[0]) : '', from: 'drops', saved: inSale(d.soldAt) ? saleSaved(0, d.price) : 0 });
