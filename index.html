@@ -579,6 +579,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
       </div>
       <div class="card" style="margin-top:16px"><h2>Rules</h2><div id="scRules"></div>
         <p class="empty" style="font-size:12.5px;margin-top:10px">Type windows like 4-6pm, 6-8pm or 10am-12pm, separated by commas. Times already on the Billy's Couches calendar (Delivery for… / Pick up for…) are counted as taken, so add manual bookings there like you do now.</p></div>
+      <div class="card" style="margin-top:16px"><h2>Warehouse showings <small><a href="/showing" target="_blank" rel="noopener">hq.billyscouches.com/showing</a></small></h2><div id="shfBody"><p class="empty">Loading...</p></div></div>
     </section>
     <section id="tab-drops" hidden><div id="drBody"></div><details class="card" id="jsCard" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span>Website "Just sold" pop-ups <small id="jsNeed" style="font-weight:500;color:var(--muted)"></small></span><button class="btn sm" id="jsAdd" type="button">+ Add a sale</button></summary><div id="jsBody" style="margin-top:12px"></div></details></section>
     <section id="tab-fit" hidden><div id="fitBody"></div></section>
@@ -1165,7 +1166,26 @@ async function renderSched(){
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Book up to (days out)<input type="number" min="1" max="60" data-scr="maxDays" value="${cfg.maxDays || 14}" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Notice needed (hours)<input type="number" min="0" max="96" data-scr="noticeHours" value="${cfg.noticeHours ?? 12}" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
     <label style="font-size:12.5px;font-weight:600;color:var(--muted)">Blocked dates (closed)<input data-scr="blocked" value="${esc((cfg.blocked || []).join(', '))}" placeholder="2026-11-26, 2026-12-25" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit"></label></div>`;
+  renderShowForm();
 }
+// Warehouse showing form (hq.billyscouches.com/showing): next few days, hosts, and settings.
+let SHF = null;
+async function renderShowForm(){
+  const el = $('shfBody'); if (!el) return;
+  try { SHF = await (await fetch('/api/showform', { cache: 'no-store' })).json(); if (!SHF.ok) throw 0; } catch (e) { el.innerHTML = '<p class="empty">Could not load.</p>'; return; }
+  const c = SHF.cfg, inp = (k, v, ph) => `<input data-shf="${k}" value="${esc(v)}" placeholder="${ph}" style="display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;font:inherit">`;
+  const lab = 'style="font-size:12.5px;font-weight:600;color:var(--muted)"';
+  el.innerHTML = `<div style="overflow-x:auto"><table><tr><th>Day</th><th>Open times</th><th>Host</th></tr>${SHF.days.map(d => `<tr><td><b>${esc(d.label)}</b></td><td>${d.open ? esc(d.first + ' – ' + d.last) + ` <small style="color:var(--muted)">(${d.open} times)</small>` : '<span class="pill">None</span>'}</td><td>${esc(d.hosts.join(', ') || '–')}</td></tr>`).join('')}</table></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px">
+      <label ${lab}>Host order${inp('hosts', c.hosts.join(', '), 'Finley, Collin, Luke')}</label>
+      <label ${lab}>Billy away (dates)${inp('billyAway', c.billyAway.join(', '), '2026-11-24, 2026-11-25')}</label>
+      <label ${lab}>Closed, no showings (dates)${inp('closed', c.closed.join(', '), '2026-11-26')}</label>
+      <label ${lab}>Bunch times within (minutes)${inp('stackMin', c.stackMin, '60')}</label></div>
+    <p class="empty" style="font-size:12.5px;margin-top:10px">Billy hosts unless the day is under "Billy away". Then the first person in the host order who marked they CAN work that time (availability app) gets it, and once anything is booked that day, only times near it stay open. Bookings land on the Billy's Couches calendar as "Showing for …", same as Jotform.</p>
+    ${SHF.recent.length ? `<h3 style="font-size:13px;margin:14px 0 4px;color:var(--muted)">BOOKED ON THE NEW FORM</h3><div style="overflow-x:auto"><table>${SHF.recent.slice(0, 10).map(b => `<tr><td style="white-space:nowrap">${esc(new Date(b.start).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</td><td><b>${esc(b.name)}</b><br><small style="color:var(--muted)">${esc(b.source)} · ${esc(b.soon)}</small></td><td class="hide-m">${esc(b.couch || '')}</td><td>${esc(b.host || '')}</td></tr>`).join('')}</table></div>` : ''}`;
+}
+document.addEventListener('change', async e => { const t = e.target; if (!t.dataset || !t.dataset.shf) return;
+  try { await post('/api/showform/cfg', { [t.dataset.shf]: t.value }); toast('Saved'); renderShowForm(); } catch (err) { toast(err.message); } });
 function scSave(){ RAW.store.slots = SC.cfg; clearTimeout(scSave.t); scSave.t = setTimeout(() => saveStore('slots', SC.cfg), 600); }
 // Phone boxes: format as (314) 555-0123 while typing.
 const fmtTel = v => { const d = String(v).replace(/\D/g, '').replace(/^1/, '').slice(0, 10); return d.length > 6 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : d.length > 3 ? `(${d.slice(0, 3)}) ${d.slice(3)}` : d; };
