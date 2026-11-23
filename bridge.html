@@ -6,7 +6,7 @@
 // the newest live couches (title, price, description, photos) so they can be posted without downloading anything.
 (async () => {
   const $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
-  const target = q.get('to') === 'cl' ? 'https://post.craigslist.org' : 'https://www.facebook.com';   // Craigslist posting uses the same helper
+  const target = q.get('to') === 'cl' ? 'https://post.craigslist.org' : q.get('to') === 'gh' ? 'https://github.com' : 'https://www.facebook.com';   // gh: photos for graphics made on GitHub   // Craigslist posting uses the same helper
   if (!window.opener) { $('s').textContent = 'Open this from Facebook.'; return; }
   try {
     // ?imgs=/public/bn/h2,/public/bn/h3 sends just those photos (for listings that aren't drops, like Brand New)
