@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2b1d16">
+<title>Book a Showing · Billy's Couches</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--red:#b0524c;--red2:#963f3a;--dark:#2b1d16;--cream:#f7f3ee;--line:#e8e0d6;--muted:#7a6f66;--green:#2e7d4f}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:Inter,-apple-system,Segoe UI,Arial,sans-serif;background:var(--cream);color:var(--dark);-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;min-height:100vh;background:var(--cream)}
+.top{background:#fff;color:var(--dark);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+.logo{display:block;line-height:0}.logo img{height:44px;width:auto;display:block}
+.top small{font-size:12.5px;opacity:.75;margin-left:auto}
+.steps{display:flex;gap:6px;padding:14px 20px 0}.steps i{flex:1;height:4px;border-radius:9px;background:var(--line);transition:background .2s}.steps i.on{background:var(--red)}
+.pad{padding:16px 20px 40px}
+.h{font-size:24px;font-weight:900;letter-spacing:-.02em;margin:6px 0 4px;line-height:1.15}.p{font-size:14px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+.ord{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:16px}
+.ord img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#efe9e2}
+.ord .b{padding:12px 14px}.ord b{display:block;font-size:15.5px;line-height:1.3}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{font-size:12px;font-weight:700;background:#f3ece4;border-radius:99px;padding:4px 10px}.chip.g{background:#e3f1e8;color:var(--green)}
+.lbl{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+.days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.days::-webkit-scrollbar{display:none}
+.day{flex:0 0 62px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:9px 0;text-align:center;cursor:pointer;font:inherit;color:inherit}
+.day small{display:block;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}.day b{font-size:20px}.day.on{border-color:var(--red);background:#fbf0ee}.day.full{opacity:.4}
+.day em{display:block;font-style:normal;font-size:9.5px;font-weight:800;color:#b45309;margin-top:1px}.day.free em{color:#2e7d4f}
+.hold{background:#eef6f0;color:#1f5f3a;border-radius:12px;padding:11px 14px;font-size:13.5px;margin:12px 0 4px;text-align:left;line-height:1.45}.hold b{color:#1f5f3a}
+.hold.fee{background:#fff7ed;color:#9a3412}.hold.fee b{color:#9a3412}
+.slots{display:grid;gap:8px}
+.slot{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;color:inherit;text-align:left;width:100%}
+.slot span{font-size:12.5px;color:var(--muted);font-weight:600}.slot.on{border-color:var(--red);background:#fbf0ee}.slot:disabled{opacity:.4;text-decoration:line-through;cursor:default}
+.btn{display:block;width:100%;border:0;background:var(--red);color:#fff;text-align:center;font-weight:800;border-radius:14px;padding:16px;font-size:16px;margin-top:18px;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn:disabled{opacity:.45;cursor:default}.btn:active{transform:scale(.99)}
+.ghost{display:block;width:100%;border:1.5px solid var(--line);background:#fff;color:var(--dark);text-align:center;font-weight:700;border-radius:14px;padding:14px;font-size:15px;margin-top:10px;cursor:pointer;font-family:inherit;text-decoration:none}
+.back{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:0;margin-bottom:6px;cursor:pointer}
+.f{margin-bottom:12px}.f label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+.f input,.f textarea{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px;font:inherit;font-size:16px;color:var(--dark);outline:none}
+.f input:focus,.f textarea:focus{border-color:var(--red)}.f textarea{min-height:70px;resize:vertical}
+.row2{display:flex;gap:8px}.row2 .f:first-child{flex:2}.row2 .f:last-child{flex:1}
+.up{background:#fff;border:2px solid var(--red);border-radius:16px;padding:14px 12px 6px;margin-top:6px}
+.uph{font-weight:900;font-size:15.5px;margin:0 2px 10px;color:var(--red)}
+.ui{display:flex;align-items:center;gap:11px;border:1.5px solid var(--line);border-radius:12px;padding:11px;margin-bottom:8px;cursor:pointer;user-select:none}
+.ui.on{border-color:var(--green);background:#eef7f1}
+.ui b{display:block;font-size:14.5px}.ui small{color:var(--muted);font-size:12.5px;line-height:1.35;display:block}.ui em{margin-left:auto;font-style:normal;font-weight:800;font-size:15px;white-space:nowrap}
+.bx{width:24px;height:24px;border-radius:7px;border:2px solid #cfc4b8;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px}.ui.on .bx{background:var(--green);border-color:var(--green)}
+.up p{font-size:12.5px;color:var(--muted);margin:2px 2px 8px}
+.done{text-align:center;padding-top:6px}.ck{width:66px;height:66px;border-radius:50%;background:#e3f1e8;color:var(--green);font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:8px auto 10px}
+.mini{display:flex;gap:11px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;margin:14px 0 12px;text-align:left}
+.mini img{width:78px;height:52px;object-fit:cover;border-radius:8px;background:#efe9e2;flex:none}.mini b{font-size:14px;display:block}.mini small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.sum{background:#fff;border:1px solid var(--line);border-radius:16px;padding:4px 14px;text-align:left}
+.sum div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}.sum div:last-child{border:0}.sum span{color:var(--muted);flex:none}.sum b{text-align:right}
+.err{background:#fdecea;color:#b91c1c;border-radius:12px;padding:12px 14px;font-size:14px;margin-top:12px;display:none}.err.show{display:block}
+.note{background:#fff7ed;color:#9a3412;border-radius:12px;padding:12px 14px;font-size:14px;margin:12px 0;text-align:left}
+.empty{color:var(--muted);font-size:14px;padding:10px 0}
+.tip{display:flex;gap:12px;align-items:center;background:#f7f3ee;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px;text-align:left;font-size:13.5px;color:var(--muted);line-height:1.4}.tip span{font-size:22px}.tip b{display:block;color:var(--dark);font-size:14.5px}
+.foot{font-size:12.5px;color:var(--muted);text-align:center;margin-top:18px}.foot a{color:var(--red);font-weight:600;text-decoration:none}
+.load{padding:80px 20px;text-align:center;color:var(--muted)}
+.slot em{font-style:normal;font-size:11.5px;font-weight:800;color:var(--green)}
+.slots.g2{grid-template-columns:1fr 1fr}
+.pills{display:flex;flex-wrap:wrap;gap:7px}.pill{background:#fff;border:1.5px solid var(--line);border-radius:99px;padding:9px 14px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;color:inherit}.pill.on{border-color:var(--red);background:#fbf0ee;color:var(--red)}
+.f select{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px;font:inherit;font-size:16px;color:var(--dark);outline:none;-webkit-appearance:none;appearance:none}
+.cl{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.cl::-webkit-scrollbar{display:none}
+.cc{flex:0 0 128px;background:#fff;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit;color:inherit}
+.cc img{width:100%;height:78px;object-fit:cover;display:block;background:#efe9e2}.cc div{padding:6px 8px;font-size:12px;font-weight:700;line-height:1.25}.cc small{display:block;color:var(--muted);font-weight:600;margin-top:2px}
+.cc.on{border-color:var(--red);box-shadow:0 0 0 2px #fbf0ee inset}
+</style></head>
+<body><div class="wrap">
+  <div class="top"><a class="logo" href="https://billyscouches.com"><img src="/public/logo.png" alt="Billy's Couches"></a><small>Book a showing</small></div>
+  <div class="steps"><i id="s1" class="on"></i><i id="s2"></i><i id="s3"></i></div>
+  <div id="app"><div class="load">Loading times…</div></div>
+</div>
+<script>
+// Warehouse showing booking (replaces the Jotform form). Ad tracking from the link (fbcamp, utm_*) is passed along.
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const Q = new URLSearchParams(location.search), UTM = {};
+['fbcamp', 'fbsource', 'utm_adset', 'utm_ad', 'utm_source', 'utm_campaign'].forEach(k => { if (Q.get(k)) UTM[k] = Q.get(k); });
+let D = null, ST = { date: '', min: null, first: '', last: '', phone: '', soon: '', source: '', couch: Q.get('couch') || '' };
+const steps = n => [1, 2, 3].forEach(i => $('s' + i).classList.toggle('on', i <= n));
+async function load(msg){
+  try { const r = await fetch('/public/showing', { cache: 'no-store' }); D = await r.json(); if (!r.ok) throw new Error(D.error); }
+  catch (e) { $('app').innerHTML = `<div class="pad"><div class="err show">${esc(e.message || 'Could not load times.')} </div><p class="foot">Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>`; return; }
+  const open = D.days.filter(d => d.slots.length); if (!ST.date || !open.some(d => d.date === ST.date)) ST.date = open.length ? open[0].date : '';
+  step1(msg);
+}
+function step1(msg){
+  steps(1);
+  const day = D.days.find(d => d.date === ST.date), dn = d => new Date(d + 'T12:00:00Z');
+  $('app').innerHTML = `<div class="pad">
+    <div class="h">Come see the couches</div>
+    <p class="p">Sit on them in person at our Pacific showroom. A showing takes about 20 minutes.</p>
+    ${msg ? `<div class="note">${esc(msg)}</div>` : ''}
+    <div class="lbl">Pick a day</div>
+    <div class="days">${D.days.map(d => `<button class="day${d.date === ST.date ? ' on' : ''}${d.slots.length ? '' : ' full'}" ${d.slots.length ? `onclick="ST.date='${d.date}';ST.min=null;step1()"` : 'disabled'}>
+      <small>${dn(d.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</small><b>${dn(d.date).getUTCDate()}</b>${d.slots.length ? '' : '<em>Full</em>'}</button>`).join('')}</div>
+    ${day ? `<div class="lbl">${esc(day.label)}</div><div class="slots g2">${day.slots.map(s => `<button class="slot${ST.min === s.min ? ' on' : ''}" onclick="ST.min=${s.min};step1()">${esc(s.label)}${s.pop ? '<em>★ Popular</em>' : ''}</button>`).join('')}</div>`
+      : '<p class="empty">No open times in the next few days. Text Billy at <a href="sms:+13148997503">(314) 899-7503</a> and we\'ll find a time.</p>'}
+    <button class="btn" ${ST.min === null ? 'disabled' : ''} onclick="step2()">Continue →</button>
+    <p class="foot">126 E Orleans St, Pacific, MO · Questions? Text <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
+}
+function save(){ ['first', 'last', 'phone'].forEach(k => { if ($('f_' + k)) ST[k] = $('f_' + k).value; }); }
+function step2(err){
+  steps(2); const day = D.days.find(d => d.date === ST.date), slot = day && day.slots.find(s => s.min === ST.min);
+  const pills = (k, list) => `<div class="pills">${list.map(v => `<button type="button" class="pill${ST[k] === v ? ' on' : ''}" onclick="save();ST.${k}=this.dataset.v;step2()" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
+  $('app').innerHTML = `<div class="pad"><button class="back" onclick="save();step1()">← ${esc(day ? day.label : '')} · ${esc(slot ? slot.label : '')}</button>
+    <div class="h">A few details</div><p class="p">We'll text your confirmation.</p>
+    <div class="row2"><div class="f" style="flex:1"><label>First name</label><input id="f_first" autocomplete="given-name" value="${esc(ST.first)}"></div><div class="f" style="flex:1"><label>Last name</label><input id="f_last" autocomplete="family-name" value="${esc(ST.last)}"></div></div>
+    <div class="f"><label>Cell number</label><input id="f_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(314) 555-0123" value="${esc(ST.phone)}"></div>
+    <div class="f"><label>How soon do you need a couch?</label>${pills('soon', D.soon)}</div>
+    ${D.couches.length ? `<div class="f"><label>Any couch you want to see? <span style="font-weight:500;color:var(--muted)">(optional)</span></label><div class="cl">${D.couches.map(c => `<button type="button" class="cc${ST.couch === c.id ? ' on' : ''}" onclick="save();ST.couch=ST.couch==='${c.id}'?'':'${c.id}';step2()"><img src="${esc(c.photo)}" alt="" loading="lazy"><div>${esc(c.title)}<small>$${Number(c.price || 0).toLocaleString()}</small></div></button>`).join('')}</div></div>` : ''}
+    <div class="f"><label>How did you find us?</label><select id="f_source" onchange="ST.source=this.value"><option value="">Choose one</option>${D.sources.map(v => `<option${ST.source === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+    <div class="err${err ? ' show' : ''}">${esc(err || '')}</div>
+    <button class="btn" id="go" onclick="book()">Book my showing</button></div>`;
+}
+async function book(){
+  save(); ST.source = $('f_source').value;
+  if (!ST.first.trim() || !ST.last.trim()) return step2('Add your first and last name.');
+  if (ST.phone.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '').length !== 10) return step2('Enter a 10-digit cell number.');
+  if (!ST.soon) return step2('How soon do you need a couch?');
+  if (!ST.source) return step2('How did you find us?');
+  $('go').disabled = true; $('go').textContent = 'Booking…';
+  try {
+    const r = await fetch('/public/showing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: ST.date, min: ST.min, first: ST.first, last: ST.last, phone: ST.phone, soon: ST.soon, source: ST.source, couch: ST.couch, ...UTM }) });
+    const j = await r.json();
+    if (r.status === 409) { ST.min = null; return load(j.error); }
+    if (!r.ok) return step2(j.error || 'Something went wrong.');
+    done(j);
+  } catch (e) { step2('Something went wrong. Text Billy at (314) 899-7503.'); }
+}
+function done(j){
+  steps(3); const c = D.couches.find(x => x.id === ST.couch);
+  $('app').innerHTML = `<div class="pad done"><div class="ck">✓</div>
+    <div class="h">See you then, ${esc(j.first)}!</div><p class="p">We just texted you a confirmation.</p>
+    <div class="sum"><div><span>When</span><b>${esc(j.when)}</b></div><div><span>Where</span><b><a href="https://maps.google.com/?q=126+E+Orleans+St,+Pacific,+MO+63069" style="color:inherit">126 E Orleans St, Pacific</a></b></div>${c ? `<div><span>Coming to see</span><b>${esc(c.title)}</b></div>` : ''}</div>
+    <div class="tip"><span>📱</span><div><b>Can't make it?</b>Text Billy at <a href="sms:+13148997503" style="color:var(--red);font-weight:700">(314) 899-7503</a> so we can give your time to someone else.</div></div>
+    <a class="ghost" href="https://www.billyscouches.com/currentinventory">Browse the couches</a></div>`;
+}
+load();
+</script>
+</body></html>
