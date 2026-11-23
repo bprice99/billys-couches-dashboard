@@ -3245,7 +3245,8 @@ async function openSlots(kind, skipToken) {
     const wins = step ? (d.win || []).flatMap(w => { const p = parseWin(w); if (!p) return []; const out = []; for (let t = p[0]; t + step <= p[1]; t += step) { const a = t, b = t + step, f = m => Math.floor(m / 60) + (m % 60 ? ':' + String(m % 60).padStart(2, '0') : ''); out.push(f(a) + '-' + f(b)); } return out; }) : (d.win || []);
     const slots = wins.map(w => { const p = parseWin(w); if (!p) return null; const s = ctAt(ymd, p[0]).getTime(), e = ctAt(ymd, p[1]).getTime();
       if (s - now < (cfg.noticeHours || 0) * 3600e3) return null;
-      const used = busy.filter(b => b.s < e && b.e > s).length, left = Math.max(0, (d.cap || 1) - used);
+      // HQ can open one full window for one customer (o.allow: ['2026-11-24|16-18']) without opening it for everyone.
+      const used = busy.filter(b => b.s < e && b.e > s).length, left = own && (own.allow || []).includes(ymd + '|' + w) ? Math.max(1, (d.cap || 1) - used) : Math.max(0, (d.cap || 1) - used);
       return { win: w, label: step ? minLabel(p[0]) + (p[0] < 720 ? 'am' : 'pm') : winLabel(w), left }; }).filter(Boolean);
     if (slots.length) days.push({ date: ymd, dow: new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }), day: +ymd.slice(8), label: new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }), slots });
   }
@@ -3436,6 +3437,7 @@ app.post('/api/sched/extend', async (req, res) => {
   try { const b = req.body || {}, m = await getSched(), o = m[String(b.token || '')]; if (!o) return res.status(404).json({ error: 'not found' });
     if (/^\d{4}-\d{2}-\d{2}$/.test(b.until || '')) o.until = b.until; else if (b.until === null) delete o.until;
     if (b.noHold !== undefined) o.noHold = !!b.noHold;
+    if (Array.isArray(b.allow)) o.allow = b.allow.filter(x => /^\d{4}-\d{2}-\d{2}\|\d{1,2}(:\d{2})?-\d{1,2}(:\d{2})?$/.test(x)).slice(0, 10);
     await setSched(m); res.json({ ok: true, token: o.token, until: o.until || null, noHold: !!o.noHold, url: schedLink(o.token) }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
