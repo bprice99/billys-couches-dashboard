@@ -183,7 +183,7 @@ function confirmed(payFailed){
     <div class="mini">${c.photo ? `<img src="${esc(c.photo)}" alt="">` : ''}<div><b>${esc(D.couches.map(x => x.title).join(' + '))}</b><small>${adds.length ? esc(adds.join(' · ')) : (isDel() ? 'White-glove delivery' : 'Pick up')}</small></div></div>
     <div class="sum"><div><span>When</span><b>${esc(b.label)}</b></div>
       ${isDel() ? `<div><span>Where</span><b>${esc(b.address)}${b.city ? ', ' + esc(b.city) : ''}</b></div>${b.room ? `<div><span>Room</span><b>${esc(b.room)}</b></div>` : ''}` : '<div><span>Where</span><b>126 E Orleans St, Pacific</b></div>'}
-      <div><span>Need to change it?</span><b><a href="#" style="color:var(--red);text-decoration:none" onclick="event.preventDefault();ST.reschedule=true;ST.date=D.booking.date;ST.win='';load()">Reschedule</a></b></div></div>
+      ${b.locked ? '<div><span>Need to change it?</span><b><a href="sms:+13148997503" style="color:var(--red);text-decoration:none">Text Billy</a></b></div>' : `<div><span>Need to change it?</span><b><a href="#" style="color:var(--red);text-decoration:none" onclick="event.preventDefault();ST.reschedule=true;ST.date=D.booking.date;ST.win='';load()">Reschedule</a></b></div>`}</div>
     ${isDel() ? '<div class="tip"><span>💵</span><div><b>Tips are appreciated</b>Never expected, always appreciated by our crew.</div></div>' : ''}
     ${icsHref() ? `<a class="ghost" href="${icsHref()}">＋ Add to my calendar</a>` : ''}
     <p class="foot">Questions? Text Billy at <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
