@@ -3893,15 +3893,18 @@ async function jbBuild(date) {
   const av = await avState(), avConf = n => !!((av.people[n] || {}).confirmed || {})[jbMon(date)];
   const avBlocked = (n, a, b) => avConf(n) ? !avFree(av.people[n], date).some(([x, y]) => x <= a && y >= b) : avNeeds(date);
   const blocked2 = (n, a, b) => blocked(n, a, b) || avBlocked(n, a, b);
+  // Showing form settings: host order, and days Billy is away (then a team host covers showings and customer pickups).
+  const shc = (await shfState()).cfg, billyIn = !shc.billyAway.includes(date);
   const why = {};
   for (const j of jobs) {
     j.people = j.slots.map((role, i) => {
       const key = j.id + ':' + i, hrs = (j.end - j.start) / 3600e3;
-      const free = team.filter(p => p.can.includes(role) && !blocked2(p.name, j.availFrom || j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
+      const free = team.filter(p => (p.can.includes(role) || (role === 'host' && shc.hosts.includes(p.name))) && !blocked2(p.name, j.availFrom || j.start, j.end) && !(busy[p.name] || []).some(([a, b]) => a < j.end && b > j.start));
       const score = p => ((hours[p.name].total + (add[p.name] || 0)) / Math.max(1, p.target));
       free.sort((a, b) => score(a) - score(b) || hours[a.name].recent - hours[b.name].recent || a.name.localeCompare(b.name));
+      if (role === 'host') free.sort((a, b) => (shc.hosts.indexOf(a.name) + 1 || 99) - (shc.hosts.indexOf(b.name) + 1 || 99));
       // Fixed defaults: Zach always drives, Billy hosts showings and does loose warehouse pickups (swap still overrides).
-      const fixed = role === 'drive' ? 'Zach' : (role === 'host' || j.kind === 'pick') ? 'Billy' : '';
+      const fixed = role === 'drive' ? 'Zach' : (role === 'host' || j.kind === 'pick') ? (billyIn ? 'Billy' : '') : '';
       let name = Object.prototype.hasOwnProperty.call(pick, key) ? pick[key] : (fixed || (free[0] ? free[0].name : ''));
       if (name && name !== 'Billy') { (busy[name] = busy[name] || []).push([j.start, j.end]); add[name] = (add[name] || 0) + hrs; }
       return { key, role, label: j.kind === 'pick' ? 'Host' : (JB_ROLES[role] || role), name, hours: hrs, auto: !Object.prototype.hasOwnProperty.call(pick, key), options: [...new Set([fixed, ...free.map(p => p.name), ...(role === 'host' || j.kind === 'pick' ? ['Billy'] : [])].filter(Boolean))] };
@@ -4163,4 +4166,108 @@ function demoData() {
   return { ok: true, demo: true, at: new Date().toISOString(), sales: { headers: H, rows }, showings };
 }
 
+// ===================== SHOWINGS: in-house showing form (replaces the Jotform "Warehouse Showing") =====================
+// Customers book at /showing. A time is open only when a host can cover it: Billy (unless that day is in "Billy away"
+// or he has a red calendar block), or the first team member in the host list who confirmed they CAN work that whole
+// slot (team availability app) and has no red block. On days without Billy, once anything is booked that day
+// (a showing or the delivery run), only times within stackMin minutes of it stay open, so nobody drives out for one visit.
+// Each booking becomes a "Showing for <name>" event on the Billy's Couches calendar in the same format Jotform used,
+// so the job board, no-show texts and the warm-leads list keep working.
+const SHF_KEY = 'bcd:showForm';
+const SHF_DEFAULT = { hosts: ['Finley', 'Collin', 'Gunnarr', 'Luke', 'Zach'], billyAway: [], closed: [], slot: 20, notice: 7, days: 3, stackMin: 60,
+  hours: { 0: [840, 1260], 1: [540, 1260], 2: [540, 1260], 3: [540, 1260], 4: [540, 1260], 5: [540, 1260], 6: [540, 1260] } };
+const SHF_SOON = ['ASAP', '1-3 weeks', '1-3 months'];
+const SHF_SRC = ['Facebook Marketplace', 'Craigslist', 'Facebook or Instagram Ad', 'TikTok', 'Google Search', 'Google Maps', 'Someone referred me', 'Other'];
+async function shfState() { const s = (await kget(SHF_KEY, {})) || {}; s.cfg = { ...SHF_DEFAULT, ...(s.cfg || {}) }; s.book = s.book || {}; return s; }
+const shfHm = m => { const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
+const shfDay = ymd => new Date(ymd + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
+const shfCap = w => String(w || '').trim().split(/\s+/).map(x => x ? x[0].toUpperCase() + x.slice(1) : '').join(' ');
+const shfEsc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function shfDays(s, onlyDate) {
+  const cfg = s.cfg, g = await google(false).catch(() => ({})), av = await avState(), today = ctYmd(new Date()), now = Date.now();
+  const unavail = g.unavail || [];
+  const shows = (g.showings || []).filter(r => !/cancel/i.test(r[1] || '')).map(r => Date.parse(r[0]));
+  Object.values(s.book).forEach(b => { if (!shows.some(t => Math.abs(t - b.start) < 60e3)) shows.push(b.start); });   // booked here but not on the calendar copy yet
+  const runs = (g.deliveries || []).filter(r => !/cancel|pick\s*-?\s*up/i.test(r[2] || '')).map(r => [Date.parse(r[0]), Date.parse(r[1])]);
+  const red = (n, a, b) => unavail.some(([st, en, title]) => new RegExp('\\b' + n + '\\b', 'i').test(title || '') && Date.parse(st) < b && Date.parse(en) > a);
+  const teamOk = (n, date, a, b) => { const p = av.people[n]; if (!p || !(p.confirmed || {})[jbMon(date)]) return false;
+    if (n === 'Zach' && runs.some(([x, y]) => x - 60 * 60e3 < b && y > a)) return false;   // Zach is driving
+    return !red(n, a, b) && avFree(p, date).some(([x, y]) => x <= a && y >= b); };
+  const out = [];
+  for (let i = 0; i < cfg.days; i++) {
+    const date = jbAdd(today, i); if (onlyDate && date !== onlyDate) continue;
+    const dow = new Date(date + 'T12:00:00Z').getUTCDay(), hrs = cfg.hours[dow], day = { date, label: shfDay(date), slots: [] };
+    out.push(day);
+    if (!hrs || cfg.closed.includes(date)) continue;
+    const billyDay = !cfg.billyAway.includes(date), onDay = t => ctYmd(new Date(t)) === date;
+    const anchors = shows.filter(onDay).concat(runs.filter(([x]) => onDay(x)).flat());
+    for (let m = hrs[0]; m + cfg.slot <= hrs[1]; m += cfg.slot) {
+      const a = ctAt(date, m).getTime(), b = a + cfg.slot * 60e3;
+      if (a - now < cfg.notice * 3600e3 || shows.some(t => t >= a && t < b)) continue;
+      const near = anchors.some(t => Math.abs(t - a) <= cfg.stackMin * 60e3 || Math.abs(t - b) <= cfg.stackMin * 60e3);
+      let host = billyDay && !red('Billy', a, b) ? 'Billy' : '';
+      if (!host && (!anchors.length || near)) host = cfg.hosts.find(n => teamOk(n, date, a, b)) || '';
+      if (host) day.slots.push({ min: m, label: shfHm(m), pop: near, host });
+    }
+  }
+  return out;
+}
+app.get('/showing', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'showing.html')));
+app.get('/public/showing', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const s = await shfState(), days = await shfDays(s), drops = await getDrops().catch(() => []);
+    const couches = drops.filter(d => (d.status === 'live' || d.status === 'emailed') && (d.photos || []).length).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 40)
+      .map(d => ({ id: d.id, title: d.title, price: d.price, photo: dropPhotoUrl(d.photos[0]) }));
+    res.json({ ok: true, days: days.map(d => ({ date: d.date, label: d.label, slots: d.slots.map(x => ({ min: x.min, label: x.label, pop: x.pop })) })), couches, soon: SHF_SOON, sources: SHF_SRC });
+  } catch (e) { console.log('Showing slots failed', e.message); res.status(500).json({ error: 'Could not load times. Text Billy at (314) 899-7503.' }); }
+});
+const shfHits = new Map();
+app.post('/public/showing', async (req, res) => {
+  try {
+    const ip = clientIp(req), n = (shfHits.get(ip) || 0) + 1; shfHits.set(ip, n); setTimeout(() => shfHits.delete(ip), 3600e3);
+    if (n > 15) return res.status(429).json({ error: 'Too many tries. Text Billy at (314) 899-7503.' });
+    const b = req.body || {}, first = shfCap(clean(b.first, 40)), last = shfCap(clean(b.last, 40)), phone = String(b.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+    if (!first || !last) return res.status(400).json({ error: 'Add your first and last name.' });
+    if (phone.length !== 10) return res.status(400).json({ error: 'Enter a 10-digit cell number.' });
+    const soon = SHF_SOON.includes(b.soon) ? b.soon : '', src = SHF_SRC.includes(b.source) ? b.source : '';
+    if (!soon || !src) return res.status(400).json({ error: 'Answer both questions.' });
+    const date = clean(b.date, 10), min = Number(b.min);
+    const s = await shfState(), day = (await shfDays(s, date))[0], slot = day && day.slots.find(x => x.min === min);
+    if (!slot) return res.status(409).json({ error: 'That time was just taken. Please pick another.' });
+    const start = ctAt(date, min), end = new Date(start.getTime() + s.cfg.slot * 60e3), name = `${first} ${last}`;
+    const couch = (await getDrops().catch(() => [])).find(d => d.id === b.couch);
+    const utm = {}; ['fbcamp', 'fbsource', 'utm_adset', 'utm_ad', 'utm_source', 'utm_campaign'].forEach(k => { if (b[k]) utm[k] = clean(b[k], 120); });
+    const P = (k, v) => `<p><strong>${k}</strong></p><p>${shfEsc(v)}</p>`;
+    const desc = P('Name:', name) + P('Phone Number:', fmtPhone(phone)) + P('How soon do you need a couch? :', soon) + (couch ? P('Coming to see:', couch.title) : '')
+      + P('How did you find us? :', src) + (Object.keys(utm).length ? P('Ad:', Object.entries(utm).map(([k, v]) => k + ' ' + v).join(' · ')) : '') + `<p>Host: ${shfEsc(slot.host)} · booked on HQ showing form</p>`;
+    const j = await sheetsBook({ title: `Showing for ${name}`, start: start.toISOString(), end: end.toISOString(), location: '126 E Orleans St, Pacific, MO 63069', desc });
+    const id = crypto.randomBytes(6).toString('hex');
+    s.book[id] = { id, name, phone, soon, source: src, couch: couch ? couch.title : '', start: start.getTime(), eventId: j.eventId || '', created: Date.now(), utm, host: slot.host };
+    Object.keys(s.book).forEach(k => { if (s.book[k].start < Date.now() - 45 * 864e5) delete s.book[k]; });
+    await kset(SHF_KEY, s); refreshGoogle().catch(() => {});
+    const when = `${shfDay(date)} at ${slot.label}`;
+    sendText(phone, `Hi ${first}! You're booked to see couches ${when} at our showroom, 126 E Orleans St, Pacific. Can't make it? Text Billy at (314) 899-7503. - Billy's Couches`).catch(() => {});
+    textAlert(`NEW SHOWING: ${when}\n${name} ${fmtPhone(phone)}\n${soon} · ${src}${couch ? '\nWants to see: ' + couch.title : ''}\nHost: ${slot.host}`).catch(() => {});
+    res.json({ ok: true, when, first, couch: couch ? couch.title : '' });
+  } catch (e) { console.log('Showing booking failed', e.message); res.status(500).json({ error: 'Could not book that time. Text Billy at (314) 899-7503.' }); }
+});
+// HQ: showing form settings + the next few days.
+app.get('/api/showform', async (req, res) => {
+  try { const s = await shfState(), days = await shfDays(s);
+    res.json({ ok: true, cfg: s.cfg, team: Object.keys(JB_TEAM), days: days.map(d => ({ date: d.date, label: d.label, open: d.slots.length, first: (d.slots[0] || {}).label || '', last: (d.slots[d.slots.length - 1] || {}).label || '', hosts: [...new Set(d.slots.map(x => x.host))] })),
+      recent: Object.values(s.book).sort((a, b) => b.created - a.created).slice(0, 25) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/showform/cfg', async (req, res) => {
+  try { const b = req.body || {}, s = await shfState(), c = s.cfg, dates = v => (Array.isArray(v) ? v : String(v || '').split(/[\s,]+/)).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).slice(0, 60);
+    if (b.hosts !== undefined) c.hosts = (Array.isArray(b.hosts) ? b.hosts : String(b.hosts).split(/[\s,]+/)).map(x => Object.keys(JB_TEAM).find(n => lc(n) === lc(x))).filter(Boolean);
+    if (b.billyAway !== undefined) c.billyAway = dates(b.billyAway);
+    if (b.closed !== undefined) c.closed = dates(b.closed);
+    [['notice', 0, 72], ['days', 1, 14], ['stackMin', 0, 240]].forEach(([k, lo, hi]) => { if (b[k] !== undefined && isFinite(b[k])) c[k] = Math.max(lo, Math.min(hi, Math.round(Number(b[k])))); });
+    if (b.hours && typeof b.hours === 'object') { const h = {}; for (let d = 0; d < 7; d++) { const v = b.hours[d]; h[d] = Array.isArray(v) && v.length === 2 && v[0] < v[1] ? [Math.max(0, +v[0]), Math.min(1440, +v[1])] : null; } c.hours = h; }
+    s.cfg = c; await kset(SHF_KEY, s); res.json({ ok: true, cfg: c }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ===================== END SHOWINGS =====================
 app.listen(CFG.PORT, () => console.log('Billy\'s Couches dashboard on ' + CFG.PORT));
