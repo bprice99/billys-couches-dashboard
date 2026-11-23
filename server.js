@@ -3327,8 +3327,11 @@ app.post('/public/sched-find', async (req, res) => {
     res.json({ ok: true, msg: o ? 'Done! We just texted your scheduling link. Tap it to pick your time.' : "We couldn't find an order under that number yet. Billy will text you your link shortly, or text him at (314) 899-7503." });
   } catch (e) { res.status(500).json({ error: 'Something went wrong. Text Billy at (314) 899-7503.' }); }
 });
+// Customers can move their own booking until 24 hours before the window starts; after that they text Billy.
+const MOVE_LOCK_HRS = 24;
+const moveLocked = o => { const b = o.booking; if (!b || !b.date) return false; const w = parseWin(b.win); if (!w) return false; return ctAt(b.date, w[0]).getTime() - Date.now() < MOVE_LOCK_HRS * 3600e3; };
 const schedPublic = (o, days) => ({ name: o.name, first: o.name.split(/\s+/)[0], phone: o.phone, type: o.type, couches: o.couches, addons: o.addons, zip: o.zip,
-  booking: o.booking ? { date: o.booking.date, win: o.booking.win, label: o.booking.label, address: o.booking.address, city: o.booking.city, zip: o.booking.zip, room: o.booking.room, notes: o.booking.notes, extras: o.booking.extras || [] } : null,
+  booking: o.booking ? { date: o.booking.date, win: o.booking.win, label: o.booking.label, address: o.booking.address, city: o.booking.city, zip: o.booking.zip, room: o.booking.room, notes: o.booking.notes, extras: o.booking.extras || [], locked: moveLocked(o) } : null,
   upsells: SCHED_ADDONS.filter(a => !(a.deliveryOnly && o.type !== 'delivery') && !o.addons.some(x => a.match.test(x)) && !((o.booking && o.booking.extras) || []).some(x => a.match.test(x))).map(({ id, label, price, pitch }) => ({ id, label, price, pitch })),
   days, taxRate: SCHED_TAX, feeRate: SCHED_FEE, hold: { ...holdInfo(o), paidDays: o.holdPaidDays || 0 } });
 app.get('/public/sched/:token', async (req, res) => {
@@ -3369,6 +3372,7 @@ app.post('/public/sched/:token', async (req, res) => {
   try {
     const m = await getSched(), o = m[String(req.params.token)]; if (!o) return res.status(404).json({ error: 'This link has expired. Text us at (314) 899-7503.' });
     const b = req.body || {}, date = clean(b.date, 10), win = clean(b.win, 12);
+    if (moveLocked(o)) return res.status(409).json({ error: 'Your time is less than 24 hours away, so it can\'t be moved online. Text Billy at (314) 899-7503.' });
     const days = await openSlots(o.type, o.token), day = days.find(d => d.date === date), slot = day && day.slots.find(s => s.win === win);
     if (!slot || slot.left < 1) return res.status(409).json({ error: 'That time just filled up. Please pick another.', days });
     const isDel = o.type === 'delivery', address = clean(b.address, 120), city = clean(b.city, 60), zip = clean(b.zip, 10).replace(/[^\d]/g, '');
@@ -3404,6 +3408,10 @@ app.post('/public/sched/:token', async (req, res) => {
     cache.at = 0;   // so the next HQ load re-reads the calendar
     if (!prev.date) pushCustomers([custRow(o)]).catch(e => console.log('Customer Database add failed', e.message));
     textAlert(`${prev.date ? 'RESCHEDULED' : 'BOOKED'}: ${holdDays ? '[HOLD ' + holdDays + 'd = $' + holdDays * HOLD_RATE + '] ' : ''}${isDel ? 'Delivery' : 'Pickup'} ${o.booking.label}\n${o.name} ${fmtPhone(phone)}\n${couch}${allAdds.length ? '\nAdd-ons: ' + allAdds.join(', ') : ''}${extrasNew.length ? `\nNEW ADD-ONS: ${extrasNew.map(a => a.label).join(', ')} ($${due.toFixed(2)} link sent)` : ''}${isDel ? '\n' + address + ', ' + city : ''}`).catch(() => {});
+    // Confirmation text to the customer with their link (so they can find it to reschedule).
+    { const cf = o.name.split(/\s+/)[0], what = isDel ? 'delivery' : 'pick up';
+      sendText(phone, prev.date ? `Hi ${cf}, your ${what} is moved to ${o.booking.label}. Need to change it again? Use your link up to 24 hrs before: ${schedLink(o.token)} - Billy's Couches`
+        : `Hi ${cf}, you're booked! ${isDel ? 'Delivery' : 'Pick up'}: ${o.booking.label}. Need to reschedule? Use your link up to 24 hrs before: ${schedLink(o.token)} - Billy's Couches`).catch(() => {}); }
     res.json({ ok: true, payUrl, due, ...schedPublic(o, []) });
   } catch (e) { console.log('Schedule failed', e.message); res.status(500).json({ error: 'Could not book that time. Please text us at (314) 899-7503.' }); }
 });
