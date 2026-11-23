@@ -94,7 +94,7 @@ function step1(msg){
     <div class="lbl">Pick a day</div>
     <div class="days">${D.days.map(d => `<button class="day${d.date === ST.date ? ' on' : ''}${d.slots.length ? '' : ' full'}" ${d.slots.length ? `onclick="ST.date='${d.date}';ST.min=null;step1()"` : 'disabled'}>
       <small>${dn(d.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</small><b>${dn(d.date).getUTCDate()}</b>${d.slots.length ? '' : '<em>Full</em>'}</button>`).join('')}</div>
-    ${day ? `<div class="lbl">${esc(day.label)}</div><div class="slots g2">${day.slots.map(s => `<button class="slot${ST.min === s.min ? ' on' : ''}" onclick="ST.min=${s.min};step1()">${esc(s.label)}${s.pop ? '<em>★ Popular</em>' : ''}</button>`).join('')}</div>`
+    ${day ? `<div class="lbl">${esc(day.label)}</div><div class="slots g2">${day.slots.map(s => `<button class="slot${ST.min === s.min ? ' on' : ''}" onclick="ST.min=${s.min};step1()">${esc(s.label)}</button>`).join('')}</div>`
       : '<p class="empty">No open times in the next few days. Text Billy at <a href="sms:+13148997503">(314) 899-7503</a> and we\'ll find a time.</p>'}
     <button class="btn" ${ST.min === null ? 'disabled' : ''} onclick="step2()">Continue →</button>
     <p class="foot">126 E Orleans St, Pacific, MO · Questions? Text <a href="sms:+13148997503">(314) 899-7503</a></p></div>`;
@@ -102,17 +102,20 @@ function step1(msg){
 function save(){ ['first', 'last', 'phone'].forEach(k => { if ($('f_' + k)) ST[k] = $('f_' + k).value; }); }
 function step2(err){
   steps(2); const day = D.days.find(d => d.date === ST.date), slot = day && day.slots.find(s => s.min === ST.min);
-  const pills = (k, list) => `<div class="pills">${list.map(v => `<button type="button" class="pill${ST[k] === v ? ' on' : ''}" onclick="save();ST.${k}=this.dataset.v;step2()" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
+  const pills = (k, list) => `<div class="pills">${list.map(v => `<button type="button" class="pill${ST[k] === v ? ' on' : ''}" onclick="pickPill(this,'${k}')" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
   $('app').innerHTML = `<div class="pad"><button class="back" onclick="save();step1()">← ${esc(day ? day.label : '')} · ${esc(slot ? slot.label : '')}</button>
     <div class="h">A few details</div><p class="p">We'll text your confirmation.</p>
     <div class="row2"><div class="f" style="flex:1"><label>First name</label><input id="f_first" autocomplete="given-name" value="${esc(ST.first)}"></div><div class="f" style="flex:1"><label>Last name</label><input id="f_last" autocomplete="family-name" value="${esc(ST.last)}"></div></div>
     <div class="f"><label>Cell number</label><input id="f_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(314) 555-0123" value="${esc(ST.phone)}"></div>
     <div class="f"><label>How soon do you need a couch?</label>${pills('soon', D.soon)}</div>
-    ${D.couches.length ? `<div class="f"><label>Any couch you want to see? <span style="font-weight:500;color:var(--muted)">(optional)</span></label><div class="cl">${D.couches.map(c => `<button type="button" class="cc${ST.couch === c.id ? ' on' : ''}" onclick="save();ST.couch=ST.couch==='${c.id}'?'':'${c.id}';step2()"><img src="${esc(c.photo)}" alt="" loading="lazy"><div>${esc(c.title)}<small>$${Number(c.price || 0).toLocaleString()}</small></div></button>`).join('')}</div></div>` : ''}
+    ${D.couches.length ? `<div class="f"><label>Any couch you want to see? <span style="font-weight:500;color:var(--muted)">(optional)</span></label><div class="cl">${D.couches.map(c => `<button type="button" class="cc${ST.couch === c.id ? ' on' : ''}" data-id="${c.id}" onclick="pickCouch('${c.id}')"><img src="${esc(c.photo)}" alt="" loading="lazy"><div>${esc(c.title)}<small>$${Number(c.price || 0).toLocaleString()}</small></div></button>`).join('')}</div></div>` : ''}
     <div class="f"><label>How did you find us?</label><select id="f_source" onchange="ST.source=this.value"><option value="">Choose one</option>${D.sources.map(v => `<option${ST.source === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
     <div class="err${err ? ' show' : ''}">${esc(err || '')}</div>
     <button class="btn" id="go" onclick="book()">Book my showing</button></div>`;
 }
+// Pick without re-drawing the page, so the couch row doesn't jump back to the start.
+function pickPill(el, k){ ST[k] = el.dataset.v; el.parentNode.querySelectorAll('.pill').forEach(x => x.classList.toggle('on', x === el)); }
+function pickCouch(id){ ST.couch = ST.couch === id ? '' : id; document.querySelectorAll('.cc').forEach(x => x.classList.toggle('on', x.dataset.id === ST.couch)); }
 async function book(){
   save(); ST.source = $('f_source').value;
   if (!ST.first.trim() || !ST.last.trim()) return step2('Add your first and last name.');
@@ -129,7 +132,8 @@ async function book(){
   } catch (e) { step2('Something went wrong. Text Billy at (314) 899-7503.'); }
 }
 function done(j){
-  if (parent !== window) parent.postMessage({ bcShowing: j.when }, '*');   // embedded on billyscouches.com: it sends them to /showingthanks (ad conversion)
+  // Embedded on billyscouches.com: no thank-you screen here, the page sends them straight to /showingthanks (ad conversion).
+  if (parent !== window) { parent.postMessage({ bcShowing: j.when }, '*'); return; }
   steps(3); const c = D.couches.find(x => x.id === ST.couch);
   $('app').innerHTML = `<div class="pad done"><div class="ck">✓</div>
     <div class="h">See you then, ${esc(j.first)}!</div><p class="p">We just texted you a confirmation.</p>
@@ -140,6 +144,7 @@ function done(j){
 load();
 // Embedded on the website: no header, no full-screen height, and tell the page how tall to make the frame.
 if (parent !== window) { document.querySelector('.wrap').style.minHeight = '0'; document.querySelector('.top').style.display = 'none';
+  document.body.style.background = '#fff'; document.querySelector('.wrap').style.background = '#fff';
   if (window.ResizeObserver) new ResizeObserver(() => parent.postMessage({ bcShowH: document.querySelector('.wrap').offsetHeight }, '*')).observe(document.querySelector('.wrap')); }
 </script>
 </body></html>
