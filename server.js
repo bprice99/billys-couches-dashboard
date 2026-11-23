@@ -3419,7 +3419,7 @@ app.get('/public/next-slot', async (req, res) => {
 // HQ: bookings list for the Scheduling tab.
 app.get('/api/sched', async (req, res) => {
   try { const m = await getSched(), list = Object.values(m).sort((a, b) => (b.booking ? b.booking.date : '').localeCompare(a.booking ? a.booking.date : '') || b.created - a.created).slice(0, 200)
-    .map(o => ({ token: o.token, name: o.name, phone: o.phone, type: o.type, couch: o.couches.map(c => c.title).join(' + '), photo: (o.couches[0] || {}).photo || '', addons: [...o.addons, ...((o.booking || {}).extras || [])], created: o.created, booking: o.booking || null, link: schedLink(o.token), extraDue: o.extraDue || 0 }));
+    .map(o => ({ token: o.token, name: o.name, phone: o.phone, type: o.type, couch: o.couches.map(c => c.title).join(' + '), photo: (o.couches[0] || {}).photo || '', addons: [...o.addons, ...((o.booking || {}).extras || [])], created: o.created, booking: o.booking || null, link: schedLink(o.token), extraDue: o.extraDue || 0, until: o.until || null, noHold: !!o.noHold }));
     res.json({ ok: true, list, cfg: await slotCfg(), defaults: SLOT_DEFAULT }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
