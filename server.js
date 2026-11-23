@@ -4242,9 +4242,11 @@ app.post('/public/showing', async (req, res) => {
 });
 // HQ: showing form settings + the next few days.
 app.get('/api/showform', async (req, res) => {
-  try { const s = await shfState(), sp = s.cfg.special || {};
-    res.json({ ok: true, closed: s.cfg.closed, special: Object.keys(sp).sort().map(d => d + ' ' + shfRange(sp[d][0], sp[d][1])).join(', '),
-      recent: Object.values(s.book).sort((a, b) => b.created - a.created).slice(0, 25) }); }
+  try { const s = await shfState(), c = s.cfg, sp = c.special || {}, g = await google(false).catch(() => ({})), today = ctYmd(new Date());
+    const shows = (g.showings || []).filter(r => !/cancel/i.test(r[1] || '')).map(r => ctYmd(new Date(r[0])));
+    const next7 = []; for (let i = 0; i < 7; i++) { const d = jbAdd(today, i), h = sp[d] || c.hours[new Date(d + 'T12:00:00Z').getUTCDay()];
+      next7.push({ date: d, label: shfDay(d), hours: c.closed.includes(d) || !h ? 'Closed' : shfRange(h[0], h[1]), special: !!sp[d] || c.closed.includes(d), booked: shows.filter(x => x === d).length }); }
+    res.json({ ok: true, hours: c.hours, closed: c.closed.filter(d => d >= today).sort(), special: Object.keys(sp).filter(d => d >= today).sort().map(d => ({ date: d, range: shfRange(sp[d][0], sp[d][1]) })), next7 }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Special hours, typed like "2026-11-24 3:40pm-5:20pm, 2026-11-25 10am-12:40pm".
