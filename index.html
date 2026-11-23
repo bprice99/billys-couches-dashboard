@@ -586,6 +586,11 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
   </main>
 </div>
 
+<div class="mask" id="m-ext"><div class="modal"><h3 id="extTitle">Extend link</h3><p id="extSub" style="margin:-8px 0 14px;color:var(--muted);font-size:13px"></p>
+  <label>Let them book through<input type="date" id="extUntil"></label>
+  <div style="display:flex;gap:6px;margin:-4px 0 14px"><button type="button" class="xs" data-extd="7">+7 days</button><button type="button" class="xs" data-extd="14">+14 days</button><button type="button" class="xs" data-extd="30">+30 days</button></div>
+  <label style="display:flex;align-items:center;justify-content:space-between">Waive holding fee<input type="checkbox" id="extNoHold" style="width:22px;height:22px"></label>
+  <div style="display:flex;gap:8px;margin-top:6px"><button type="button" class="btn" id="extSave" style="flex:1;background:#b0524c;color:#fff;border-color:#b0524c">Save &amp; copy link</button><button type="button" class="btn" id="extCancel">Cancel</button></div></div></div>
 <div class="mask" id="m-purchase"><form class="modal" data-action="addPurchase">
   <h3 id="purTitle">Log a used pickup</h3>
   <div class="two">
@@ -1145,10 +1150,10 @@ async function renderSched(){
   const up = SC.list.filter(o => o.booking && o.booking.date >= today).sort((a, b) => (a.booking.date + a.booking.win).localeCompare(b.booking.date + b.booking.win));
   const waiting = SC.list.filter(o => !o.booking && Date.now() - o.created < 21 * 864e5);
   const row = o => `<tr><td>${o.photo ? `<img src="${esc(o.photo)}" style="width:56px;height:38px;object-fit:cover;border-radius:6px;vertical-align:middle">` : ''}</td>
-    <td><b>${esc(o.name)}</b><br><small style="color:var(--muted)">${o.type === 'delivery' ? 'Delivery' : 'Pick up'}${o.phone ? ' · ' + esc(o.phone) : ''}</small></td>
+    <td><b>${esc(o.name)}</b><br><small style="color:var(--muted)">${o.type === 'delivery' ? 'Delivery' : 'Pick up'}${o.phone ? ' · ' + esc(o.phone) : ''}</small>${o.until || o.noHold ? `<br><span class="pill" style="background:#e3f1e8;color:#1f6b3d">${o.until ? 'Open thru ' + new Date(o.until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}${o.until && o.noHold ? ' · ' : ''}${o.noHold ? 'no hold fee' : ''}</span>` : ''}</td>
     <td>${o.booking ? `<b>${esc(o.booking.label)}</b>${o.booking.address ? `<br><small style="color:var(--muted)">${esc(o.booking.address)}, ${esc(o.booking.city)}</small>` : ''}` : '<span class="pill">Not booked yet</span>'}</td>
     <td class="hide-m">${esc(o.couch)}${o.addons.length ? `<br><small style="color:var(--muted)">${esc(o.addons.join(', '))}</small>` : ''}${o.extraDue ? `<br><small style="color:var(--green);font-weight:700">+${money(o.extraDue)} add-ons at scheduling</small>` : ''}</td>
-    <td class="n" style="white-space:nowrap"><button class="xs" data-sccopy="${esc(o.link)}" title="Copy their scheduling link">Link</button> <button class="xs" data-scdel="${esc(o.token)}" data-scname="${esc(o.name)}" title="Remove" style="color:var(--bad)">&times;</button></td></tr>`;
+    <td class="n" style="white-space:nowrap"><button class="xs" data-sccopy="${esc(o.link)}" title="Copy their scheduling link">Link</button> ${o.booking ? '' : `<button class="xs" data-scext="${esc(o.token)}" title="Let them book further out / skip the holding fee">Extend</button> `}<button class="xs" data-scdel="${esc(o.token)}" data-scname="${esc(o.name)}" title="Remove" style="color:var(--bad)">&times;</button></td></tr>`;
   $('scBook').innerHTML = `<div style="overflow-x:auto"><table><tr><th></th><th>Customer</th><th>When</th><th class="hide-m">Couch</th><th></th></tr>${up.map(row).join('') || '<tr><td colspan="5" class="empty">No upcoming bookings from the scheduling page yet.</td></tr>'}</table></div>`
     + (waiting.length ? `<h3 style="font-size:13px;margin:16px 0 4px;color:var(--muted)">SENT A LINK, NOT BOOKED YET (${waiting.length})</h3><div style="overflow-x:auto"><table>${waiting.map(row).join('')}</table></div>` : '');
   const daysTbl = kind => `<table><tr><th>Day</th><th>Open</th><th>${kind === 'delivery' ? 'Windows' : 'Open hours'}</th><th class="n">${kind === 'delivery' ? 'Trucks' : 'Per 30 min'}</th></tr>${[1, 2, 3, 4, 5, 6, 0].map(dw => { const d = (cfg[kind].days || {})[dw] || { on: false, win: [], cap: 1 };
@@ -1179,6 +1184,16 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.sck && e.target.dataset.f === 'on') return; });
 document.addEventListener('click', async e => { const b = e.target.closest('[data-sccopy]'); if (b) copyText(b.dataset.sccopy, 'Scheduling link copied');
+  // Extend: let one customer book further out and/or skip the holding fee.
+  const ex = e.target.closest('[data-scext]');
+  if (ex) { const o = SC.list.find(x => x.token === ex.dataset.scext); if (!o) return; window._extO = o;
+    $('extTitle').textContent = 'Extend ' + String(o.name || '').split(' ')[0] + "'s link"; $('extSub').textContent = o.couch;
+    $('extUntil').value = o.until || ''; $('extNoHold').checked = !!o.noHold; $('m-ext').classList.add('on'); return; }
+  const xd = e.target.closest('[data-extd]'); if (xd) { $('extUntil').value = new Date(Date.now() + Number(xd.dataset.extd) * 864e5).toLocaleDateString('en-CA'); return; }
+  if (e.target.id === 'extCancel') { $('m-ext').classList.remove('on'); return; }
+  if (e.target.id === 'extSave') { const o = window._extO; if (!o) return;
+    try { const j = await post('/api/sched/extend', { token: o.token, until: $('extUntil').value || null, noHold: $('extNoHold').checked });
+      $('m-ext').classList.remove('on'); copyText(j.url, 'Saved · link copied'); SC = null; renderSched(); } catch (err) { toast(err.message); } return; }
   const del = e.target.closest('[data-scdel]');
   if (del) { if (!confirm(`Remove ${del.dataset.scname}'s booking? This also deletes it from the Google Calendar.`)) return;
     try { await post('/api/sched/delete', { token: del.dataset.scdel }); SC = null; toast('Removed'); renderSched(); } catch (err) { toast(err.message); } return; }
