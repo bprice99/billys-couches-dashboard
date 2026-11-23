@@ -608,6 +608,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <label>Notes<input name="notes" placeholder="optional"></label>
   </div>
   <label id="purQty" hidden>How many (each gets its own unit ID)<input type="number" name="qty" min="1" max="20" value="1"></label>
+  <label>Photo <span style="font-weight:400;color:var(--muted)">optional</span><input type="file" id="purPhoto" accept="image/*" style="padding:8px"></label>
   <p class="empty" style="font-size:12.5px;margin:-4px 0 12px">B-Stock loads go on the B-Stock tab with + Load.</p>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
@@ -2635,10 +2636,14 @@ document.querySelectorAll('.mask').forEach(m => {
       body = { id: data.id, uid: data.uid, status: 'sold', soldPrice: data.soldPrice, soldDate: data.date, delivery: data.delivery, upsells: ups, customer: data.customer };
     }
     const reps = f.dataset.action === 'addPurchase' ? Math.min(20, Math.max(1, parseInt(data.qty) || 1)) : 1;
+    // Used pickup photo: shrunk once, saved on each new unit (same spot as the Sales Tracker + Photo button).
+    const purFile = f.dataset.action === 'addPurchase' && $('purPhoto') && $('purPhoto').files[0];
+    let purPic = null; if (purFile) { try { purPic = await shrinkPhoto(purFile); } catch (err) { toast('Photo could not be read'); } }
     try {
       for (let k = 0; k < reps; k++) {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Save failed');
+      if (purPic && j.id) await post('/api/photo', { key: 'p:' + j.id, data: purPic }).catch(() => toast('Saved, but the photo did not upload'));
       }
       m.classList.remove('on'); f.reset(); toast('Saved');
       if (f.dataset.kind === 'cash') { cashDraft = null; loadCash(); } else load(true);
