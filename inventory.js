@@ -155,7 +155,7 @@
       + '<div class="bci-price">' + money(c.price) + (c.was ? '<s>' + money(c.was) + '</s>' : c.retail > c.price ? '<s>' + money(c.retail) + '</s>' : '') + '</div>'
       + (c.was && c.retail > c.price ? '<div class="bci-rt">Retail ' + money(c.retail) + ' &middot; You save ' + money(c.retail - c.price) + '</div>' : '')
       + '<div class="bci-pts">' + (g ? '<div class="bci-pt"><span class="dot" style="background:' + g[2] + '"></span>Grade ' + c.grade + ' &middot; ' + g[0] + ' <button type="button" class="bci-q">what&rsquo;s this?</button></div>' : '') + '<div class="bci-del"></div></div>'
-      + (c.was ? '<div class="bci-bf"><span><b>BLACK FRIDAY</b> &middot; $' + c.saleOff + ' off applied</span><span class="cd" data-end="' + esc(c.saleEnds || '') + '"></span></div>' : '')
+      + (c.was ? '<div class="bci-bf"><span><b>' + esc(c.saleName || 'BLACK FRIDAY') + '</b> &middot; $' + c.saleOff + ' off applied</span><span class="cd" data-end="' + esc(c.saleEnds || '') + '"></span></div>' : '')
       + '</div><div class="bci-accw"><div class="bci-acc"><details><summary>Details</summary><div class="in">' + details + '</div></details>'
       + '<details><summary>Imperfections</summary><div class="in">' + (c.imperfections.length ? (c.imperfections.length > 1 ? '<ul>' + c.imperfections.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p>' + esc(c.imperfections[0]) + '</p>') : '<p>None</p>') + '</div></details>'
       + '<details><summary>Dimensions</summary><div class="in"><p>' + (esc(c.dimensions) || 'Ask Billy for exact measurements.') + '</p><a class="bci-fitl" href="' + FIT_URL + '?couch=' + encodeURIComponent(c.id) + '">Will it fit your room? See it to scale &rarr;</a></div></details></div>'
