@@ -4114,6 +4114,57 @@ app.post('/api/avail/person', async (req, res) => {
     await kset(AV_KEY, a); res.json({ ok: true, phone: p.phone || '', link: `${PUBLIC_BASE}/a/${p.token}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ===================== TEAM UPDATES =====================
+// Billy posts a change (sale, policy, drop schedule). Urgent ones are texted to the whole team right away with a
+// personal "Got it" link (/u/<their availability token>, no login). Every update also shows at the top of the weekly
+// availability form until they check "I read these". HQ shows who has confirmed. Updates are hidden, never deleted.
+const TU_KEY = 'bcd:teamUpdates';
+const tuList = async () => (await kget(TU_KEY, [])) || [];
+const tuOpen = (list, name) => list.filter(u => !u.hidden && Date.now() - u.at < 45 * 864e5 && !(u.seen || {})[name]);
+const tuText = (u, p) => `📣 Billy's Couches update:\n${u.text}\n\nTap to confirm you got it: ${PUBLIC_BASE}/u/${p.token}`;
+async function tuSend(u, names) {
+  const a = await avState(); let sent = 0; const noPhone = [];
+  for (const n of names) { const p = avPerson(a, n); if (!p.phone) { noPhone.push(n); continue; }
+    try { await sendText(p.phone, tuText(u, p)); sent++; } catch (e) { console.log('team update text failed', n, e.message); } }
+  await kset(AV_KEY, a); return { sent, noPhone };
+}
+app.get('/api/team-updates', async (req, res) => {
+  try { const list = await tuList(), team = (await avTeam()).map(t => t.name);
+    res.json({ ok: true, team, updates: list.filter(u => !u.hidden).slice(0, 15) }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/team-updates', async (req, res) => {
+  try { const b = req.body || {}, text = String(b.text || '').trim().slice(0, 600); if (!text) return res.status(400).json({ error: 'Type the update first' });
+    const list = await tuList(), u = { id: crypto.randomBytes(5).toString('hex'), text, at: Date.now(), urgent: !!b.urgent, seen: {} };
+    list.unshift(u); await kset(TU_KEY, list.slice(0, 100));
+    const r = u.urgent ? await tuSend(u, (await avTeam()).map(t => t.name)) : { sent: 0, noPhone: [] };
+    res.json({ ok: true, update: u, ...r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/team-updates/nudge', async (req, res) => {
+  try { const list = await tuList(), u = list.find(x => x.id === String((req.body || {}).id || '')); if (!u) return res.status(404).json({ error: 'Not found' });
+    const left = (await avTeam()).map(t => t.name).filter(n => !(u.seen || {})[n]), r = await tuSend(u, left);
+    u.nudged = Date.now(); await kset(TU_KEY, list); res.json({ ok: true, ...r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/team-updates/hide', async (req, res) => {
+  try { const list = await tuList(), u = list.find(x => x.id === String((req.body || {}).id || '')); if (u) { u.hidden = Date.now(); await kset(TU_KEY, list); } res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/u/:token', (req, res) => res.set('Cache-Control', 'no-cache').set('X-Robots-Tag', 'noindex').sendFile(path.join(__dirname, 'updates.html')));
+app.get('/public/updates/:token', async (req, res) => {
+  try { const f = await avFind(String(req.params.token)); if (!f) return res.status(404).json({ error: 'This link is no longer active. Ask Billy for a new one.' });
+    const list = await tuList(), open = tuOpen(list, f.name), pick = u => ({ id: u.id, text: u.text, at: u.at });
+    res.json({ name: f.name, open: open.map(pick), recent: list.filter(u => !u.hidden && !open.includes(u)).slice(0, 5).map(pick) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/public/updates/:token', async (req, res) => {
+  try { const f = await avFind(String(req.params.token)); if (!f) return res.status(404).json({ error: 'This link is no longer active.' });
+    const ids = new Set((Array.isArray((req.body || {}).ids) ? req.body.ids : []).map(String)), list = await tuList(), now = Date.now();
+    list.forEach(u => { if (ids.has(u.id)) { u.seen = u.seen || {}; if (!u.seen[f.name]) u.seen[f.name] = now; } });
+    await kset(TU_KEY, list); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ===================== END TEAM UPDATES =====================
 // Sunday 6pm: everyone gets their link for next week. Monday noon: one reminder to anyone who hasn't confirmed this week.
 setInterval(async () => {
   try {
