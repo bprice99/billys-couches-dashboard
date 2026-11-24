@@ -44,10 +44,14 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
 .mb b{font-size:16px;display:block;margin-bottom:4px}.mb p{margin:0 0 12px;color:#5d524b;font-size:13.5px}
 .mb button{display:block;width:100%;border-radius:12px;padding:13px;font-size:15px;font-weight:700;margin-top:8px;border:1px solid #e3d7ca;background:#fff;color:#1f1a17}
 .mb button.pri{background:#2b1d16;color:#fff;border-color:#2b1d16}
+.upd{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.upd ul{margin:6px 0 0;padding-left:18px}.upd li{font-size:14.5px;line-height:1.45;margin:4px 0}
+.updck{display:flex;align-items:center;gap:9px;margin-top:10px;font-weight:700;font-size:15px}.updck input{width:20px;height:20px}
 .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#1f6b3d;color:#fff;border-radius:99px;padding:10px 16px;font-weight:700;font-size:14px;display:none;z-index:10}
 </style>
 </head><body>
 <div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">My availability</h1><p>Add the times you <b>can</b> work. Days left empty = not available. Then tap confirm.</p></div>
+<div id="upd" style="max-width:520px;margin:0 auto;padding:14px 14px 0"></div>
 <div class="in" id="app"><p style="color:#8a7d73">Loading…</p></div>
 <div class="bar" id="bar" style="display:none"><button class="save" id="save">Confirm my availability</button></div>
 <div class="modal" id="modal"><div class="mb"><b id="mt">Change this repeat?</b><p id="mp">This is set to repeat every week.</p><button class="pri" id="mWeek">Just this week</button><button id="mAll">Every week</button><button id="mCancel">Cancel</button></div></div>
@@ -116,6 +120,7 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
     if (a.b.wasRepeat && a.b.id && a.b.repeat) ask('Change this repeat?', 'It repeats every ' + DAYS[a.d.dow] + '.', apply); else apply('week');
   });
   document.getElementById('save').onclick = function(){
+    if (UPD.length && !(document.getElementById('updOk') || {}).checked) { alert('Read the updates at the top and check "I read these" first.'); window.scrollTo(0, 0); return; }
     var bad = null;
     st.days.forEach(function(d){ d.blocks.forEach(function(b){ if (!b.allDay && (!b.start || !b.end || b.end <= b.start)) bad = DAYS[d.dow]; }); });
     if (bad) { alert('Check the times on ' + bad + ': the end has to be after the start.'); return; }
@@ -123,9 +128,14 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
     var body = { week: st.week, days: st.days.filter(function(d){ return !d.past; }).map(function(d){ return { date: d.date, removeAll: removeAll[d.date] || [], blocks: d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.start, end: b.end, repeat: b.repeat, scope: b.scope }; }) }; }) };
     fetch('/public/avail/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not save'); return j; }); })
-      .then(function(){ toast('Confirmed ✓ Thanks!'); btn.disabled = false; btn.textContent = 'Confirm my availability'; load(st.week); })
+      .then(function(){ if (UPD.length) fetch('/public/updates/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: UPD.map(function(u){ return u.id; }) }) }).then(loadUpd).catch(function(){}); toast('Confirmed ✓ Thanks!'); btn.disabled = false; btn.textContent = 'Confirm my availability'; load(st.week); })
       .catch(function(e){ alert(e.message + ' Try again, or text Billy.'); btn.disabled = false; btn.textContent = 'Confirm my availability'; });
   };
+  // Team updates from Billy (sales, policy, drop changes): must be checked before confirming.
+  var UPD = [];
+  function loadUpd(){ fetch('/public/updates/' + encodeURIComponent(token)).then(function(r){ return r.json(); }).then(function(j){ UPD = j.open || [];
+    document.getElementById('upd').innerHTML = UPD.length ? '<div class="upd"><b>📣 What changed</b><ul>' + UPD.map(function(u){ return '<li>' + esc(u.text) + '</li>'; }).join('') + '</ul><label class="updck"><input type="checkbox" id="updOk"> I read these</label></div>' : ''; }).catch(function(){}); }
+  loadUpd();
   load('');
 })();
 </script>
