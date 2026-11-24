@@ -7,11 +7,18 @@
 (async () => {
   const $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
   const target = q.get('to') === 'cl' ? 'https://post.craigslist.org' : q.get('to') === 'gh' ? 'https://github.com' : 'https://www.facebook.com';   // gh: photos for graphics made on GitHub   // Craigslist posting uses the same helper
-  if (!window.opener) { $('s').textContent = 'Open this from Facebook.'; return; }
+  // Facebook can cut window.opener (cross-origin opener policy). Then the Facebook tab asks for the photos with
+  // postMessage({bcWant:1}) and we answer whoever asked (only facebook / craigslist / github).
+  let reply = window.opener ? (m => window.opener.postMessage(m, target)) : null;
+  if (!reply) {
+    $('s').textContent = 'Waiting for Facebook…';
+    const ev = await new Promise(res => window.addEventListener('message', e => { if (e.origin === target && e.data && e.data.bcWant) res(e); }));
+    reply = m => ev.source.postMessage(m, ev.origin);
+  }
   try {
     // ?imgs=/public/bn/h2,/public/bn/h3 sends just those photos (for listings that aren't drops, like Brand New)
     if (q.get('imgs')) { const files = []; for (const [i, p] of q.get('imgs').split(',').filter(p => /^\/public\//.test(p)).entries()) { const r = await fetch(p); if (r.ok) files.push({ name: 'couch-' + (i + 1) + '.jpg', blob: await r.blob() }); }
-      window.opener.postMessage({ bcImgs: files }, target); $('s').textContent = 'Sent ' + files.length + ' photos ✓'; return; }
+      reply({ bcImgs: files }); $('s').textContent = 'Sent ' + files.length + ' photos ✓'; return; }
     const d = (await fetch('/api/drops').then(r => r.json())).drops || [];
     let list = d.filter(x => x.status === 'live').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     if (q.get('ids')) { const ids = q.get('ids').split(','); list = ids.map(i => d.find(x => x.id === i)).filter(Boolean); }
@@ -33,7 +40,7 @@
       }
       kits.push({ id: x.id, title: x.title.slice(0, 100), price: x.price, grade: x.grade || '', text: text(x), files });
     }
-    window.opener.postMessage({ bcKits: kits }, target);
+    reply({ bcKits: kits });
     $('s').textContent = 'Sent ' + kits.length + ' couches to Facebook ✓'; $('d').textContent = 'You can close this window.';
   } catch (e) { $('s').textContent = "Couldn't get the couches: " + e.message; }
 })();
