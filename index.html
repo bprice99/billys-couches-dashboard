@@ -451,6 +451,12 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
 
     <!-- PAYROLL -->
     <section id="tab-payroll" hidden>
+      <div class="card" style="margin-bottom:14px"><h2>Team updates <small>sales, policy &amp; drop changes</small></h2>
+        <textarea id="tuText" rows="3" maxlength="600" placeholder="e.g. Black Friday: $150 off every couch through 11/30" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;resize:vertical"></textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:14px"><input type="checkbox" id="tuUrgent"> Text the team now (urgent)</label>
+        <button class="btn p" id="tuPost">Post update</button>
+        <p class="empty" style="font-size:12.5px;margin-top:8px">Every update shows at the top of their weekly availability form until they check "I read these". Urgent ones are also texted to everyone right away with a one-tap "Got it" link.</p>
+        <div id="tuList"></div></div>
       <div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Daily Job Board</h2><a class="btn" href="/jobs" target="_blank">Open full page</a></div><iframe id="jbFrame" title="Daily Job Board" loading="lazy" src="/jobs?embed=1" style="width:100%;border:0;height:820px;margin-top:10px;display:block"></iframe></div>
       <div class="top" style="margin-top:-6px;justify-content:flex-end"><button class="btn p" id="payBtn">Mark week paid</button></div>
       <div class="err" id="payWarn" hidden></div>
@@ -1650,7 +1656,34 @@ document.addEventListener('click', async e => {
   if (!confirm('Remove this shift from payroll?')) return;
   try { await post('/api/worklog/delete', { id: d.dataset.wldel }); PAY = null; loadPayroll(true); toast('Shift removed'); } catch (x) { toast(x.message); }
 });
+// ---------- Team updates (texts + availability form, no HQ login needed for the team) ----------
+let TU = null;
+async function renderTeamUpdates(){
+  const el = $('tuList'); if (!el) return;
+  try { TU = await (await fetch('/api/team-updates', { cache: 'no-store' })).json(); } catch (e) { TU = null; }
+  if (!TU || !TU.ok) { el.innerHTML = '<p class="empty">Could not load updates.</p>'; return; }
+  const pill = ok => `font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;${ok ? 'background:#e3f1e8;color:#1f6b3d' : 'background:#fff1dc;color:#8a5a00'}`;
+  el.innerHTML = TU.updates.map(u => { const seen = u.seen || {}, left = TU.team.filter(n => !seen[n]);
+    return `<div style="border-top:1px solid var(--line);padding:10px 0 4px;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:14px;white-space:pre-wrap">${esc(u.text)}</b><a href="#" data-tuhide="${esc(u.id)}" style="color:var(--muted);font-size:12px;white-space:nowrap">Hide</a></div>
+      <small style="color:var(--muted)">${new Date(u.at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}${u.urgent ? ' · texted' : ''} · ${TU.team.length - left.length}/${TU.team.length} got it</small>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${TU.team.map(n => `<span style="${pill(!!seen[n])}">${seen[n] ? '✓ ' : ''}${esc(n)}</span>`).join('')}</div>
+      ${left.length ? `<button class="btn sm" style="margin-top:8px" data-tunudge="${esc(u.id)}">Text the ${left.length} who haven't</button>` : ''}</div>`; }).join('') || '<p class="empty" style="margin-top:10px">No updates yet.</p>';
+}
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.id === 'tuPost') { const text = $('tuText').value.trim(); if (!text) return toast('Type the update first');
+    const urgent = $('tuUrgent').checked; if (urgent && !confirm('Text this to the whole team now?')) return;
+    t.disabled = true;
+    try { const j = await post('/api/team-updates', { text, urgent }); $('tuText').value = ''; $('tuUrgent').checked = false;
+      toast(urgent ? `Texted ${j.sent}` + (j.noPhone.length ? ` · no phone on file: ${j.noPhone.join(', ')}` : '') : "Posted. They'll see it on their availability form."); renderTeamUpdates(); }
+    catch (err) { toast(err.message); }
+    t.disabled = false; return; }
+  const n = t.closest('[data-tunudge]'); if (n) { if (!confirm("Text the people who haven't confirmed?")) return; n.disabled = true;
+    try { const j = await post('/api/team-updates/nudge', { id: n.dataset.tunudge }); toast('Texted ' + j.sent + (j.noPhone.length ? ' · no phone: ' + j.noPhone.join(', ') : '')); renderTeamUpdates(); } catch (err) { toast(err.message); n.disabled = false; } return; }
+  const h = t.closest('[data-tuhide]'); if (h) { e.preventDefault(); try { await post('/api/team-updates/hide', { id: h.dataset.tuhide }); renderTeamUpdates(); } catch (err) { toast(err.message); } }
+});
 function renderPayroll(){
+  renderTeamUpdates();
   if (!PAY) return loadPayroll();
   setTimeout(renderGoalEditor, 0);
   const R = getR('payroll'), W = payRange(R), P = payRange(prevRange(R)), vs = vsLabel(R);
