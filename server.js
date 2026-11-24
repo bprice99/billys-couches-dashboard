@@ -1902,6 +1902,12 @@ async function salesLogRows() {
 // Sale window (same times as the public order app). While it runs, the Just Sold pop-up says how much each buyer saved.
 // Black Friday 2026: $150 off every website couch, Nov 18 6pm through Cyber Monday. The 4 Black Friday-priced couches keep their own price.
 const SALE_WIN = { start: Date.parse(process.env.SALE_START || '2026-11-18T18:00:00-06:00'), end: Date.parse(process.env.SALE_END || '2026-11-30T23:59:59-06:00'), big: Number(process.env.SALE_BIG || 150), small: Number(process.env.SALE_SMALL || 150), min: Number(process.env.SALE_MIN || 0) };
+// Cyber Monday: Black Friday's $150 ends Sun 11/29 11:59pm; Mon 11/30 (until SALE_END) is $100 off. Same sale window,
+// just a smaller amount, and the "ends" shown on the website points at Sunday night until Monday starts.
+const CYBER_START = Date.parse(process.env.CYBER_START || '2026-11-30T00:00:00-06:00'), CYBER_AMT = Number(process.env.CYBER_AMOUNT || 100);
+const cyberOn = () => Date.now() >= CYBER_START && Date.now() < SALE_WIN.end;
+['big', 'small'].forEach(k => { const base = SALE_WIN[k]; Object.defineProperty(SALE_WIN, k, { get: () => cyberOn() ? CYBER_AMT : base }); });
+const saleShownEnd = () => cyberOn() ? SALE_WIN.end : Math.min(SALE_WIN.end, CYBER_START - 1000);
 const SALE_SKIP = new Set(String(process.env.SALE_SKIP || 'e5da102a0294,2ffd0f1748de,cce09a3338ea,56153d8a1b15').split(',').map(x => x.trim()).filter(Boolean));
 const saleLive = () => process.env.SALE !== 'off' && Date.now() >= SALE_WIN.start && Date.now() < SALE_WIN.end;
 const inSale = t => t >= SALE_WIN.start && t < SALE_WIN.end;
@@ -2785,11 +2791,11 @@ app.get('/api/ai-leads.csv', async (req, res) => {
 const BF_WAS = { e5da102a0294: 700, '2ffd0f1748de': 1670, cce09a3338ea: 1250, '56153d8a1b15': 930 };
 function bfPrice(d) {
   const was = BF_WAS[d.id];
-  if (was && saleLive() && was > d.price) return { price: d.price, was, saleOff: was - d.price, saleEnds: new Date(SALE_WIN.end).toISOString() };
+  if (was && saleLive() && was > d.price) return { price: d.price, was, saleOff: was - d.price, saleEnds: new Date(saleShownEnd()).toISOString() };
   if (SALE_SKIP.has(d.id) || !/sectional|sofa|loveseat|sleeper/i.test(d.title || '')) return { price: d.price };
   return salePrice(d.price);
 }
-function salePrice(p) { const price = Number(p) || 0; if (!saleLive() || !price) return { price }; const off = saleSaved(0, price); return { price: Math.max(price - off, 0), was: price, saleOff: off, saleEnds: new Date(SALE_WIN.end).toISOString() }; }
+function salePrice(p) { const price = Number(p) || 0; if (!saleLive() || !price) return { price }; const off = saleSaved(0, price); return { price: Math.max(price - off, 0), was: price, saleOff: off, saleEnds: new Date(saleShownEnd()).toISOString() }; }
 // Will it fit?: every piece of the couch (sofa, loveseat, each modular section). Uses the pieces typed in Drops,
 // else a best guess from the Dimensions line. ret = the other side of an L-shaped piece (chaise / corner).
 const NUM = '(\\d+(?:\\.\\d+)?)';
