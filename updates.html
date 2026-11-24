@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Team Update · Billy's Couches</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f1a17;-webkit-text-size-adjust:100%}
+.top{background:#2b1d16;color:#fff;padding:18px 16px 16px}
+.top small{font-size:11px;letter-spacing:2px;color:#e8b44a;font-weight:700}
+.top h1{margin:4px 0 0;font-size:22px;line-height:1.2}
+.in{max-width:520px;margin:0 auto;padding:14px}
+.upd{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:14px;margin-bottom:12px}
+.upd li{font-size:15px;line-height:1.45;margin:6px 0}
+.upd small{color:#8a7d73;font-size:12px}
+.old{background:#fff;border:1px solid #e7ded4;border-radius:14px;padding:12px 14px;margin-top:16px}
+.old b{font-size:12px;letter-spacing:.06em;color:#8a7d73}
+.old li{font-size:14px;color:#5d524b;margin:5px 0}
+.btn{display:block;width:100%;background:#a74d4a;color:#fff;border:0;border-radius:99px;padding:15px;font-size:16px;font-weight:700}
+.btn:disabled{opacity:.6}
+.done{background:#e3f1e8;color:#1f6b3d;border-radius:14px;padding:16px;font-weight:700;text-align:center;font-size:16px}
+.err{background:#fde3df;color:#a33a2f;border-radius:12px;padding:14px;font-weight:600}
+</style></head><body>
+<div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">Team update</h1></div>
+<div class="in" id="app"><p style="color:#8a7d73">Loading…</p></div>
+<script>
+(function(){
+  var token = location.pathname.split('/').pop(), app = document.getElementById('app');
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function when(t){ return new Date(t).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+  function list(items){ return '<ul style="margin:0;padding-left:18px">' + items.map(function(u){ return '<li>' + esc(u.text) + ' <small>· ' + when(u.at) + '</small></li>'; }).join('') + '</ul>'; }
+  function load(){
+    fetch('/public/updates/' + encodeURIComponent(token)).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not load'); return j; }); })
+      .then(function(j){
+        document.getElementById('hi').textContent = 'Hey ' + j.name + ' 👋';
+        var h = '';
+        if (j.open.length) h += '<div class="upd"><b style="display:block;margin-bottom:4px">📣 New from Billy</b>' + list(j.open) + '</div><button class="btn" id="ok">✓ Got it</button>';
+        else h += '<div class="done">✓ You\'re all caught up</div>';
+        if (j.recent.length) h += '<div class="old"><b>EARLIER UPDATES</b>' + list(j.recent) + '</div>';
+        app.innerHTML = h;
+        var b = document.getElementById('ok'); if (!b) return;
+        b.onclick = function(){ b.disabled = true; b.textContent = 'Saving…';
+          fetch('/public/updates/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: j.open.map(function(u){ return u.id; }) }) })
+            .then(function(r){ if (!r.ok) throw new Error(); load(); })
+            .catch(function(){ b.disabled = false; b.textContent = '✓ Got it'; alert('Could not save. Try again, or text Billy.'); }); };
+      })
+      .catch(function(e){ app.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+  }
+  load();
+})();
+</script>
+</body></html>
