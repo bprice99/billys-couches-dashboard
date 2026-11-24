@@ -1214,9 +1214,9 @@ function renderShowUp(){
   el.innerHTML = list.map(x => {
     const day = x.at < t1 ? 'today' : 'tomorrow', hd = day !== last ? `<div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.05em;margin:${last ? 12 : 0}px 0 4px">${day.toUpperCase()}</div>` : ''; last = day;
     const ph = String(x.phone || '').replace(/\D/g, '').slice(-10), k = +x.at + '|' + ph, done = !!TX[k], first = x.name.split(' ')[0];
-    const body = `Hi ${first}! This is Billy's Couches confirming your showing ${day} at ${tm(x)} at 126 E Orleans St, Pacific. See you then! If anything changes, just reply here.`;
-    return hd + `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px"><b style="width:68px;flex:none">${esc(tm(x))}</b><span style="flex:1;min-width:0">${esc(x.name)}</span>` +
-      (ph.length === 10 ? `<a class="btn sm dlv-b ${done ? 'ok' : ''}" data-shtx="${esc(k)}" href="sms:+1${ph}?&body=${encodeURIComponent(body)}">${done ? '✓ Texted' : 'Text'}</a>` : '<small style="color:var(--muted)">no phone</small>') + '</div>';
+    const sm = (body, label) => `<a class="btn sm dlv-b ${done ? 'ok' : ''}" data-shtx="${esc(k)}" href="sms:+1${ph}?&body=${encodeURIComponent(body)}">${label}</a>`;
+    return hd + `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line);font-size:14px"><b style="width:68px;flex:none">${esc(tm(x))}</b><span style="flex:1;min-width:0">${esc(x.name)}${done ? ' <small style="color:var(--green)">✓ texted</small>' : ''}</span>` +
+      (ph.length === 10 ? sm(shIntro(x), 'Intro') + sm(shText(x), 'Confirm') + sm("Sounds good. Here's what you can expect on the floor: https://billyscouches.com/currentinventory", 'Inventory') : '<small style="color:var(--muted)">no phone</small>') + '</div>';
   }).join('');
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-shtx]'); if (!b) return;
