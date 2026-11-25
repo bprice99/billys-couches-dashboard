@@ -133,7 +133,7 @@ async function book(){
 }
 function done(j){
   // Embedded on billyscouches.com: no thank-you screen here, the page sends them straight to /showingthanks (ad conversion).
-  if (parent !== window) { parent.postMessage({ bcShowing: j.when }, '*'); return; }
+  if (parent !== window) { const tm = String(j.when || '').match(/\d{1,2}:\d{2}\s*[AP]M/i); parent.postMessage({ bcShowing: tm && ST.date ? ST.date + ' ' + tm[0] : j.when }, '*'); return; }   // send the full date (2026-11-25): "Wednesday, Nov 25" has no year and phones guess 2001
   steps(3); const c = D.couches.find(x => x.id === ST.couch);
   $('app').innerHTML = `<div class="pad done"><div class="ck">✓</div>
     <div class="h">See you then, ${esc(j.first)}!</div><p class="p">We just texted you a confirmation.</p>
