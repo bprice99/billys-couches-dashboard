@@ -4251,6 +4251,9 @@ function demoData() {
 const SHF_KEY = 'bcd:showForm';
 const SHF_DEFAULT = { hosts: ['Finley', 'Collin', 'Gunnarr', 'Luke', 'Zach'], billyAway: [], closed: [], special: {}, slot: 20, notice: 7, days: 3,
   hours: { 0: [840, 1260], 1: [540, 1260], 2: [540, 1260], 3: [540, 1260], 4: [540, 1260], 5: [540, 1260], 6: [540, 1260] } };
+// Days the store is closed no matter what HQ's showing settings say (holidays). More closed dates can be added in HQ.
+const SHF_HOLIDAYS = ['2026-11-26'];   // Thanksgiving
+const shfClosed = (cfg, date) => cfg.closed.includes(date) || SHF_HOLIDAYS.includes(date);
 const SHF_SOON = ['ASAP', '1-3 weeks', '1-3 months'];
 const SHF_SRC = ['Facebook Marketplace', 'Craigslist', 'Facebook or Instagram Ad', 'TikTok', 'Google Search', 'Google Maps', 'Someone referred me', 'Other'];
 async function shfState() { const s = (await kget(SHF_KEY, {})) || {}; s.cfg = { ...SHF_DEFAULT, ...(s.cfg || {}) }; s.book = s.book || {}; return s; }
@@ -4268,7 +4271,7 @@ async function shfDays(s, onlyDate) {
     const date = jbAdd(today, i); if (onlyDate && date !== onlyDate) continue;
     const dow = new Date(date + 'T12:00:00Z').getUTCDay(), hrs = (cfg.special || {})[date] || cfg.hours[dow], day = { date, label: shfDay(date), slots: [] };
     out.push(day);
-    if (!hrs || cfg.closed.includes(date)) continue;
+    if (!hrs || shfClosed(cfg, date)) { day.closed = true; continue; }
     for (let m = hrs[0]; m + cfg.slot <= hrs[1]; m += cfg.slot) {
       const a = ctAt(date, m).getTime(), b = a + cfg.slot * 60e3;
       if (a - now < cfg.notice * 3600e3 || shows.some(t => t >= a && t < b)) continue;
@@ -4284,7 +4287,7 @@ app.get('/public/showing', async (req, res) => {
     const s = await shfState(), days = await shfDays(s), drops = await getDrops().catch(() => []);
     const couches = drops.filter(d => (d.status === 'live' || d.status === 'emailed') && (d.photos || []).length).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 40)
       .map(d => ({ id: d.id, title: d.title, price: d.price, photo: dropPhotoUrl(d.photos[0]) }));
-    res.json({ ok: true, days: days.map(d => ({ date: d.date, label: d.label, slots: d.slots.map(x => ({ min: x.min, label: x.label })) })), couches, soon: SHF_SOON, sources: SHF_SRC });
+    res.json({ ok: true, days: days.map(d => ({ date: d.date, label: d.label, closed: !!d.closed, slots: d.slots.map(x => ({ min: x.min, label: x.label })) })), couches, soon: SHF_SOON, sources: SHF_SRC });
   } catch (e) { console.log('Showing slots failed', e.message); res.status(500).json({ error: 'Could not load times. Text Billy at (314) 899-7503.' }); }
 });
 const shfHits = new Map();
@@ -4299,6 +4302,7 @@ app.post('/public/showing', async (req, res) => {
     if (!soon || !src) return res.status(400).json({ error: 'Answer both questions.' });
     const date = clean(b.date, 10), min = Number(b.min);
     const s = await shfState(), day = (await shfDays(s, date))[0], slot = day && day.slots.find(x => x.min === min);
+    if (day && day.closed) return res.status(409).json({ error: "We're closed that day. Please pick another day." });
     if (!slot) return res.status(409).json({ error: 'That time was just taken. Please pick another.' });
     const start = ctAt(date, min), end = new Date(start.getTime() + s.cfg.slot * 60e3), name = `${first} ${last}`;
     const couch = (await getDrops().catch(() => [])).find(d => d.id === b.couch);
@@ -4322,7 +4326,7 @@ app.get('/api/showform', async (req, res) => {
   try { const s = await shfState(), c = s.cfg, sp = c.special || {}, g = await google(false).catch(() => ({})), today = ctYmd(new Date());
     const shows = (g.showings || []).filter(r => !/cancel/i.test(r[1] || '')).map(r => ctYmd(new Date(r[0])));
     const next7 = []; for (let i = 0; i < 7; i++) { const d = jbAdd(today, i), h = sp[d] || c.hours[new Date(d + 'T12:00:00Z').getUTCDay()];
-      next7.push({ date: d, label: shfDay(d), hours: c.closed.includes(d) || !h ? 'Closed' : shfRange(h[0], h[1]), special: !!sp[d] || c.closed.includes(d), booked: shows.filter(x => x === d).length }); }
+      next7.push({ date: d, label: shfDay(d), hours: shfClosed(c, d) || !h ? 'Closed' : shfRange(h[0], h[1]), special: !!sp[d] || shfClosed(c, d), booked: shows.filter(x => x === d).length }); }
     res.json({ ok: true, hours: c.hours, closed: c.closed.filter(d => d >= today).sort(), special: Object.keys(sp).filter(d => d >= today).sort().map(d => ({ date: d, range: shfRange(sp[d][0], sp[d][1]) })), next7 }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
