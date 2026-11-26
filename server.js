@@ -4078,12 +4078,13 @@ app.post('/public/avail/:token', async (req, res) => {
       }
     }
     p.blocks = p.blocks.filter(x => x.date ? x.date >= jbAdd(today, -14) : true).slice(-200);
-    p.confirmed[mon] = Date.now(); p.updated = Date.now();
+    // Month tab saves times without confirming the week (confirming stays a weekly tap on the Week tab).
+    if (!b.noConfirm) p.confirmed[mon] = Date.now(); p.updated = Date.now();
     await kset(AV_KEY, f.a);
     const after = avSummary(p, mon), wk = `${+mon.slice(5, 7)}/${+mon.slice(8)}`;
     // Changing tomorrow (or today) after the 7pm board went out: flag it.
     const s = await jbState(), tom = jbTomorrow(), late = before === after ? [] : [today, tom].filter(d => dates.has(d) && (s.boards[d] || {}).notified);
-    avNotify(`🗓 ${f.name} ${before === after ? 'confirmed' : 'updated'} availability (week of ${wk}): ${after}` + (late.length ? `\n⚠️ This changes ${late.includes(today) ? 'today' : 'tomorrow'}'s job board. Check it: ${PUBLIC_BASE}/jobs?date=${late[late.length - 1]}` : ''));
+    if (!b.noConfirm || late.length) avNotify(`🗓 ${f.name} ${b.noConfirm ? 'updated' : before === after ? 'confirmed' : 'updated'} availability (week of ${wk}): ${after}` + (late.length ? `\n⚠️ This changes ${late.includes(today) ? 'today' : 'tomorrow'}'s job board. Check it: ${PUBLIC_BASE}/jobs?date=${late[late.length - 1]}` : ''));
     res.json({ ok: true, confirmed: p.confirmed[mon] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
