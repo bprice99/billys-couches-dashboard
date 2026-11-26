@@ -47,13 +47,32 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
 .upd{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:13px 14px;margin-bottom:10px}
 .upd ul{margin:6px 0 0;padding-left:18px}.upd li{font-size:14.5px;line-height:1.45;margin:4px 0}
 .updck{display:flex;align-items:center;gap:9px;margin-top:10px;font-weight:700;font-size:15px}.updck input{width:20px;height:20px}
+.tabs{display:flex;background:#ece4da;border-radius:12px;padding:3px;margin:0 0 12px}
+.tabs button{flex:1;border:0;background:none;border-radius:9px;padding:9px;font-size:15px;font-weight:700;color:#8a7d73}
+.tabs button.on{background:#fff;color:#1f1a17;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.mg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mg .dw{font-size:11px;text-align:center;color:#8a7d73;font-weight:700;padding-bottom:2px}
+.mc{background:#fff;border:1px solid #e7ded4;border-radius:9px;min-height:54px;padding:4px 3px;font-size:11px;text-align:center;cursor:pointer}
+.mc .n{display:block;font-weight:800;font-size:12.5px}
+.mc.out{visibility:hidden}.mc.past{opacity:.35;pointer-events:none}.mc.sel{outline:2px solid #a74d4a}
+.mc .t{display:block;margin-top:3px;background:#fff1dc;color:#8a5a00;border-radius:5px;font-size:10px;font-weight:700;padding:2px 1px;line-height:1.2}
+.mc .t.r{background:#e6ecf7;color:#2f4a7a}.mc .z{display:block;margin-top:6px;color:#cbbfb4}
+.lg{font-size:12px;color:#6f6259;margin:9px 0 4px}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin:0 4px 0 8px}
+.sh{background:#fff;border:2px solid #a74d4a;border-radius:14px;padding:13px;margin-top:10px}
+.sh b.h{font-size:16px;display:block;margin-bottom:8px}
+.seg{display:flex;gap:6px;margin:8px 0}.seg button{flex:1;border:1px solid #e3d7ca;background:#fff;border-radius:10px;padding:9px 4px;font-size:13px;font-weight:700;color:#5d524b}
+.seg button.on{background:#2b1d16;color:#fff;border-color:#2b1d16}
+.sh .go{display:flex;gap:8px;margin-top:10px}.sh .go button{flex:1;border-radius:99px;padding:12px;font-size:15px;font-weight:700;border:1px solid #e3d7ca;background:#fff}
+.sh .go button.pri{background:#a74d4a;color:#fff;border-color:#a74d4a}
+.cp{display:block;width:100%;margin-top:12px;border:1.5px solid #a74d4a;background:#fff;color:#a74d4a;border-radius:99px;padding:13px;font-size:14.5px;font-weight:700}
 .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#1f6b3d;color:#fff;border-radius:99px;padding:10px 16px;font-weight:700;font-size:14px;display:none;z-index:10}
 </style>
 </head><body>
-<div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">My availability</h1><p>Add the times you <b>can</b> work. Days left empty = not available. Then tap confirm.</p></div>
+<div class="top"><small>BILLY'S COUCHES</small><h1 id="hi">My availability</h1><p>Set your times for the month on the <b>Month</b> tab. Each week, just check the <b>Week</b> tab and tap confirm.</p></div>
 <div id="upd" style="max-width:520px;margin:0 auto;padding:14px 14px 0"></div>
-<div class="in" id="app"><p style="color:#8a7d73">Loading…</p></div>
-<div class="bar" id="bar" style="display:none"><button class="save" id="save">Confirm my availability</button></div>
+<div style="max-width:520px;margin:0 auto;padding:14px 14px 0"><div class="tabs" id="tabs"><button data-tab="week" class="on">Week</button><button data-tab="month">Month</button></div></div>
+<div class="in" id="app" style="padding-top:0"><p style="color:#8a7d73">Loading…</p></div>
+<div class="bar" id="bar" style="display:none"><button class="save" id="save">✓ Looks right, confirm this week</button></div>
 <div class="modal" id="modal"><div class="mb"><b id="mt">Change this repeat?</b><p id="mp">This is set to repeat every week.</p><button class="pri" id="mWeek">Just this week</button><button id="mAll">Every week</button><button id="mCancel">Cancel</button></div></div>
 <div class="toast" id="toast">Saved ✓</div>
 <script>
@@ -85,7 +104,7 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
     return '<span class="pill ok2">' + (ok.length === 1 ? nice(ok[0].start) + '–' + nice(ok[0].end) : ok.length + ' times') + '</span>';
   }
   function render(){
-    var maxWeek = addDays(st.thisWeek, 21), h = '';
+    var maxWeek = addDays(st.thisWeek, 56), h = '';
     h += '<div class="wk"><button id="prev"' + (st.week <= st.thisWeek ? ' disabled' : '') + '>‹</button><b>' + (st.week === st.thisWeek ? 'This week' : st.week === addDays(st.thisWeek, 7) ? 'Next week' : 'Week of ' + label(st.week)) + ' · ' + label(st.week) + '–' + label(addDays(st.week, 6)) + '</b><button id="next"' + (st.week >= maxWeek ? ' disabled' : '') + '>›</button></div>';
     h += st.confirmed ? '<div class="conf ok">✓ Confirmed. Change anything below and confirm again.</div>' : '<div class="conf no">Not confirmed yet. You’re off the job board for this week until you confirm.</div>';
     st.days.forEach(function(d, di){
@@ -128,13 +147,101 @@ body{margin:0;background:#f7f3ee;font-family:-apple-system,Segoe UI,Roboto,Helve
     var body = { week: st.week, days: st.days.filter(function(d){ return !d.past; }).map(function(d){ return { date: d.date, removeAll: removeAll[d.date] || [], blocks: d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.start, end: b.end, repeat: b.repeat, scope: b.scope }; }) }; }) };
     fetch('/public/avail/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not save'); return j; }); })
-      .then(function(){ if (UPD.length) fetch('/public/updates/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: UPD.map(function(u){ return u.id; }) }) }).then(loadUpd).catch(function(){}); toast('Confirmed ✓ Thanks!'); btn.disabled = false; btn.textContent = 'Confirm my availability'; load(st.week); })
-      .catch(function(e){ alert(e.message + ' Try again, or text Billy.'); btn.disabled = false; btn.textContent = 'Confirm my availability'; });
+      .then(function(){ if (UPD.length) fetch('/public/updates/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: UPD.map(function(u){ return u.id; }) }) }).then(loadUpd).catch(function(){}); toast('Confirmed ✓ Thanks!'); btn.disabled = false; btn.textContent = '✓ Looks right, confirm this week'; load(st.week); })
+      .catch(function(e){ alert(e.message + ' Try again, or text Billy.'); btn.disabled = false; btn.textContent = '✓ Looks right, confirm this week'; });
   };
   // Team updates from Billy (sales, policy, drop changes): must be checked before confirming.
   var UPD = [];
   function loadUpd(){ fetch('/public/updates/' + encodeURIComponent(token)).then(function(r){ return r.json(); }).then(function(j){ UPD = j.open || [];
     document.getElementById('upd').innerHTML = UPD.length ? '<div class="upd"><b>📣 What changed</b><ul>' + UPD.map(function(u){ return '<li>' + esc(u.text) + '</li>'; }).join('') + '</ul><label class="updck"><input type="checkbox" id="updOk"> I read these</label></div>' : ''; }).catch(function(){}); }
+  // ---------- Month tab: tap a day to set times. Saves right away (doesn't confirm the week). ----------
+  var tab = 'week', ms = null, sel = null;
+  function monOf(ymd){ var t = new Date(ymd + 'T12:00:00Z'); return addDays(ymd, -((t.getUTCDay() + 6) % 7)); }
+  function addMonths(ym, n){ var y = +ym.slice(0,4), m = +ym.slice(5,7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2,'0'); }
+  function lastDay(ym){ return new Date(Date.UTC(+ym.slice(0,4), +ym.slice(5,7), 0)).toISOString().slice(0,10); }
+  var FULLMON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function shortT(v){ var p = String(v||'').split(':'), h = +p[0], m = +p[1]; return (h%12||12) + (m ? ':' + String(m).padStart(2,'0') : ''); }
+  function getWeek(w){ return fetch('/public/avail/' + encodeURIComponent(token) + '?week=' + w).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not load'); return j; }); }); }
+  function loadMonth(ym){
+    app.innerHTML = '<p style="color:#8a7d73">Loading…</p>'; document.getElementById('bar').style.display = 'none';
+    var start = monOf(ym + '-01'), end = lastDay(ym), weeks = [];
+    for (var w = start; w <= end; w = addDays(w, 7)) weeks.push(w);
+    Promise.all(weeks.map(getWeek)).then(function(list){
+      var days = [];
+      list.forEach(function(j){ j.days.forEach(function(d){ d.blocks = d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.allDay ? '' : hm(b.s), end: b.allDay ? '' : hm(b.e), repeat: b.repeat }; }); days.push(d); }); });
+      ms = { ym: ym, days: days, weeks: weeks };
+      renderMonth();
+    }).catch(function(e){ app.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+  }
+  var BASE = null;
+  function renderMonth(){
+    if (!BASE) BASE = st ? st.thisWeek.slice(0,7) : ms.ym;
+    var h = '<div class="wk"><button id="mprev"' + (ms.ym <= BASE ? ' disabled' : '') + '>‹</button><b>' + FULLMON[+ms.ym.slice(5,7) - 1] + ' ' + ms.ym.slice(0,4) + '</b><button id="mnext"' + (ms.ym >= addMonths(BASE, 2) ? ' disabled' : '') + '>›</button></div>';
+    h += '<div class="mg">' + ['M','T','W','T','F','S','S'].map(function(x){ return '<div class="dw">' + x + '</div>'; }).join('');
+    ms.days.forEach(function(d, i){
+      var out = d.date.slice(0,7) !== ms.ym, cls = 'mc' + (out ? ' out' : '') + (d.past ? ' past' : '') + (sel && sel.i === i ? ' sel' : '');
+      var inner = '<span class="n">' + (+d.date.slice(8)) + '</span>';
+      if (!d.blocks.length) inner += '<span class="z">—</span>';
+      else d.blocks.slice(0, 2).forEach(function(b){ inner += '<span class="t' + (b.repeat ? ' r' : '') + '">' + (b.allDay ? 'All day' : shortT(b.start) + '–' + shortT(b.end)) + '</span>'; });
+      h += '<div class="' + cls + '" data-md="' + i + '">' + inner + '</div>';
+    });
+    h += '</div><div class="lg"><i style="background:#e6ecf7"></i>repeats weekly<i style="background:#fff1dc"></i>just that day · — not available</div>';
+    if (sel) {
+      var d = ms.days[sel.i], dn = DAYS[d.dow];
+      h += '<div class="sh"><b class="h">' + dn + ', ' + label(d.date) + '</b>';
+      h += '<div class="seg">' + [['times','Set times'],['all','All day'],['off','Not available']].map(function(o){ return '<button data-mode="' + o[0] + '"' + (sel.mode === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>'; }).join('') + '</div>';
+      if (sel.mode === 'times') h += '<div class="tr"><input type="time" step="900" id="mS" value="' + sel.start + '"> to <input type="time" step="900" id="mE" value="' + sel.end + '"></div>';
+      h += '<div class="seg"><button data-every="0"' + (!sel.every ? ' class="on"' : '') + '>Just this day</button><button data-every="1"' + (sel.every ? ' class="on"' : '') + '>Every ' + dn + '</button></div>';
+      h += '<div class="go"><button data-mcancel="1">Cancel</button><button class="pri" data-msave="1">Save</button></div></div>';
+    }
+    var fw = ms.weeks.filter(function(w){ return ms.days.some(function(d){ return d.date === w && !d.past; }); })[0];
+    if (fw) h += '<button class="cp" data-copy="' + fw + '">Repeat the week of ' + label(fw) + ' every week</button>';
+    app.innerHTML = h;
+    document.getElementById('mprev').onclick = function(){ sel = null; loadMonth(addMonths(ms.ym, -1)); };
+    document.getElementById('mnext').onclick = function(){ sel = null; loadMonth(addMonths(ms.ym, 1)); };
+  }
+  function openDay(i){ var d = ms.days[i], b = d.blocks[0];
+    sel = { i: i, mode: !b ? 'off' : b.allDay ? 'all' : 'times', start: b && !b.allDay ? b.start : '09:00', end: b && !b.allDay ? b.end : '17:00', every: !!(b && b.repeat) }; renderMonth(); }
+  function saveDay(){
+    var d = ms.days[sel.i], rep = d.blocks.filter(function(b){ return b.repeat && b.id; }), blocks = [], removeAll = [];
+    if (sel.mode === 'times') { var s = document.getElementById('mS').value, e = document.getElementById('mE').value; if (!s || !e || e <= s) { alert('The end time has to be after the start.'); return; } sel.start = s; sel.end = e; }
+    if (sel.mode === 'off') { if (sel.every) removeAll = rep.map(function(b){ return b.id; }); }
+    else {
+      var v = { allDay: sel.mode === 'all', start: sel.mode === 'all' ? '' : sel.start, end: sel.mode === 'all' ? '' : sel.end };
+      if (sel.every && rep.length) blocks = [{ id: rep[0].id, allDay: v.allDay, start: v.start, end: v.end, repeat: true, scope: 'all' }];
+      else blocks = [{ id: '', allDay: v.allDay, start: v.start, end: v.end, repeat: !!sel.every, scope: 'week' }];
+    }
+    post({ week: monOf(d.date), noConfirm: true, days: [{ date: d.date, removeAll: removeAll, blocks: blocks }] }, 'Saved ✓');
+  }
+  function post(body, msg){
+    fetch('/public/avail/' + encodeURIComponent(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'Could not save'); return j; }); })
+      .then(function(){ toast(msg); sel = null; loadMonth(ms.ym); })
+      .catch(function(e){ alert(e.message + ' Try again, or text Billy.'); });
+  }
+  function copyWeek(w){
+    var days = ms.days.filter(function(d){ return d.date >= w && d.date <= addDays(w, 6) && !d.past; });
+    if (!days.some(function(d){ return d.blocks.length; })) { alert('Add some times to that week first.'); return; }
+    if (!confirm('Repeat the week of ' + label(w) + ' every week? Days left empty stay as they are.')) return;
+    post({ week: w, noConfirm: true, days: days.filter(function(d){ return d.blocks.length; }).map(function(d){ return { date: d.date, removeAll: [], blocks: d.blocks.map(function(b){ return { id: b.id, allDay: b.allDay, start: b.start, end: b.end, repeat: true, scope: 'week' }; }) }; }) }, 'Repeating every week ✓');
+  }
+  app.addEventListener('click', function(e){
+    if (tab !== 'month') return;
+    var c = e.target.closest('[data-md]'); if (c) { openDay(+c.dataset.md); return; }
+    var t = e.target.closest('button'); if (!t || !sel && !t.dataset.copy) return;
+    if (t.dataset.copy) copyWeek(t.dataset.copy);
+    else if (t.dataset.mode) { if (sel.mode === 'times') { sel.start = document.getElementById('mS').value || sel.start; sel.end = document.getElementById('mE').value || sel.end; } sel.mode = t.dataset.mode; renderMonth(); }
+    else if (t.dataset.every != null) { if (sel.mode === 'times') { sel.start = document.getElementById('mS').value || sel.start; sel.end = document.getElementById('mE').value || sel.end; } sel.every = t.dataset.every === '1'; renderMonth(); }
+    else if (t.dataset.mcancel) { sel = null; renderMonth(); }
+    else if (t.dataset.msave) saveDay();
+  }, true);
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var t = e.target.closest('button'); if (!t || t.dataset.tab === tab) return;
+    tab = t.dataset.tab; [].forEach.call(this.children, function(b){ b.classList.toggle('on', b === t); });
+    sel = null;
+    if (tab === 'month') loadMonth(ms ? ms.ym : (st ? addDays(st.thisWeek, 9) : new Date().toISOString()).slice(0,7));   // late in the month, open on next month
+    else load(st ? st.week : '');
+  });
   loadUpd();
   load('');
 })();
