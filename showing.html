@@ -93,7 +93,7 @@ function step1(msg){
     ${msg ? `<div class="note">${esc(msg)}</div>` : ''}
     <div class="lbl">Pick a day</div>
     <div class="days">${D.days.map(d => `<button class="day${d.date === ST.date ? ' on' : ''}${d.slots.length ? '' : ' full'}" ${d.slots.length ? `onclick="ST.date='${d.date}';ST.min=null;step1()"` : 'disabled'}>
-      <small>${dn(d.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</small><b>${dn(d.date).getUTCDate()}</b>${d.slots.length ? '' : '<em>Full</em>'}</button>`).join('')}</div>
+      <small>${dn(d.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</small><b>${dn(d.date).getUTCDate()}</b>${d.slots.length ? '' : `<em>${d.closed ? 'Closed' : 'Full'}</em>`}</button>`).join('')}</div>
     ${day ? `<div class="lbl">${esc(day.label)}</div><div class="slots g2">${day.slots.map(s => `<button class="slot${ST.min === s.min ? ' on' : ''}" onclick="ST.min=${s.min};step1()">${esc(s.label)}</button>`).join('')}</div>`
       : '<p class="empty">No open times in the next few days. Text Billy at <a href="sms:+13148997503">(314) 899-7503</a> and we\'ll find a time.</p>'}
     <button class="btn" ${ST.min === null ? 'disabled' : ''} onclick="step2()">Continue →</button>
@@ -132,8 +132,17 @@ async function book(){
   } catch (e) { step2('Something went wrong. Text Billy at (314) 899-7503.'); }
 }
 function done(j){
-  // Embedded on billyscouches.com: no thank-you screen here, the page sends them straight to /showingthanks (ad conversion).
-  if (parent !== window) { const tm = String(j.when || '').match(/\d{1,2}:\d{2}\s*[AP]M/i); parent.postMessage({ bcShowing: tm && ST.date ? ST.date + ' ' + tm[0] : j.when }, '*'); return; }   // send the full date (2026-11-25): "Wednesday, Nov 25" has no year and phones guess 2001
+  // Booked: send everyone to billyscouches.com/showingthanks (ad conversion page). Only runs on success.
+  // The full date goes along (2026-11-25 12:20 PM): "Wednesday, Nov 25" has no year and phones guess 2001.
+  const tm = String(j.when || '').match(/\d{1,2}:\d{2}\s*[AP]M/i), when = tm && ST.date ? ST.date + ' ' + tm[0] : j.when;
+  const url = 'https://billyscouches.com/showingthanks?when=' + encodeURIComponent(when);
+  if (parent !== window) {
+    parent.postMessage({ bcShowing: when }, '*');   // backup: the Visit Showroom page also redirects when it hears this
+    try { window.top.location.href = url; } catch (e) {}   // embedded in an iframe: move the whole page, not just the frame
+    return;
+  }
+  location.href = url;
+  return;
   steps(3); const c = D.couches.find(x => x.id === ST.couch);
   $('app').innerHTML = `<div class="pad done"><div class="ck">✓</div>
     <div class="h">See you then, ${esc(j.first)}!</div><p class="p">We just texted you a confirmation.</p>
