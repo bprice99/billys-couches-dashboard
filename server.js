@@ -350,6 +350,18 @@ app.post('/api/expense/update', async (req, res) => {
     await kset(KEYS.expenses, list); res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Edit expense → "Move to personal": takes it off the business expenses and puts it on the Personal P&L (nothing is lost).
+app.post('/api/expense/topersonal', async (req, res) => {
+  try {
+    const id = clean(req.body.id, 120), c = String(req.body.cat || ''), cat = PPL_CATS[c] && !['otherIn', 'ownerPay', 'coachIn'].includes(c) ? c : 'otherOut';
+    const list = await getExpenses(), i = list.findIndex(e => e.id === id);
+    if (i < 0) return res.status(404).json({ error: 'Expense not found' });
+    const x = list[i], pid = String(x.id).replace(/^tx_/, ''), ppl = (await kget(TXN.ppl, [])) || [];
+    if (!ppl.some(p => p.id === pid)) ppl.push({ id: pid, date: x.date, amount: Number(x.amount) || 0, name: x.vendor || x.category || 'Expense', cat, note: 'Moved from business' });
+    list.splice(i, 1);
+    await kset(TXN.ppl, ppl); await kset(KEYS.expenses, list); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/data', async (req, res) => {
   try {
     const [g, purchases, expenses, loads, openhouses] = await Promise.all([
