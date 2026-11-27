@@ -631,6 +631,7 @@ body.solo .side,body.solo .top,body.solo .rangebar,body.solo .mbar,body.solo .ms
     <label>Vendor / who<input name="vendor" placeholder="e.g. Meta, Finley"></label>
   </div>
   <label>Notes<input name="notes" placeholder="optional"></label>
+  <div id="expToPpl" hidden style="margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">Personal, not business?</b><select id="expPplCat" style="flex:1;min-width:130px"></select><button type="button" class="btn sm" data-exptoppl>Move to personal</button></div></div>
   <div class="acts"><button type="button" class="btn" data-close>Cancel</button><button class="btn p">Save</button></div>
 </form></div>
 <div class="mask" id="m-load"><form class="modal" data-kind="load" style="max-width:560px">
@@ -2655,7 +2656,7 @@ document.addEventListener('contextmenu', e => { const b = e.target.closest && e.
 new MutationObserver(() => { clearTimeout(mbarRender.t); mbarRender.t = setTimeout(mbarRender, 50); }).observe(document.querySelector('.side'), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
 
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
-document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open), f = m.querySelector('form'); f.reset(); if (f.elements.id) f.elements.id.value = ''; if ($('expTitle')) $('expTitle').textContent = 'Log an expense'; m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr();
+document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const m = $('m-' + b.dataset.open), f = m.querySelector('form'); f.reset(); if (f.elements.id) f.elements.id.value = ''; if ($('expTitle')) $('expTitle').textContent = 'Log an expense'; if ($('expToPpl')) $('expToPpl').hidden = true; m.classList.add('on'); m.querySelector('input[name=date]').value = todayStr();
   if (b.dataset.open === 'purchase') { const nw = !!b.dataset.newcouch; $('purTitle').textContent = nw ? 'Log a new couch' : 'Log a used pickup'; $('purQty').hidden = !nw; if (nw) f.elements.source.value = 'New couch'; } });
 document.querySelectorAll('.mask').forEach(m => {
   const box = m.querySelector('.modal');
@@ -3536,6 +3537,16 @@ document.addEventListener('click', e => {
   f.id.value = x.id; f.date.value = ymd(x.date); f.amount.value = x.amt; f.vendor.value = x.vendor || ''; f.notes.value = x.notes || '';
   if (![...f.category.options].some(o => o.value === x.cat)) f.category.add(new Option(x.cat, x.cat));
   f.category.value = x.cat; $('expTitle').textContent = 'Edit expense'; m.classList.add('on');
+  const pc = (TX && TX.pplCats && Object.keys(TX.pplCats).length) ? TX.pplCats : { groceries: 'Groceries', eatingOut: 'Eating out', subscriptions: 'Subscriptions', needs: 'Needs', wants: 'Wants', education: 'Education', travel: 'Travel', otherOut: 'Other' };
+  $('expPplCat').innerHTML = Object.entries(pc).filter(([k]) => !PPL_INC.includes(k)).map(([k, l]) => `<option value="${k}" ${k === 'wants' ? 'selected' : ''}>${l}</option>`).join('');
+  $('expToPpl').hidden = false;
+});
+// Move to personal: off the business expenses, onto the Personal P&L.
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-exptoppl]'); if (!b) return;
+  const f = $('m-expense').querySelector('form').elements; b.disabled = true;
+  try { await post('/api/expense/topersonal', { id: f.id.value, cat: $('expPplCat').value }); $('m-expense').classList.remove('on'); toast('Moved to Personal P&L'); TX = null; load(true); }
+  catch (err) { toast(err.message); } finally { b.disabled = false; }
 });
 
 // ---------- auto expenses from linked banks + cards ----------
